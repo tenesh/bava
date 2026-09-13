@@ -1,0 +1,32 @@
+# Normalize line endings: LF in the repo, native on checkout
+* text=auto eol=lf
+
+# Windows scripts need CRLF
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Unix scripts must stay LF
+*.sh    text eol=lf
+gradlew text eol=lf
+
+# Go
+*.go text eol=lf
+
+# Binary — never diff or normalize
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.icns binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.pdf   binary
+
+# Text formats worth diffing
+*.svg text eol=lf
+*.d2  text eol=lf
+*.md  text eol=lf
