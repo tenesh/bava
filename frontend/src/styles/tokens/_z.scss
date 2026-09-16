@@ -1,0 +1,18 @@
+// Stacking layers.
+//
+// Derived: the design specifies none, and this exists because of a measured
+// failure. Ark UI ships no z-index of its own — spiked 2026-09-16, dialog and
+// tooltip content both painted *below* a plain
+// `position: fixed; z-index: 9999` element. Portalled content must therefore
+// sit above app chrome by explicit value, or dialogs hide behind panels.
+//
+// Values are spaced so a layer can be inserted without renumbering.
+:root {
+  --z-base: 0;
+  --z-canvas: 1;
+  --z-chrome: 10;
+  --z-floating: 20; // tool rail, contextual toolbar
+  --z-overlay: 100; // backdrop
+  --z-portal: 200; // dialog, popover, menu, tooltip — above all chrome
+  --z-toast: 300;
+}

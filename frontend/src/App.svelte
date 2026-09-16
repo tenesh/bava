@@ -3,13 +3,13 @@
   import { DiagramCanvas } from './canvas/canvas';
   import { SourcePane } from './editor/source-pane';
   import { createRenderClient } from './ipc/render.svelte';
+  import { createTheme } from './styles/theme.svelte';
 
-  // Milestone 1 shell: two panes, structural CSS only. No components and no
-  // tokens exist yet.
+  // Milestone 1 shell: two panes, structural CSS only. Replaced by the app
+  // shell in Milestone 3.
   //
-  // Two values below are Milestone 2 debt, named rather than hidden: the 1px
-  // divider width belongs in _space.scss, and the divider colour currently
-  // rides on currentColor because --color-border-subtle does not exist yet.
+  // Both values it carried as Milestone 2 debt — the divider width and its
+  // colour — now resolve from tokens.
 
   const initialSource = `users: Users {shape: person}
 web: Web App {
@@ -22,6 +22,8 @@ web.api -> db: query
 `;
 
   const client = createRenderClient();
+  // Sets data-theme on <html>, which is what the token layer keys off.
+  const theme = createTheme();
 
   let sourceHost: HTMLDivElement;
   let canvasHost: HTMLDivElement;
@@ -56,6 +58,7 @@ web.api -> db: query
       client.destroy();
       canvas.destroy();
       pane.destroy();
+      theme.destroy();
     };
   });
 
@@ -94,9 +97,7 @@ web.api -> db: query
   }
 
   .pane-canvas {
-    /* `solid` with no colour resolves to currentColor, so the divider exists
-       without introducing a literal before the token layer does. */
-    border-inline-start: 1px solid;
+    border-inline-start: var(--border-width) solid var(--color-border-subtle);
   }
 
   .fill {

@@ -30,6 +30,9 @@ import (
 type Options struct {
 	// Engine names the layout algorithm. Empty selects layout.DefaultEngine.
 	Engine string `json:"engine"`
+	// Theme carries the diagram colours. Nil renders D2's own defaults, which
+	// is what every golden committed before theming was added expects.
+	Theme *Theme `json:"theme,omitempty"`
 }
 
 // Span locates something in the source.
@@ -90,6 +93,13 @@ func Render(ctx context.Context, source string, opts Options) (Result, error) {
 	renderOpts := &d2svg.RenderOpts{
 		NoXMLTag:    boolPtr(true),
 		OmitVersion: boolPtr(true),
+	}
+
+	if opts.Theme != nil {
+		if err := opts.Theme.validate(); err != nil {
+			return Result{}, err
+		}
+		renderOpts.ThemeOverrides = opts.Theme.overrides()
 	}
 
 	engineName := engine.Name

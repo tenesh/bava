@@ -1,0 +1,166 @@
+// Semantic colour tokens.
+//
+// Literal values live here as private SCSS variables and nowhere else. The
+// semantic layer references them, and nothing outside tokens/ may reference a
+// literal. The test is that switching to dark mode should never require
+// touching a file outside this directory.
+//
+// Values are the design's palette, verbatim. Two tokens are additions, both
+// evidenced by usage in the mockups rather than invented — see the comments.
+
+// -- light ------------------------------------------------------------------
+$l-surface: #f7f7f5;
+$l-surface-raised: #ffffff;
+$l-surface-sunken: #efefec;
+$l-surface-overlay: #ffffff;
+$l-surface-nav: #f2f2ef;
+$l-border-subtle: #e2e2dd;
+$l-border-strong: #cbcbc4;
+$l-border-hairline: #f1f1ee;
+$l-text-primary: #1b1b19;
+$l-text-secondary: #55554f;
+$l-text-muted: #8a8a83;
+$l-text-faint: #7d7d76;
+// Addition: document body copy, softer than text-primary. 27 uses in the
+// mockups, all as `color:` on prose.
+$l-text-prose: #2e2e28;
+$l-accent: #2f6ba3;
+$l-accent-contrast: #ffffff;
+$l-accent-subtle: rgba(47, 107, 163, 0.07);
+$l-selection: rgba(47, 107, 163, 0.18);
+$l-focus-ring: #2f6ba3;
+// Addition: the halo the design's focus recipe describes in prose but never
+// names — "1px accent border plus a 2px 22-25% halo".
+$l-focus-halo: rgba(47, 107, 163, 0.22);
+$l-danger: #b3271c;
+$l-danger-subtle: rgba(179, 39, 28, 0.06);
+$l-ok: #4a7c59;
+$l-backdrop: rgba(20, 20, 18, 0.45);
+$l-canvas-bg: #efefec;
+$l-canvas-dot: #d4d4cd;
+$l-note-fill: #f8f2dc;
+$l-note-border: #e8dfba;
+
+// -- dark -------------------------------------------------------------------
+$d-surface: #191a1c;
+$d-surface-raised: #202226;
+$d-surface-sunken: #131416;
+$d-surface-overlay: #24272b;
+$d-surface-nav: #151619;
+$d-border-subtle: #2b2d31;
+$d-border-strong: #3c3f45;
+$d-border-hairline: #232529;
+$d-text-primary: #e6e6e3;
+$d-text-secondary: #a2a49f;
+$d-text-muted: #71746f;
+$d-text-faint: #8a8d88;
+$d-text-prose: #cfcfcb;
+$d-accent: #7fabd9;
+$d-accent-contrast: #10161c;
+$d-accent-subtle: rgba(127, 171, 217, 0.14);
+$d-selection: rgba(127, 171, 217, 0.22);
+$d-focus-ring: #7fabd9;
+$d-focus-halo: rgba(127, 171, 217, 0.25);
+$d-danger: #e57a6d;
+$d-danger-subtle: rgba(229, 122, 109, 0.1);
+$d-ok: #8fb89a;
+$d-backdrop: rgba(10, 11, 12, 0.58);
+$d-canvas-bg: #131416;
+$d-canvas-dot: #33373c;
+$d-note-fill: #33301f;
+$d-note-border: #4a4630;
+
+// -- diagram layer ----------------------------------------------------------
+// A diagram's SVG is rendered in Go and does not inherit CSS. These are
+// emitted for parity and inspection, but the values that actually reach a
+// diagram are passed to Render as options and mapped onto D2's theme system.
+// A theme change must update both paths.
+$l-diagram-bg: #ffffff;
+$l-diagram-container-fill: #f4f4f1;
+$l-diagram-node-fill: #ffffff;
+$l-diagram-node-stroke: #a8a8a0;
+$l-diagram-label: #25251f;
+$l-diagram-edge: #8b8b83;
+$l-diagram-edge-label: #7d7d76;
+
+$d-diagram-bg: #1b1c1f;
+$d-diagram-container-fill: #1e2023;
+$d-diagram-node-fill: #262a2f;
+$d-diagram-node-stroke: #4a5058;
+$d-diagram-label: #dcdcd8;
+$d-diagram-edge: #7f857f;
+$d-diagram-edge-label: #8b8f8a;
+
+:root {
+  --color-surface: #{$l-surface};
+  --color-surface-raised: #{$l-surface-raised};
+  --color-surface-sunken: #{$l-surface-sunken};
+  --color-surface-overlay: #{$l-surface-overlay};
+  --color-surface-nav: #{$l-surface-nav};
+  --color-border-subtle: #{$l-border-subtle};
+  --color-border-strong: #{$l-border-strong};
+  --color-border-hairline: #{$l-border-hairline};
+  --color-text-primary: #{$l-text-primary};
+  --color-text-secondary: #{$l-text-secondary};
+  --color-text-muted: #{$l-text-muted};
+  --color-text-faint: #{$l-text-faint};
+  --color-text-prose: #{$l-text-prose};
+  --color-accent: #{$l-accent};
+  --color-accent-contrast: #{$l-accent-contrast};
+  --color-accent-subtle: #{$l-accent-subtle};
+  --color-selection: #{$l-selection};
+  --color-focus-ring: #{$l-focus-ring};
+  --color-focus-halo: #{$l-focus-halo};
+  --color-danger: #{$l-danger};
+  --color-danger-subtle: #{$l-danger-subtle};
+  --color-ok: #{$l-ok};
+  --color-backdrop: #{$l-backdrop};
+  --color-canvas-bg: #{$l-canvas-bg};
+  --color-canvas-dot: #{$l-canvas-dot};
+  --color-note-fill: #{$l-note-fill};
+  --color-note-border: #{$l-note-border};
+  --color-diagram-bg: #{$l-diagram-bg};
+  --color-diagram-container-fill: #{$l-diagram-container-fill};
+  --color-diagram-node-fill: #{$l-diagram-node-fill};
+  --color-diagram-node-stroke: #{$l-diagram-node-stroke};
+  --color-diagram-label: #{$l-diagram-label};
+  --color-diagram-edge: #{$l-diagram-edge};
+  --color-diagram-edge-label: #{$l-diagram-edge-label};
+}
+
+:root[data-theme='dark'] {
+  --color-surface: #{$d-surface};
+  --color-surface-raised: #{$d-surface-raised};
+  --color-surface-sunken: #{$d-surface-sunken};
+  --color-surface-overlay: #{$d-surface-overlay};
+  --color-surface-nav: #{$d-surface-nav};
+  --color-border-subtle: #{$d-border-subtle};
+  --color-border-strong: #{$d-border-strong};
+  --color-border-hairline: #{$d-border-hairline};
+  --color-text-primary: #{$d-text-primary};
+  --color-text-secondary: #{$d-text-secondary};
+  --color-text-muted: #{$d-text-muted};
+  --color-text-faint: #{$d-text-faint};
+  --color-text-prose: #{$d-text-prose};
+  --color-accent: #{$d-accent};
+  --color-accent-contrast: #{$d-accent-contrast};
+  --color-accent-subtle: #{$d-accent-subtle};
+  --color-selection: #{$d-selection};
+  --color-focus-ring: #{$d-focus-ring};
+  --color-focus-halo: #{$d-focus-halo};
+  --color-danger: #{$d-danger};
+  --color-danger-subtle: #{$d-danger-subtle};
+  --color-ok: #{$d-ok};
+  --color-backdrop: #{$d-backdrop};
+  --color-canvas-bg: #{$d-canvas-bg};
+  --color-canvas-dot: #{$d-canvas-dot};
+  --color-note-fill: #{$d-note-fill};
+  --color-note-border: #{$d-note-border};
+  --color-diagram-bg: #{$d-diagram-bg};
+  --color-diagram-container-fill: #{$d-diagram-container-fill};
+  --color-diagram-node-fill: #{$d-diagram-node-fill};
+  --color-diagram-node-stroke: #{$d-diagram-node-stroke};
+  --color-diagram-label: #{$d-diagram-label};
+  --color-diagram-edge: #{$d-diagram-edge};
+  --color-diagram-edge-label: #{$d-diagram-edge-label};
+}

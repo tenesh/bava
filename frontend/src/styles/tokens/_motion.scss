@@ -1,0 +1,23 @@
+// Motion.
+//
+// Derived: the design specifies no durations. These are conservative desktop
+// values — a tool window should feel immediate, not animated.
+//
+// The design does include a "reduce motion" setting that disables canvas
+// easing and panel transitions, so honouring the OS preference here is the
+// floor, not the feature.
+:root {
+  --duration-fast: 90ms;
+  --duration-base: 140ms;
+  --duration-slow: 220ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
