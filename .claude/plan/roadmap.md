@@ -499,6 +499,35 @@ directory. Generation, staged visibly — planning, then a placeholder element o
 the canvas, then the filled diagram. The compile-and-repair loop: output is
 compiled in-process, diagnostics fed back, **capped at two retries**.
 
+**Chat rendering — candidate library, decided 2026-09-17, pending a spike:**
+`markstream-svelte` (MIT) renders streamed replies: markdown, highlighted code
+blocks, safe HTML, and custom components for tags such as a thinking block. It
+is the first choice because one library covers what would otherwise be
+`@humanspeak/svelte-markdown` plus Shiki. Unchanged either way: provider calls,
+credentials and the repair loop stay in Go; dropdowns, menus and collapsibles
+are Ark UI wrapped in `components/`; a D2 block in a reply renders through
+`Render`, never Mermaid.
+
+The milestone's first task is a throwaway spike in the real webview. Adopt
+only if all four hold:
+
+1. **No network, at all** — streaming a reply with code and math makes zero
+   requests. Its code blocks depend on `stream-diffs`, and math and diagrams
+   run in web workers; none may fetch from a CDN. A failure here is a
+   non-negotiable, not a trade-off.
+2. **Themes to our tokens** in both themes. It ships its own `index.css`; if
+   that cannot be driven from `--color-*` and friends without fighting it, it
+   fails.
+3. **Bundle size** measured with Mermaid excluded (~1.5MB, and Bava's diagrams
+   are D2), and KaTeX only if math is wanted.
+4. **Streaming stays smooth** on a long reply in WKWebView, and the Svelte port
+   — marked beta/experimental upstream — is stable enough across a pinned
+   version.
+
+**Fallback:** `@humanspeak/svelte-markdown` (MIT, ships no styles, per-element
+renderers) with Shiki bundled locally. Rejected outright: Svelte AI Elements
+and anything else built on shadcn-svelte, because they bring Tailwind.
+
 **Exit criterion:**
 
 ```sh
