@@ -179,7 +179,9 @@ check both before building either by hand.
 | `Toolbar` | Contextual: changes with the current selection. |
 | `LayoutEnginePicker` | Per `diagram` element, not per canvas. |
 | `ErrorList` | D2 compiler diagnostics, click-to-jump to source line. |
-| `EmptyState` ✓ | Repeated across file tree, canvas, search. |
+| `EmptyState` ✓ | Repeated across file tree, canvas, search. `mark` adds the faded brand mark for "nothing open yet". |
+| `Mark` ✓ | The brand mark, inlined from `src/brand/panda.svg` at one of four `--size-mark-*` sizes. |
+| `AboutDialog` ✓ | Mark, wordmark, tagline, licence. No version until Milestone 16. |
 | `Icon` ✓ | Single sprite wrapper so icon sizing is tokenised. No set is bundled until Milestone 9. |
 
 ✓ marks what exists. Build the rest as screens need them, not upfront — an
@@ -187,6 +189,21 @@ unused component is an unmaintained one.
 
 **Wrapped from Ark so far**: `Dialog`, `Splitter`, and SegmentGroup inside
 `Segments`.
+
+## Brand
+
+The panda mark is **paper on ink, always** (`--color-mark`,
+`--color-mark-tile`): bare on a dark ground, in its own ink tile on a light
+one. It never inverts to ink on paper and never takes the accent — that is
+reserved for selection and focus. Use `Mark`, never an `<img>` of the SVG: an
+image cannot take its colour from a token.
+
+One drawing at every size. Do not stretch, rotate, recolour, redraw for small
+sizes, or place it on a mid-tone ground. 20px (`--size-mark-brand`) is the
+floor for brand placements; system chrome may use `--size-mark-chrome`.
+
+The wordmark is lowercase `bava` in Geist Medium (`--text-wordmark`,
+`--tracking-wordmark`); the name in prose is `Bava`.
 
 ## Theme and the diagram
 

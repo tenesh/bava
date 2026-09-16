@@ -324,15 +324,28 @@ source editor, Copy/Paste work on a canvas selection and in the editor, and
 
 ---
 
-## Milestone 5.7 — Brand
+## Milestone 5.7 — Brand *(gated; awaiting a human look at the icons and both themes)*
 
-**Goal:** The mark as app icon, in the title bar and in empty states.
+**Goal:** The mark as app icon, in the title bar, the files empty state and
+About.
 
-**Blocked on:** the mark as an SVG, and a simplified drawing for 24px and
-below. The current PNGs are upscaled from a screenshot, 728×712, soft-edged.
+**Art:** vendored in the repo — `frontend/src/brand/panda.svg`, one drawing at
+every size (a small-size variant was tried and rejected), and designer-
+exported 1024px icon masters per platform beside their outputs in `build/`.
+Rules and decisions in `.claude/work/specs/brand.md`.
 
-**Exit criterion:** icons regenerated with `wails3 generate icons`, looked at
-by a human at 16px and 1024px; ink on light, paper on dark, never the accent.
+**Exit criterion:**
+
+```sh
+go test ./internal/app -run 'Icon|AssetsCar' \
+  && (cd frontend && npm run check && npm run lint && npm test)
+```
+
+green, plus a human look at a built app: the icon at 16px and 1024px on
+macOS, the title bar and About in both themes. The mark is paper on ink,
+always, never the accent.
+
+**Depends on:** Milestone 5.6.
 
 ---
 
@@ -609,6 +622,15 @@ obligation and not decoration. The in-app updater: available, release notes,
 downloading, restart to apply, failed. Signature verification before anything
 is applied. Auto-check as a setting that genuinely turns off. Packaging for
 macOS, Linux and Windows.
+
+**Installer branding, carried from Milestone 5.7:** the DMG's file icon
+(`build/darwin/dmg-file-icon.*`) and background (`dmg-background.png`) are
+still the Wails template. Either replace them with Bava art or drop them — all
+three DMG images are optional in `wails3 tool package`, and the volume icon
+already uses `icons.icns`. A test then forbids the template files, as
+`internal/app/icons_test.go` does for the app icons. The same applies to the
+Windows MSIX tiles, which `wails3 tool msix` fills with Wails placeholders, and
+to Linux: deb/rpm install the 1024px `appicon.png` into `hicolor/128x128`.
 
 **Exit criterion:**
 

@@ -11,6 +11,7 @@
    * File actions live in that menu, not in the title bar.
    */
   import type { Snippet } from 'svelte';
+  import Mark from '../components/Mark.svelte';
   import Pane from '../components/Pane.svelte';
   import EmptyState from '../components/EmptyState.svelte';
   import StatusBar from '../components/StatusBar.svelte';
@@ -61,10 +62,13 @@
 
 <div class="shell">
   <header class="titlebar">
-    <span class="filename">
-      {title}
-      <span class="state" class:dirty>{dirty ? t('file.dirty') : t('file.saved')}</span>
-    </span>
+    <div class="identity">
+      <Mark size="chrome" label={t('brand.name')} />
+      <span class="filename">
+        {title}
+        <span class="state" class:dirty>{dirty ? t('file.dirty') : t('file.saved')}</span>
+      </span>
+    </div>
     <ViewSwitcher value={view.mode} onValueChange={(mode) => view.setMode(mode)} />
     <div class="actions">
       <button type="button" class="action" onclick={() => view.toggleAI()} aria-pressed={view.showsAI}>
@@ -143,6 +147,7 @@
     gap: var(--space-3);
     height: var(--size-titlebar);
     padding: 0 var(--space-3);
+    padding-inline-start: calc(var(--space-3) + var(--size-titlebar-inset-start));
     border-bottom: var(--border-width) solid var(--color-border-subtle);
     background: var(--color-surface-nav);
     flex: none;
@@ -157,6 +162,13 @@
 
   .state.dirty {
     color: var(--color-accent);
+  }
+
+  .identity {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
   }
 
   .filename {

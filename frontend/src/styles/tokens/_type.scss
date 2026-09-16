@@ -54,6 +54,11 @@
   --weight-medium: 500;
   --weight-semibold: 600;
 
+  // The wordmark: Geist Medium, lowercase. Its negative tracking holds at this
+  // size and above only — tighter than that and the letters touch.
+  --text-wordmark: 22px;
+  --tracking-wordmark: -0.4px;
+
   // Small-caps labels: pane headers, settings and shortcut group headings.
   --tracking-label: 0.06em;
 }

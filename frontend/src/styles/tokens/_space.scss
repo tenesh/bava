@@ -25,8 +25,27 @@
   --size-titlebar: 36px;
   --size-statusbar: 24px;
 
+  // Room the title bar leaves for native window controls drawn over the page.
+  // Only macOS's hidden-inset title bar does that; see below.
+  --size-titlebar-inset-start: 0px;
+
+  // The brand mark, one drawing at four sizes. 20px is the floor for brand
+  // placements; system chrome may go to 16px.
+  --size-mark-chrome: 16px;
+  --size-mark-brand: 20px;
+  --size-mark-hero: 46px;
+  --size-mark-about: 64px;
+
   // A dialog scrolls rather than outgrowing the window.
   --size-dialog-body-max: 60vh;
   // A short numeric field: milliseconds, a zoom percentage.
   --size-field-number: 10ch;
+}
+
+// macOS draws the traffic lights over the page (MacTitleBarHiddenInset uses
+// full-size content). They end about 78px from the window's left edge, so the
+// title bar's own content starts after them. `data-platform` is set on the root
+// before the first paint by shell/platform.ts.
+:root[data-platform='darwin'] {
+  --size-titlebar-inset-start: 72px;
 }

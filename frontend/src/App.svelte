@@ -25,6 +25,7 @@
   import { createFileActions, type Choice, type PromptKind } from './files/actions.svelte';
   import EmptyState from './components/EmptyState.svelte';
   import ShortcutsDialog from './components/ShortcutsDialog.svelte';
+  import AboutDialog from './components/AboutDialog.svelte';
   import FilesSection from './settings/FilesSection.svelte';
   import { createSettings } from './settings/settings.svelte';
   import { createRecents } from './files/recents.svelte';
@@ -539,7 +540,7 @@ web.api -> db: query
         onActivate={(path) => void openPath(path)}
       />
     {:else}
-      <EmptyState title={t('file.noFolder')} body={t('file.noFolderBody')} />
+      <EmptyState title={t('file.noFolder')} body={t('file.noFolderBody')} mark />
     {/if}
   {/snippet}
   {#snippet document()}
@@ -569,15 +570,7 @@ web.api -> db: query
   onOpenChange={(open) => (shortcutsOpen = open)}
 />
 
-{#if aboutOpen}
-  <ConfirmDialog
-    open
-    title={t('about.title')}
-    body={t('about.body')}
-    options={[{ value: 'close', label: t('about.close'), primary: true }]}
-    onChoose={() => (aboutOpen = false)}
-  />
-{/if}
+<AboutDialog bind:open={aboutOpen} onOpenChange={(open) => (aboutOpen = open)} />
 
 {#if prompt?.kind === 'unsaved'}
   <ConfirmDialog

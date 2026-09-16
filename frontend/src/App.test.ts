@@ -79,6 +79,16 @@ describe('App shell integration', () => {
     unmount(app);
   });
 
+  it('the title bar shows the mark', () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const app = flushSync(() => mount(App, { target }));
+    const mark = target.querySelector('header .mark svg');
+    expect(mark, 'no mark in the title bar').not.toBeNull();
+    expect(mark?.getAttribute('aria-label')).toBe('Bava');
+    unmount(app);
+  });
+
   it('renders the status bar', () => {
     const target = document.createElement('div');
     document.body.append(target);
