@@ -36,12 +36,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Wails v3 defaults to GTK4 + WebKitGTK 6.0 on Linux. The GTK3 variant
+      # exists but is opt-in behind a `gtk3` build tag — see the cgo tags in
+      # wails/v3/pkg/application/linux_cgo.go (`!gtk3`) versus
+      # linux_cgo_gtk3.go (`gtk3`). Installing the GTK3 packages produces a
+      # pkg-config failure for gtk4/webkitgtk-6.0 that reads like a missing
+      # system library rather than a wrong-variant mistake.
       - name: Install Linux webview dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+            build-essential pkg-config \
+            libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev libglib2.0-dev
+          # Fail here with a clear message rather than inside cgo.
+          pkg-config --exists gtk4 webkitgtk-6.0 libsoup-3.0 gio-unix-2.0 \
+            || { echo "::error::required pkg-config packages missing after install"; exit 1; }
 
       - uses: actions/setup-go@v5
         with:
@@ -116,12 +126,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Wails v3 defaults to GTK4 + WebKitGTK 6.0 on Linux. The GTK3 variant
+      # exists but is opt-in behind a `gtk3` build tag — see the cgo tags in
+      # wails/v3/pkg/application/linux_cgo.go (`!gtk3`) versus
+      # linux_cgo_gtk3.go (`gtk3`). Installing the GTK3 packages produces a
+      # pkg-config failure for gtk4/webkitgtk-6.0 that reads like a missing
+      # system library rather than a wrong-variant mistake.
       - name: Install Linux webview dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+            build-essential pkg-config \
+            libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev libglib2.0-dev
+          # Fail here with a clear message rather than inside cgo.
+          pkg-config --exists gtk4 webkitgtk-6.0 libsoup-3.0 gio-unix-2.0 \
+            || { echo "::error::required pkg-config packages missing after install"; exit 1; }
 
       - uses: actions/setup-go@v5
         with:

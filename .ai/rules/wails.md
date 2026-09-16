@@ -33,6 +33,19 @@ It looks like a Go problem and is not. Run the frontend build first. This hides
 locally because a stale `dist/` is usually lying around, which is exactly how it
 reached CI unnoticed.
 
+## Linux builds are GTK4, not GTK3
+Wails v3 defaults to **GTK4 + WebKitGTK 6.0**. The GTK3 variant exists but is
+opt-in behind a `gtk3` build tag — compare the cgo tags in
+`pkg/application/linux_cgo.go` (`!gtk3`) with `linux_cgo_gtk3.go` (`gtk3`).
+
+Install `libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev libglib2.0-dev`.
+Installing the GTK3 packages instead produces a wall of pkg-config errors for
+`gtk4` and `webkitgtk-6.0` that reads like a broken system rather than the
+wrong variant being installed.
+
+`wails3 doctor`'s package list names *both* variants' packages, so it is not a
+safe guide on its own. **The build tags are the authority.**
+
 ## Cross-platform claims need CI
 A successful `wails3 build` on macOS proves nothing about Windows or Linux.
 The webviews differ — WKWebView, WebView2, WebKitGTK — and so do the build
