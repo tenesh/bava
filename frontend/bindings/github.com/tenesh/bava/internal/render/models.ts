@@ -21,6 +21,12 @@ export interface Options {
      * Engine names the layout algorithm. Empty selects layout.DefaultEngine.
      */
     "engine": string;
+
+    /**
+     * Theme carries the diagram colours. Nil renders D2's own defaults, which
+     * is what every golden committed before theming was added expects.
+     */
+    "theme"?: Theme | null;
 }
 
 /**
@@ -59,4 +65,23 @@ export interface Span {
     "from": number;
     "to": number;
     "line": number;
+}
+
+/**
+ * Theme carries the diagram colours for a render.
+ * 
+ * The token layer in `frontend/src/styles/tokens/_color.scss` is the source of
+ * truth for the values; Go holds the mapping onto D2's palette and no copy of
+ * the palette itself. A diagram's SVG does not inherit CSS, so a theme change
+ * has to travel this path or the canvas keeps the old colours while the chrome
+ * changes around it.
+ */
+export interface Theme {
+    "background": string;
+    "containerFill": string;
+    "nodeFill": string;
+    "nodeStroke": string;
+    "label": string;
+    "edge": string;
+    "edgeLabel": string;
 }

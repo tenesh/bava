@@ -14,6 +14,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@ark-ui/svelte": "^5.24.2",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/lint": "^6.9.7",
     "@codemirror/state": "^6.7.5",
