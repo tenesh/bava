@@ -559,9 +559,10 @@ a local build.
 
 ## Cross-cutting, no milestone of its own
 
-- **CI build matrix.** `.github/workflows/ci.yml` exists — test and build jobs
-  across ubuntu/macos/windows — but **has never run: the repo has no remote.**
-  Until it goes green, no claim that Bava "builds on all platforms" is
+- **CI build matrix.** `.github/workflows/ci.yml` — test and build jobs across
+  ubuntu/macos/windows. Its first run failed on all three (Go steps ran before
+  the frontend was built, and `frontend/dist` is gitignored); fixed, awaiting a
+  re-run. Until it goes green, no claim that Bava "builds on all platforms" is
   supportable; a local `wails3 build` proves nothing about Windows or Linux.
   It also answers a question nothing else can: goldens are byte-compared and
   rest on `.gitattributes` forcing LF for `*.svg`, and nothing has verified

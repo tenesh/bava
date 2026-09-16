@@ -19,6 +19,20 @@ right.
 deliberately, in a commit separate from the scaffold. Do not restore them,
 and do not add mobile targets to build scripts.
 
+## The frontend must be built before any Go command
+`main.go` carries `//go:embed all:frontend/dist`, and `frontend/dist` is
+gitignored. On a clean checkout the directory does not exist, so *every* Go
+command that compiles the root package — `go vet`, `go test ./... .`,
+`go build` — fails with:
+
+```
+main.go:17:12: pattern all:frontend/dist: no matching files found
+```
+
+It looks like a Go problem and is not. Run the frontend build first. This hides
+locally because a stale `dist/` is usually lying around, which is exactly how it
+reached CI unnoticed.
+
 ## Cross-platform claims need CI
 A successful `wails3 build` on macOS proves nothing about Windows or Linux.
 The webviews differ — WKWebView, WebView2, WebKitGTK — and so do the build

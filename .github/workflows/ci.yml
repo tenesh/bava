@@ -56,28 +56,6 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: gofmt
-        if: runner.os == 'Linux'
-        run: |
-          unformatted=$(gofmt -l internal main.go)
-          if [ -n "$unformatted" ]; then
-            echo "not gofmt'd:"; echo "$unformatted"; exit 1
-          fi
-
-      - name: go vet
-        run: go vet ./...
-
-      # Scoped to our own packages: `./...` also matches a Go package that
-      # ships inside frontend/node_modules, which would make this gate depend
-      # on an npm dependency compiling.
-      - name: go test
-        run: go test ./internal/... .
-
-      # Called out separately because this is the cross-platform claim that
-      # matters most: identical SVG bytes from identical D2 input, everywhere.
-      - name: golden files
-        run: go test ./internal/render -run Golden -v
-
       - name: npm ci
         working-directory: frontend
         run: npm ci
@@ -94,9 +72,38 @@ jobs:
         working-directory: frontend
         run: npm test
 
+      # This must come before any Go step. main.go has `//go:embed
+      # all:frontend/dist`, and frontend/dist is gitignored — so a fresh
+      # checkout has no such directory and every Go command that compiles the
+      # root package fails with "pattern all:frontend/dist: no matching files
+      # found". Locally it appears to work only because a stale dist/ is
+      # usually lying around.
       - name: vite build
         working-directory: frontend
         run: npm run build
+
+      - name: gofmt
+        if: runner.os == 'Linux'
+        run: |
+          unformatted=$(gofmt -l internal main.go)
+          if [ -n "$unformatted" ]; then
+            echo "not gofmt'd:"; echo "$unformatted"; exit 1
+          fi
+
+      # Both Go gates are scoped to our own packages rather than `./...`:
+      # node_modules now exists at this point and ships a Go package
+      # (flatted/golang), which would make these gates depend on an npm
+      # dependency compiling.
+      - name: go vet
+        run: go vet ./internal/... .
+
+      - name: go test
+        run: go test ./internal/... .
+
+      # Called out separately because this is the cross-platform claim that
+      # matters most: identical SVG bytes from identical D2 input, everywhere.
+      - name: golden files
+        run: go test ./internal/render -run Golden -v
 
   build:
     name: build (${{ matrix.os }})

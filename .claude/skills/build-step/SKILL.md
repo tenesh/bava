@@ -336,14 +336,18 @@ wrong facts. When a milestone closes, update this section in the same change.
 - **`LICENSE` (Apache-2.0) and `NOTICE` exist.** `NOTICE` is the source for the
   About screen's attribution and must gain an entry in the same change as any
   bundled dependency.
-- **CI exists as a workflow but has never run.** `.github/workflows/ci.yml`
-  defines a test job and a build job across ubuntu/macos/windows, but there is
-  **no git remote configured**, so GitHub Actions has never executed it. Its
-  YAML parses and every command in it passes locally on macOS, including
-  `wails3 build` — but that is not a matrix result. **No "builds on all
-  platforms" claim is supportable until the repo has a remote and the workflow
-  goes green.** The open question it exists to answer: whether D2 renders
+- **CI has run once and failed on all three platforms; the cause is fixed and
+  it has not re-run yet.** First run failed identically on ubuntu, macos and
+  windows at `go vet` with `pattern all:frontend/dist: no matching files
+  found` — the Go steps ran before the frontend was built, and `frontend/dist`
+  is gitignored so a fresh checkout has none. The workflow now builds the
+  frontend first, and both Go gates are scoped to `./internal/... .` because
+  `node_modules` exists by then and ships a Go package. Verified locally from a
+  deleted `dist/`: all eight steps pass in the workflow's order. **Still not a
+  green matrix** — that needs a push and a new run.
+- The question CI exists to answer is still open: whether D2 renders
   byte-identical SVG on Linux and Windows, which every golden file assumes.
+  Nothing else can answer it.
 - `.ai/`, `.claude/`, `CLAUDE.md`, `docs/`, `LICENSE` and `NOTICE` are
   untracked at the time of writing.
 - **Konva is not installed yet.** The canvas foundation is Milestone 4; the
