@@ -1,0 +1,137 @@
+# Cross-platform verification.
+#
+# This exists because a local `wails3 build` on macOS proves nothing about
+# Windows or Linux — the webviews differ (WKWebView, WebView2, WebKitGTK) and
+# so do the toolchains. Until this workflow is green, no claim that Bava
+# "builds on all platforms" is supportable.
+#
+# It also verifies the assumption golden files rest on: `.gitattributes` forces
+# LF for `*.svg`, so a Windows checkout must still compare byte-for-byte.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch makes an in-flight run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One platform failing must not hide the others; that is the whole point
+      # of a matrix here.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux webview dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - uses: actions/setup-go@v5
+        with:
+          # Follows the go directive rather than pinning a second version that
+          # can drift away from it.
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: gofmt
+        if: runner.os == 'Linux'
+        run: |
+          unformatted=$(gofmt -l internal main.go)
+          if [ -n "$unformatted" ]; then
+            echo "not gofmt'd:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      # Scoped to our own packages: `./...` also matches a Go package that
+      # ships inside frontend/node_modules, which would make this gate depend
+      # on an npm dependency compiling.
+      - name: go test
+        run: go test ./internal/... .
+
+      # Called out separately because this is the cross-platform claim that
+      # matters most: identical SVG bytes from identical D2 input, everywhere.
+      - name: golden files
+        run: go test ./internal/render -run Golden -v
+
+      - name: npm ci
+        working-directory: frontend
+        run: npm ci
+
+      - name: svelte-check
+        working-directory: frontend
+        run: npm run check
+
+      - name: eslint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: vitest
+        working-directory: frontend
+        run: npm test
+
+      - name: vite build
+        working-directory: frontend
+        run: npm run build
+
+  build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux webview dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Pinned to the same tag as the Go dependency. Wails cuts near-nightly
+      # betas, so `@latest` here would build with a different version than the
+      # one the app is written against.
+      - name: Install wails3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.20
+
+      - name: wails3 build
+        run: wails3 build
