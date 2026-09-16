@@ -257,18 +257,23 @@ wrong facts. When a milestone closes, update this section in the same change.
 
 ### Milestones
 
-- Milestones 0, 0.5, **1 (the spine)**, **2 (design tokens and theming)** and
-  **3 (app shell)** complete, verified 2026-09-17.
+- Milestones 0, 0.5, **1 (the spine)**, **2 (design tokens and theming)**,
+  **3 (app shell)** and **4 (canvas foundation)** complete, verified
+  2026-09-17.
 - **The roadmap was re-planned on 2026-09-16**, from Milestone 2 onward, around
   a free-placement canvas rather than a compile-to-SVG pipeline. See
   `.claude/work/specs/canvas-architecture.md`. Milestone 1's work survives in a
   narrower role: `internal/render` renders `diagram` elements placed on the
   canvas. The interim two-pane shell and `DiagramCanvas` class it shipped are
   replaced by Milestones 3 and 4.
-- Milestone 4 (canvas foundation) is next and not started. It replaces the
-  interim `DiagramCanvas` with a Konva stage, and owes Milestone 1 a keyboard
-  path for click-on-node jump-to-source — moved here from Milestone 3 because
-  the canvas it attaches to is the one being replaced.
+- Milestone 5 (file format and persistence) is next and not started. It is the
+  first milestone where work survives closing the app.
+- **Known regression, deliberate:** typing D2 renders no diagram. Milestone 4
+  replaced the interim `DiagramCanvas` with a Konva stage, and the `diagram`
+  element that puts a rendered diagram back on the canvas arrives in Milestone
+  6. The pipeline, its tests and its goldens are untouched; diagnostics still
+  reach the editor gutter. Do not "fix" this — it is recorded in
+  `docs/decisions.md`.
 - Everything since the scaffold is uncommitted apart from Milestone 0.5; the
   user commits.
 - `.claude/plan/roadmap.md` holds the sequence.
@@ -307,7 +312,7 @@ wrong facts. When a milestone closes, update this section in the same change.
 | `go test ./internal/render -run Golden` | exit 0 — 4 goldens (light and dark) under `testdata/golden/` |
 | `npm run check` | exit 0 — 0 errors, 0 warnings, 173 files |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0 — 76 tests across 12 files |
+| `npm test` | exit 0 — 129 tests across 19 files |
 | `npm run build` | exit 0 |
 | `wails3 build` | exit 0 on macOS — 30MB binary in `bin/`; unverified elsewhere |
 
@@ -450,6 +455,22 @@ deliberately at `5.24.2` or later.
   not resolve `var()`. The keyboard pass and both-themes check for Milestone 3
   are **unticked** and need a human at a running window.
 - The window is 1280×800, from `internal/app/window.go`, pinned by a test.
+
+### Milestone 4 findings — 2026-09-17
+
+- **Konva needs a 2D context jsdom does not provide.** `vitest-canvas-mock` is
+  wired in `vitest.config.ts`. Without it Konva throws `Cannot read properties
+  of null (reading 'scale')`, which looks like a Konva bug.
+- **`Omit` does not distribute over a union.** It collapses to shared keys, so
+  a naive `NewElement` rejects every element with fields of its own.
+  `scene.ts` has a distributive version.
+- **Selection, grouping and paste exist as tested logic but are not yet bound
+  to pointer events.** The tool rail and shortcuts are wired; drawing with the
+  tools is not. Milestone 5 is the first to need them for real.
+- Dependencies added: `konva` 10.5.0, `perfect-freehand` 1.2.3, `immer`
+  11.1.18, `vitest-canvas-mock` 1.2.0. `rbush` deliberately not installed.
+- `docs/shortcuts.md` exists now, and lists what is *not* bound as well as what
+  is.
 
 ### Settled facts that still hold
 

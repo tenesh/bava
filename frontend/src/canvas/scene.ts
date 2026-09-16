@@ -1,0 +1,136 @@
+/**
+ * The scene: what is on the canvas, and where.
+ *
+ * Pure data and pure functions — no Konva, no DOM. The scene is the source of
+ * truth for position: every element carries its own geometry and nothing
+ * computes it. That is what makes the canvas free-placement rather than a
+ * layout engine with a visual skin.
+ *
+ * This model is deliberately close to what Milestone 5 will persist, but it is
+ * **not** the file format. The format is specified there, in
+ * `docs/file-format.md`, before anything writes it.
+ */
+
+export type ElementId = string;
+
+type Base = {
+  id: ElementId;
+  /** Paint order. Higher is nearer the viewer. */
+  z: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+export type RectElement = Base & { type: 'rect' };
+export type EllipseElement = Base & { type: 'ellipse' };
+export type LineElement = Base & { type: 'line'; points: number[] };
+export type ArrowElement = Base & { type: 'arrow'; points: number[] };
+export type FrameElement = Base & { type: 'frame'; label?: string };
+export type GroupElement = Base & { type: 'group'; label?: string; children: ElementId[] };
+export type StrokeElement = Base & { type: 'stroke'; points: number[] };
+
+export type TextElement = Base & {
+  type: 'text';
+  text: string;
+  /**
+   * Measured in the frontend and stored, never recomputed on open.
+   * WebKitGTK and WebView2 disagree on glyph advances, so re-measuring
+   * elsewhere would reflow the scene.
+   */
+  measuredWidth: number;
+  measuredHeight: number;
+};
+
+export type SceneElement =
+  | RectElement
+  | EllipseElement
+  | LineElement
+  | ArrowElement
+  | FrameElement
+  | GroupElement
+  | StrokeElement
+  | TextElement;
+
+/**
+ * Omit applied across a union rather than to the union as a whole.
+ *
+ * A plain `Omit<SceneElement, 'id' | 'z'>` collapses to the keys every member
+ * shares, so it silently rejects `text`, `line`, `group` and every other
+ * element with fields of its own.
+ */
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+
+export type NewElement = DistributiveOmit<SceneElement, 'id' | 'z'>;
+
+export type SceneData = {
+  elements: SceneElement[];
+};
+
+let counter = 0;
+
+/** Ids are unique within a session; Milestone 5 decides what persists. */
+function nextId(): ElementId {
+  counter += 1;
+  return `e${counter}`;
+}
+
+export function createScene(initial: SceneData = { elements: [] }) {
+  const byId = new Map<ElementId, SceneElement>(initial.elements.map((e) => [e.id, e]));
+  let nextZ = initial.elements.reduce((max, e) => Math.max(max, e.z), 0);
+
+  function ordered(): SceneElement[] {
+    return [...byId.values()].sort((a, b) => a.z - b.z);
+  }
+
+  return {
+    add(element: NewElement): SceneElement {
+      nextZ += 1;
+      const created = { ...element, id: nextId(), z: nextZ } as SceneElement;
+      byId.set(created.id, created);
+      return created;
+    },
+
+    remove(id: ElementId): void {
+      byId.delete(id);
+    },
+
+    get(id: ElementId): SceneElement | undefined {
+      return byId.get(id);
+    },
+
+    update(id: ElementId, changes: Partial<SceneElement>): void {
+      const existing = byId.get(id);
+      if (!existing) return;
+      byId.set(id, { ...existing, ...changes, id: existing.id } as SceneElement);
+    },
+
+    ordered,
+
+    bringToFront(id: ElementId): void {
+      const element = byId.get(id);
+      if (!element) return;
+      nextZ += 1;
+      byId.set(id, { ...element, z: nextZ });
+    },
+
+    sendToBack(id: ElementId): void {
+      const element = byId.get(id);
+      if (!element) return;
+      const lowest = Math.min(...[...byId.values()].map((e) => e.z));
+      byId.set(id, { ...element, z: lowest - 1 });
+    },
+
+    /** Paint order, not insertion order, so the result is stable. */
+    data(): SceneData {
+      return { elements: ordered() };
+    },
+
+    serialise(): string {
+      return JSON.stringify(this.data());
+    },
+  };
+}
+
+export type Scene = ReturnType<typeof createScene>;

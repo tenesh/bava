@@ -201,7 +201,7 @@ both-themes check per component.
 
 ---
 
-## Milestone 4 — Canvas foundation
+## Milestone 4 — Canvas foundation *(complete)*
 
 **Goal:** An infinite canvas you can draw on: place, select, move, group,
 undo.
@@ -580,7 +580,7 @@ a local build.
 - **Artifact sync.** `docs/ipc.md`, `docs/file-format.md`, `docs/shortcuts.md`,
   `docs/decisions.md`, `NOTICE` and the `.ai/rules/` files are updated in the
   same change as the code that makes them true, per the build loop's checklist.
-- **Accessibility debt from Milestone 1.** Click-on-node jump-to-source has no
-  keyboard equivalent. Moved from Milestone 3 to Milestone 4 on 2026-09-17: the
-  focus tokens it needs exist now, but the canvas it would attach to is
-  replaced in Milestone 4, so it belongs with that selection model.
+- **Accessibility debt from Milestone 1.** Paid in part in Milestone 4: scene
+  elements are keyboard selectable and tab order is paint order. The remaining
+  half — reaching a node *inside* a diagram — moves to Milestone 6, because
+  diagram elements do not exist before it.
