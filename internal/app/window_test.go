@@ -17,3 +17,11 @@ func TestWindowFitsFourRegions(t *testing.T) {
 		t.Errorf("WindowHeight = %d, want at least 800", app.WindowHeight)
 	}
 }
+
+// Linux falls back to the application menu; Windows does not. Losing this
+// flag leaves Windows with no way to open or save a file.
+func TestWindowUsesTheApplicationMenu(t *testing.T) {
+	if !app.MainWindowOptions().UseApplicationMenu {
+		t.Error("UseApplicationMenu is false: Windows would show no menu bar")
+	}
+}

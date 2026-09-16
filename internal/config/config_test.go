@@ -23,7 +23,7 @@ func TestDefaultsWhenTheFileIsAbsent(t *testing.T) {
 
 func TestRoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
-	want := config.Settings{DebounceMS: 400, LayoutEngine: "dagre"}
+	want := config.Settings{DebounceMS: 400, LayoutEngine: "dagre", Autosave: config.AutosaveAfterDelay, AutosaveDelayMS: 2500}
 
 	if err := config.SaveTo(path, want); err != nil {
 		t.Fatalf("SaveTo: %v", err)
@@ -102,5 +102,61 @@ func TestPathIsUnderTheUsersConfigDirectory(t *testing.T) {
 	}
 	if !filepath.IsAbs(path) {
 		t.Errorf("path %q is not absolute", path)
+	}
+}
+
+// Autosave writes to the user's files without being asked. It is opt-in.
+func TestAutosaveDefaultsToOff(t *testing.T) {
+	settings := config.Defaults()
+	if settings.Autosave != config.AutosaveOff {
+		t.Errorf("Autosave = %q, want %q", settings.Autosave, config.AutosaveOff)
+	}
+	if settings.AutosaveDelayMS != 1000 {
+		t.Errorf("AutosaveDelayMS = %d, want 1000", settings.AutosaveDelayMS)
+	}
+}
+
+// A mode this version does not know — a typo, or a newer version's setting —
+// must not turn into some other kind of autosave. Off is the only safe guess.
+func TestUnknownAutosaveModeFallsBackToOff(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"autosave": "onWindowChange"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	settings, err := config.LoadFrom(path)
+	if err != nil {
+		t.Fatalf("LoadFrom: %v", err)
+	}
+	if settings.Autosave != config.AutosaveOff {
+		t.Errorf("Autosave = %q, want off", settings.Autosave)
+	}
+}
+
+func TestAutosaveDelayIsClampedToASensibleRange(t *testing.T) {
+	cases := []struct {
+		name string
+		in   int
+		want int
+	}{
+		{"zero takes the default", 0, 1000},
+		{"negative takes the default", -5, 1000},
+		{"too fast writes on every keystroke", 10, config.MinAutosaveDelayMS},
+		{"in range is kept", 3000, 3000},
+		{"too slow is not autosave any more", 10_000_000, config.MaxAutosaveDelayMS},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "settings.json")
+			if err := config.SaveTo(path, config.Settings{AutosaveDelayMS: tc.in}); err != nil {
+				t.Fatal(err)
+			}
+			got, err := config.LoadFrom(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.AutosaveDelayMS != tc.want {
+				t.Errorf("AutosaveDelayMS = %d, want %d", got.AutosaveDelayMS, tc.want)
+			}
+		})
 	}
 }

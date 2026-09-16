@@ -81,4 +81,20 @@ describe('history', () => {
     history.mutate(() => {});
     expect(history.canUndo).toBe(false);
   });
+
+  // Loading a document is not an edit. Undo after File ▸ New must not bring
+  // the previous file's shapes back.
+  it('reset replaces the scene and forgets both directions of history', () => {
+    const history = createHistory({ elements: [] });
+    history.mutate((draft) => {
+      draft.elements.push({ id: 'a', type: 'rect', x: 0, y: 0, w: 1, h: 1, z: 1 });
+    });
+    history.undo();
+    history.redo();
+
+    history.reset({ elements: [] });
+    expect(history.current.elements).toEqual([]);
+    expect(history.canUndo).toBe(false);
+    expect(history.canRedo).toBe(false);
+  });
 });

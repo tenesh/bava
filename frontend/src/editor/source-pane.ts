@@ -9,8 +9,8 @@
  * Milestone 3.5, before documents embed editors of their own.
  */
 import { EditorState, type Extension } from '@codemirror/state';
-import { EditorView, lineNumbers, keymap, highlightActiveLine } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { EditorView, lineNumbers, keymap, highlightActiveLine, type KeyBinding } from '@codemirror/view';
+import { defaultKeymap, history, historyKeymap, redo, selectAll, undo } from '@codemirror/commands';
 import { lintGutter, setDiagnostics } from '@codemirror/lint';
 import type { Diagnostic as GoDiagnostic } from '../../bindings/github.com/tenesh/bava/internal/render/models';
 import { toEditorDiagnostics } from './diagnostics';
@@ -18,6 +18,11 @@ import { toEditorDiagnostics } from './diagnostics';
 export type SourcePaneOptions = {
   doc: string;
   onChange: (source: string) => void;
+  /**
+   * Bindings the native menu owns. The editor drops them, so a key the menu
+   * binds has one meaning and cannot act twice.
+   */
+  isReserved?: (binding: KeyBinding) => boolean;
 };
 
 export class SourcePane {
@@ -29,7 +34,9 @@ export class SourcePane {
       highlightActiveLine(),
       history(),
       lintGutter(),
-      keymap.of([...defaultKeymap, ...historyKeymap]),
+      keymap.of(
+        [...defaultKeymap, ...historyKeymap].filter((binding) => !options.isReserved?.(binding)),
+      ),
       EditorView.lineWrapping,
       EditorView.updateListener.of((update) => {
         if (update.docChanged) options.onChange(update.state.doc.toString());
@@ -70,6 +77,37 @@ export class SourcePane {
       scrollIntoView: true,
     });
     view.focus();
+  }
+
+  /**
+   * Edit commands from the native menu. The menu owns Cmd+Z and friends and
+   * the editor's keymap has those bindings removed (`isReserved`), so these
+   * are the one way they arrive.
+   */
+  undo(): void {
+    if (this.#view) undo(this.#view);
+  }
+
+  redo(): void {
+    if (this.#view) redo(this.#view);
+  }
+
+  selectAll(): void {
+    if (this.#view) selectAll(this.#view);
+  }
+
+  /** The selected text, for Copy and Cut. */
+  selectedText(): string {
+    const view = this.#view;
+    if (!view) return '';
+    return view.state.selection.ranges.map((r) => view.state.sliceDoc(r.from, r.to)).join('\n');
+  }
+
+  /** Replace the selection — Paste with text, Cut with nothing. One undo step. */
+  replaceSelection(text: string): void {
+    const view = this.#view;
+    if (!view) return;
+    view.dispatch(view.state.replaceSelection(text), { userEvent: 'input.paste', scrollIntoView: true });
   }
 
   /** Call from the component's cleanup return. */

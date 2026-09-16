@@ -7,6 +7,13 @@ vi.mock('../bindings/github.com/tenesh/bava/internal/app', () => ({
   RenderService: {
     Render: vi.fn().mockResolvedValue({ svg: '<svg id="stub"/>', errors: [], nodeMap: {} }),
   },
+  FileService: {
+    Settings: vi.fn().mockResolvedValue({ debounceMs: 250, layoutEngine: 'tala', autosave: 'off', autosaveDelayMs: 1000 }),
+    SaveSettings: vi.fn().mockResolvedValue(''),
+  },
+  MenuService: {
+    SetState: vi.fn().mockResolvedValue(undefined),
+  },
 }));
 
 import App from './App.svelte';

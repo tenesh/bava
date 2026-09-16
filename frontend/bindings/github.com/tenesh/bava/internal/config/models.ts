@@ -4,8 +4,8 @@
 /**
  * Settings are the values a user can change.
  * 
- * Both started life as compile-time constants in Milestone 1 and are named
- * here so a change is a preference rather than a rebuild.
+ * The render values started life as compile-time constants in Milestone 1 and
+ * are named here so a change is a preference rather than a rebuild.
  */
 export interface Settings {
     /**
@@ -18,4 +18,16 @@ export interface Settings {
      * LayoutEngine is the default for diagrams that do not name one.
      */
     "layoutEngine": string;
+
+    /**
+     * Autosave is when an open, titled document is written without being
+     * asked: never, a quiet period after the last change, or when the window
+     * loses focus. The names follow VS Code's files.autoSave.
+     */
+    "autosave": string;
+
+    /**
+     * AutosaveDelayMS is the quiet period for AutosaveAfterDelay.
+     */
+    "autosaveDelayMs": number;
 }

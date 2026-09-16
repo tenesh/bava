@@ -35,3 +35,9 @@ transient invalid states constantly.
 ## Keep the surface small
 Every bound method is API you maintain across a Wails beta upgrade. Prefer one
 method with an options struct over five narrow methods.
+
+## The menu names commands; the frontend performs them
+Go emits `menu:command` with an id and never decides what it does. The id list
+lives in `spec.json`, and `shell/commands.ts` must match it exactly — a test
+enforces both directions. Adding behaviour to a menu click in Go is how the
+native layer stops being thin.

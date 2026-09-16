@@ -11,6 +11,7 @@ function doc(over: Record<string, unknown> = {}) {
     save: vi.fn().mockResolvedValue({ conflict: false, saved: true }),
     saveAs: vi.fn().mockResolvedValue({ conflict: false, saved: true }),
     reload: vi.fn().mockResolvedValue({ error: '' }),
+    reset: vi.fn(),
     ...over,
   };
 }
@@ -134,5 +135,57 @@ describe('saving', () => {
     const d = doc({ save: vi.fn().mockResolvedValue({ conflict: true, saved: false }) });
     await actionsFor(d, answering('reload')).save();
     expect(d.reload).toHaveBeenCalled();
+  });
+});
+
+describe('a new file', () => {
+  it('starts untitled straight away when there is nothing unsaved', async () => {
+    const d = doc();
+    const prompt = answering('cancel');
+    await actionsFor(d, prompt).create();
+    expect(prompt.asked).toEqual([]);
+    expect(d.reset).toHaveBeenCalled();
+  });
+
+  it('keeps the current document when cancelled', async () => {
+    const d = doc({ dirty: true });
+    await actionsFor(d, answering('cancel')).create();
+    expect(d.reset).not.toHaveBeenCalled();
+  });
+
+  it('saves first when asked to', async () => {
+    const d = doc({ dirty: true });
+    await actionsFor(d, answering('save')).create();
+    expect(d.save).toHaveBeenCalled();
+    expect(d.reset).toHaveBeenCalled();
+  });
+});
+
+describe('save as', () => {
+  it('always asks for a path, even for a titled document', async () => {
+    const d = doc();
+    expect(await actionsFor(d, answering('cancel'), '/w/copy.md').saveAs()).toBe(true);
+    expect(d.saveAs).toHaveBeenCalledWith('/w/copy.md', scene);
+    expect(d.save).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when the dialog is cancelled', async () => {
+    const d = doc();
+    expect(await actionsFor(d, answering('cancel'), null).saveAs()).toBe(false);
+    expect(d.saveAs).not.toHaveBeenCalled();
+  });
+});
+
+describe('reporting the outcome', () => {
+  it('open resolves true only when the file was opened', async () => {
+    expect(await actionsFor(doc(), answering('cancel')).open('/w/a.md')).toBe(true);
+    expect(await actionsFor(doc({ dirty: true }), answering('cancel')).open('/w/a.md')).toBe(false);
+    const failing = doc({ open: vi.fn().mockResolvedValue({ error: 'no such file' }) });
+    expect(await actionsFor(failing, answering('cancel')).open('/w/a.md')).toBe(false);
+  });
+
+  it('create resolves true only when a new document was started', async () => {
+    expect(await actionsFor(doc(), answering('cancel')).create()).toBe(true);
+    expect(await actionsFor(doc({ dirty: true }), answering('cancel')).create()).toBe(false);
   });
 });

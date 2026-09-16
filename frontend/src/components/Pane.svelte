@@ -45,7 +45,7 @@
   .title {
     font-size: var(--text-label);
     font-weight: var(--weight-semibold);
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-text-muted);
   }

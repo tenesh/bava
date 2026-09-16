@@ -1,0 +1,134 @@
+{
+  "menus": [
+    {
+      "id": "app",
+      "label": "Bava",
+      "platforms": ["darwin"],
+      "items": [
+        { "kind": "command", "id": "app.about", "label": "About Bava" },
+        { "kind": "command", "id": "app.settings", "label": "Settings…", "shortcut": "CmdOrCtrl+," },
+        { "kind": "separator" },
+        { "kind": "role", "role": "ServicesMenu" },
+        { "kind": "separator" },
+        { "kind": "role", "role": "Hide" },
+        { "kind": "role", "role": "HideOthers" },
+        { "kind": "role", "role": "ShowAll" },
+        { "kind": "separator" },
+        { "kind": "role", "role": "Quit" }
+      ]
+    },
+    {
+      "id": "file",
+      "label": "File",
+      "items": [
+        { "kind": "command", "id": "file.new", "label": "New", "accelerator": "CmdOrCtrl+N" },
+        { "kind": "command", "id": "file.open", "label": "Open…", "accelerator": "CmdOrCtrl+O" },
+        { "kind": "recents", "id": "file.openRecent", "label": "Open Recent" },
+        { "kind": "separator" },
+        { "kind": "command", "id": "file.save", "label": "Save", "accelerator": "CmdOrCtrl+S" },
+        { "kind": "command", "id": "file.saveAs", "label": "Save As…", "accelerator": "Shift+CmdOrCtrl+S" },
+        { "kind": "separator", "platforms": ["windows", "linux"] },
+        {
+          "kind": "submenu",
+          "id": "file.preferences",
+          "label": "Preferences",
+          "platforms": ["windows", "linux"],
+          "items": [
+            { "kind": "command", "id": "file.settings", "label": "Settings…", "shortcut": "CmdOrCtrl+," }
+          ]
+        },
+        { "kind": "separator" },
+        { "kind": "role", "role": "CloseWindow" }
+      ]
+    },
+    {
+      "id": "edit",
+      "label": "Edit",
+      "items": [
+        { "kind": "command", "id": "edit.undo", "label": "Undo", "accelerator": "CmdOrCtrl+Z" },
+        { "kind": "command", "id": "edit.redo", "label": "Redo", "accelerator": "Shift+CmdOrCtrl+Z" },
+        { "kind": "separator" },
+        { "kind": "command", "id": "edit.cut", "label": "Cut", "accelerator": "CmdOrCtrl+X" },
+        { "kind": "command", "id": "edit.copy", "label": "Copy", "accelerator": "CmdOrCtrl+C" },
+        { "kind": "command", "id": "edit.paste", "label": "Paste", "accelerator": "CmdOrCtrl+V" },
+        { "kind": "command", "id": "edit.delete", "label": "Delete", "hint": "⌫" },
+        { "kind": "command", "id": "edit.selectAll", "label": "Select All", "accelerator": "CmdOrCtrl+A" }
+      ]
+    },
+    {
+      "id": "view",
+      "label": "View",
+      "items": [
+        { "kind": "radio", "id": "view.document", "group": "view.mode", "label": "Document", "accelerator": "CmdOrCtrl+1" },
+        { "kind": "radio", "id": "view.both", "group": "view.mode", "label": "Both", "accelerator": "CmdOrCtrl+2" },
+        { "kind": "radio", "id": "view.canvas", "group": "view.mode", "label": "Canvas", "accelerator": "CmdOrCtrl+3" },
+        { "kind": "separator" },
+        { "kind": "checkbox", "id": "view.files", "label": "Files", "accelerator": "OptionOrAlt+CmdOrCtrl+1" },
+        { "kind": "checkbox", "id": "view.ai", "label": "AI Pane", "accelerator": "OptionOrAlt+CmdOrCtrl+I" },
+        { "kind": "separator" },
+        { "kind": "command", "id": "view.zoomIn", "label": "Zoom In", "shortcut": "CmdOrCtrl+=" },
+        { "kind": "command", "id": "view.zoomOut", "label": "Zoom Out", "shortcut": "CmdOrCtrl+-" },
+        { "kind": "command", "id": "view.actualSize", "label": "Actual Size", "accelerator": "CmdOrCtrl+0" },
+        { "kind": "separator" },
+        {
+          "kind": "submenu",
+          "id": "view.appearance",
+          "label": "Appearance",
+          "items": [
+            { "kind": "radio", "id": "view.theme.light", "group": "view.theme", "label": "Light" },
+            { "kind": "radio", "id": "view.theme.dark", "group": "view.theme", "label": "Dark" },
+            { "kind": "radio", "id": "view.theme.system", "group": "view.theme", "label": "Follow System" }
+          ]
+        },
+        { "kind": "separator" },
+        { "kind": "role", "role": "ToggleFullscreen" }
+      ]
+    },
+    {
+      "id": "canvas",
+      "label": "Canvas",
+      "items": [
+        {
+          "kind": "submenu",
+          "id": "canvas.tools",
+          "label": "Tools",
+          "items": [
+            { "kind": "radio", "id": "tool.select", "group": "canvas.tool", "label": "Select", "hint": "V" },
+            { "kind": "radio", "id": "tool.rect", "group": "canvas.tool", "label": "Rectangle", "hint": "R" },
+            { "kind": "radio", "id": "tool.ellipse", "group": "canvas.tool", "label": "Ellipse", "hint": "O" },
+            { "kind": "radio", "id": "tool.arrow", "group": "canvas.tool", "label": "Arrow", "hint": "A" },
+            { "kind": "radio", "id": "tool.line", "group": "canvas.tool", "label": "Line", "hint": "L" },
+            { "kind": "radio", "id": "tool.pen", "group": "canvas.tool", "label": "Draw", "hint": "D" },
+            { "kind": "radio", "id": "tool.text", "group": "canvas.tool", "label": "Text", "hint": "T" },
+            { "kind": "radio", "id": "tool.frame", "group": "canvas.tool", "label": "Frame", "hint": "F" }
+          ]
+        },
+        { "kind": "separator" },
+        { "kind": "command", "id": "canvas.group", "label": "Group", "accelerator": "CmdOrCtrl+G" },
+        { "kind": "command", "id": "canvas.ungroup", "label": "Ungroup", "accelerator": "Shift+CmdOrCtrl+G" },
+        { "kind": "separator" },
+        { "kind": "command", "id": "canvas.bringToFront", "label": "Bring to Front", "shortcut": "Shift+CmdOrCtrl+]" },
+        { "kind": "command", "id": "canvas.sendToBack", "label": "Send to Back", "shortcut": "Shift+CmdOrCtrl+[" }
+      ]
+    },
+    {
+      "id": "window",
+      "label": "Window",
+      "items": [
+        { "kind": "role", "role": "Minimise" },
+        { "kind": "role", "role": "Zoom" },
+        { "kind": "separator", "platforms": ["darwin"] },
+        { "kind": "role", "role": "BringAllToFront", "platforms": ["darwin"] }
+      ]
+    },
+    {
+      "id": "help",
+      "label": "Help",
+      "items": [
+        { "kind": "command", "id": "help.shortcuts", "label": "Keyboard Shortcuts", "shortcut": "CmdOrCtrl+/" },
+        { "kind": "separator", "platforms": ["windows", "linux"] },
+        { "kind": "command", "id": "help.about", "label": "About Bava", "platforms": ["windows", "linux"] }
+      ]
+    }
+  ]
+}

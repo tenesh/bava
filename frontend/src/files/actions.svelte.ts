@@ -18,10 +18,12 @@ type SaveOutcome = { conflict: boolean; saved: boolean };
 export type FileActionDocument = {
   readonly path: string | null;
   readonly dirty: boolean;
-  open(path: string): Promise<unknown>;
+  open(path: string): Promise<{ error: string }>;
   save(scene: Scene, options?: { overwrite?: boolean }): Promise<SaveOutcome>;
   saveAs(path: string, scene: Scene): Promise<SaveOutcome>;
   reload(): Promise<unknown>;
+  /** Become a new untitled document. */
+  reset(): void;
 };
 
 export type FileActionOptions = {
@@ -60,21 +62,38 @@ export function createFileActions(options: FileActionOptions) {
     }
   }
 
-  async function open(path: string): Promise<void> {
-    if (doc.dirty) {
-      switch (await ask('unsaved')) {
-        case 'save':
-          // If the save did not happen, opening would still lose the work.
-          if (!(await save())) return;
-          break;
-        case 'discard':
-          break;
-        default:
-          return;
-      }
-    }
-    await doc.open(path);
+  async function saveAs(): Promise<boolean> {
+    const path = await chooseSavePath();
+    if (!path) return false;
+    return (await doc.saveAs(path, currentScene())).saved;
   }
 
-  return { open, save };
+  /** Resolves true when it is safe to replace the open document. */
+  async function settleUnsaved(): Promise<boolean> {
+    if (!doc.dirty) return true;
+    switch (await ask('unsaved')) {
+      case 'save':
+        // If the save did not happen, going on would still lose the work.
+        return save();
+      case 'discard':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  /** Resolves true when the file is now open. */
+  async function open(path: string): Promise<boolean> {
+    if (!(await settleUnsaved())) return false;
+    return !(await doc.open(path)).error;
+  }
+
+  /** Resolves true when a new untitled document replaced the open one. */
+  async function create(): Promise<boolean> {
+    if (!(await settleUnsaved())) return false;
+    doc.reset();
+    return true;
+  }
+
+  return { open, create, save, saveAs };
 }

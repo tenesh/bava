@@ -39,8 +39,6 @@ export const messages = {
   'canvas.zoomIn': 'Zoom in',
   'canvas.zoomOut': 'Zoom out',
 
-  'file.open': 'Open',
-  'file.save': 'Save',
   'file.untitled': 'untitled',
   'file.dirty': 'unsaved',
   'file.saved': 'saved',
@@ -54,7 +52,7 @@ export const messages = {
   'file.noFolder': 'No folder open',
   'file.noFolderBody': 'Open a folder to see its files here.',
   'file.unsaved.title': 'Unsaved changes',
-  'file.unsaved.body': 'Save before opening another file?',
+  'file.unsaved.body': 'Save your changes before continuing?',
   'file.unsaved.save': 'Save',
   'file.unsaved.discard': 'Discard',
   'file.cancel': 'Cancel',
@@ -65,6 +63,23 @@ export const messages = {
   'settings.theme.light': 'Light',
   'settings.theme.dark': 'Dark',
   'settings.theme.system': 'Follow system',
+  'settings.files': 'Files',
+  'settings.autosave': 'Autosave',
+  'settings.autosave.off': 'Off',
+  'settings.autosave.afterDelay': 'After a delay',
+  'settings.autosave.onFocusChange': 'When focus leaves',
+  'settings.autosaveDelay': 'Delay (ms)',
+
+  'status.autosavePaused': 'Autosave paused: file changed on disk. Save to decide.',
+  'status.autosaveFailed': 'Autosave paused: the last save failed. Save to retry.',
+  'error.command': 'That did not work',
+  'error.settingsLoad': 'Settings could not be read; changes will not be saved.',
+  'error.settingsSave': 'That setting could not be saved.',
+
+  'about.title': 'Bava',
+  'about.body': 'Local-only diagrams and docs. Free and open source under Apache-2.0.',
+  'about.close': 'Close',
+  'shortcuts.title': 'Keyboard shortcuts',
 } as const;
 
 export type MessageKey = keyof typeof messages;

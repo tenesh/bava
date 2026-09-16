@@ -101,6 +101,8 @@ export function createViewState(options: { storage?: ViewStorage } = {}) {
   };
 }
 
+export type ViewState = ReturnType<typeof createViewState>;
+
 function safeLocalStorage(): ViewStorage {
   return {
     getItem: (key) => globalThis.localStorage.getItem(key),

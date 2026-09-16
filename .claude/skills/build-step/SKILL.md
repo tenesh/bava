@@ -257,8 +257,20 @@ wrong facts. When a milestone closes, update this section in the same change.
 
 ### Milestones
 
-- Milestones 0, 0.5, 1, 2, 3, 4, 5 and **5.5 (wiring)** complete, verified
-  2026-09-17.
+- Milestones 0, 0.5, 1, 2, 3, 4, 5 and 5.5 (wiring) complete. **5.6 (chrome)
+  passes its gates** (2026-09-17) but its exit criterion's hand check at a
+  running window has not been done, so it is not complete. 5.6's brand task
+  moved to **Milestone 5.7**; logo v2 art arrived 2026-09-17 at
+  `~/Workspace/designs/bava/claude-design-logo-v2`, not yet reviewed.
+- **Native menu bar** from `internal/app/menu/spec.json`; clicks arrive as
+  `menu:command` and dispatch through `frontend/src/shell/commands.ts`. The
+  title-bar Open/Save buttons are gone. Edit commands, clipboard included,
+  route by focus; punctuation shortcuts are matched by the page. **Not yet
+  confirmed at a window on any platform**, including how a `\t`-separated hint
+  renders in each native menu.
+- **Autosave** settings (`off` default, `afterDelay`, `onFocusChange`) in
+  `internal/config`, behaviour in `frontend/src/files/autosave.svelte.ts`,
+  UI in Settings ▸ Files.
 - **The roadmap was re-planned on 2026-09-16**, from Milestone 2 onward, around
   a free-placement canvas rather than a compile-to-SVG pipeline. See
   `.claude/work/specs/canvas-architecture.md`. Milestone 1's work survives in a
@@ -489,7 +501,8 @@ deliberately at `5.24.2` or later.
   top-level keys. Emptiness means no elements *and* nothing preserved.
 - **Saves are atomic** — temp file in the same directory, fsync, rename.
 - **Conflict detection is size plus mtime**, not a content hash.
-- Go packages now: `app`, `config`, `format`, `layout`, `render`, `store`.
+- Go packages now: `app`, `app/menu`, `config`, `format`, `layout`, `render`,
+  `store`.
 
 ### Milestone 5.5 findings — 2026-09-17
 
@@ -504,6 +517,25 @@ deliberately at `5.24.2` or later.
   pure and the caller decides what "typing" means.
 - **Template snippet names share scope with script variables.** A snippet called
   `files` shadowed an object called `files` inside it.
+
+### Milestone 5.6 findings — 2026-09-17
+
+- **Wails role items panic outside a running app**, and **roles bind
+  accelerators the spec never names** — including Delete binding bare
+  Backspace. Both recorded in `.ai/rules/wails.md`; `menu.Build` takes an
+  injectable role adder for tests.
+- **An exported method on a registered service is bound.** `Build` leaked into
+  the generated TypeScript until it became the package function
+  `app.InstallMenu`. Check `frontend/bindings` after adding a method.
+- **The spec is read by frontend tests directly** (commands, keymap, shortcuts
+  doc). Vite's dev server needed `server.fs.allow` for `internal/app/menu`.
+- **The spec review caught what the tests could not**, by reading the pinned
+  Wails source: Windows shows no menu without `UseApplicationMenu`,
+  punctuation accelerators never fire on Windows, and the clipboard roles
+  never reach a canvas there. For platform behaviour, read
+  `pkg/application/*_windows.go` and `*_linux.go`, not only the API.
+- **An autosave races the user.** A save that clears `dirty` without checking
+  for edits made during the write loses work. Fixed with an edit counter.
 
 ### Settled facts that still hold
 

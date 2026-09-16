@@ -169,8 +169,10 @@ check both before building either by hand.
 | Component | Why in-house |
 |---|---|
 | `Pane` ✓ | A titled region of the shell, with the small-caps header. |
-| `ViewSwitcher` ✓ | `Document │ Both │ Canvas`, wrapping Ark's SegmentGroup. |
-| `StatusBar` ✓ | Engine, node count, cursor position, error count. |
+| `ViewSwitcher` ✓ | `Document │ Both │ Canvas`, over `Segments`. |
+| `Segments` ✓ | A few exclusive choices, wrapping Ark's SegmentGroup. Use it rather than buttons with `role="radio"`, which lack arrow-key navigation. |
+| `ShortcutsDialog` ✓ | Shortcut groups, as the caller derives them from the menu spec. |
+| `StatusBar` ✓ | Engine, node count, error count, and an optional message — autosave paused, a command that failed. |
 | `FileTree` ✓ | Workspace listing. Emits a path on activation; opens nothing itself. |
 | `ConfirmDialog` ✓ | A question with fixed answers. Dismissing it is a cancel, never an accident. |
 | `CanvasControls` ✓ | Tool rail with shortcut keys, and the zoom readout. |
@@ -184,7 +186,7 @@ check both before building either by hand.
 unused component is an unmaintained one.
 
 **Wrapped from Ark so far**: `Dialog`, `Splitter`, and SegmentGroup inside
-`ViewSwitcher`.
+`Segments`.
 
 ## Theme and the diagram
 

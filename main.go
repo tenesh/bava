@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"log"
+	"runtime"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -21,12 +22,15 @@ var assets embed.FS
 // window. The native surface stays thin on purpose: the render pipeline and
 // file I/O live in internal/, everything else in the frontend.
 func main() {
+	menus := app.NewMenuService()
 	wailsApp := application.New(application.Options{
-		Name:        "bava",
+		// Wails builds the native role labels from this — "Hide Bava", "Quit Bava".
+		Name:        "Bava",
 		Description: "Local-only diagrams and docs",
 		Services: []application.Service{
 			application.NewService(app.NewRenderService()),
 			application.NewService(app.NewFileService()),
+			application.NewService(menus),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -36,23 +40,12 @@ func main() {
 		},
 	})
 
-	wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Bava",
-		// The shell shows four regions — files, document, canvas, AI — and the
-		// design's artboard is 1280 wide for exactly that reason. The scaffold's
-		// 1000x618 leaves each region too narrow to use.
-		Width:  app.WindowWidth,
-		Height: app.WindowHeight,
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
-			TitleBar:                application.MacTitleBarHiddenInset,
-		},
-		// No BackgroundColour: the stylesheet sets `color-scheme: light dark`, so
-		// pinning a near-black native background would flash dark behind a light
-		// page on launch. Milestone 2's Go-side theme mapping owns this.
-		URL: "/",
-	})
+	// After application.New: native role items need the application.
+	if err := app.InstallMenu(wailsApp, menus, runtime.GOOS); err != nil {
+		log.Fatal(err)
+	}
+
+	wailsApp.Window.NewWithOptions(app.MainWindowOptions())
 
 	// Blocks until the application exits.
 	if err := wailsApp.Run(); err != nil {

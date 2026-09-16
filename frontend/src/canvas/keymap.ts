@@ -7,15 +7,14 @@
  * Everything here is ignored while a text field or the source editor has
  * focus. Without that, typing D2 deletes the selection and switches tools on
  * every keystroke.
+ *
+ * Nothing with Cmd or Ctrl is handled here. Those shortcuts belong to the
+ * native menu (`internal/app/menu/spec.json`), which dispatches them as
+ * commands; handling them here too would act twice per keypress.
  */
 import { toolForKey, type ToolId } from './tools.svelte';
 
 export type KeymapActions = {
-  undo(): void;
-  redo(): void;
-  copy(): void;
-  paste(): void;
-  selectAll(): void;
   deleteSelection(): void;
   selectNext(): void;
   selectPrevious(): void;
@@ -33,27 +32,8 @@ export function handleKey(
   // out of the way entirely rather than trying to be clever about which keys.
   if (context.typing) return false;
 
-  const accel = event.metaKey || event.ctrlKey;
-
-  if (accel) {
-    switch (event.key.toLowerCase()) {
-      case 'z':
-        if (event.shiftKey) actions.redo();
-        else actions.undo();
-        return true;
-      case 'c':
-        actions.copy();
-        return true;
-      case 'v':
-        actions.paste();
-        return true;
-      case 'a':
-        actions.selectAll();
-        return true;
-      default:
-        return false;
-    }
-  }
+  // The menu owns these, including the ones only a native role binds.
+  if (event.metaKey || event.ctrlKey) return false;
 
   switch (event.key) {
     case 'Backspace':
