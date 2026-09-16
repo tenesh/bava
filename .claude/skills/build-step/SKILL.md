@@ -257,8 +257,7 @@ wrong facts. When a milestone closes, update this section in the same change.
 
 ### Milestones
 
-- Milestones 0, 0.5, **1 (the spine)**, **2 (design tokens and theming)**,
-  **3 (app shell)** and **4 (canvas foundation)** complete, verified
+- Milestones 0, 0.5, 1, 2, 3, 4, 5 and **5.5 (wiring)** complete, verified
   2026-09-17.
 - **The roadmap was re-planned on 2026-09-16**, from Milestone 2 onward, around
   a free-placement canvas rather than a compile-to-SVG pipeline. See
@@ -266,8 +265,13 @@ wrong facts. When a milestone closes, update this section in the same change.
   narrower role: `internal/render` renders `diagram` elements placed on the
   canvas. The interim two-pane shell and `DiagramCanvas` class it shipped are
   replaced by Milestones 3 and 4.
-- Milestone 5 (file format and persistence) is next and not started. It is the
-  first milestone where work survives closing the app.
+- **The app can draw, open and save.** Milestone 5.5 wired Milestones 4 and 5
+  to the window: pointer tools, keyboard editing, native open/save dialogs,
+  the file tree, and the unsaved-changes and conflict prompts.
+- **Not yet confirmed by a human:** draw → save → quit → reopen. Every test
+  passes, but this round trip has not been performed at a running window.
+- Milestone 6 (diagram elements) is next. It also restores the D2 preview,
+  absent since Milestone 4.
 - **Known regression, deliberate:** typing D2 renders no diagram. Milestone 4
   replaced the interim `DiagramCanvas` with a Konva stage, and the `diagram`
   element that puts a rendered diagram back on the canvas arrives in Milestone
@@ -312,7 +316,7 @@ wrong facts. When a milestone closes, update this section in the same change.
 | `go test ./internal/render -run Golden` | exit 0 — 4 goldens (light and dark) under `testdata/golden/` |
 | `npm run check` | exit 0 — 0 errors, 0 warnings, 173 files |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0 — 129 tests across 19 files |
+| `npm test` | exit 0 — 185 tests across 28 files |
 | `npm run build` | exit 0 |
 | `wails3 build` | exit 0 on macOS — 30MB binary in `bin/`; unverified elsewhere |
 
@@ -471,6 +475,35 @@ deliberately at `5.24.2` or later.
   11.1.18, `vitest-canvas-mock` 1.2.0. `rbush` deliberately not installed.
 - `docs/shortcuts.md` exists now, and lists what is *not* bound as well as what
   is.
+
+### Milestone 5 findings — 2026-09-17
+
+- **`docs/file-format.md` exists and is the specification.** A Bava file is
+  Markdown: prose, fenced `d2` blocks with an `id`, and one trailing
+  `bava-canvas` block. Nothing writes a format that is not in that document.
+- **Markdown is scanned, never parsed.** A real parser round-trips prose
+  approximately, and approximate means corrupting a file somebody else wrote.
+- **Unknown element types, unknown keys and unknown top-level keys are
+  preserved verbatim.** A bug found during this milestone: dropping the canvas
+  block because a scene had no elements also dropped a newer version's
+  top-level keys. Emptiness means no elements *and* nothing preserved.
+- **Saves are atomic** — temp file in the same directory, fsync, rename.
+- **Conflict detection is size plus mtime**, not a content hash.
+- Go packages now: `app`, `config`, `format`, `layout`, `render`, `store`.
+
+### Milestone 5.5 findings — 2026-09-17
+
+- **Tests that only exercise the happy path through a stateful flow will miss
+  the flow that matters.** Every save test opened a document first, so none
+  noticed that saving an *untitled* drawing never reached disk. It was found by
+  reading `App.svelte`. When a flow has a "new" and an "existing" branch, test
+  both.
+- **File-flow policy is in `files/actions.svelte.ts`**, tested, not in markup.
+- **A drag is one history step**, and movement under three pixels is a click.
+- **Canvas keyboard shortcuts stand down while typing.** `canvas/keymap.ts` is
+  pure and the caller decides what "typing" means.
+- **Template snippet names share scope with script variables.** A snippet called
+  `files` shadowed an object called `files` inside it.
 
 ### Settled facts that still hold
 

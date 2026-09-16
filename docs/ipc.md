@@ -94,3 +94,40 @@ Owned by the frontend client in `frontend/src/ipc/render.svelte.ts`:
   it in a golden file would commit a false fact.
 - `Salt` is unset. It changes generated ids deterministically and is reserved
   for giving each embedded diagram its own id namespace in Milestone 5.
+
+## FileService
+
+Added in Milestone 5. Reads and writes files; knows nothing about what is in
+them beyond handing the parse to `internal/format`.
+
+| Method | Returns |
+|---|---|
+| `Open(path)` | `OpenResult` — prose, diagram blocks by id, scene, stamp, error |
+| `Save(path, source, scene)` | `SaveResult` — path, new stamp, error |
+| `ChangedOnDisk(path, stamp)` | bool |
+| `ChooseFileToOpen()` | `DialogResult` — a path, or empty when cancelled |
+| `ChooseFileToSave(suggestedName)` | `DialogResult` — a path, or empty when cancelled |
+| `ListWorkspace(dir)` | `ListResult` — folders then `.md`/`.d2` files, hidden entries skipped |
+| `Settings()` | the user's preferences, defaults when unreadable |
+| `SaveSettings(settings)` | an error string, empty on success |
+
+**Errors are data here too.** A missing file, a permission denial, a malformed
+canvas block — all things the user can act on — come back in `error` rather
+than as a failed call. A returned error means the request itself was malformed.
+
+**A malformed canvas block still returns the prose.** Losing a whole document
+to one bad trailing block is the worst outcome available.
+
+**`stamp` is size and modification time**, taken when a file is read and passed
+back to `ChangedOnDisk`. Enough to notice another program writing the file, and
+cheap enough to check whenever the window regains focus. A content hash would
+be exact and would mean re-reading every open file on every focus change.
+
+**Cancelling a dialog is not an error.** An empty path means the user changed
+their mind, which is a normal outcome and is not reported as a failure.
+
+**A workspace lists only what Bava edits.** A project folder is usually full of
+things Bava has no business showing, so `.md` and `.d2` only, folders first,
+and nothing beginning with a dot — that is Bava's own state or the user's
+tooling, not their documents.
+

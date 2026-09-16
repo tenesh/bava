@@ -171,7 +171,9 @@ check both before building either by hand.
 | `Pane` ✓ | A titled region of the shell, with the small-caps header. |
 | `ViewSwitcher` ✓ | `Document │ Both │ Canvas`, wrapping Ark's SegmentGroup. |
 | `StatusBar` ✓ | Engine, node count, cursor position, error count. |
-| `CanvasControls` | Zoom, fit-to-view, and the tool rail. |
+| `FileTree` ✓ | Workspace listing. Emits a path on activation; opens nothing itself. |
+| `ConfirmDialog` ✓ | A question with fixed answers. Dismissing it is a cancel, never an accident. |
+| `CanvasControls` ✓ | Tool rail with shortcut keys, and the zoom readout. |
 | `Toolbar` | Contextual: changes with the current selection. |
 | `LayoutEnginePicker` | Per `diagram` element, not per canvas. |
 | `ErrorList` | D2 compiler diagnostics, click-to-jump to source line. |

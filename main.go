@@ -26,6 +26,7 @@ func main() {
 		Description: "Local-only diagrams and docs",
 		Services: []application.Service{
 			application.NewService(app.NewRenderService()),
+			application.NewService(app.NewFileService()),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
