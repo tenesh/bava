@@ -27,6 +27,18 @@ export const messages = {
   'status.nodes': 'Nodes',
   'status.errors': 'Errors',
 
+  'tool.select': 'Select',
+  'tool.rect': 'Rectangle',
+  'tool.ellipse': 'Ellipse',
+  'tool.arrow': 'Arrow',
+  'tool.line': 'Line',
+  'tool.pen': 'Draw',
+  'tool.text': 'Text',
+  'tool.frame': 'Frame',
+  'canvas.tools': 'Tools',
+  'canvas.zoomIn': 'Zoom in',
+  'canvas.zoomOut': 'Zoom out',
+
   'settings.title': 'Settings',
   'settings.appearance': 'Appearance',
   'settings.theme': 'Theme',

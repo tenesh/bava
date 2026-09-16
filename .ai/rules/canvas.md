@@ -56,3 +56,24 @@ between states — a symptom that looks like a layout bug and is not.
 Scene mutations, diagram source edits and AI edits all enter through the same
 transaction path. Two histories make Ctrl+Z unpredictable, and the first thing
 a user does after a change they dislike is press Ctrl+Z.
+
+## Konva needs a 2D context, which jsdom does not have
+Canvas tests run under jsdom with `vitest-canvas-mock` (pure JS), wired in
+`vitest.config.ts`. The native `canvas` package would be more faithful, but it
+has to build on three CI platforms and these tests assert scene patching rather
+than pixels — that is a maintenance bill for nothing.
+
+Without the mock, Konva fails with `Cannot read properties of null (reading
+'scale')`, which reads like a Konva bug and is not.
+
+## Omit does not distribute over the element union
+`Omit<SceneElement, 'id' | 'z'>` collapses to the keys every element shares, so
+it silently rejects `text`, `line`, `group` and anything else with fields of
+its own. `scene.ts` defines a distributive version. The failure appears as a
+type error at the call site and looks like the element is wrong; the helper is.
+
+## Scene mutations go through history, never around it
+Every change — a drag, a tool, an AI edit later — is applied with
+`history.mutate`. A mutation that changes nothing records no step, so undo
+never appears to do nothing, which reads as a broken undo.
+
