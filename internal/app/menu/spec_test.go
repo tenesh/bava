@@ -232,3 +232,22 @@ func TestRolesCarryNoLabel(t *testing.T) {
 		}
 	}
 }
+
+// A shortcut may be native only on macOS, and only without Shift or Option:
+// those change the character AppKit matches, so ⇧⌘] would silently not fire.
+func TestNativeShortcutsAreSafeOnTheirPlatforms(t *testing.T) {
+	for _, item := range load(t).AllItems() {
+		for _, platform := range item.NativeOn {
+			if item.Shortcut == "" {
+				t.Errorf("%s lists nativeOn without a shortcut", item.ID)
+			}
+			if platform != "darwin" {
+				t.Errorf("%s: native on %s, where punctuation accelerators are unverified or broken", item.ID, platform)
+			}
+			lower := strings.ToLower(item.Shortcut)
+			if strings.Contains(lower, "shift") || strings.Contains(lower, "alt") || strings.Contains(lower, "option") {
+				t.Errorf("%s: %q is native on darwin but uses a modifier that changes the character", item.ID, item.Shortcut)
+			}
+		}
+	}
+}

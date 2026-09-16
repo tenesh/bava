@@ -37,6 +37,8 @@ type Built struct {
 	emit     func(Command)
 	addRole  func(*application.Menu, application.Role)
 	platform string
+	// native records items whose shortcut is a real accelerator here.
+	native map[string]bool
 	// shown is the recents list the menu currently displays; nil until the
 	// first Apply, so the placeholder is built once.
 	shown []string
@@ -81,6 +83,7 @@ func Build(spec Spec, emit func(Command), options ...Options) *Built {
 		emit:     emit,
 		addRole:  addRole,
 		platform: platform,
+		native:   map[string]bool{},
 	}
 	for _, m := range spec.Menus {
 		built.addItems(built.Menu.AddSubmenu(m.Label), m.Items)
@@ -107,13 +110,17 @@ func (b *Built) addItems(parent *application.Menu, items []Item) {
 
 		case KindRadio, KindCheckbox, KindCommand:
 			label := item.Label
-			// A hint is shown, never bound: a native accelerator on a bare key
-			// would steal that key from every text field in the app.
-			switch {
-			case item.Hint != "":
-				label += "\t" + item.Hint
-			case item.Shortcut != "":
-				label += "\t" + FormatShortcut(item.Shortcut, b.platform)
+			native := item.Shortcut != "" && slices.Contains(item.NativeOn, b.platform)
+			// Only Windows right-aligns text after a tab in a menu label; macOS
+			// and GTK print it as spacing, mid-row. Elsewhere the label stays
+			// plain and Help ▸ Keyboard Shortcuts lists the keys.
+			if b.platform == "windows" {
+				switch {
+				case item.Hint != "":
+					label += "\t" + item.Hint
+				case item.Shortcut != "":
+					label += "\t" + FormatShortcut(item.Shortcut, b.platform)
+				}
 			}
 
 			var menuItem *application.MenuItem
@@ -125,8 +132,12 @@ func (b *Built) addItems(parent *application.Menu, items []Item) {
 			default:
 				menuItem = parent.Add(label)
 			}
-			if item.Accelerator != "" {
+			switch {
+			case item.Accelerator != "":
 				menuItem.SetAccelerator(item.Accelerator)
+			case native:
+				menuItem.SetAccelerator(item.Shortcut)
+				b.native[item.ID] = true
 			}
 
 			id := item.ID
@@ -134,6 +145,14 @@ func (b *Built) addItems(parent *application.Menu, items []Item) {
 			b.items[id] = menuItem
 		}
 	}
+}
+
+// IsNativeShortcut reports whether id's shortcut is bound natively on this
+// platform rather than handled by the frontend.
+func (b *Built) IsNativeShortcut(id string) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.native[id]
 }
 
 // Item returns the handle for id, for tests and state updates.

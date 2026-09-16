@@ -46,14 +46,20 @@ describe('matchShortcut', () => {
     // Shift+] reports key "}" on a US layout; the code is what the user pressed.
     expect(mac(key({ key: '}', code: 'BracketRight', metaKey: true, shiftKey: true }))).toBe('canvas.bringToFront');
     expect(windows(key({ key: '=', code: 'Equal', ctrlKey: true }))).toBe('view.zoomIn');
-    expect(mac(key({ key: ',', code: 'Comma', metaKey: true }))).toBe('app.settings');
     expect(windows(key({ key: ',', code: 'Comma', ctrlKey: true }))).toBe('file.settings');
   });
 
+  // On macOS ⌘= and ⌘, are real menu accelerators (nativeOn). Matching them
+  // here too would swallow the key before the menu saw it, or run it twice.
+  it('stands down where the menu binds the shortcut natively', () => {
+    expect(mac(key({ key: '=', code: 'Equal', metaKey: true }))).toBeUndefined();
+    expect(mac(key({ key: ',', code: 'Comma', metaKey: true }))).toBeUndefined();
+  });
+
   it('requires exactly the modifiers the shortcut names', () => {
-    expect(mac(key({ key: '=', code: 'Equal', ctrlKey: true }))).toBeUndefined();
+    expect(windows(key({ key: '=', code: 'Equal', altKey: true }))).toBeUndefined();
     expect(mac(key({ key: ']', code: 'BracketRight', metaKey: true }))).toBeUndefined();
-    expect(mac(key({ key: '=', code: 'Equal', metaKey: true, altKey: true }))).toBeUndefined();
+    expect(windows(key({ key: '=', code: 'Equal', ctrlKey: true, altKey: true }))).toBeUndefined();
   });
 
   // Native accelerators fire through the menu; matching them here too would

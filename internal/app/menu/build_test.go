@@ -93,15 +93,37 @@ func TestRecentsCanBeReappliedRepeatedly(t *testing.T) {
 	built.Apply(menu.State{})
 }
 
-// A shortcut is shown in the label, formatted for the platform, and never
-// bound: the frontend handles it.
-func TestShortcutIsShownButNotBound(t *testing.T) {
-	cases := map[string]string{"darwin": "Zoom In\t⌘=", "windows": "Zoom In\tCtrl+=", "linux": "Zoom In\tCtrl+="}
+// Only Windows right-aligns text after a tab in a menu label. macOS and GTK
+// print the tab as spacing, so a hint lands mid-row — seen in a running app.
+// Elsewhere the label is plain, and the Shortcuts dialog lists every key.
+func TestHintsAreInTheLabelOnWindowsOnly(t *testing.T) {
+	cases := map[string]string{"windows": "Rectangle\tR", "darwin": "Rectangle", "linux": "Rectangle"}
 	for platform, want := range cases {
 		built, _ := build(t, platform)
-		if got := built.Item("view.zoomIn").Label(); got != want {
+		if got := built.Item("tool.rect").Label(); got != want {
 			t.Errorf("%s: label %q, want %q", platform, got, want)
 		}
+	}
+}
+
+// A shortcut the platform binds natively is a real accelerator, aligned by the
+// menu itself. On macOS AppKit matches punctuation key equivalents by
+// character, so ⌘= and ⌘, work natively; on Windows they never fire.
+func TestNativeShortcutsBecomeAcceleratorsOnlyWhereListed(t *testing.T) {
+	mac, _ := build(t, "darwin")
+	if got := mac.Item("view.zoomIn").Label(); got != "Zoom In" {
+		t.Errorf("darwin: label %q, want the bare label", got)
+	}
+	if !mac.IsNativeShortcut("view.zoomIn") {
+		t.Error("darwin: Zoom In is not bound natively")
+	}
+
+	win, _ := build(t, "windows")
+	if got := win.Item("view.zoomIn").Label(); got != "Zoom In\tCtrl+=" {
+		t.Errorf("windows: label %q, want the hint in the label", got)
+	}
+	if win.IsNativeShortcut("view.zoomIn") {
+		t.Error("windows: Zoom In is bound natively, which Windows never fires")
 	}
 }
 

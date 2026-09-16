@@ -118,3 +118,16 @@ output — an empty `-windowsfilename ""` skips that platform.
 top of the webview's top-left corner. Nothing in Wails reserves that space; the
 title bar does, through `--size-titlebar-inset-start`, set only under
 `:root[data-platform='darwin']`.
+
+## Only Windows aligns a tab in a menu label
+`Label\tHint` right-aligns the hint on Windows. macOS and GTK print the tab as
+spacing, so the hint lands mid-row — found at a running window. Hints go in
+labels on Windows only. On macOS, a punctuation shortcut without Shift or
+Option can be a real accelerator (spec `nativeOn: ["darwin"]`), which AppKit
+aligns and matches by character; the page's matcher must then stand down.
+
+## The build assets ship with template metadata
+`build/config.yml`, both `Info.plist` files, the Linux `.desktop` file and the
+Windows `info.json`, NSIS and MSIX files all said "My Product". macOS shows
+`CFBundleName` as the application menu's title. Pinned by
+`TestPackagingMetadataIsNotTheWailsTemplate`.

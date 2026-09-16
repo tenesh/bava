@@ -17,6 +17,8 @@ type SpecItem = {
   accelerator?: string;
   /** Handled by the frontend, not bound natively: punctuation keys. */
   shortcut?: string;
+  /** Platforms where the menu binds `shortcut` natively and the page stands down. */
+  nativeOn?: string[];
   hint?: string;
   platforms?: string[];
   items?: SpecItem[];
@@ -130,12 +132,16 @@ function keyOf(event: KeyboardEvent): string {
 
 /**
  * The frontend's half of the menu's shortcuts: returns a function giving the
- * command id a key press should dispatch, if any. Only `shortcut` entries —
- * native accelerators already dispatch through the menu.
+ * command id a key press should dispatch, if any. Only `shortcut` entries not
+ * bound natively on this platform — native accelerators dispatch through the
+ * menu, and matching them here would take the key first.
  */
 export function matchShortcut(spec: MenuSpec, platform: Platform) {
   const entries = itemsOn(spec, platform)
-    .filter((item): item is SpecItem & { id: string; shortcut: string } => Boolean(item.id && item.shortcut))
+    .filter(
+      (item): item is SpecItem & { id: string; shortcut: string } =>
+        Boolean(item.id && item.shortcut) && !item.nativeOn?.includes(platform),
+    )
     .map((item) => ({ id: item.id, combo: parseAccelerator(item.shortcut, platform) }));
   const mac = platform === 'darwin';
 
