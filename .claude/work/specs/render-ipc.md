@@ -1,5 +1,11 @@
 # Render IPC contract
 
+> **Scope narrowed 2026-09-16.** Written when this pipeline rendered the whole
+> app. After the re-plan it renders `diagram` elements placed on a canvas; see
+> `canvas-architecture.md`. Everything below still holds, with one addition
+> landing in Milestone 6: `nodeMap` entries gain `x, y, w, h` in diagram-local
+> coordinates, so a canvas arrow can bind to a node inside a diagram.
+
 Decisions taken for Milestone 1, grounded in a throwaway D2 spike run on
 2026-09-16 against the pinned `github.com/d2lang/d2 v0.9.0`. Where a line says
 "measured", it was observed, not reasoned from docs.

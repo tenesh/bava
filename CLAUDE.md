@@ -1,21 +1,35 @@
 # Bava
 
-Local-only, open-source diagrams-and-docs desktop app. Eraser.io in spirit:
-offline, free, file-based. Go + Wails v3 + Svelte 5, with D2 as the diagram
-engine.
+Local-only, open-source diagrams-and-docs desktop app, Apache-2.0. Eraser.io in
+spirit: offline, free, file-based.
+
+A free-placement canvas — place, draw and connect anything, anywhere — on which
+one kind of element renders itself from D2 code. Not a layout-engine tool with
+a visual skin, and not a whiteboard with no structure. Both, with a defined
+seam between them. Documents sit alongside, sharing the same file.
+
+Go + Wails v3 + Svelte 5 + Konva, with D2 rendering diagram elements.
 
 ## Non-negotiables
 
 These hold in every phase, whatever the pressure.
 
-1. **No cloud.** No accounts, auth, sync, telemetry, analytics, crash
-   reporting, or update pings. The only permitted network call is to a
-   user-configured local LLM endpoint. If a task appears to need a server,
-   stop and raise it.
-2. **Files are the source of truth.** Plain text on disk. No database, no
-   proprietary container, no hidden state. A user must be able to read and
-   edit everything Bava writes in any editor, and lose nothing if Bava
-   disappears.
+1. **No service of ours.** Bava has no backend. No accounts with us, no sync,
+   no telemetry, no analytics, no crash reporting — nothing about a user or
+   their work reaches anyone operating this project, ever. Network calls happen
+   only where the user configured or triggered them: an LLM endpoint they
+   chose, local or hosted, with credentials they supplied; and the update
+   check, which fetches public release metadata, sends no user data and
+   carries no identifier. If a feature would require a server we run, stop and
+   raise it.
+2. **Files are the source of truth.** Work product — diagrams and documents —
+   is plain text on disk that a user can read, edit and diff in any editor,
+   and lose nothing if Bava disappears. No database, no proprietary container,
+   no hidden state behind their work. Bava's own state — chat transcripts,
+   caches, credentials — lives in documented locations outside the project;
+   deleting it costs history or convenience, never work. Credentials are the
+   one thing Bava writes that a user cannot read: they go to the OS secret
+   store, never to a file.
 3. **Desktop only.** macOS, Linux, Windows. No mobile, ever. The Wails
    template's `build/android/` and `build/ios/` targets are not part of this
    product: no build script targets them, no code imports them, and they are
@@ -30,14 +44,17 @@ These hold in every phase, whatever the pressure.
 | Layer | Choice | Notes |
 |---|---|---|
 | Shell | Wails v3 (beta, pinned) | `v3/pkg/application` API only; exact tag pinned in `go.mod` |
-| Backend | Go 1.27+ | parse, layout, render, file I/O |
-| Diagrams | `github.com/d2lang/d2` | pinned in `go.mod`; library, never the CLI |
+| Backend | Go 1.27+ | D2 compile, file I/O, AI providers |
+| Diagrams | `github.com/d2lang/d2` | pinned in `go.mod`; library, never the CLI; renders `diagram` elements only |
+| Canvas | Konva (MIT) | scene graph, hit-testing, transforms; `perfect-freehand`, `perfect-arrows`, `@dagrejs/dagre`, `rbush` |
 | Frontend | Svelte 5 + Vite + TypeScript | runes only |
 | UI primitives | Ark UI (`@ark-ui/svelte`) | headless; wrapped, never used directly in screens |
 | Styling | SCSS → CSS custom properties | no Tailwind, no styled component library |
-| Source editor | CodeMirror 6 | D2 pane |
-| Doc editor | ProseMirror | diagrams as NodeViews |
-| AI | Ollama (local, optional) | never a hosted provider |
+| Source editor | CodeMirror 6 | D2 source inside a diagram element |
+| Doc editor | ProseMirror | Markdown; diagrams as NodeViews |
+| Fonts | Geist, Geist Mono (OFL 1.1) | bundled variable woff2; never a system font |
+| Licence | Apache-2.0 | `LICENSE`; third-party attribution in `NOTICE` |
+| AI | Local endpoints and hosted providers | BYOK or provider login; credentials in the OS secret store; no service we operate |
 
 ## Version rules — read before writing any code
 
@@ -56,6 +73,9 @@ be wrong in one of these ways:
 - **Ark UI's docs default to React examples in places.** Svelte usage differs.
   Read the Svelte tab or query Context7 with `/chakra-ui/ark`. Never port a
   React snippet by hand.
+- **Konva examples are mostly React (`react-konva`) or vanilla.** Bava uses it
+  from plain TypeScript inside a class, not through a framework wrapper. Read
+  the vanilla docs; a `react-konva` snippet does not translate.
 
 When in doubt, look it up rather than recalling it. See Documentation Lookup.
 
@@ -80,26 +100,49 @@ measure one version on one machine, and a version bump invalidates them.
 
 ## Architecture
 
-**Go owns:** parse → layout → render → SVG string, plus file I/O.
-**Frontend owns:** display, pan/zoom, selection, text editing.
+**Go owns:** compiling D2 into diagram elements, file I/O, and AI provider
+calls.
+**Frontend owns:** the canvas scene, tools, selection, rendering, and text
+editing.
 
-- One IPC surface: `Render(source, opts) → {svg, errors, nodeMap}`. Resist
-  growing a second render path.
+A file holds a document and a canvas, switched between as `Document | Both |
+Canvas`. The canvas is a scene where every element carries its own geometry:
+
+```
+shape · text · stroke · arrow · frame · group · icon · image · diagram
+```
+
+`diagram` is the seam. It holds D2 source inline and renders itself through the
+Go pipeline. Outside its bounds the user decides position; inside, the layout
+engine does. Full detail in `.claude/work/specs/canvas-architecture.md`.
+
+- One IPC surface for rendering: `Render(source, opts) → {svg, errors,
+  nodeMap}`. Every diagram element and every export goes through it. The scene
+  itself is never round-tripped through Go.
+- `nodeMap` carries both source position **and** node geometry, so an arrow can
+  bind to a node inside a diagram and re-anchor on every render.
+- **Bindings resolve through D2 node ids, never coordinates.** Ids come from
+  source text and survive re-layout; coordinates do not. A binding whose node
+  disappears freezes and is marked detached, never silently deleted.
 - Debounce 250ms after typing stops. Tag every request with an incrementing
   ID and drop stale responses — out-of-order results cause flicker that is
   hard to diagnose later.
-- **Diagram rendering lives outside Svelte reactivity.** The canvas is a plain
-  TypeScript class mounted once into a `<div>`; it owns its own DOM and
-  patches itself. Svelte never re-renders diagram nodes. Per-node Svelte
-  components are the single most likely cause of a sluggish canvas.
-- **All text measurement happens in Go** via `textmeasure`. Measuring in the
-  webview makes layout differ between platforms, because WebKitGTK and
-  WebView2 disagree on glyph advances.
+- **The canvas lives outside Svelte reactivity.** It is a plain TypeScript
+  class owning a Konva stage, mounted once into a `<div>`. Svelte never renders
+  scene elements. Per-element Svelte components are the single most likely
+  cause of a sluggish canvas.
+- **Text measurement is split.** D2 diagram text is measured in Go via
+  `textmeasure`. Canvas text is measured in the frontend — unavoidable, since
+  the frontend owns that layout — so fonts are bundled and **measured
+  dimensions are stored in the file**, because WebKitGTK and WebView2 disagree
+  on glyph advances.
 - CodeMirror and ProseMirror are mounted imperatively in `onMount` and
   destroyed in the cleanup return. Never pass reactive props into them.
+- Undo is one history. Scene mutations, source edits and AI edits all enter as
+  transactions through the same path.
 - Shared state lives in `.svelte.ts` modules using runes. No store library.
 - No `localStorage`/`IndexedDB` for document state. Per-viewer UI conveniences
-  only (last open pane, zoom level), always inside try/catch.
+  only (last open pane, zoom level, pane visibility), always inside try/catch.
 - UI components are presentational: no IPC, no file access, no D2 knowledge
   inside `components/`.
 
@@ -137,10 +180,14 @@ docs/                       technical reference, vendored API docs, decisions
 .claude/work/specs/         design specs from brainstorming
 .claude/skills/             project skills (build-step is the build loop)
 .claude/agents/             spec-reviewer and friends
-internal/                   Go: compile, layout, render, store
+internal/                   Go: render (D2), store, ai
 frontend/src/components/    design system components
 frontend/src/styles/        tokens and global styles
-frontend/src/canvas/        the diagram canvas class
+frontend/src/canvas/        the Konva scene: elements, tools, bindings
+frontend/src/editor/        CodeMirror source pane
+frontend/src/docs/          ProseMirror document
+frontend/src/ipc/           bindings client: debounce, staleness
+frontend/public/fonts/      bundled Geist and Geist Mono
 testdata/golden/            golden-file fixtures
 ```
 

@@ -1,0 +1,30 @@
+Bava
+Copyright 2026 Bava contributors
+
+This product includes software developed as part of the Bava project
+(https://github.com/tenesh/bava), licensed under the Apache License,
+Version 2.0.
+
+--------------------------------------------------------------------------
+Third-party components
+--------------------------------------------------------------------------
+
+Bava bundles third-party work. Each entry below carries its own licence, and
+those licences continue to apply to those files. This file is the source for
+the licences shown in the application's About screen; add an entry in the same
+change that adds a dependency, never afterwards.
+
+Fonts
+  Geist and Geist Mono — SIL Open Font License 1.1
+    Copyright 2024 The Geist Project Authors
+    https://github.com/vercel/geist-font
+    frontend/public/fonts/GEIST-OFL.txt
+
+Runtime and framework
+  Wails v3 — MIT
+  Svelte — MIT
+
+(Icon sets, canvas libraries and remaining runtime dependencies are added here
+as they land. Sets under proprietary terms — including the AWS, Azure and
+Google Cloud architecture icon sets — are never bundled; users import those
+themselves.)

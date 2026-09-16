@@ -1,14 +1,47 @@
 /* Milestone 1: structural only.
-   No colour literals — `color-scheme` lets the platform supply background and
-   text colour until Milestone 2 defines the token layer.
+
+   Fonts are bundled and referenced here, never relied on from the system —
+   .ai/rules/canvas.md requires it, and a desktop app cannot assume a font is
+   installed. Variable woff2, so one file covers every weight.
+
+   Geist for chrome, Geist Mono for code and the source editor. If the app
+   should be monospace throughout, change --font-ui to the mono stack in the
+   token layer; nothing else needs touching.
 
    Milestone 2 debt, named rather than hidden: the 13px base below is the
    density decided in .ai/rules/design-system.md, but it belongs in
-   _type.scss as a token, and the bundled Inter needs an @font-face there —
-   chrome text is not what Go measures, so it does not affect layout, but the
-   font is currently shipped and referenced by nothing. */
+   _type.scss as a token, alongside these families. */
+
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-Italic-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('/fonts/GeistMono-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+
 :root {
+  /* No colour literals — `color-scheme` lets the platform supply background
+     and text colour until Milestone 2 defines the token layer. */
   color-scheme: light dark;
+  --font-ui: 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
 }
 
 html,
@@ -19,6 +52,13 @@ body,
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-ui);
   font-size: 13px;
+}
+
+/* The D2 source editor is code: it gets the mono face. This is a plain
+   stylesheet, so the selector is plain too — `:global()` is a Svelte
+   construct and a browser drops the rule silently. */
+.cm-editor {
+  font-family: var(--font-mono);
 }

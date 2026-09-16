@@ -12,6 +12,22 @@ open everything Bava writes in any editor, diff it in git, and lose nothing if
 Bava disappears. That property is the whole reason this app exists rather than
 a hosted one.
 
+A scene is JSON, which is plain text in the letter but not hand-editable in the
+spirit. That is accepted for a scene, because coordinates are not something a
+human edits by hand — but it raises the bar on the rest: **D2 source inside a
+diagram element is stored as readable source, never escaped into
+unrecognisability**, and document prose stays Markdown.
+
+## What the scene holds
+Every element carries its own geometry. Two element properties are less
+obvious and both are required:
+
+- **Measured text dimensions.** Canvas text is measured in the frontend, where
+  platforms disagree on glyph advances. Storing the measurement is what makes a
+  scene reopen identically elsewhere.
+- **Bindings by id, never by coordinate.** An arrow into a diagram stores the
+  node's D2 absolute id. Coordinates would break on the next re-layout.
+
 ## Round-trip tests are mandatory
 Every format change ships with a test: write → read → compare. Not a unit test
 of the writer and a separate one of the reader — the round trip, because that

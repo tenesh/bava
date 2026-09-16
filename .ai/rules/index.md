@@ -11,15 +11,17 @@ wrong), and scoped (it belongs to some paths, not all).
 
 | Rule file | Globs |
 |---|---|
-| `d2.md` | `internal/render/**`, `internal/layout/**`, `internal/compile/**` |
+| `d2.md` | `internal/render/**`, `internal/layout/**` |
 | `wails.md` | `main.go`, `internal/app/**`, `build/**` |
 | `svelte.md` | `frontend/src/**/*.svelte`, `frontend/src/**/*.svelte.ts` |
 | `design-system.md` | `frontend/src/components/**`, `frontend/src/styles/**` |
-| `canvas.md` | `frontend/src/canvas/**` |
+| `canvas.md` | `frontend/src/canvas/**`, `frontend/src/scene/**` |
 | `editors.md` | `frontend/src/editor/**`, `frontend/src/docs/**` |
-| `file-format.md` | `internal/store/**`, `internal/format/**` |
+| `file-format.md` | `internal/store/**`, `internal/format/**`, `docs/file-format.md` |
 | `ipc.md` | `internal/app/bindings*.go`, `frontend/src/ipc/**` |
 | `testing.md` | `**/*_test.go`, `testdata/**` |
+| `ai.md` | `internal/ai/**`, `frontend/src/ai/**` |
+| `updates.md` | `internal/update/**` |
 
 ## Writing a rule file
 

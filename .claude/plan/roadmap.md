@@ -1,6 +1,6 @@
 # Bava roadmap
 
-Milestones 0–7, including three half-steps (0.5, 3.5) that exist because
+Milestones 0–16, including two half-steps (0.5, 3.5) that exist because
 something must land before the milestone that depends on it. Each has one goal,
 one exit criterion provable by running a
 command, and its dependencies. The build loop in
@@ -16,6 +16,14 @@ traded away under schedule pressure:
 - **Format before persistence.** `docs/file-format.md` specifies a shape
   before any code writes it, with a round-trip test in the same change
   (`.ai/rules/file-format.md`).
+- **Nothing is deferred without a destination.** If a milestone pushes work out
+  of scope, it names the milestone that picks it up. A deferral with nowhere to
+  go is a roadmap bug.
+
+**Re-planned 2026-09-16.** Milestones 2 onward were rebuilt around a
+free-placement canvas after the product direction was settled; see
+`.claude/work/specs/canvas-architecture.md`. Milestone 1's D2 pipeline survives
+in a narrower role — it renders `diagram` elements rather than the whole app.
 
 ---
 
@@ -88,7 +96,15 @@ Milestone 1's first import makes the requirement direct.
 ## Milestone 1 — The spine *(complete)*
 
 **Goal:** Type D2 in a source pane, Go compiles and lays it out, the resulting
-SVG appears on the canvas.
+SVG appears on screen.
+
+**Role after the 2026-09-16 re-plan:** this pipeline is no longer the whole
+app. It renders `diagram` elements placed on the canvas. Everything built here
+— the `Render` surface, the debounce and staleness handling, errors-as-data,
+`nodeMap`, the golden fixtures — carries forward unchanged into Milestone 6,
+which adds node geometry to `nodeMap` and places the result on a stage. The
+two-pane shell and the interim `DiagramCanvas` class built here are replaced by
+Milestones 3 and 4.
 
 **Scope:** `internal/layout` and `internal/render` on D2
 v0.9.0 (library only, logger in every `Compile` context, TALA default, text
@@ -100,9 +116,8 @@ screen. Golden fixtures under `testdata/golden/` start here; the `lint` and
 `test` scripts they run alongside were added in Milestone 0.5.
 
 No `internal/compile/` package: `d2lib.Compile` already fuses parse, compile
-and layout, so it would be an empty shell wrapping one call. The glob stays
-registered in `.ai/rules/index.md`, unused, until there is something real for
-it. Deliberate deviation from the layout that file anticipates.
+and layout, so it would be an empty shell wrapping one call. Its glob has since
+been removed from `.ai/rules/index.md` rather than left registered and unused.
 
 **Exit criterion:**
 
@@ -123,7 +138,7 @@ three standing lint errors, and the first `internal/` package makes the D2
 requirement direct so `go mod tidy` stops dropping it.
 
 **Out of scope:** writes nothing to disk — no save, no autosave, no
-`localStorage` for document state. Source lives in memory until Milestone 4.
+`localStorage` for document state. Source lives in memory until Milestone 5.
 Unstyled two-pane layout; no `frontend/src/components/` work, because tokens
 do not exist yet.
 
@@ -131,15 +146,17 @@ do not exist yet.
 
 ## Milestone 2 — Design tokens and theming
 
-**Goal:** Semantic token layer plus light/dark theming, so component work can
+**Goal:** A semantic token layer plus light/dark theming, so component work can
 start without a literal value anywhere.
 
 **Scope:** `frontend/src/styles/tokens/` — `_color`, `_space`, `_type`,
 `_radius`, `_elevation`, `_motion`, `_z` — emitted on `:root`, redefined under
-`:root[data-theme="dark"]`, with `data-theme` set on `<html>`. 13px base, 4px
-spacing unit, desktop density. Bundled fonts via `@font-face`. The Go-side
-theme mapping that feeds the active theme's colours into `Render` options, and
-the single portal root for Ark's portalled content.
+`:root[data-theme="dark"]`, with `data-theme` on `<html>`. 13px base, 4px
+spacing unit, desktop density. The bundled Geist and Geist Mono faces move into
+`_type.scss` as `--font-ui` and `--font-mono`, replacing the interim
+declarations in `public/style.css`. `--z-*` must cover portal layers: the Ark
+spike measured portalled content painting *below* ordinary app chrome because
+Ark ships no z-index of its own.
 
 **Exit criterion:**
 
@@ -151,64 +168,225 @@ ls frontend/src/styles/tokens/_{color,space,type,radius,elevation,motion,z}.scss
      | grep -v 'src/styles/tokens/'
 ```
 
-The grep must find nothing outside `tokens/`: a hit means a literal escaped,
-which is the failure this milestone exists to prevent. Plus a dark-theme
-golden proving the canvas re-renders on theme change rather than lagging the
-chrome.
+The grep must find nothing outside `tokens/`. It also clears the two named
+debts from Milestone 1: the `13px` base and the `1px` divider.
 
-**Depends on:** Milestone 1 (there must be a canvas and chrome to theme, and
-the Go theme mapping attaches to the existing `Render` options struct).
+**Depends on:** Milestone 1.
 
 ---
 
 ## Milestone 3 — App shell
 
-**Goal:** The spine dressed as a real tool window: resizable panes, status bar,
-error list with click-to-jump, canvas controls.
+**Goal:** The three-view window: document, canvas, or both, with the chrome
+around them.
 
-**Scope:** Wrapped Ark primitives (Splitter for panes; check it before hand-
-rolling), and the in-house `StatusBar`, `CanvasControls`, `ErrorList`,
-`EmptyState`, `Icon`. D2 diagnostics surfaced through `@codemirror/lint` and
-`ErrorList`, with jump-to-line driven by the `nodeMap` from the render
-response, never by re-parsing in the frontend. Engine picker (TALA default,
-dagre and elk as alternatives; `direction` stays unexposed while TALA is
-active). **Canvas pan and zoom interaction lands here too** — `CanvasControls`
-is the chrome, and the behaviour it drives belongs in the same milestone
-rather than being assumed to exist.
-
-Ark portals were verified by spike on 2026-09-16 (see the build loop's
-repo-state section): they portal correctly inside the Wails webview, but Ark
-ships **no z-index of its own** and portalled content painted below ordinary
-app chrome. The `--z-*` tokens from Milestone 2 must cover portal layers, and
-this milestone is where that gets exercised for real.
+**Scope:** The `Document | Both | Canvas` switcher. Resizable, collapsible
+panes on Ark's Splitter — file tree, main area, dockable AI pane — with pane
+visibility and widths kept in `localStorage` inside try/catch. `StatusBar`,
+`EmptyState`, `Icon`, and the settings shell whose sections later milestones
+fill in. The default window grows from 1000×618 to a size where four regions
+are usable.
 
 **Exit criterion:**
 
 ```sh
-(cd frontend && npm run check && npm run lint && npm test) && go test ./...
+(cd frontend && npm run check && npm run lint && npm test) && go test ./internal/... .
 ```
 
-green, every new component added to the inventory table in
-`.ai/rules/design-system.md` in the same change, and a recorded keyboard pass
-(tab order, escape, arrow keys) plus both-theme check per component.
+green, every new component added to the inventory in
+`.ai/rules/design-system.md` in the same change, plus a keyboard pass and a
+both-themes check per component.
 
-**Also inherits from Milestone 1:** click-on-node jump-to-source was wired
-without a keyboard equivalent or focus ring, because `--color-focus-ring`
-cannot exist before Milestone 2. This milestone owes it a keyboard path.
-
-**Depends on:** Milestone 2 (tokens), Milestone 1 (`nodeMap`, errors).
+**Depends on:** Milestone 2.
 
 ---
 
-## Milestone 3.5 — Source editor
+## Milestone 4 — Canvas foundation
 
-**Goal:** Make the D2 source pane a real editor: syntax highlighting, a proper
-keymap, and the shortcuts written down.
+**Goal:** An infinite canvas you can draw on: place, select, move, group,
+undo.
 
-**Scope:** A D2 language mode for CodeMirror 6 (keywords, shape and style
-keys, edges, containers, comments, strings), the editor keymap, and
-`docs/shortcuts.md` created in the same change. Milestone 1 deliberately
-shipped a plain-text pane; this is where that debt is paid.
+**Scope:** The Konva stage as a plain TypeScript class. Pan and zoom. Tools
+with their keyboard shortcuts — select (V), rectangle (R), ellipse (O), arrow
+(A), line (L), pen (D), text (T), frame (F). Freehand via `perfect-freehand`.
+Selection, multi-select, transform handles, z-order, labelled groups, copy and
+paste, and an undo/redo history over scene mutations. The contextual toolbar
+that changes with selection.
+
+Canvas text is measured here, in the frontend, and the measurement is stored on
+the element — the mitigation `canvas.md` requires now that measurement has left
+Go.
+
+**Exit criterion:**
+
+```sh
+(cd frontend && npm run check && npm run lint && npm test)
+```
+
+green, with tests over the real logic and not the markup: hit-testing, scene
+transforms, selection state, and undo/redo returning the scene to a
+byte-identical state after an arbitrary sequence of mutations.
+
+**Depends on:** Milestone 3.
+
+**Out of scope:** persistence — the scene lives in memory until Milestone 5.
+Diagram elements, connectors and bindings are Milestones 6 and 7.
+
+---
+
+## Milestone 5 — File format and persistence
+
+**Goal:** Open and save real files, in a format specified before a byte is
+written.
+
+**Scope:** `docs/file-format.md` first, covering the whole shape: a file holds
+a document and a scene; every element carries geometry; canvas text carries its
+measured dimensions; a `diagram` element carries **D2 source inline, as
+readable source**; bindings are stored by node id, never by coordinate; unknown
+keys and unknown element types survive a round trip untouched. Then
+`internal/format` and `internal/store`, native open/save dialogs, the file
+tree on Ark's TreeView, recent files, and the unsaved-changes and
+file-changed-on-disk flows.
+
+The two tunables Milestone 1 left as compile-time constants — the 250ms
+debounce and the default layout engine — move behind the settings file here.
+
+**Exit criterion:**
+
+```sh
+test -f docs/file-format.md \
+  && go test ./internal/format ./internal/store -run RoundTrip -v \
+  && go test ./internal/... . && go vet ./...
+```
+
+with a round trip that covers an unknown element type and an unknown key, and
+one proving a scene reopens with identical text layout on a machine that did
+not create it.
+
+**Depends on:** Milestone 4. The format spec is an internal gate: no
+persistence code merges before it.
+
+---
+
+## Milestone 6 — Diagram elements
+
+**Goal:** Drop a diagram-as-code block onto the canvas, edit its source, watch
+it render in place.
+
+**Scope:** The `diagram` element type: inline D2 source, rendered through the
+Milestone 1 pipeline and rasterised into the stage. Its own code editor, the
+250ms debounce, stale-response dropping, and diagnostics in the block's gutter.
+Click-into-source through `nodeMap`. **`Render` gains node geometry** — `x`,
+`y`, `w`, `h` per node in diagram-local coordinates — which Milestone 7 binds
+against, and which is added here rather than retrofitted later.
+
+**Exit criterion:**
+
+```sh
+go test ./internal/... . && go test ./internal/render -run Golden \
+  && (cd frontend && npm run check && npm run lint && npm test)
+```
+
+green, including a Go test that every rendered shape has bounds in `nodeMap`,
+and a frontend test that a click inside a rendered diagram resolves to the
+right node id.
+
+**Depends on:** Milestone 5 (a diagram is stored in a file), Milestone 4 (it is
+an element on a stage), Milestone 1 (the pipeline).
+
+---
+
+## Milestone 7 — Connectors and bindings
+
+**Goal:** Arrows that attach to things and follow them — including nodes
+*inside* a generated diagram.
+
+**Scope:** Arrows binding to whole elements and to diagram interiors as
+`{element, node, side}`. Re-anchoring on every render: node rect in
+diagram-local space, transformed by the diagram element's position and scale.
+Routing, and the detached state — when a bound node disappears from the source,
+the arrow freezes at its last position and is marked detached, never deleted.
+Hit-testing into a rendered diagram against the bounds index.
+
+This is the milestone that makes the hybrid one tool rather than two modes
+sharing a window. Budget accordingly.
+
+**Exit criterion:**
+
+```sh
+(cd frontend && npm run check && npm run lint && npm test)
+```
+
+green, with tests that: an arrow bound to a node follows when the D2 is edited
+and the node moves; renaming the node detaches the arrow without deleting it;
+and an endpoint resolves correctly after the diagram element is moved and
+scaled.
+
+**Depends on:** Milestone 6.
+
+---
+
+## Milestone 8 — Documents
+
+**Goal:** Prose alongside the canvas, with diagrams embedded in the text.
+
+**Scope:** ProseMirror over Markdown, so every document Bava writes opens
+cleanly in any editor. Markdown input rules, a slash menu, a selection bubble.
+Diagrams embedded as fenced `d2` blocks whose NodeView hosts a CodeMirror
+instance and a rendered result. The three seams from ProseMirror's own
+embedded-editor example: escaping the inner editor with arrow keys, one undo
+history across the boundary, and focus tracking.
+
+**Exit criterion:**
+
+```sh
+go test ./internal/format -run RoundTrip \
+  && (cd frontend && npm run check && npm run lint && npm test)
+```
+
+green, with tests for cursor escape, cross-boundary undo, focus tracking, and a
+round trip of a document containing a diagram block.
+
+**Depends on:** Milestone 5, Milestone 6.
+
+---
+
+## Milestone 9 — Icons and assets
+
+**Goal:** A searchable icon library, plus the user's own.
+
+**Scope:** Bundled Lucide (ISC) for general icons and tech logos from Simple
+Icons (CC0) or Devicon (MIT), with a searchable picker. User-imported SVGs as
+the "custom icons" category. Icons used by a diagram are resolved locally and
+inlined — **a remote icon URL is never fetched**: D2 emits `href="https://…"`
+straight into its SVG, so opening a file from elsewhere would phone a CDN and
+leak that you opened it. A file arriving with a remote icon URL gets a
+diagnostic and an explicit one-time fetch offer, never a silent request.
+
+**Cannot be bundled:** the AWS, Azure and Google Cloud architecture icon sets
+are not open-source licensed. They arrive by user import only.
+
+**Exit criterion:**
+
+```sh
+go test ./internal/... . \
+  && (cd frontend && npm run check && npm run lint && npm test)
+```
+
+green, with a test that a remote icon URL never reaches the rendered output,
+and every bundled set recorded in `NOTICE`.
+
+**Depends on:** Milestone 6.
+
+---
+
+## Milestone 10 — Source editor polish
+
+**Goal:** Make D2 source a real editing experience.
+
+**Scope:** A D2 language mode for CodeMirror — keywords, shape and style keys,
+edges, containers, comments, strings — the editor keymap, and
+`docs/shortcuts.md` created in the same change, covering canvas tools as well.
 
 **Exit criterion:**
 
@@ -217,136 +395,165 @@ shipped a plain-text pane; this is where that debt is paid.
   && test -f docs/shortcuts.md
 ```
 
-green, with tests over the tokeniser — given a `.d2` fixture, the expected
-token types at known offsets — not over how it looks.
+green, with tests over the tokeniser — expected token types at known offsets in
+a fixture — not over how it looks.
 
-**Depends on:** Milestone 1 (the pane exists), Milestone 2 (highlight colours
-are tokens, never literals).
+**Depends on:** Milestone 6, Milestone 2 (highlight colours are tokens).
 
-**Why here and not later:** Milestone 5 mounts CodeMirror inside ProseMirror
-NodeViews. Doing the language mode first means the embedded editors inherit it
-instead of needing a second pass.
+**Why before the AI milestones:** generated D2 lands in these editors, and
+reading it unhighlighted is a poor first impression of the feature.
 
 ---
 
-## Milestone 4 — File format and persistence
+## Milestone 11 — AI foundation
 
-**Goal:** Open, edit and save real files on disk, in a format specified before
-a single byte is written.
+**Goal:** A chat pane that generates a diagram, with the model's D2 verified
+before it is shown.
 
-**Scope:** `docs/file-format.md` first — plain text, forward-compatible,
-unknown keys and unknown block types preserved on read and written back
-unchanged. Then `internal/format` (parse/serialise) and `internal/store`
-(file I/O), Wails native open/save dialogs, and the file sidebar on Ark's
-TreeView, plus a recent-files list. The two tunables Milestone 1 left as
-compile-time constants — the 250ms debounce and the default layout engine —
-move behind this settings file. `localStorage` is permitted here only for
-per-viewer conveniences — last open pane, zoom level, the recents list itself
-— always inside try/catch, and never for document content.
+**Scope:** `internal/ai` against a user-configured **local** endpoint (Ollama,
+LM Studio, llama.cpp, LocalAI — all OpenAI-compatible over localhost). The
+dockable chat pane, one thread per file covering the document and every
+diagram on the canvas, persisted as append-only JSONL in the platform data
+directory. Generation, staged visibly — planning, then a placeholder element on
+the canvas, then the filled diagram. The compile-and-repair loop: output is
+compiled in-process, diagnostics fed back, **capped at two retries**.
 
 **Exit criterion:**
 
 ```sh
-test -f docs/file-format.md \
-  && go test ./internal/format ./internal/store -run RoundTrip -v \
-  && go test ./... && go vet ./...
-```
-
-with a round-trip test (write → read → compare, not separate writer and reader
-tests) and a case proving unknown keys and unknown block types survive a
-round trip.
-
-**Depends on:** Milestone 3 (sidebar and dialogs need the component layer),
-Milestone 1 (source pane). `docs/file-format.md` is an internal gate: no
-persistence code before it merges.
-
----
-
-## Milestone 5 — Documents with embedded diagrams
-
-**Goal:** ProseMirror document mode where a diagram is a node type whose
-NodeView hosts CodeMirror plus the rendered SVG.
-
-**Scope:** The three non-obvious seams from ProseMirror's own embedded
-code-editor example — escaping the inner editor with arrow keys, one undo
-history across the boundary (CodeMirror changes forwarded as ProseMirror
-transactions), and focus tracking so menus reflect the active editor. Document
-blocks and the diagram block go into `docs/file-format.md` before they are
-written. Budget real time here; plausible-looking wrong implementations are
-easy to produce.
-
-**Exit criterion:**
-
-```sh
-test -f docs/file-format.md \
-  && go test ./internal/format -run RoundTrip \
+go test ./internal/ai/... -v && go test ./internal/... . && go vet ./... \
   && (cd frontend && npm run check && npm run lint && npm test)
 ```
 
-green, with frontend tests covering cursor escape, cross-boundary undo, and
-focus tracking, and a round-trip test for a document containing a diagram
-block.
+green, including a test that invalid output is repaired rather than shown, that
+the retry cap holds, and a transcript round trip. Tests run against a local
+stub server, never a live endpoint.
 
-**Depends on:** Milestone 4 (document format on disk), Milestone 1 (render
-pipeline reused unchanged — no second render path).
+**Depends on:** Milestone 6, Milestone 5, Milestone 3.
 
 ---
 
-## Milestone 6 — Local AI assist
+## Milestone 12 — AI editing
 
-**Goal:** Optional D2 generation and editing through a user-configured local
-Ollama endpoint, off by default.
+**Goal:** Select something, ask for a fix, see a diff, accept or reject.
 
-**Scope:** `internal/ai` talking to a user-supplied local endpoint only. No
-hosted provider, no default remote URL, no key handling, no fallback to a
-hosted model when the local one is absent — absent means the feature is off.
-Tests run against a local stub server, never a live endpoint.
+**Scope:** Selection-scoped edits — a CodeMirror range in a diagram, a
+ProseMirror range in a document, a selection on the canvas. Edits enter as
+**transactions** so one undo history survives. The inline edit box is
+ephemeral: it shows a diff and vanishes on accept or reject, and is not written
+to the transcript.
 
 **Exit criterion:**
 
 ```sh
-go test ./internal/ai/... -v && go test ./... && go vet ./... \
-  && ! grep -rEn 'https?://' internal/ frontend/src/ \
-       --include='*.go' --include='*.ts' --include='*.svelte' \
-     | grep -vE '://(localhost|127\.0\.0\.1|\[::1\])'
+(cd frontend && npm run check && npm run lint && npm test) && go test ./internal/... .
 ```
 
-green, with the grep finding no non-local endpoint anywhere in shipped code,
-and the feature verified disabled with no endpoint configured.
+green, with tests that a rejected edit leaves the document byte-identical and
+that Ctrl+Z after an accepted edit undoes it in one step.
 
-**Depends on:** Milestone 5 (the doc and diagram surfaces it edits),
-Milestone 1 (it produces D2 source, which the existing pipeline renders).
+**Depends on:** Milestone 11, Milestone 8.
 
 ---
 
-## Milestone 7 — Export and search
+## Milestone 13 — Hosted providers
 
-**Goal:** Get diagrams out of Bava, and find things across a workspace.
+**Goal:** Bring your own key, with the user knowing what leaves the machine.
 
-**Scope:** Export a diagram or document to SVG and PNG, and copy-to-clipboard
-— **through the existing `Render` path**, never a second renderer, so exported
-output is byte-identical to what the user saw (`.ai/rules/ipc.md`). Workspace
-search across files with results, jump-to-match, and the `EmptyState` the
-design system already assumes exists for it.
+**Scope:** Hosted providers by API key. Credentials in the OS secret store —
+Keychain, Credential Manager, libsecret — never a file. The consent surface
+before the first hosted call, stating plainly that a highlighted paragraph
+sends the surrounding file. Provider and model pickers in the settings shell.
+The error taxonomy: invalid key, rate limit, offline, model unavailable,
+context too long.
+
+**Exit criterion:**
+
+```sh
+go test ./internal/ai/... -v && go test ./internal/... . \
+  && ! grep -rEn 'api\.(openai|anthropic)|generativelanguage' internal/ --include='*.go' \
+     | grep -v _test.go | grep -v 'providers\.go'
+```
+
+green, with no credential reachable from any file Bava writes, every endpoint
+resolved from user configuration, and the consent gate proven to block the
+first call until accepted.
+
+**Depends on:** Milestone 11.
+
+---
+
+## Milestone 14 — Provider login
+
+**Goal:** Sign in with a provider account, for users on subscription plans
+rather than API credit.
+
+**Scope:** OAuth device-code flow, tokens in the OS secret store, refresh,
+expiry, and re-authentication when refresh fails. Never a client secret
+embedded in a distributed binary.
+
+**Exit criterion:**
+
+```sh
+go test ./internal/ai/... -run 'OAuth|Token' -v && go test ./internal/... .
+```
+
+green against a stub authorisation server, including expiry and a failed
+refresh.
+
+**Depends on:** Milestone 13.
+
+---
+
+## Milestone 15 — Export and search
+
+**Goal:** Get work out of Bava, and find things across a workspace.
+
+**Scope:** Export a canvas, a selection or a document to SVG, PNG and PDF, and
+copy to clipboard. Diagram elements export **through the existing `Render`
+path**, never a second renderer. Workspace search with results, jump-to-match,
+and the `EmptyState` the design system already assumes exists for it.
 
 **Exit criterion:**
 
 ```sh
 go test ./internal/export ./internal/search -v \
-  && go test ./... && go vet ./... \
+  && go test ./internal/... . && go vet ./... \
   && (cd frontend && npm run check && npm run lint && npm test)
 ```
 
-green, including a test asserting an exported SVG is byte-identical to the
-`Render` output for the same source — the regression that a second render path
-would cause.
+green, including a test asserting an exported diagram is byte-identical to the
+`Render` output for the same source — the regression a second render path would
+cause.
 
-**Depends on:** Milestone 4 (a workspace of files to search), Milestone 5
-(documents are exportable too), Milestone 1 (the one render path).
+**Depends on:** Milestone 8, Milestone 5.
 
-**Ordering note:** Export is arguably more fundamental to a diagrams tool than
-local AI. If you want it before Milestone 6, swap the two — nothing in either
-depends on the other.
+---
+
+## Milestone 16 — Release readiness
+
+**Goal:** Everything between "it works on my machine" and "someone else can
+install it".
+
+**Scope:** First-run experience — no account, no network — choosing a workspace
+folder and a theme. The About screen rendering `NOTICE`, which is a licence
+obligation and not decoration. The in-app updater: available, release notes,
+downloading, restart to apply, failed. Signature verification before anything
+is applied. Auto-check as a setting that genuinely turns off. Packaging for
+macOS, Linux and Windows.
+
+**Exit criterion:**
+
+```sh
+go test ./internal/update/... -v && go test ./internal/... . \
+  && gh run list --workflow=ci.yml --limit 1
+```
+
+green, with a test pinning the update request's shape — no identifier, no
+version in a query parameter, no user data — and a CI matrix result rather than
+a local build.
+
+**Depends on:** Milestone 3 (settings shell), and everything it ships.
 
 ---
 
@@ -355,19 +562,15 @@ depends on the other.
 - **CI build matrix.** There is none. Until it exists, no claim that Bava
   "builds on all platforms" is supportable — a local `wails3 build` proves
   nothing about Windows or Linux. Goldens are byte-compared and depend on
-  `.gitattributes` forcing LF, so CI should land no later than Milestone 2.
+  `.gitattributes` forcing LF, so CI should land no later than Milestone 4.
   Check: `gh run list --workflow=ci.yml --limit 1`.
 - **Translations.** The translation layer arrives in Milestone 3. Milestone 1
   shipped the first two user-facing strings (the pane `aria-label`s) hardcoded,
-  and Milestone 3 migrates them; after that, no new hardcoded string. Stated
-  this way because the earlier wording — "from the first string" — was already
-  contradicted by the milestone that shipped the first string.
-- **Artifact sync.** `docs/ipc.md`, `docs/shortcuts.md`, `docs/decisions.md`
-  and the `.ai/rules/` files are updated in the same change as the code that
-  makes them true, per the build loop's checklist. `docs/shortcuts.md` is
-  created in Milestone 3.5; `docs/ipc.md` and `docs/decisions.md` in
-  Milestone 1.
-- **Nothing else is homeless.** Every item a milestone pushes out of scope now
-  names the milestone that picks it up. If a future milestone defers something
-  without naming its destination, that is a roadmap bug — say so rather than
-  letting it fall off the end.
+  and Milestone 3 migrates them; after that, no new hardcoded string.
+- **Artifact sync.** `docs/ipc.md`, `docs/file-format.md`, `docs/shortcuts.md`,
+  `docs/decisions.md`, `NOTICE` and the `.ai/rules/` files are updated in the
+  same change as the code that makes them true, per the build loop's checklist.
+- **Accessibility debt from Milestone 1.** Click-on-node jump-to-source was
+  wired without a keyboard equivalent or focus ring, because
+  `--color-focus-ring` cannot exist before Milestone 2. Milestone 4 owes it a
+  keyboard path.

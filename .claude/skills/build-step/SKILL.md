@@ -258,9 +258,15 @@ wrong facts. When a milestone closes, update this section in the same change.
 ### Milestones
 
 - Milestones 0, 0.5 and **1 (the spine) complete**, verified 2026-09-16.
-  Milestone 2 (design tokens and theming) not started.
-- The mobile-target removal from 0.5 and all of Milestone 1 are uncommitted;
-  the user commits.
+- **The roadmap was re-planned on 2026-09-16**, from Milestone 2 onward, around
+  a free-placement canvas rather than a compile-to-SVG pipeline. See
+  `.claude/work/specs/canvas-architecture.md`. Milestone 1's work survives in a
+  narrower role: `internal/render` renders `diagram` elements placed on the
+  canvas. The interim two-pane shell and `DiagramCanvas` class it shipped are
+  replaced by Milestones 3 and 4.
+- Milestone 2 (design tokens and theming) is next and not started.
+- Everything since the scaffold is uncommitted apart from Milestone 0.5; the
+  user commits.
 - `.claude/plan/roadmap.md` holds the sequence.
 
 ### Toolchain — verified by command
@@ -316,15 +322,26 @@ wrong facts. When a milestone closes, update this section in the same change.
   migrate them.
 - **`DEBOUNCE_MS` (250) and `DefaultEngine` ("tala") are compile-time
   constants.** Named and single-sourced, but with no config behind them. They
-  move behind the settings file in Milestone 4.
-- **Milestone 2 debt named in code comments**: the `13px` base in
-  `public/style.css`, the `1px` divider in `App.svelte`, the bundled but
-  unreferenced `Inter-Medium.ttf` needing an `@font-face`, and the native
-  window background colour removed from `main.go` pending the Go-side theme
-  mapping.
+  move behind the settings file in Milestone 5.
+- **Milestone 2 debt named in code comments**: the `13px` base and the
+  `--font-ui` / `--font-mono` declarations in `public/style.css` (both belong
+  in `_type.scss`), the `1px` divider in `App.svelte`, and the native window
+  background colour removed from `main.go` pending the Go-side theme mapping.
+- **Fonts are bundled and wired.** Geist and Geist Mono, variable `woff2`, in
+  `frontend/public/fonts/`, under SIL OFL 1.1 recorded in `NOTICE`. The
+  scaffold's bundled-but-unreferenced `Inter-Medium.ttf` and its licence file
+  are gone. `@font-face` is declared in `public/style.css` until the token
+  layer takes it over.
+- **`LICENSE` (Apache-2.0) and `NOTICE` exist.** `NOTICE` is the source for the
+  About screen's attribution and must gain an entry in the same change as any
+  bundled dependency.
 - No CI. Cross-platform build matrix is an open item, and no "builds on all
   platforms" claim is supportable until it exists.
-- `.ai/`, `.claude/`, `CLAUDE.md` and `docs/` are untracked.
+- `.ai/`, `.claude/`, `CLAUDE.md`, `docs/`, `LICENSE` and `NOTICE` are
+  untracked at the time of writing.
+- **Konva is not installed yet.** The canvas foundation is Milestone 4; the
+  dependency lands with it, alongside `perfect-freehand`, `perfect-arrows`,
+  `@dagrejs/dagre` and `rbush`. All MIT.
 
 ### Spike findings — Ark UI in the Wails webview, 2026-09-16
 

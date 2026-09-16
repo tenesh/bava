@@ -199,19 +199,20 @@ Same change as the code:
 
 ## Out of scope
 
-- Any persistence. No file open, save, autosave, or recent-files — Milestone 4.
+- Any persistence. No file open, save, autosave, or recent-files — Milestone 5
+  after the re-plan (was 4).
 - Tokens, components, theming, `--z-*` — Milestone 2.
 - Engine picker, StatusBar, ErrorList as components — Milestone 3. Diagnostics
   in Milestone 1 appear in the editor gutter only.
-- D2 syntax highlighting — Milestone 3.5, before Milestone 5 embeds CodeMirror
-  in ProseMirror NodeViews.
+- D2 syntax highlighting — Milestone 10 after the 2026-09-16 re-plan
+  (was 3.5), before Milestone 8 embeds CodeMirror in ProseMirror NodeViews.
 - Pan and zoom beyond what the canvas class needs to display an SVG —
-  Milestone 3, with the `CanvasControls` chrome that drives them.
+  Milestone 4 after the re-plan, which replaces this class with a Konva stage.
 - `internal/compile/` and `internal/store/`. `d2lib.Compile` already fuses
   parse, compile and layout, so a separate `compile` package would be an empty
-  shell. **Deviation from the anticipated layout in `.ai/rules/index.md`,
-  flagged deliberately** — the glob stays registered and unused until there is
-  something real to put there.
+  shell. **Deviation from the layout `.ai/rules/index.md` anticipated, flagged
+  deliberately** — its glob was subsequently removed from that file rather than
+  left registered and unused. `internal/store/` arrives at Milestone 5.
 
 
 ## Completion record — 2026-09-16
