@@ -1,13 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { handleKey } from './keymap';
 
 function actions() {
   return {
-    undo: vi.fn(),
-    redo: vi.fn(),
-    copy: vi.fn(),
-    paste: vi.fn(),
-    selectAll: vi.fn(),
     deleteSelection: vi.fn(),
     selectNext: vi.fn(),
     selectPrevious: vi.fn(),
@@ -21,25 +18,6 @@ const key = (over: Partial<KeyboardEvent> = {}) =>
   ({ key: 'a', metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, ...over }) as KeyboardEvent;
 
 describe('keymap', () => {
-  it('binds undo and redo', () => {
-    const a = actions();
-    handleKey(key({ key: 'z', metaKey: true }), a, { typing: false });
-    expect(a.undo).toHaveBeenCalled();
-
-    handleKey(key({ key: 'z', metaKey: true, shiftKey: true }), a, { typing: false });
-    expect(a.redo).toHaveBeenCalled();
-  });
-
-  it('binds copy, paste and select all', () => {
-    const a = actions();
-    handleKey(key({ key: 'c', metaKey: true }), a, { typing: false });
-    handleKey(key({ key: 'v', metaKey: true }), a, { typing: false });
-    handleKey(key({ key: 'a', metaKey: true }), a, { typing: false });
-    expect(a.copy).toHaveBeenCalled();
-    expect(a.paste).toHaveBeenCalled();
-    expect(a.selectAll).toHaveBeenCalled();
-  });
-
   it('deletes the selection', () => {
     const a = actions();
     handleKey(key({ key: 'Backspace' }), a, { typing: false });
@@ -86,11 +64,20 @@ describe('keymap', () => {
     expect(a.selectNext).not.toHaveBeenCalled();
   });
 
-  // Undo while typing belongs to the editor, which has its own history.
-  it('leaves undo to the editor while typing', () => {
-    const a = actions();
-    handleKey(key({ key: 'z', metaKey: true }), a, { typing: true });
-    expect(a.undo).not.toHaveBeenCalled();
+  // A shortcut the native menu binds must not also be handled here, or one
+  // keypress acts twice — two undos, two pastes. Read from the spec, so a new
+  // menu accelerator is checked without editing this test.
+  it('TestKeymapDoesNotHandleMenuBoundShortcuts', () => {
+    const accelerators = menuAccelerators();
+    expect(accelerators.length).toBeGreaterThan(10);
+    for (const accelerator of accelerators) {
+      for (const primary of ['metaKey', 'ctrlKey'] as const) {
+        const a = actions();
+        const handled = handleKey(eventFor(accelerator, primary), a, { typing: false });
+        expect(handled, `${accelerator} with ${primary}`).toBe(false);
+        expect(Object.values(a).some((fn) => fn.mock.calls.length > 0), accelerator).toBe(false);
+      }
+    }
   });
 
   it('reports whether it handled the key', () => {
@@ -99,3 +86,34 @@ describe('keymap', () => {
     expect(handleKey(key({ key: '9' }), a, { typing: false })).toBe(false);
   });
 });
+
+type SpecItem = { kind: string; accelerator?: string; shortcut?: string; items?: SpecItem[] };
+
+function menuAccelerators(): string[] {
+  const path = resolve(__dirname, '../../../internal/app/menu/spec.json');
+  const spec = JSON.parse(readFileSync(path, 'utf8')) as { menus: SpecItem[] };
+  const found: string[] = [];
+  const walk = (items: SpecItem[] = []) => {
+    for (const item of items) {
+      if (item.accelerator) found.push(item.accelerator);
+      // Frontend-handled shortcuts dispatch through the menu's commands too.
+      if (item.shortcut) found.push(item.shortcut);
+      walk(item.items);
+    }
+  };
+  for (const menu of spec.menus) walk(menu.items);
+  return found;
+}
+
+function eventFor(accelerator: string, primary: 'metaKey' | 'ctrlKey'): KeyboardEvent {
+  const parts = accelerator.split('+');
+  const keyPart = parts.pop() ?? '';
+  const modifiers = new Set(parts.map((part) => part.toLowerCase()));
+  return key({
+    key: keyPart.length === 1 ? keyPart.toLowerCase() : keyPart,
+    metaKey: modifiers.has('cmdorctrl') && primary === 'metaKey',
+    ctrlKey: modifiers.has('cmdorctrl') && primary === 'ctrlKey',
+    shiftKey: modifiers.has('shift'),
+    altKey: modifiers.has('optionoralt'),
+  });
+}

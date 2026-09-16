@@ -36,6 +36,15 @@ describe('document state', () => {
     expect(doc.dirty).toBe(false);
   });
 
+  it('reset makes it clean and untitled again', async () => {
+    const doc = createDocument(stubIO());
+    await doc.open('/w/notes.md');
+    doc.touch();
+    doc.reset();
+    expect(doc.path).toBeNull();
+    expect(doc.dirty).toBe(false);
+  });
+
   it('is dirty after an edit and clean after a save', async () => {
     const io = stubIO();
     const doc = createDocument(io);
@@ -80,6 +89,31 @@ describe('document state', () => {
 
     expect(result.conflict).toBe(true);
     expect(io.save).not.toHaveBeenCalled();
+    expect(doc.dirty).toBe(true);
+  });
+
+  // An autosave runs while the user keeps working. A change made while the
+  // write is in flight is not on disk, so it must not be marked saved.
+  it('stays dirty when changed during a save', async () => {
+    let finish: (value: unknown) => void = () => {};
+    const io = stubIO({
+      save: vi.fn(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      ),
+    });
+    const doc = createDocument(io);
+    await doc.open('/w/notes.md');
+    doc.touch();
+
+    const saving = doc.save(emptyScene);
+    await vi.waitFor(() => expect(io.save).toHaveBeenCalled());
+    doc.touch();
+    finish({ path: '/w/notes.md', stamp: { size: 9, modifiedUnixNano: 2 }, error: '' });
+
+    expect((await saving).saved).toBe(true);
     expect(doc.dirty).toBe(true);
   });
 

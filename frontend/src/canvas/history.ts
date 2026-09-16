@@ -38,6 +38,13 @@ export function createHistory(initial: SceneData) {
       return future.length > 0;
     },
 
+    /** Start over from data, with nothing to undo — a document was loaded. */
+    reset(data: SceneData): void {
+      current = data;
+      past.length = 0;
+      future.length = 0;
+    },
+
     /** Apply a change and record how to reverse it. */
     mutate(recipe: (draft: SceneData) => void): void {
       const [next, forward, inverse] = produceWithPatches(current, recipe);

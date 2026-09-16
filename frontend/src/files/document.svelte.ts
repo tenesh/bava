@@ -42,6 +42,10 @@ export function createDocument(io: DocumentIO = overIPC) {
   let diagrams = $state.raw<Record<string, string>>({});
   let stamp = $state.raw<Stamp | null>(null);
   let dirty = $state.raw(false);
+  // Counts edits. A save records the count it started from and marks the
+  // document clean only if nothing changed while it was writing — an autosave
+  // runs while the user keeps working.
+  let revision = 0;
   let error = $state.raw<string | null>(null);
 
   return {
@@ -63,6 +67,7 @@ export function createDocument(io: DocumentIO = overIPC) {
 
     /** Mark the document changed. Called by the canvas and the editor. */
     touch() {
+      revision += 1;
       dirty = true;
     },
 
@@ -92,6 +97,7 @@ export function createDocument(io: DocumentIO = overIPC) {
      * conflict check either, because there is no earlier read to conflict with.
      */
     async saveAs(next: string, scene: Scene) {
+      const started = revision;
       const result = await io.save(next, source, scene);
       if (result.error) {
         error = result.error;
@@ -100,9 +106,19 @@ export function createDocument(io: DocumentIO = overIPC) {
 
       path = next;
       stamp = result.stamp;
-      dirty = false;
+      dirty = revision !== started;
       error = null;
       return { conflict: false, saved: true };
+    },
+
+    /** Become a new, clean, untitled document. The caller settles unsaved work first. */
+    reset() {
+      path = null;
+      source = '';
+      diagrams = {};
+      stamp = null;
+      dirty = false;
+      error = null;
     },
 
     /** Take the disk's version, discarding local changes. */
@@ -117,6 +133,7 @@ export function createDocument(io: DocumentIO = overIPC) {
      */
     async save(scene: Scene, options: { overwrite?: boolean } = {}) {
       if (!path) return { conflict: false, saved: false };
+      const started = revision;
 
       if (!options.overwrite && stamp) {
         if (await io.changedOnDisk(path, stamp)) {
@@ -131,7 +148,7 @@ export function createDocument(io: DocumentIO = overIPC) {
       }
 
       stamp = result.stamp;
-      dirty = false;
+      dirty = revision !== started;
       error = null;
       return { conflict: false, saved: true };
     },

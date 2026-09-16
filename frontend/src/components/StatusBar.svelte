@@ -1,6 +1,7 @@
 <script lang="ts">
   /**
-   * Engine, node count, error count.
+   * Engine, node count, error count, and a message when something needs
+   * noticing without interrupting — autosave pausing on a conflict.
    *
    * Everything arrives as props: a component holds no IPC and no D2 knowledge,
    * so the shell reads the render result and hands the numbers down.
@@ -11,9 +12,10 @@
     engine: string;
     nodes: number;
     errors: number;
+    message?: string;
   };
 
-  let { engine, nodes, errors }: Props = $props();
+  let { engine, nodes, errors, message }: Props = $props();
 </script>
 
 <footer class="status">
@@ -22,6 +24,9 @@
   <span class="item" class:has-errors={errors > 0}>
     {t('status.errors')} <b>{errors}</b>
   </span>
+  {#if message}
+    <span class="item message" role="status">{message}</span>
+  {/if}
 </footer>
 
 <style>
@@ -42,6 +47,11 @@
   .item b {
     font-weight: var(--weight-medium);
     color: var(--color-text-secondary);
+  }
+
+  .message {
+    margin-left: auto;
+    color: var(--color-text-primary);
   }
 
   .has-errors,

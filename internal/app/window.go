@@ -1,5 +1,7 @@
 package app
 
+import "github.com/wailsapp/wails/v3/pkg/application"
+
 // Window dimensions.
 //
 // Four regions have to fit side by side — file tree, document, canvas, AI pane
@@ -14,3 +16,22 @@ const (
 	WindowWidth  = 1280
 	WindowHeight = 800
 )
+
+// MainWindowOptions are the options for Bava's one window.
+func MainWindowOptions() application.WebviewWindowOptions {
+	return application.WebviewWindowOptions{
+		Title:  "Bava",
+		Width:  WindowWidth,
+		Height: WindowHeight,
+		Mac: application.MacWindow{
+			InvisibleTitleBarHeight: 50,
+			Backdrop:                application.MacBackdropTranslucent,
+			TitleBar:                application.MacTitleBarHiddenInset,
+		},
+		URL: "/",
+		// Windows shows the application menu only on a window that opts in.
+		// Without this Windows has no menu bar, and so no Open, Save or Undo:
+		// those live in the menu, not the title bar.
+		UseApplicationMenu: true,
+	}
+}

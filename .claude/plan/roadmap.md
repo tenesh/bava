@@ -297,6 +297,45 @@ reopen, and confirm the drawing is intact.
 
 ---
 
+## Milestone 5.6 — Chrome *(gated; awaiting the window check; brand deferred)*
+
+**Goal:** A real desktop menu bar in place of title-bar buttons, and autosave.
+
+**Scope:** The native menu declared as data (`internal/app/menu/spec.json`),
+grouped for the items later milestones add; one `menu:command` path into the
+frontend; the JS keymap stripped of whatever the menu binds; autosave settings
+modelled on VS Code, off by default. The brand mark was in scope and is
+deferred: the art needs an SVG and a small-size drawing first.
+
+**Exit criterion:**
+
+```sh
+go vet ./internal/... . && go test ./internal/... . \
+  && (cd frontend && npm run check && npm run lint && npm test)
+```
+
+green, plus a hand check at a running window — macOS at least, Windows and
+Linux through the CI build and a person where possible: the menu bar appears,
+every item does what it says, ⌘Z undoes once in the canvas and once in the
+source editor, Copy/Paste work on a canvas selection and in the editor, and
+`⌘=` and `⇧⌘]` fire.
+
+**Depends on:** Milestone 5.5.
+
+---
+
+## Milestone 5.7 — Brand
+
+**Goal:** The mark as app icon, in the title bar and in empty states.
+
+**Blocked on:** the mark as an SVG, and a simplified drawing for 24px and
+below. The current PNGs are upscaled from a screenshot, 728×712, soft-edged.
+
+**Exit criterion:** icons regenerated with `wails3 generate icons`, looked at
+by a human at 16px and 1024px; ink on light, paper on dark, never the accent.
+
+---
+
 ## Milestone 6 — Diagram elements
 
 **Goal:** Drop a diagram-as-code block onto the canvas, edit its source, watch

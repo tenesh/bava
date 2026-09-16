@@ -1,41 +1,95 @@
 # Keyboard shortcuts
 
-Every shortcut in the product. A new one is added here in the same change that
-adds it to the code — the build loop gates on it.
+Every shortcut in the product. The menu section is checked against
+`internal/app/menu/spec.json` by `frontend/src/shell/shortcuts-doc.test.ts`:
+a menu shortcut added without its row here fails the suite. The same data
+drives Help ▸ Keyboard Shortcuts, so the dialog cannot drift either.
 
 Desktop users keyboard more than web users do, and a tool whose shortcut is
 undocumented may as well not have one.
 
-## Canvas tools
+## Menu shortcuts
 
-Single keys, active while the canvas has focus. They are ignored while a text
-field or the source editor has focus, so typing D2 does not switch tools.
+Everything in the menu, as each platform shows it. Three kinds, all declared in
+`spec.json`:
 
-| Key | Tool |
-|---|---|
-| `V` | Select |
-| `R` | Rectangle |
-| `O` | Ellipse |
-| `A` | Arrow |
-| `L` | Line |
-| `D` | Draw (freehand) |
-| `T` | Text |
-| `F` | Frame |
-| `Esc` | Back to Select |
+- **Accelerators** — letters and digits with a modifier — are bound natively
+  and dispatch through the menu.
+- **Shortcuts** on punctuation keys (`⌘,` `⌘=` `⌘-` `⌘/` `⇧⌘[` `⇧⌘]`) are shown
+  in the menu but handled by the page, matched by physical key. Wails on Windows
+  matches accelerators by virtual-key name and never fires a punctuation one.
+- **Hints** — single keys, and `⌫` for Delete — are shown but never bound: a
+  native accelerator on a bare key would steal it from every text field. The
+  canvas handles them itself, only while no text field has focus.
 
-## Editing
+| Menu | Item | macOS | Windows / Linux |
+|---|---|---|---|
+| Bava | Settings… | `⌘,` | — |
+| File | New | `⌘N` | `Ctrl+N` |
+| File | Open… | `⌘O` | `Ctrl+O` |
+| File | Save | `⌘S` | `Ctrl+S` |
+| File | Save As… | `⇧⌘S` | `Ctrl+Shift+S` |
+| File | Settings… | — | `Ctrl+,` |
+| Edit | Undo | `⌘Z` | `Ctrl+Z` |
+| Edit | Redo | `⇧⌘Z` | `Ctrl+Shift+Z` |
+| Edit | Cut | `⌘X` | `Ctrl+X` |
+| Edit | Copy | `⌘C` | `Ctrl+C` |
+| Edit | Paste | `⌘V` | `Ctrl+V` |
+| Edit | Delete | `⌫` | `⌫` |
+| Edit | Select All | `⌘A` | `Ctrl+A` |
+| View | Document | `⌘1` | `Ctrl+1` |
+| View | Both | `⌘2` | `Ctrl+2` |
+| View | Canvas | `⌘3` | `Ctrl+3` |
+| View | Files | `⌥⌘1` | `Ctrl+Alt+1` |
+| View | AI Pane | `⌥⌘I` | `Ctrl+Alt+I` |
+| View | Zoom In | `⌘=` | `Ctrl+=` |
+| View | Zoom Out | `⌘-` | `Ctrl+-` |
+| View | Actual Size | `⌘0` | `Ctrl+0` |
+| Canvas | Select | `V` | `V` |
+| Canvas | Rectangle | `R` | `R` |
+| Canvas | Ellipse | `O` | `O` |
+| Canvas | Arrow | `A` | `A` |
+| Canvas | Line | `L` | `L` |
+| Canvas | Draw | `D` | `D` |
+| Canvas | Text | `T` | `T` |
+| Canvas | Frame | `F` | `F` |
+| Canvas | Group | `⌘G` | `Ctrl+G` |
+| Canvas | Ungroup | `⇧⌘G` | `Ctrl+Shift+G` |
+| Canvas | Bring to Front | `⇧⌘]` | `Ctrl+Shift+]` |
+| Canvas | Send to Back | `⇧⌘[` | `Ctrl+Shift+[` |
+| Help | Keyboard Shortcuts | `⌘/` | `Ctrl+/` |
 
-Bound as of Milestone 5.5. All of these are ignored while a text field or the
-source editor has focus, so the editor keeps its own undo and typing never
-deletes a selection.
+Undo, Redo, Cut, Copy, Paste, Select All and Delete go wherever focus is: the
+source editor, a text field, or the canvas — and nowhere while a dialog has
+focus or the canvas is hidden. The source editor's own bindings for keys the
+menu owns are removed, so a key press has one meaning.
+
+## Bound by native roles
+
+These come with the platform's own menu items, not from the spec. They are
+still counted when the spec is checked for clashes (`RoleAccelerators` in
+`internal/app/menu/spec.go`).
 
 | Shortcut | Action |
 |---|---|
-| `⌘Z` / `Ctrl+Z` | Undo |
-| `⇧⌘Z` / `Ctrl+Shift+Z` | Redo |
-| `⌘C` / `Ctrl+C` | Copy |
-| `⌘V` / `Ctrl+V` | Paste, offset so the copy is visible |
-| `⌘A` / `Ctrl+A` | Select all |
+| `⌘W` / `Ctrl+W` | Close window |
+| `⌘M` / `Ctrl+M` | Minimise |
+| `⌃⌘F` | Enter full screen — the role's own binding; unverified off macOS |
+| `⌘H` / `⌥⌘H` | Hide Bava / hide others (macOS) |
+| `⌘Q` | Quit (macOS) |
+
+## Reserved
+
+`⌘B`, `⌘I`, `⌘U`, `⌘K` and `⇧⌘X` are kept free for prose formatting in
+Milestone 8. A test in `spec_test.go` fails if the menu takes one.
+
+## Canvas keys
+
+Not in the menu. Active while the canvas has focus, ignored while a text field
+or the source editor has it.
+
+| Key | Action |
+|---|---|
 | `Delete` / `Backspace` | Delete the selection |
 | `Tab` | Select next element |
 | `⇧Tab` | Select previous element |
@@ -57,10 +111,9 @@ A drag is one undo step, however many pointer events it took.
 
 ## Not yet implemented
 
-Listed so the gaps are visible rather than discovered:
-
-- Grouping and ungrouping have operations but no shortcuts bound.
-- Zoom has on-screen controls only; `⌘+` / `⌘-` are unbound.
 - Resize and rotate handles — Milestone 6.
-- The view switcher (`Document | Both | Canvas`) has no shortcut.
-- Settings has no shortcut.
+- Find — Milestone 15.
+- The Delete hint shows `⌫` on every platform; Windows and Linux users read it
+  as Backspace, which is what it does.
+- **Not yet checked at a running window on any platform**: how a tab-separated
+  hint renders in each native menu, and every row above on Windows and Linux.

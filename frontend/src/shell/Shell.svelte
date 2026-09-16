@@ -5,6 +5,10 @@
    * It owns layout and wiring only. The editor, canvas and AI pane are handed
    * in as snippets, so this file has no IPC and no D2 knowledge and the regions
    * can be built out milestone by milestone.
+   *
+   * View state and the settings dialog's open flag are handed in too: the
+   * native menu changes both, and it reaches them through App's commands.
+   * File actions live in that menu, not in the title bar.
    */
   import type { Snippet } from 'svelte';
   import Pane from '../components/Pane.svelte';
@@ -13,7 +17,7 @@
   import ViewSwitcher from '../components/ViewSwitcher.svelte';
   import SettingsDialog from '../settings/SettingsDialog.svelte';
   import { t } from '../i18n/t';
-  import { createViewState } from './view.svelte';
+  import type { ViewState } from './view.svelte';
   import type { ThemeChoice } from '../styles/theme.svelte';
 
   type Props = {
@@ -23,14 +27,18 @@
     engine: string;
     nodes: number;
     errors: number;
+    /** A message for the status bar, when something needs noticing. */
+    status?: string;
     themeChoice: ThemeChoice;
     onChooseTheme: (choice: ThemeChoice) => void;
     document: Snippet;
     canvas: Snippet;
     /** The workspace listing, or the empty state when no folder is open. */
     files?: Snippet;
-    /** Actions for the title bar: open, save. */
-    actions?: Snippet;
+    view: ViewState;
+    settingsOpen?: boolean;
+    /** Extra sections for the settings dialog, after Appearance. */
+    settings?: Snippet;
   };
 
   let {
@@ -39,16 +47,16 @@
     engine,
     nodes,
     errors,
+    status,
     themeChoice,
     onChooseTheme,
     document: documentPane,
     canvas: canvasPane,
     files: filesPane,
-    actions,
+    view,
+    settingsOpen = $bindable(false),
+    settings,
   }: Props = $props();
-
-  const view = createViewState();
-  let settingsOpen = $state(false);
 </script>
 
 <div class="shell">
@@ -59,7 +67,6 @@
     </span>
     <ViewSwitcher value={view.mode} onValueChange={(mode) => view.setMode(mode)} />
     <div class="actions">
-      {#if actions}{@render actions()}{/if}
       <button type="button" class="action" onclick={() => view.toggleAI()} aria-pressed={view.showsAI}>
         {t('pane.ai')}
       </button>
@@ -109,7 +116,7 @@
     {/if}
   </div>
 
-  <StatusBar {engine} {nodes} {errors} />
+  <StatusBar {engine} {nodes} {errors} message={status} />
 </div>
 
 <SettingsDialog
@@ -117,6 +124,7 @@
   choice={themeChoice}
   onChoose={onChooseTheme}
   onOpenChange={(open) => (settingsOpen = open)}
+  sections={settings}
 />
 
 <style>

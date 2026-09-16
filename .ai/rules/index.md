@@ -18,7 +18,7 @@ wrong), and scoped (it belongs to some paths, not all).
 | `canvas.md` | `frontend/src/canvas/**`, `frontend/src/scene/**` |
 | `editors.md` | `frontend/src/editor/**`, `frontend/src/docs/**` |
 | `file-format.md` | `internal/store/**`, `internal/format/**`, `docs/file-format.md` |
-| `ipc.md` | `internal/app/bindings*.go`, `frontend/src/ipc/**` |
+| `ipc.md` | `internal/app/bindings*.go`, `internal/app/menu*.go`, `frontend/src/ipc/**`, `frontend/src/shell/commands*.ts` |
 | `testing.md` | `**/*_test.go`, `testdata/**` |
 | `ai.md` | `internal/ai/**`, `frontend/src/ai/**` |
 | `updates.md` | `internal/update/**` |

@@ -131,3 +131,57 @@ things Bava has no business showing, so `.md` and `.d2` only, folders first,
 and nothing beginning with a dot — that is Bava's own state or the user's
 tooling, not their documents.
 
+
+## Menu
+
+Added in Milestone 5.6. The native menu bar is declared in
+`internal/app/menu/spec.json` and built from it in Go. It names commands; it
+does not perform them.
+
+### `menu:command` — Go → frontend
+
+An event, not a binding. Every click on a dispatchable item emits one:
+
+```json
+{ "id": "file.save" }
+{ "id": "file.openRecent", "arg": "/path/to/notes.md" }
+```
+
+`frontend/src/shell/commands.ts` maps each id to an action. A test reads the
+spec and fails when an id has no handler, or a handler has no spec entry.
+An unknown id is ignored rather than thrown, so a newer menu cannot crash an
+older frontend.
+
+Native roles — Hide, Quit, Close Window, Minimise, Zoom, Full Screen — never
+emit; they act through the platform. Cut, Copy and Paste are **not** roles:
+on Windows those roles run clipboard scripts in the page that never reach the
+canvas, so they are commands like Undo, and text goes through the Wails
+clipboard API rather than the browser's.
+
+Items with a `shortcut` (punctuation keys) never emit from a key press either:
+the page matches the key itself and dispatches the same command id through
+the same dispatcher. A click on the item still emits `menu:command`.
+
+### `MenuService.SetState(state)` — frontend → Go
+
+The one bound method. The frontend reports what the menu reflects, and Go
+never guesses:
+
+| Field | Menu effect |
+|---|---|
+| `viewMode` | Document / Both / Canvas radio |
+| `showsFiles`, `showsAI` | pane checkboxes |
+| `theme` | Appearance radio |
+| `tool` | Tools radio |
+| `hasSelection` | enables Group, Ungroup, Bring to Front, Send to Back |
+| `recents` | rebuilds Open Recent; empty shows a disabled placeholder |
+
+Checks and enabled state are set on the native items directly. The menu is
+rebuilt (`Menu.Update`, on the main thread) only when the recents list
+changed — every tool switch and selection change calls `SetState`, and a
+rebuild each time would be wasteful everywhere and a GTK call off the main
+thread on Linux.
+
+Calling it before the menu is installed does nothing. Building the menu is
+deliberately not bound: `app.InstallMenu` is a package function main calls
+after `application.New`.

@@ -24,4 +24,9 @@
   --size-toolbar: 32px;
   --size-titlebar: 36px;
   --size-statusbar: 24px;
+
+  // A dialog scrolls rather than outgrowing the window.
+  --size-dialog-body-max: 60vh;
+  // A short numeric field: milliseconds, a zoom percentage.
+  --size-field-number: 10ch;
 }
