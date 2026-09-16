@@ -47,7 +47,7 @@ Named layers, defined in `_z.scss` and referenced nowhere as literals:
 
 | Token | Layer |
 |---|---|
-| `--z-canvas` | diagram surface |
+| `--z-canvas` | the scene surface |
 | `--z-chrome` | panels, toolbars, sidebar, status bar |
 | `--z-sticky` | pane headers, sticky rows |
 | `--z-portal` | dialogs, popovers, menus, tooltips |
@@ -132,7 +132,9 @@ check both before building either by hand.
 | Component | Why in-house |
 |---|---|
 | `StatusBar` | Engine, node count, cursor position, error count. |
-| `CanvasControls` | Zoom, fit-to-view, layout engine picker. |
+| `CanvasControls` | Zoom, fit-to-view, and the tool rail. |
+| `Toolbar` | Contextual: changes with the current selection. |
+| `LayoutEnginePicker` | Per `diagram` element, not per canvas. |
 | `ErrorList` | D2 compiler diagnostics, click-to-jump to source line. |
 | `EmptyState` | Repeated across file tree, canvas, search. |
 | `Icon` | Single lucide/sprite wrapper so icon sizing is tokenised. |
@@ -142,10 +144,12 @@ unmaintained one.
 
 ## Theme and the diagram
 
-The diagram SVG is rendered in Go, so it does **not** inherit CSS. The active
-theme's colour tokens are passed to `Render` as options and applied by D2's
-theme system. **A theme change must update both** — chrome via CSS custom
-properties, canvas via a re-render.
+Scene elements are drawn by the frontend and take their colours from tokens
+like everything else. **`diagram` elements are the exception**: their SVG is
+rendered in Go and does **not** inherit CSS. The active theme's colour tokens
+are passed to `Render` as options and applied by D2's theme system. **A theme
+change must update both** — chrome via CSS custom properties, every diagram
+element via a re-render.
 
 Consequence: adding a colour token that the diagram uses means updating the
 Go-side theme mapping in the same change. Tokens the chrome alone uses do not.

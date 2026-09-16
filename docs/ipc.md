@@ -4,6 +4,10 @@ The frontend reaches Go through exactly one bound method. Every method here is
 API that must survive a Wails beta upgrade, so the surface stays small on
 purpose.
 
+**Scope:** this surface renders `diagram` elements — the blocks that hold D2
+source — and nothing else. The canvas scene is drawn in the frontend and never
+round-trips through Go.
+
 ## Render
 
 ```go
@@ -34,8 +38,15 @@ type Result = {
 };
 
 type Diagnostic = { message: string; from: number; to: number; line: number };
-type Span = { from: number; to: number; line: number };
+
+type Span = {
+  from: number; to: number; line: number;   // where in the source
+  x: number; y: number; w: number; h: number; // where in the rendered diagram
+};
 ```
+
+The geometry half of `Span` is added in Milestone 6 and is not yet implemented;
+this document describes the contract the canvas is built against.
 
 **Errors are data, not exceptions.** Source that does not compile returns a
 successful call with `errors` populated and `svg` empty. The frontend keeps the
@@ -51,11 +62,18 @@ of it. `line` is **1-indexed**; D2 reports 0-indexed lines and the conversion
 happens once, in Go. A position reaching the frontend 0-indexed, or measured in
 bytes, is a bug.
 
-**`nodeMap`** maps an SVG element id to where that node was declared in the
-source. Keyed by SVG id so click-on-node is a direct lookup; a diagnostic
-highlighting its shape is a reverse scan, which is cheap at the diagram sizes
-this canvas supports. Where an object is referenced several times, the span
-points at the **earliest** reference, which is the declaration.
+**`nodeMap`** maps an SVG element id to both where the node was declared in the
+source and where it sits in the rendered diagram.
+
+Keyed by SVG id so click-on-node is a direct lookup; a diagnostic highlighting
+its shape is a reverse scan, which is cheap at the diagram sizes this canvas
+supports. Where an object is referenced several times, the span points at the
+**earliest** reference, which is the declaration.
+
+`x, y, w, h` are in **diagram-local** coordinates. A canvas arrow bound to a
+node resolves its endpoint by transforming that rect by the diagram element's
+own position and scale. The id is the anchor, never the coordinates: ids come
+from source text and survive re-layout, coordinates do not.
 
 ### Debounce and staleness
 

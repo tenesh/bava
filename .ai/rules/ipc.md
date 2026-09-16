@@ -1,15 +1,26 @@
 # IPC
 
 ## One render surface
-`Render(source, opts) → {svg, errors, nodeMap}`. Resist growing a second
-render path — a preview renderer, an export renderer, a thumbnail renderer.
-Divergent paths drift and produce output that differs from what the user saw.
+`Render(source, opts) → {svg, errors, nodeMap}`. Every `diagram` element on a
+canvas renders through it, and so does export. Resist growing a second render
+path — a preview renderer, an export renderer, a thumbnail renderer. Divergent
+paths drift and produce output that differs from what the user saw.
 
-## The response carries positions
-`nodeMap` maps source positions to SVG element IDs. It exists so a click on a
-node can jump to its source line and a diagnostic can highlight its shape.
-Return it even before anything consumes it — retrofitting means touching the
-whole pipeline.
+Note the scope: this surface renders **diagram elements**, not the canvas. The
+scene is drawn in the frontend and never round-trips through Go.
+
+## The response carries positions and geometry
+`nodeMap` is keyed by SVG element id. Each entry carries **both** where the node
+came from in the source (`from`, `to` as UTF-16 offsets, plus a 1-indexed
+`line`) and **where it sits in the rendered diagram** (`x`, `y`, `w`, `h` in
+diagram-local coordinates).
+
+The source half exists so a click on a node jumps to its line and a diagnostic
+highlights its shape. The geometry half exists so a canvas arrow can bind to a
+node inside a diagram and re-anchor itself on every render.
+
+Return both even before anything consumes them. This lesson has now arrived
+twice: retrofitting `nodeMap` means touching the whole pipeline.
 
 ## Debounce and staleness
 250ms after typing stops, incrementing request ID, drop responses that are not
