@@ -93,6 +93,32 @@ describe('token emission', () => {
     }
   });
 
+  // The brand rule "paper on ink, always" lives in two values: the mark is
+  // paper in both themes, and on a light ground it brings its own ink tile.
+  it('the mark is paper in both themes', () => {
+    expect(block(':root')).toContain('--color-mark: #e6e6e3');
+    expect(block(':root[data-theme=dark]')).toContain('--color-mark: #e6e6e3');
+  });
+
+  it('the mark has an ink tile on light and none on dark', () => {
+    expect(block(':root')).toContain('--color-mark-tile: #131416');
+    expect(block(':root[data-theme=dark]')).toContain('--color-mark-tile: transparent');
+  });
+
+  // Fading the tile on a light ground makes a mid-grey ground, which the brand
+  // forbids. Only the bare dark-theme mark fades.
+  it('fades the empty-state mark only where it has no tile', () => {
+    expect(block(':root')).toContain('--opacity-mark-faded: 1');
+    expect(block(':root[data-theme=dark]')).toContain('--opacity-mark-faded: 0.32');
+  });
+
+  // The hidden-inset title bar draws the traffic lights over the page. On
+  // macOS the title bar must start after them; elsewhere it must not.
+  it('insets the title bar for the traffic lights on macOS only', () => {
+    expect(block(':root')).toMatch(/--size-titlebar-inset-start: 0(px)?;/);
+    expect(block(':root[data-platform=darwin]')).toMatch(/--size-titlebar-inset-start: [1-9]\d*px/);
+  });
+
   it('carries the design palette values verbatim', () => {
     expect(block(':root')).toContain('--color-surface: #f7f7f5');
     expect(block(':root')).toContain('--color-accent: #2f6ba3');

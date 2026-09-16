@@ -76,8 +76,12 @@ export const messages = {
   'error.settingsLoad': 'Settings could not be read; changes will not be saved.',
   'error.settingsSave': 'That setting could not be saved.',
 
-  'about.title': 'Bava',
-  'about.body': 'Local-only diagrams and docs. Free and open source under Apache-2.0.',
+  'brand.name': 'Bava',
+  // The wordmark is always lowercase; the name in prose is capitalised.
+  'brand.wordmark': 'bava',
+  'about.title': 'About Bava',
+  'about.tagline': 'Diagrams and documents, on your own disk.',
+  'about.licence': 'Apache-2.0.',
   'about.close': 'Close',
   'shortcuts.title': 'Keyboard shortcuts',
 } as const;

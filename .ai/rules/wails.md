@@ -98,3 +98,23 @@ Call it only when the menu's structure changed, inside `application.InvokeSync`.
 Every menu path passes its tests, but none has been exercised in a running
 webview on macOS, Windows or Linux. Until someone has, treat a report that a
 menu item or shortcut does nothing as a plausible bug, not user error.
+
+## A stale Assets.car silently keeps the template icon
+`Info.plist`'s `CFBundleIconName` resolves through `Assets.car`, which wins
+over `CFBundleIconFile` (`icons.icns`) on current macOS. `Assets.car` is
+compiled by Xcode's `actool` from an Icon Composer `.icon`; without Xcode it
+cannot be rebuilt. Bava ships no `Assets.car` and no `CFBundleIconName`.
+`wails3 update build-assets` rewrites the plists and restores the key if
+`Assets.car` comes back or `config.yml` sets `cfBundleIconName` —
+`TestNoAssetsCarShipsSoMacOSUsesTheIcns` catches either.
+
+## `wails3 generate icons` takes one input for every platform
+macOS and Windows need different masters (a squircle with margin, a full-bleed
+square). Run it once per platform and pass an empty filename for the other
+output — an empty `-windowsfilename ""` skips that platform.
+
+## The macOS title bar draws over the page
+`MacTitleBarHiddenInset` sets `FullSizeContent`, so the traffic lights sit on
+top of the webview's top-left corner. Nothing in Wails reserves that space; the
+title bar does, through `--size-titlebar-inset-start`, set only under
+`:root[data-platform='darwin']`.

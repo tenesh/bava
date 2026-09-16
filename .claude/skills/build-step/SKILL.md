@@ -260,8 +260,17 @@ wrong facts. When a milestone closes, update this section in the same change.
 - Milestones 0, 0.5, 1, 2, 3, 4, 5 and 5.5 (wiring) complete. **5.6 (chrome)
   passes its gates** (2026-09-17) but its exit criterion's hand check at a
   running window has not been done, so it is not complete. 5.6's brand task
-  moved to **Milestone 5.7**; logo v2 art arrived 2026-09-17 at
-  `~/Workspace/designs/bava/claude-design-logo-v2`, not yet reviewed.
+  moved to **Milestone 5.7**.
+- **5.7 (brand) passes its gates** (2026-09-17); not complete until a human
+  has looked at the icons at 16px and 1024px and at the title bar and About in
+  both themes. The art lives only in the repo (`frontend/src/brand/`,
+  icon masters in `build/`); outside design folders are temporary and nothing
+  may reference them.
+- **Still Wails-branded, deliberately until Milestone 16:** the DMG file icon
+  and background (`build/darwin/dmg-file-icon.*`, `dmg-background.png`). The
+  volume icon already uses `icons.icns`. Nothing ships a DMG before release.
+- Frontend `src/brand/panda.svg` is the vendored mark; `Mark.svelte` renders
+  it. Icon masters live beside their outputs in `build/`.
 - **Native menu bar** from `internal/app/menu/spec.json`; clicks arrive as
   `menu:command` and dispatch through `frontend/src/shell/commands.ts`. The
   title-bar Open/Save buttons are gone. Edit commands, clipboard included,
@@ -536,6 +545,19 @@ deliberately at `5.24.2` or later.
   `pkg/application/*_windows.go` and `*_linux.go`, not only the API.
 - **An autosave races the user.** A save that clears `dirty` without checking
   for edits made during the write loses work. Fixed with an edit counter.
+
+### Milestone 5.7 findings — 2026-09-17
+
+- **The template ships icons in three places**, and macOS 26 reads the one
+  you did not replace: `Assets.car` via `CFBundleIconName`. Removed, with a
+  test.
+- **The design export carries a C2PA manifest.** Strip it when vendoring; a
+  test pins the path data by SHA-256 so stripping cannot alter the drawing.
+- **Never reference design folders outside the repo** from code, tests or
+  living docs. They are deleted after handover; vendor what the product needs
+  and record the rules in `.claude/work/specs/`.
+- **A comment counts as a literal.** `no-literals.test.ts` rejected `16px` in
+  a doc comment; name the token instead.
 
 ### Settled facts that still hold
 

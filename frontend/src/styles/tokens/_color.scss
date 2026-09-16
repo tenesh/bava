@@ -70,6 +70,14 @@ $d-canvas-dot: #33373c;
 $d-note-fill: #33301f;
 $d-note-border: #4a4630;
 
+// -- brand ------------------------------------------------------------------
+// Additions beyond the design sheet, from the v2 brand handover. The mark is
+// paper on ink, always: it never inverts to ink on a light page. On a light
+// ground it brings its own ink tile; on a dark ground the tile disappears.
+// Never the accent — that is reserved for selection and focus.
+$brand-paper: #e6e6e3;
+$brand-ink: #131416;
+
 // -- diagram layer ----------------------------------------------------------
 // A diagram's SVG is rendered in Go and does not inherit CSS. These are
 // emitted for parity and inspection, but the values that actually reach a
@@ -119,6 +127,12 @@ $d-diagram-edge-label: #8b8f8a;
   --color-canvas-dot: #{$l-canvas-dot};
   --color-note-fill: #{$l-note-fill};
   --color-note-border: #{$l-note-border};
+  --color-mark: #{$brand-paper};
+  --color-mark-tile: #{$brand-ink};
+  // Behind an empty state the mark recedes (brand sheet 4c) — but only where it
+  // sits bare. Fading it here would fade its ink tile to a mid-grey ground,
+  // which the brand forbids, so on light it stays at full strength.
+  --opacity-mark-faded: 1;
   --color-diagram-bg: #{$l-diagram-bg};
   --color-diagram-container-fill: #{$l-diagram-container-fill};
   --color-diagram-node-fill: #{$l-diagram-node-fill};
@@ -156,6 +170,9 @@ $d-diagram-edge-label: #8b8f8a;
   --color-canvas-dot: #{$d-canvas-dot};
   --color-note-fill: #{$d-note-fill};
   --color-note-border: #{$d-note-border};
+  --color-mark: #{$brand-paper};
+  --color-mark-tile: transparent;
+  --opacity-mark-faded: 0.32;
   --color-diagram-bg: #{$d-diagram-bg};
   --color-diagram-container-fill: #{$d-diagram-container-fill};
   --color-diagram-node-fill: #{$d-diagram-node-fill};
