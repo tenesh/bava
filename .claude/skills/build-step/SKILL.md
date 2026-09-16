@@ -280,8 +280,8 @@ wrong facts. When a milestone closes, update this section in the same change.
 - Wails `v3.0.0-beta.20` on both sides. `@wailsio/runtime` is pinned exactly to
   `3.0.0-beta.20`; it had floated on `latest` and resolved to `beta.21`,
   mismatching the Go half. Never float it again.
-- Node `v24.21.0`, npm `11.19.0`. **There is no `.nvmrc`** — add one or drop
-  the claim.
+- Node `v24.21.0`, npm `11.19.0`. `.nvmrc` pins the major (`24`) and is what
+  CI's `setup-node` reads.
 - Frontend tooling: ESLint `10.10.0` (flat config at
   `frontend/eslint.config.js`), `eslint-plugin-svelte` `3.23.0`,
   `typescript-eslint` `8.70.0`, Vitest `5.0.1` with `jsdom`, CodeMirror 6
@@ -305,6 +305,7 @@ wrong facts. When a milestone closes, update this section in the same change.
 | `npm run lint` | exit 0 — first green in this repo; the demo screen that held the 3 errors is deleted |
 | `npm test` | exit 0 — 23 tests across 4 files |
 | `npm run build` | exit 0 |
+| `wails3 build` | exit 0 on macOS — 30MB binary in `bin/`; unverified elsewhere |
 
 ### Open problems
 
@@ -335,8 +336,14 @@ wrong facts. When a milestone closes, update this section in the same change.
 - **`LICENSE` (Apache-2.0) and `NOTICE` exist.** `NOTICE` is the source for the
   About screen's attribution and must gain an entry in the same change as any
   bundled dependency.
-- No CI. Cross-platform build matrix is an open item, and no "builds on all
-  platforms" claim is supportable until it exists.
+- **CI exists as a workflow but has never run.** `.github/workflows/ci.yml`
+  defines a test job and a build job across ubuntu/macos/windows, but there is
+  **no git remote configured**, so GitHub Actions has never executed it. Its
+  YAML parses and every command in it passes locally on macOS, including
+  `wails3 build` — but that is not a matrix result. **No "builds on all
+  platforms" claim is supportable until the repo has a remote and the workflow
+  goes green.** The open question it exists to answer: whether D2 renders
+  byte-identical SVG on Linux and Windows, which every golden file assumes.
 - `.ai/`, `.claude/`, `CLAUDE.md`, `docs/`, `LICENSE` and `NOTICE` are
   untracked at the time of writing.
 - **Konva is not installed yet.** The canvas foundation is Milestone 4; the

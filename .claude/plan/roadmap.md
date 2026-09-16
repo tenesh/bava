@@ -559,10 +559,13 @@ a local build.
 
 ## Cross-cutting, no milestone of its own
 
-- **CI build matrix.** There is none. Until it exists, no claim that Bava
-  "builds on all platforms" is supportable — a local `wails3 build` proves
-  nothing about Windows or Linux. Goldens are byte-compared and depend on
-  `.gitattributes` forcing LF, so CI should land no later than Milestone 4.
+- **CI build matrix.** `.github/workflows/ci.yml` exists — test and build jobs
+  across ubuntu/macos/windows — but **has never run: the repo has no remote.**
+  Until it goes green, no claim that Bava "builds on all platforms" is
+  supportable; a local `wails3 build` proves nothing about Windows or Linux.
+  It also answers a question nothing else can: goldens are byte-compared and
+  rest on `.gitattributes` forcing LF for `*.svg`, and nothing has verified
+  that D2 renders identical bytes on another platform.
   Check: `gh run list --workflow=ci.yml --limit 1`.
 - **Translations.** The translation layer arrives in Milestone 3. Milestone 1
   shipped the first two user-facing strings (the pane `aria-label`s) hardcoded,
