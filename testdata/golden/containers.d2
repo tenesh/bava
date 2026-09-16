@@ -1,0 +1,14 @@
+frontend: Frontend {
+  editor: Source Editor
+  canvas: Canvas
+}
+backend: Backend {
+  compile: Compile
+  layout: Layout
+  render: Render
+}
+
+frontend.editor -> backend.compile: source
+backend.compile -> backend.layout
+backend.layout -> backend.render
+backend.render -> frontend.canvas: svg

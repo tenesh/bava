@@ -1,0 +1,10 @@
+users: Users {shape: person}
+web: Web App {
+  api: API
+  cache: Cache {shape: cylinder}
+}
+db: Postgres {shape: cylinder}
+
+users -> web.api: request
+web.api -> web.cache: read
+web.api -> db: query
