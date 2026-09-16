@@ -15,12 +15,20 @@ Everything in the menu, as each platform shows it. Three kinds, all declared in
 
 - **Accelerators** — letters and digits with a modifier — are bound natively
   and dispatch through the menu.
-- **Shortcuts** on punctuation keys (`⌘,` `⌘=` `⌘-` `⌘/` `⇧⌘[` `⇧⌘]`) are shown
-  in the menu but handled by the page, matched by physical key. Wails on Windows
-  matches accelerators by virtual-key name and never fires a punctuation one.
-- **Hints** — single keys, and `⌫` for Delete — are shown but never bound: a
-  native accelerator on a bare key would steal it from every text field. The
-  canvas handles them itself, only while no text field has focus.
+- **Shortcuts** on punctuation keys (`⌘,` `⌘=` `⌘-` `⌘/` `⇧⌘[` `⇧⌘]`) are
+  handled by the page, matched by physical key — Wails on Windows matches
+  accelerators by virtual-key name and never fires a punctuation one. On macOS
+  `⌘,` `⌘=` `⌘-` `⌘/` are real menu accelerators instead (`nativeOn`), since
+  AppKit matches them correctly; `⇧⌘[` `⇧⌘]` stay page-handled there, because
+  Shift changes the character AppKit compares.
+- **Hints** — single keys, and `⌫` for Delete — are never bound: a native
+  accelerator on a bare key would steal it from every text field. The canvas
+  handles them itself, only while no text field has focus.
+
+Only Windows right-aligns text after a tab in a menu label, so page-handled
+shortcuts and hints appear in the menu row on Windows only. On macOS and Linux
+the row shows native accelerators alone, and this table — or Help ▸ Keyboard
+Shortcuts — lists the rest.
 
 | Menu | Item | macOS | Windows / Linux |
 |---|---|---|---|

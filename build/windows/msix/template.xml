@@ -10,11 +10,11 @@
     <Installer
         Path="bava"
         Arguments=""
-        InstallLocation="C:\Program Files\tenesh\My Product">
+        InstallLocation="C:\Program Files\tenesh\Bava">
     </Installer>
     <PackageInformation
-        PackageName="My Product"
-        PackageDisplayName="My Product"
+        PackageName="Bava"
+        PackageDisplayName="Bava"
         PublisherName="CN=tenesh"
         PublisherDisplayName="tenesh"
         Version="0.1.0.0"
@@ -27,7 +27,7 @@
             <Application
                 Id="dev.tenesh.bava"
                 Description="A bava application"
-                DisplayName="My Product"
+                DisplayName="Bava"
                 ExecutableName="bava"
                 EntryPoint="Windows.FullTrustApplication">
                 
@@ -41,7 +41,7 @@
         </Dependencies>
         <Properties>
             <Framework>false</Framework>
-            <DisplayName>My Product</DisplayName>
+            <DisplayName>Bava</DisplayName>
             <PublisherDisplayName>tenesh</PublisherDisplayName>
             <Description>A bava application</Description>
             <Logo>Assets\AppIcon.png</Logo>

@@ -42,7 +42,10 @@ type Item struct {
 	// Shortcut is a modifier shortcut the frontend handles, shown in the label
 	// formatted for the platform but not bound natively. Used for punctuation
 	// keys, which Wails on Windows cannot match as accelerators.
-	Shortcut  string   `json:"shortcut,omitempty"`
+	Shortcut string `json:"shortcut,omitempty"`
+	// NativeOn lists platforms where Shortcut is bound as a real accelerator
+	// instead: the menu handles and aligns it, and the frontend stands down.
+	NativeOn  []string `json:"nativeOn,omitempty"`
 	Role      string   `json:"role,omitempty"`
 	Group     string   `json:"group,omitempty"`
 	Platforms []string `json:"platforms,omitempty"`
