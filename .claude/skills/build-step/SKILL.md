@@ -336,8 +336,15 @@ wrong facts. When a milestone closes, update this section in the same change.
 - **`LICENSE` (Apache-2.0) and `NOTICE` exist.** `NOTICE` is the source for the
   About screen's attribution and must gain an entry in the same change as any
   bundled dependency.
-- **CI has run once and failed on all three platforms; the cause is fixed and
-  it has not re-run yet.** First run failed identically on ubuntu, macos and
+- **CI has failed twice, both causes fixed, awaiting a third run.**
+  Second failure: ubuntu only, pkg-config could not find `gtk4` /
+  `webkitgtk-6.0` because the workflow installed the GTK3 packages. Wails v3
+  defaults to GTK4 + WebKitGTK 6.0; GTK3 is opt-in behind a build tag. The
+  workflow now installs `libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev
+  libglib2.0-dev` and verifies them with `pkg-config --exists` so a missing
+  package fails legibly instead of inside cgo. Package availability confirmed
+  on Ubuntu 22.04 through 26.04.
+  First failure (all three platforms): First run failed identically on ubuntu, macos and
   windows at `go vet` with `pattern all:frontend/dist: no matching files
   found` — the Go steps ran before the frontend was built, and `frontend/dist`
   is gitignored so a fresh checkout has none. The workflow now builds the
