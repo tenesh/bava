@@ -147,3 +147,30 @@ describe('render client transport failures', () => {
     expect(client.state.svg).toBe('<svg id="back"/>');
   });
 });
+
+describe('configurable debounce', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  // The debounce was a compile-time constant until Milestone 5. It now comes
+  // from the settings file, with the constant as the fallback.
+  it('uses a supplied debounce rather than the default', async () => {
+    const send = vi.fn().mockResolvedValue(ok('<svg/>'));
+    const client = createRenderClient({ send, debounceMs: 600 });
+
+    client.request('a -> b');
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(send).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(600 - DEBOUNCE_MS);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the default when none is supplied', async () => {
+    const send = vi.fn().mockResolvedValue(ok('<svg/>'));
+    const client = createRenderClient({ send });
+    client.request('a -> b');
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+});

@@ -18,6 +18,8 @@
 
   type Props = {
     title: string;
+    /** Shown beside the filename: saved, or unsaved changes. */
+    dirty?: boolean;
     engine: string;
     nodes: number;
     errors: number;
@@ -25,10 +27,15 @@
     onChooseTheme: (choice: ThemeChoice) => void;
     document: Snippet;
     canvas: Snippet;
+    /** The workspace listing, or the empty state when no folder is open. */
+    files?: Snippet;
+    /** Actions for the title bar: open, save. */
+    actions?: Snippet;
   };
 
   let {
     title,
+    dirty = false,
     engine,
     nodes,
     errors,
@@ -36,6 +43,8 @@
     onChooseTheme,
     document: documentPane,
     canvas: canvasPane,
+    files: filesPane,
+    actions,
   }: Props = $props();
 
   const view = createViewState();
@@ -44,9 +53,13 @@
 
 <div class="shell">
   <header class="titlebar">
-    <span class="filename">{title}</span>
+    <span class="filename">
+      {title}
+      <span class="state" class:dirty>{dirty ? t('file.dirty') : t('file.saved')}</span>
+    </span>
     <ViewSwitcher value={view.mode} onValueChange={(mode) => view.setMode(mode)} />
     <div class="actions">
+      {#if actions}{@render actions()}{/if}
       <button type="button" class="action" onclick={() => view.toggleAI()} aria-pressed={view.showsAI}>
         {t('pane.ai')}
       </button>
@@ -60,7 +73,11 @@
     {#if view.showsFiles}
       <div class="region region-files">
         <Pane title={t('pane.files')}>
-          <EmptyState title={t('empty.files.title')} body={t('empty.files.body')} />
+          {#if filesPane}
+            {@render filesPane()}
+          {:else}
+            <EmptyState title={t('empty.files.title')} body={t('empty.files.body')} />
+          {/if}
         </Pane>
       </div>
     {/if}
@@ -121,6 +138,17 @@
     border-bottom: var(--border-width) solid var(--color-border-subtle);
     background: var(--color-surface-nav);
     flex: none;
+  }
+
+  .state {
+    margin-inline-start: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-chip);
+    color: var(--color-text-faint);
+  }
+
+  .state.dirty {
+    color: var(--color-accent);
   }
 
   .filename {

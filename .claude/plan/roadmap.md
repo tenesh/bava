@@ -240,7 +240,7 @@ Diagram elements, connectors and bindings are Milestones 6 and 7.
 
 ---
 
-## Milestone 5 — File format and persistence
+## Milestone 5 — File format and persistence *(complete)*
 
 **Goal:** Open and save real files, in a format specified before a byte is
 written.
@@ -271,6 +271,29 @@ not create it.
 
 **Depends on:** Milestone 4. The format spec is an internal gate: no
 persistence code merges before it.
+
+---
+
+## Milestone 5.5 — Wiring *(complete)*
+
+**Goal:** Make what Milestones 4 and 5 built reachable from the window. Draw on
+the canvas; open and save a file. No new capability.
+
+**Why it exists:** both earlier milestones shipped tested logic with no way to
+use it. Added 2026-09-17 rather than stacking Milestone 6 on an app nobody could
+yet open a file in.
+
+**Exit criterion:**
+
+```sh
+go vet ./internal/... . && go test ./internal/... . \
+  && (cd frontend && npm run check && npm run lint && npm test)
+```
+
+green, plus a hand check that no test replaces: draw, save to a new file, quit,
+reopen, and confirm the drawing is intact.
+
+**Depends on:** Milestones 4 and 5.
 
 ---
 

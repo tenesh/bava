@@ -9,7 +9,13 @@
 import { RenderService } from '../../bindings/github.com/tenesh/bava/internal/app';
 import type { Diagnostic, Result, Span } from '../../bindings/github.com/tenesh/bava/internal/render/models';
 
-/** Milliseconds of quiet before a render is issued. */
+/**
+ * Milliseconds of quiet before a render is issued.
+ *
+ * The default, and the fallback when settings cannot be read. The user's value
+ * comes from the settings file via `createRenderClient({ debounceMs })` — it
+ * was a compile-time constant until Milestone 5.
+ */
 export const DEBOUNCE_MS = 250;
 
 export type RenderResult = {
@@ -36,11 +42,14 @@ export type RenderClientOptions = {
   /** Injectable for tests; defaults to the real binding. */
   send?: SendFn;
   engine?: string;
+  /** From the settings file; falls back to DEBOUNCE_MS. */
+  debounceMs?: number;
 };
 
 export function createRenderClient(options: RenderClientOptions = {}) {
   const send = options.send ?? sendOverIPC;
   const engine = options.engine ?? '';
+  const debounceMs = options.debounceMs ?? DEBOUNCE_MS;
 
   // $state.raw, not $state: these are replaced wholesale on every render and
   // consumed imperatively by the canvas. Deep-proxying a nodeMap of a thousand
@@ -106,7 +115,7 @@ export function createRenderClient(options: RenderClientOptions = {}) {
     /** Queue a render. Repeated calls within DEBOUNCE_MS collapse into one. */
     request(source: string) {
       clearTimeout(timer);
-      timer = setTimeout(() => void dispatch(source), DEBOUNCE_MS);
+      timer = setTimeout(() => void dispatch(source), debounceMs);
     },
 
     /** Cancel any queued render. Call from a component's cleanup. */
