@@ -1,106 +1,105 @@
 <script lang="ts">
-  import {onMount} from 'svelte';
-  import {Events, WML} from "@wailsio/runtime";
-  import {GreetService} from "../bindings/github.com/tenesh/bava";
+  import { onMount } from 'svelte';
+  import { DiagramCanvas } from './canvas/canvas';
+  import { SourcePane } from './editor/source-pane';
+  import { createRenderClient } from './ipc/render.svelte';
 
-  const wailsVersion = "v3.0.0-beta.20";
+  // Milestone 1 shell: two panes, structural CSS only. No components and no
+  // tokens exist yet.
+  //
+  // Two values below are Milestone 2 debt, named rather than hidden: the 1px
+  // divider width belongs in _space.scss, and the divider colour currently
+  // rides on currentColor because --color-border-subtle does not exist yet.
 
-  let name: string = $state('');
-  let time: string = $state('Listening for Time event...');
+  const initialSource = `users: Users {shape: person}
+web: Web App {
+  api: API
+}
+db: Postgres {shape: cylinder}
 
-  let titleNameEl: HTMLElement;
-  let toastEl: HTMLElement;
-  let resultEl: HTMLElement;
-  let toastTimer: ReturnType<typeof setTimeout>;
+users -> web.api: request
+web.api -> db: query
+`;
+
+  const client = createRenderClient();
+
+  let sourceHost: HTMLDivElement;
+  let canvasHost: HTMLDivElement;
+
+  // Imperative libraries: created in onMount, destroyed in the cleanup return,
+  // never handed reactive props.
+  // Constructed at initialisation so the effects below can close over them.
+  // They are inert until mounted, and both guard against being used before.
+  const pane = new SourcePane();
+  const canvas = new DiagramCanvas();
 
   onMount(() => {
-    Events.On('time', (v: any) => {
-      // On a narrow screen the full RFC1123 stamp is too wide for the footer, so
-      // show just the clock time there (matching the CSS breakpoint).
-      const full = v.data;
-      const compact = (full.match(/\d{1,2}:\d{2}:\d{2}/) || [full])[0];
-      time = window.matchMedia('(max-width: 640px)').matches ? compact : full;
+    pane.mount(sourceHost, {
+      doc: initialSource,
+      onChange: (source) => client.request(source),
     });
-    // Wire up data-wml-openURL links (logos + footer "Docs" link).
-    WML.Reload();
+    canvas.mount(canvasHost);
+
+    // A click on a shape resolves through the response's nodeMap to source.
+    const onCanvasClick = (event: MouseEvent) => {
+      const id = canvas.nodeIDForTarget(event.target as Element | null);
+      if (!id) return;
+      const span = client.state.nodeMap[id];
+      if (span) pane.revealRange(span.from, span.to);
+    };
+    canvasHost.addEventListener('click', onCanvasClick);
+
+    client.request(initialSource);
+
+    return () => {
+      canvasHost.removeEventListener('click', onCanvasClick);
+      client.destroy();
+      canvas.destroy();
+      pane.destroy();
+    };
   });
 
-  // Crossfade the framework word in the heading ("Wails + Svelte") to the name
-  // the user entered ("Wails + <name>"): the old word fades out while the new one
-  // fades in over the same spot.
-  function swapTitleName(name: string): void {
-    const current = titleNameEl.querySelector('.title-name-text:not(.is-outgoing)');
-    if (!current || current.textContent === name) {
-      return;
-    }
-    const incoming = document.createElement('span');
-    incoming.className = 'title-name-text is-entering';
-    incoming.textContent = name;
-    current.classList.add('is-outgoing');
-    titleNameEl.appendChild(incoming);
-    // Force a reflow so the transitions run from the starting state.
-    void incoming.offsetWidth;
-    incoming.classList.remove('is-entering');
-    current.classList.add('is-leaving');
-    current.addEventListener('transitionend', () => current.remove(), {once: true});
-  }
+  // Effects belong at initialisation, not inside onMount: an effect created in
+  // a mount callback is orphaned and Svelte throws. Data flows into the canvas
+  // from here; the canvas itself never reads reactive state.
+  $effect(() => {
+    canvas.setSVG(client.state.svg);
+  });
 
-  // Pop the toast with the message Go returned, then auto-dismiss it.
-  function showToast(message: string): void {
-    resultEl.innerText = message;
-    toastEl.classList.add('is-visible');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toastEl.classList.remove('is-visible'), 4000);
-  }
-
-  const doGreet = (): void => {
-    let n = name || 'anonymous';
-    swapTitleName(n);
-    GreetService.Greet(n).then(showToast).catch(console.error);
-  }
+  $effect(() => {
+    pane.setDiagnostics(client.state.errors);
+  });
 </script>
 
-<main class="container">
-  <header class="brand">
-    <span class="brand-mark" data-wml-openURL="https://v3.wails.io">
-      <img src="/wails.png" class="brand-logo" alt="Wails logo"/>
-    </span>
-    <span class="brand-badge" data-wml-openURL="https://svelte.dev">
-      <img src="/svelte.svg" alt="Svelte logo"/>
-    </span>
-  </header>
-
-  <h1 class="title"><span class="title-accent">Wails +</span> <span class="title-name" bind:this={titleNameEl}><span class="title-name-text">Svelte</span></span></h1>
-  <p class="subtitle">Build beautiful cross-platform apps with Go and Svelte.</p>
-
-  <div class="greet">
-    <div class="input-box">
-      <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <input aria-label="input" class="input" bind:value={name} type="text" placeholder="Your name" autocomplete="off"/>
-      <button aria-label="greet-btn" class="btn" onclick={doGreet}>Greet
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-      </button>
-    </div>
-  </div>
-</main>
-
-<hr class="footer-divider"/>
-<footer class="footer">
-  <span class="footer-version">{wailsVersion}</span>
-  <span class="footer-time">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-    <span>{time}</span>
-  </span>
-  <a class="footer-docs" data-wml-openURL="https://v3.wails.io" aria-label="Wails documentation">Docs
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-  </a>
-</footer>
-
-<div class="toast" bind:this={toastEl} role="status" aria-live="polite">
-  <span class="toast-label">From Go</span>
-  <span aria-label="result" class="toast-msg" bind:this={resultEl}></span>
+<div class="shell">
+  <section class="pane pane-source" aria-label="D2 source">
+    <div class="fill" bind:this={sourceHost}></div>
+  </section>
+  <section class="pane pane-canvas" aria-label="Diagram">
+    <div class="fill" bind:this={canvasHost}></div>
+  </section>
 </div>
 
 <style>
-  /* Put your standard CSS here */
+  .shell {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    height: 100%;
+  }
+
+  .pane {
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .pane-canvas {
+    /* `solid` with no colour resolves to currentColor, so the divider exists
+       without introducing a literal before the token layer does. */
+    border-inline-start: 1px solid;
+  }
+
+  .fill {
+    height: 100%;
+  }
 </style>

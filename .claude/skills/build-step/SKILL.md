@@ -257,66 +257,74 @@ wrong facts. When a milestone closes, update this section in the same change.
 
 ### Milestones
 
-- Milestone 0 (scaffold) complete. Milestone 0.5 (toolchain and doc
-  alignment) complete; the mobile-target removal is staged in the index and
-  awaits the user's commit. Milestone 1 (spine) not started.
+- Milestones 0, 0.5 and **1 (the spine) complete**, verified 2026-09-16.
+  Milestone 2 (design tokens and theming) not started.
+- The mobile-target removal from 0.5 and all of Milestone 1 are uncommitted;
+  the user commits.
 - `.claude/plan/roadmap.md` holds the sequence.
 
 ### Toolchain — verified by command
 
 - Go module path `github.com/tenesh/bava`, `go 1.27.0` directive, toolchain
   `go1.27.1 darwin/arm64`. `GOPATH` at `/Users/tenesh/Workspace/tools/go`.
-- D2 `v0.9.0` is in `go.mod`, still marked `// indirect` because nothing
-  imports it. **It does not survive `go mod tidy`.** The bindings task
-  (`wails3 task common:generate:bindings`) depends on `go:mod:tidy`, so every
-  bindings regeneration silently drops the D2 requirement — it did exactly
-  that on 2026-09-16 and had to be re-added with
-  `go get github.com/d2lang/d2@v0.9.0`. Expect to re-add it after any tidy
-  until Milestone 1's first `internal/` package imports it, at which point the
-  requirement becomes direct and permanent.
-- Wails `v3.0.0-beta.20`.
+- D2 `v0.9.0` is a **direct** requirement in `go.mod` (`internal/layout` and
+  `internal/render` import it). The `go mod tidy` trap from Milestone 0.5 is
+  over: tidy keeps it now that real code imports it. TALA ships in-library at
+  `d2layouts/d2talalayout` — no external binary plugin.
+- Wails `v3.0.0-beta.20` on both sides. `@wailsio/runtime` is pinned exactly to
+  `3.0.0-beta.20`; it had floated on `latest` and resolved to `beta.21`,
+  mismatching the Go half. Never float it again.
 - Node `v24.21.0`, npm `11.19.0`. **There is no `.nvmrc`** — add one or drop
-  the claim wherever it appears.
+  the claim.
 - Frontend tooling: ESLint `10.10.0` (flat config at
   `frontend/eslint.config.js`), `eslint-plugin-svelte` `3.23.0`,
-  `typescript-eslint` `8.70.0`, Vitest `5.0.1`. Scripts: `lint`, `test`,
-  `test:watch`, plus the scaffold's `check`.
+  `typescript-eslint` `8.70.0`, Vitest `5.0.1` with `jsdom`, CodeMirror 6
+  (`codemirror` `6.0.2`, `@codemirror/lint` `6.9.7`). `vitest.config.ts` loads
+  the Svelte plugin (runes in `*.svelte.ts`) and sets
+  `resolve.conditions: ['browser']`, without which `mount` throws
+  `lifecycle_function_unavailable` under jsdom.
+- `frontend/package.json` `test` script is plain `vitest run`. The Milestone
+  0.5 `--passWithNoTests` flag is gone: with real tests, a flag that keeps the
+  gate green when every test vanishes is not a gate.
 
-### Gate status — last run 2026-09-16
+### Gate status — last run 2026-09-16, after Milestone 1
 
 | Gate | Result |
 |---|---|
 | `go vet ./...` | exit 0 |
-| `go test ./...` | exit 0, no test files anywhere yet |
 | `go build ./...` | exit 0 (linker warns about macOS deployment target; harmless) |
-| `npm run check` | exit 0 — 0 errors, 1 a11y warning in the demo screen |
-| `npm run lint` | **exit 1** — 3 errors, all in `src/App.svelte`, see below |
-| `npm test` | exit 0 — vitest runs with `--passWithNoTests` until Milestone 1 |
+| `go test ./...` | exit 0 — 3 packages: `internal/app`, `internal/layout`, `internal/render` |
+| `go test ./internal/render -run Golden` | exit 0 — 2 goldens under `testdata/golden/` |
+| `npm run check` | exit 0 — 0 errors, 0 warnings, 173 files |
+| `npm run lint` | exit 0 — first green in this repo; the demo screen that held the 3 errors is deleted |
+| `npm test` | exit 0 — 23 tests across 4 files |
+| `npm run build` | exit 0 |
 
 ### Open problems
 
-- **`npm run lint` is red on the scaffold.** All three errors are in the Wails
-  demo screen `src/App.svelte` — one `any` in an event handler, two direct DOM
-  manipulations in the title-swap and toast helpers. Milestone 1 deletes that
-  screen. **A tolerated red gate stops being a gate**: until the demo goes,
-  state the exemption explicitly every time ("lint clean outside
-  `src/App.svelte`") and re-check the moment it is deleted. Do not let
-  "lint is always red" become background noise.
-- **Mobile targets removed, commit pending.** 46 files (33 `build/android/`,
-  13 `build/ios/`) are staged as deletions in the index, with references
-  stripped from `Taskfile.yml`, `build/Taskfile.yml`, `.gitignore` and
-  `build/config.yml`. `go build ./...` and `wails3 task --list` both pass.
-  A `git reset` would bring the directories back.
-- **Bindings regenerated under the new module path.** `frontend/bindings/` now
-  holds `github.com/tenesh/bava/`; the stale `changeme/` directory is gone and
-  `src/App.svelte` imports the new path. `npm run check` and `npm run build`
-  both pass against it.
-- **`go test ./...` walks into `frontend/node_modules`.** There is a Go package
-  at `frontend/node_modules/flatted/golang/pkg/flatted`. Harmless now, noise
-  later; exclude it when the suite has real tests.
+- **`go test ./...` compiles a package inside `node_modules`.** There is a Go
+  package at `frontend/node_modules/flatted/golang/pkg/flatted`, so the gate
+  depends on an npm dependency shipping compilable Go. Milestone 1's exit
+  criterion now scopes the suite to `go test ./internal/... .` for that reason.
+- **Milestone 1 wired click-on-node to jump-to-source with no keyboard path.**
+  The design system requires every interactive affordance to be keyboard
+  reachable with a visible `--color-focus-ring`, and that token cannot exist
+  before Milestone 2. Recorded debt for Milestone 3, alongside
+  `CanvasControls`.
+- **The first two user-facing strings are hardcoded** (`aria-label` on the two
+  panes in `App.svelte`). The translation layer arrives in Milestone 3 and must
+  migrate them.
+- **`DEBOUNCE_MS` (250) and `DefaultEngine` ("tala") are compile-time
+  constants.** Named and single-sourced, but with no config behind them. They
+  move behind the settings file in Milestone 4.
+- **Milestone 2 debt named in code comments**: the `13px` base in
+  `public/style.css`, the `1px` divider in `App.svelte`, the bundled but
+  unreferenced `Inter-Medium.ttf` needing an `@font-face`, and the native
+  window background colour removed from `main.go` pending the Go-side theme
+  mapping.
 - No CI. Cross-platform build matrix is an open item, and no "builds on all
   platforms" claim is supportable until it exists.
-- `.ai/`, `.claude/` and `CLAUDE.md` are untracked.
+- `.ai/`, `.claude/`, `CLAUDE.md` and `docs/` are untracked.
 
 ### Spike findings — Ark UI in the Wails webview, 2026-09-16
 

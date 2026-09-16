@@ -1,6 +1,8 @@
 # Bava roadmap
 
-Milestones 0–6, plus a 0.5 that makes the gates runnable. Each has one goal, one exit criterion provable by running a
+Milestones 0–7, including three half-steps (0.5, 3.5) that exist because
+something must land before the milestone that depends on it. Each has one goal,
+one exit criterion provable by running a
 command, and its dependencies. The build loop in
 `.claude/skills/build-step/SKILL.md` reads this file to locate the current
 milestone — determine it from what exists in the tree, not from what a
@@ -83,12 +85,12 @@ Milestone 1's first import makes the requirement direct.
 
 ---
 
-## Milestone 1 — The spine
+## Milestone 1 — The spine *(complete)*
 
 **Goal:** Type D2 in a source pane, Go compiles and lays it out, the resulting
 SVG appears on the canvas.
 
-**Scope:** `internal/compile`, `internal/layout`, `internal/render` on D2
+**Scope:** `internal/layout` and `internal/render` on D2
 v0.9.0 (library only, logger in every `Compile` context, TALA default, text
 measured in Go); the single IPC surface `Render(source, opts) → {svg, errors,
 nodeMap}`; CodeMirror 6 mounted imperatively in `onMount`; the canvas as a
@@ -97,10 +99,15 @@ responses dropped; errors returned as data with the last good SVG left on
 screen. Golden fixtures under `testdata/golden/` start here; the `lint` and
 `test` scripts they run alongside were added in Milestone 0.5.
 
+No `internal/compile/` package: `d2lib.Compile` already fuses parse, compile
+and layout, so it would be an empty shell wrapping one call. The glob stays
+registered in `.ai/rules/index.md`, unused, until there is something real for
+it. Deliberate deviation from the layout that file anticipates.
+
 **Exit criterion:**
 
 ```sh
-go vet ./... && go build ./... && go test ./... \
+go vet ./... && go build ./... && go test ./internal/... . \
   && go test ./internal/render -run Golden \
   && (cd frontend && npm run check && npm run lint && npm test)
 ```
@@ -165,8 +172,15 @@ rolling), and the in-house `StatusBar`, `CanvasControls`, `ErrorList`,
 `ErrorList`, with jump-to-line driven by the `nodeMap` from the render
 response, never by re-parsing in the frontend. Engine picker (TALA default,
 dagre and elk as alternatives; `direction` stays unexposed while TALA is
-active). First real verification that Ark portals position correctly inside
-the Wails webview — currently unverified.
+active). **Canvas pan and zoom interaction lands here too** — `CanvasControls`
+is the chrome, and the behaviour it drives belongs in the same milestone
+rather than being assumed to exist.
+
+Ark portals were verified by spike on 2026-09-16 (see the build loop's
+repo-state section): they portal correctly inside the Wails webview, but Ark
+ships **no z-index of its own** and portalled content painted below ordinary
+app chrome. The `--z-*` tokens from Milestone 2 must cover portal layers, and
+this milestone is where that gets exercised for real.
 
 **Exit criterion:**
 
@@ -178,7 +192,40 @@ green, every new component added to the inventory table in
 `.ai/rules/design-system.md` in the same change, and a recorded keyboard pass
 (tab order, escape, arrow keys) plus both-theme check per component.
 
+**Also inherits from Milestone 1:** click-on-node jump-to-source was wired
+without a keyboard equivalent or focus ring, because `--color-focus-ring`
+cannot exist before Milestone 2. This milestone owes it a keyboard path.
+
 **Depends on:** Milestone 2 (tokens), Milestone 1 (`nodeMap`, errors).
+
+---
+
+## Milestone 3.5 — Source editor
+
+**Goal:** Make the D2 source pane a real editor: syntax highlighting, a proper
+keymap, and the shortcuts written down.
+
+**Scope:** A D2 language mode for CodeMirror 6 (keywords, shape and style
+keys, edges, containers, comments, strings), the editor keymap, and
+`docs/shortcuts.md` created in the same change. Milestone 1 deliberately
+shipped a plain-text pane; this is where that debt is paid.
+
+**Exit criterion:**
+
+```sh
+(cd frontend && npm run check && npm run lint && npm test) \
+  && test -f docs/shortcuts.md
+```
+
+green, with tests over the tokeniser — given a `.d2` fixture, the expected
+token types at known offsets — not over how it looks.
+
+**Depends on:** Milestone 1 (the pane exists), Milestone 2 (highlight colours
+are tokens, never literals).
+
+**Why here and not later:** Milestone 5 mounts CodeMirror inside ProseMirror
+NodeViews. Doing the language mode first means the embedded editors inherit it
+instead of needing a second pass.
 
 ---
 
@@ -191,8 +238,11 @@ a single byte is written.
 unknown keys and unknown block types preserved on read and written back
 unchanged. Then `internal/format` (parse/serialise) and `internal/store`
 (file I/O), Wails native open/save dialogs, and the file sidebar on Ark's
-TreeView. `localStorage` is permitted here only for per-viewer conveniences
-such as last open pane and zoom level, always inside try/catch.
+TreeView, plus a recent-files list. The two tunables Milestone 1 left as
+compile-time constants — the 250ms debounce and the default layout engine —
+move behind this settings file. `localStorage` is permitted here only for
+per-viewer conveniences — last open pane, zoom level, the recents list itself
+— always inside try/catch, and never for document content.
 
 **Exit criterion:**
 
@@ -269,6 +319,37 @@ Milestone 1 (it produces D2 source, which the existing pipeline renders).
 
 ---
 
+## Milestone 7 — Export and search
+
+**Goal:** Get diagrams out of Bava, and find things across a workspace.
+
+**Scope:** Export a diagram or document to SVG and PNG, and copy-to-clipboard
+— **through the existing `Render` path**, never a second renderer, so exported
+output is byte-identical to what the user saw (`.ai/rules/ipc.md`). Workspace
+search across files with results, jump-to-match, and the `EmptyState` the
+design system already assumes exists for it.
+
+**Exit criterion:**
+
+```sh
+go test ./internal/export ./internal/search -v \
+  && go test ./... && go vet ./... \
+  && (cd frontend && npm run check && npm run lint && npm test)
+```
+
+green, including a test asserting an exported SVG is byte-identical to the
+`Render` output for the same source — the regression that a second render path
+would cause.
+
+**Depends on:** Milestone 4 (a workspace of files to search), Milestone 5
+(documents are exportable too), Milestone 1 (the one render path).
+
+**Ordering note:** Export is arguably more fundamental to a diagrams tool than
+local AI. If you want it before Milestone 6, swap the two — nothing in either
+depends on the other.
+
+---
+
 ## Cross-cutting, no milestone of its own
 
 - **CI build matrix.** There is none. Until it exists, no claim that Bava
@@ -276,8 +357,17 @@ Milestone 1 (it produces D2 source, which the existing pipeline renders).
   nothing about Windows or Linux. Goldens are byte-compared and depend on
   `.gitattributes` forcing LF, so CI should land no later than Milestone 2.
   Check: `gh run list --workflow=ci.yml --limit 1`.
-- **Translations.** Every user-facing string goes to a translation file, never
-  hardcoded — from the first string, in Milestone 3.
+- **Translations.** The translation layer arrives in Milestone 3. Milestone 1
+  shipped the first two user-facing strings (the pane `aria-label`s) hardcoded,
+  and Milestone 3 migrates them; after that, no new hardcoded string. Stated
+  this way because the earlier wording — "from the first string" — was already
+  contradicted by the milestone that shipped the first string.
 - **Artifact sync.** `docs/ipc.md`, `docs/shortcuts.md`, `docs/decisions.md`
   and the `.ai/rules/` files are updated in the same change as the code that
-  makes them true, per the build loop's checklist.
+  makes them true, per the build loop's checklist. `docs/shortcuts.md` is
+  created in Milestone 3.5; `docs/ipc.md` and `docs/decisions.md` in
+  Milestone 1.
+- **Nothing else is homeless.** Every item a milestone pushes out of scope now
+  names the milestone that picks it up. If a future milestone defers something
+  without naming its destination, that is a roadmap bug — say so rather than
+  letting it fall off the end.
