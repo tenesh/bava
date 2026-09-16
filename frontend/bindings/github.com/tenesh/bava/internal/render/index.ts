@@ -5,5 +5,6 @@ export type {
     Diagnostic,
     Options,
     Result,
-    Span
+    Span,
+    Theme
 } from "./models.js";

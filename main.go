@@ -37,9 +37,11 @@ func main() {
 
 	wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "Bava",
-		// Window sized to the golden ratio (1000 / 618 ≈ 1.618).
-		Width:  1000,
-		Height: 618,
+		// The shell shows four regions — files, document, canvas, AI — and the
+		// design's artboard is 1280 wide for exactly that reason. The scaffold's
+		// 1000x618 leaves each region too narrow to use.
+		Width:  app.WindowWidth,
+		Height: app.WindowHeight,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,

@@ -257,17 +257,18 @@ wrong facts. When a milestone closes, update this section in the same change.
 
 ### Milestones
 
-- Milestones 0, 0.5, **1 (the spine)** and **2 (design tokens and theming)**
-  complete, verified 2026-09-17.
+- Milestones 0, 0.5, **1 (the spine)**, **2 (design tokens and theming)** and
+  **3 (app shell)** complete, verified 2026-09-17.
 - **The roadmap was re-planned on 2026-09-16**, from Milestone 2 onward, around
   a free-placement canvas rather than a compile-to-SVG pipeline. See
   `.claude/work/specs/canvas-architecture.md`. Milestone 1's work survives in a
   narrower role: `internal/render` renders `diagram` elements placed on the
   canvas. The interim two-pane shell and `DiagramCanvas` class it shipped are
   replaced by Milestones 3 and 4.
-- Milestone 3 (app shell) is next and not started. It installs Ark UI, which
-  the `--z-*` tokens exist to fix, and owes Milestone 1 a keyboard path for
-  click-on-node jump-to-source.
+- Milestone 4 (canvas foundation) is next and not started. It replaces the
+  interim `DiagramCanvas` with a Konva stage, and owes Milestone 1 a keyboard
+  path for click-on-node jump-to-source — moved here from Milestone 3 because
+  the canvas it attaches to is the one being replaced.
 - Everything since the scaffold is uncommitted apart from Milestone 0.5; the
   user commits.
 - `.claude/plan/roadmap.md` holds the sequence.
@@ -306,7 +307,7 @@ wrong facts. When a milestone closes, update this section in the same change.
 | `go test ./internal/render -run Golden` | exit 0 — 4 goldens (light and dark) under `testdata/golden/` |
 | `npm run check` | exit 0 — 0 errors, 0 warnings, 173 files |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0 — 48 tests across 7 files |
+| `npm test` | exit 0 — 76 tests across 12 files |
 | `npm run build` | exit 0 |
 | `wails3 build` | exit 0 on macOS — 30MB binary in `bin/`; unverified elsewhere |
 
@@ -432,6 +433,23 @@ deliberately at `5.24.2` or later.
   by a grep in a roadmap.
 - The frontend has `sass` and `@types/node` as devDependencies; `svelte-check`
   covers test files, so Node APIs in tests need the types.
+
+### Milestone 3 findings — 2026-09-17
+
+- **Regions are hidden with CSS, never unmounted.** CodeMirror and the canvas
+  own their own DOM and are mounted once; a conditional `{#if}` around a region
+  destroys the editor on every view switch and takes its undo history with it.
+  `App.test.ts` asserts the editor node is the same node after a switch.
+- **`bind:this` is nulled before a parent's `onMount` cleanup runs.** Capture
+  element references at mount if the cleanup needs them.
+- **Ark's own elements need prefixed class names.** Svelte's scoping cannot
+  reach them, so the rules are `:global()` and a generic name leaks app-wide.
+- **Ark 5.24.2 is a dependency again** (it was removed after the 2026-09-16
+  spike). `Dialog`, `Splitter` and SegmentGroup are wrapped.
+- **jsdom cannot verify a theme or a focus ring.** It does not paint and does
+  not resolve `var()`. The keyboard pass and both-themes check for Milestone 3
+  are **unticked** and need a human at a running window.
+- The window is 1280×800, from `internal/app/window.go`, pinned by a test.
 
 ### Settled facts that still hold
 

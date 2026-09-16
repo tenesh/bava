@@ -75,11 +75,16 @@ Named layers, defined in `_z.scss` and referenced nowhere as literals:
 
 | Token | Layer |
 |---|---|
+| `--z-base` | the default plane |
 | `--z-canvas` | the scene surface |
 | `--z-chrome` | panels, toolbars, sidebar, status bar |
-| `--z-sticky` | pane headers, sticky rows |
+| `--z-floating` | tool rail, contextual toolbar |
+| `--z-overlay` | backdrops |
 | `--z-portal` | dialogs, popovers, menus, tooltips |
 | `--z-toast` | toasts, above everything |
+
+Values are spaced so a layer can be inserted without renumbering, and
+`tokens.test.ts` asserts the ordering rather than trusting a reader to keep it.
 
 The portal root is defined once in the app shell at `--z-portal`. Do not
 introduce a second portal root, and do not set a raw `z-index` anywhere.
@@ -103,6 +108,10 @@ against desktop editors — Linear, Zed, Sublime — not web apps.
 - **Ark's docs show React examples in places.** Svelte usage differs. Read the
   Svelte tab, or query Context7 with library id `/chakra-ui/ark`. Never port a
   React snippet by hand.
+- **Prefix class names used on Ark's own elements.** Ark renders those elements
+  itself, so Svelte's scoping cannot reach them and the rules must be
+  `:global()`. A generic name like `.content` or `.title` then leaks across the
+  whole app — use `.bava-dialog-content` and the like.
 - Portalled content (Dialog, Popover, Tooltip, Menu) mounts at `body` level,
   outside `#app` — `<Portal>` defaults its container to `document.body`.
   Positioning and edge handling work correctly in the webview; only stacking
@@ -159,16 +168,21 @@ check both before building either by hand.
 
 | Component | Why in-house |
 |---|---|
-| `StatusBar` | Engine, node count, cursor position, error count. |
+| `Pane` ✓ | A titled region of the shell, with the small-caps header. |
+| `ViewSwitcher` ✓ | `Document │ Both │ Canvas`, wrapping Ark's SegmentGroup. |
+| `StatusBar` ✓ | Engine, node count, cursor position, error count. |
 | `CanvasControls` | Zoom, fit-to-view, and the tool rail. |
 | `Toolbar` | Contextual: changes with the current selection. |
 | `LayoutEnginePicker` | Per `diagram` element, not per canvas. |
 | `ErrorList` | D2 compiler diagnostics, click-to-jump to source line. |
-| `EmptyState` | Repeated across file tree, canvas, search. |
-| `Icon` | Single lucide/sprite wrapper so icon sizing is tokenised. |
+| `EmptyState` ✓ | Repeated across file tree, canvas, search. |
+| `Icon` ✓ | Single sprite wrapper so icon sizing is tokenised. No set is bundled until Milestone 9. |
 
-Build these as screens need them, not upfront. An unused component is an
-unmaintained one.
+✓ marks what exists. Build the rest as screens need them, not upfront — an
+unused component is an unmaintained one.
+
+**Wrapped from Ark so far**: `Dialog`, `Splitter`, and SegmentGroup inside
+`ViewSwitcher`.
 
 ## Theme and the diagram
 

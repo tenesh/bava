@@ -175,7 +175,7 @@ debts from Milestone 1: the `13px` base and the `1px` divider.
 
 ---
 
-## Milestone 3 — App shell
+## Milestone 3 — App shell *(complete)*
 
 **Goal:** The three-view window: document, canvas, or both, with the chrome
 around them.
@@ -216,6 +216,12 @@ that changes with selection.
 Canvas text is measured here, in the frontend, and the measurement is stored on
 the element — the mitigation `canvas.md` requires now that measurement has left
 Go.
+
+**Inherited debt, moved here from Milestone 3 on 2026-09-17:** click-on-node
+jump-to-source was wired in Milestone 1 with no keyboard equivalent. Paying it
+in Milestone 3 would have meant building selection over the interim canvas this
+milestone replaces, so it belongs with the real selection model rather than
+being built twice.
 
 **Exit criterion:**
 
@@ -574,7 +580,7 @@ a local build.
 - **Artifact sync.** `docs/ipc.md`, `docs/file-format.md`, `docs/shortcuts.md`,
   `docs/decisions.md`, `NOTICE` and the `.ai/rules/` files are updated in the
   same change as the code that makes them true, per the build loop's checklist.
-- **Accessibility debt from Milestone 1.** Click-on-node jump-to-source was
-  wired without a keyboard equivalent or focus ring, because
-  `--color-focus-ring` cannot exist before Milestone 2. Milestone 4 owes it a
-  keyboard path.
+- **Accessibility debt from Milestone 1.** Click-on-node jump-to-source has no
+  keyboard equivalent. Moved from Milestone 3 to Milestone 4 on 2026-09-17: the
+  focus tokens it needs exist now, but the canvas it would attach to is
+  replaced in Milestone 4, so it belongs with that selection model.
