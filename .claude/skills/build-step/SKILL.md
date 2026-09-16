@@ -257,14 +257,17 @@ wrong facts. When a milestone closes, update this section in the same change.
 
 ### Milestones
 
-- Milestones 0, 0.5 and **1 (the spine) complete**, verified 2026-09-16.
+- Milestones 0, 0.5, **1 (the spine)** and **2 (design tokens and theming)**
+  complete, verified 2026-09-17.
 - **The roadmap was re-planned on 2026-09-16**, from Milestone 2 onward, around
   a free-placement canvas rather than a compile-to-SVG pipeline. See
   `.claude/work/specs/canvas-architecture.md`. Milestone 1's work survives in a
   narrower role: `internal/render` renders `diagram` elements placed on the
   canvas. The interim two-pane shell and `DiagramCanvas` class it shipped are
   replaced by Milestones 3 and 4.
-- Milestone 2 (design tokens and theming) is next and not started.
+- Milestone 3 (app shell) is next and not started. It installs Ark UI, which
+  the `--z-*` tokens exist to fix, and owes Milestone 1 a keyboard path for
+  click-on-node jump-to-source.
 - Everything since the scaffold is uncommitted apart from Milestone 0.5; the
   user commits.
 - `.claude/plan/roadmap.md` holds the sequence.
@@ -300,10 +303,10 @@ wrong facts. When a milestone closes, update this section in the same change.
 | `go vet ./...` | exit 0 |
 | `go build ./...` | exit 0 (linker warns about macOS deployment target; harmless) |
 | `go test ./...` | exit 0 — 3 packages: `internal/app`, `internal/layout`, `internal/render` |
-| `go test ./internal/render -run Golden` | exit 0 — 2 goldens under `testdata/golden/` |
+| `go test ./internal/render -run Golden` | exit 0 — 4 goldens (light and dark) under `testdata/golden/` |
 | `npm run check` | exit 0 — 0 errors, 0 warnings, 173 files |
-| `npm run lint` | exit 0 — first green in this repo; the demo screen that held the 3 errors is deleted |
-| `npm test` | exit 0 — 23 tests across 4 files |
+| `npm run lint` | exit 0 |
+| `npm test` | exit 0 — 48 tests across 7 files |
 | `npm run build` | exit 0 |
 | `wails3 build` | exit 0 on macOS — 30MB binary in `bin/`; unverified elsewhere |
 
@@ -324,10 +327,10 @@ wrong facts. When a milestone closes, update this section in the same change.
 - **`DEBOUNCE_MS` (250) and `DefaultEngine` ("tala") are compile-time
   constants.** Named and single-sourced, but with no config behind them. They
   move behind the settings file in Milestone 5.
-- **Milestone 2 debt named in code comments**: the `13px` base and the
-  `--font-ui` / `--font-mono` declarations in `public/style.css` (both belong
-  in `_type.scss`), the `1px` divider in `App.svelte`, and the native window
-  background colour removed from `main.go` pending the Go-side theme mapping.
+- **Milestone 1's token debts are cleared.** The 13px base, the font wiring and
+  the `1px` divider all resolve from tokens. Still open: the native window
+  background colour removed from `main.go`, which needs a Wails window API call
+  and belongs with the shell in Milestone 3.
 - **Fonts are bundled and wired.** Geist and Geist Mono, variable `woff2`, in
   `frontend/public/fonts/`, under SIL OFL 1.1 recorded in `NOTICE`. The
   scaffold's bundled-but-unreferenced `Inter-Medium.ttf` and its licence file
@@ -409,6 +412,26 @@ Ark is **not** a dependency right now: installed for the spike, uninstalled
 afterwards, with `package.json`, the lockfile and `node_modules` all confirmed
 clean and the bundle back to 57.61 kB. Milestone 2 or 3 adds it back
 deliberately at `5.24.2` or later.
+
+### Milestone 2 findings — 2026-09-17
+
+- **D2's palette has two families and they are not interchangeable.** Neutrals
+  `N1`–`N7` carry text and canvas; the `B` and `A` families carry shapes.
+  Mapping stroke and fill onto `N4`/`N5` leaves node borders D2's default blue
+  however the theme is set. All 18 slots are mapped in
+  `internal/render/theme.go`, because an unmapped one keeps its pale default
+  and surfaces on whichever shape type uses it.
+- **That was caught by looking at a golden, not by a test.** The byte
+  comparison passed on output where a nested cylinder rendered near-white with
+  an illegible label. `testing.md`'s rule about blessing a golden unseen is not
+  ceremony.
+- **`localStorage` is guarded everywhere it is touched.** `theme.svelte.ts`
+  falls back to follow-system when it throws, which is what a private window
+  does.
+- **Literals are now blocked by a test**, `src/styles/no-literals.test.ts`, not
+  by a grep in a roadmap.
+- The frontend has `sass` and `@types/node` as devDependencies; `svelte-check`
+  covers test files, so Node APIs in tests need the types.
 
 ### Settled facts that still hold
 

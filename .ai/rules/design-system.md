@@ -16,7 +16,7 @@ under `:root[data-theme="dark"]`, and the app sets `data-theme` on `<html>`.
 | File | Holds |
 |---|---|
 | `_color.scss` | semantic colour only — see below |
-| `_space.scss` | `--space-1` … `--space-12`, 4px base unit |
+| `_space.scss` | `--space-1` … `--space-12` (4px unit), `--border-width`, fixed chrome heights |
 | `_type.scss` | family, size, weight, line-height, letter-spacing |
 | `_radius.scss` | `--radius-sm/md/lg/full` |
 | `_elevation.scss` | shadows and overlay layering |
@@ -30,6 +30,34 @@ nothing outside `tokens/` may reference them.
 
 The test: switching to dark mode should not require touching any file outside
 `tokens/`. If it does, a component contains a literal.
+
+**This is enforced, not merely stated.** `src/styles/no-literals.test.ts` fails
+the suite on any hex, `rgb()`/`hsl()`, or `px` value outside `tokens/` — in
+comments as well as in code. A rule with nothing behind it decays.
+
+### The set
+
+Emitted as of Milestone 2, values from the design's token sheet:
+
+`surface`, `surface-raised`, `surface-sunken`, `surface-overlay`,
+`surface-nav` · `border-subtle`, `border-strong`, `border-hairline` ·
+`text-primary`, `text-secondary`, `text-muted`, `text-faint`, `text-prose` ·
+`accent`, `accent-contrast`, `accent-subtle` · `selection` · `focus-ring`,
+`focus-halo` · `danger`, `danger-subtle` · `ok` · `backdrop` · `canvas-bg`,
+`canvas-dot` · `note-fill`, `note-border` · the seven `diagram-*`.
+
+Two are additions rather than design values, both evidenced by usage rather
+than invented: **`text-prose`** (document body copy, softer than
+`text-primary`) and **`focus-halo`** (the halo the design's focus recipe
+describes in prose but never names).
+
+**No hover or pressed tokens exist yet.** The mockups contain no such states —
+checked, rather than assumed. They arrive with the first component that needs
+one, which is what this file already says to do.
+
+**Shape colours are not tokens.** The swatches in the design's colour picker
+are content a user chooses per element; they live in the scene file, not
+here.
 
 **No component writes a literal value.** No hex codes, no `px` outside the
 token files, no one-off shadows. If a value is needed that no token provides,
@@ -150,6 +178,15 @@ rendered in Go and does **not** inherit CSS. The active theme's colour tokens
 are passed to `Render` as options and applied by D2's theme system. **A theme
 change must update both** — chrome via CSS custom properties, every diagram
 element via a re-render.
+
+The mapping lives in `internal/render/theme.go`, and D2's palette has a trap in
+it: the neutrals `N1`–`N7` carry **text and canvas**, while the `B` and `A`
+families carry **shapes**. Mapping stroke and fill onto `N4`/`N5` — the obvious
+reading — leaves node borders D2's default blue whatever the theme says. Every
+slot is mapped, because an unmapped one keeps its pale default and surfaces on
+whichever shape type happens to use it: a cylinder nested in a container, or a
+person shape, long after the theme looked right on a rectangle. That one was
+caught by looking at a golden, not by a passing test.
 
 Consequence: adding a colour token that the diagram uses means updating the
 Go-side theme mapping in the same change. Tokens the chrome alone uses do not.

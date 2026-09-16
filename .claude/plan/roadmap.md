@@ -144,7 +144,7 @@ do not exist yet.
 
 ---
 
-## Milestone 2 — Design tokens and theming
+## Milestone 2 — Design tokens and theming *(complete)*
 
 **Goal:** A semantic token layer plus light/dark theming, so component work can
 start without a literal value anywhere.

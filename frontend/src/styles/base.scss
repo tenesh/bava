@@ -1,0 +1,17 @@
+// Element defaults. Not tokens — these consume tokens.
+//
+// Anything here must resolve from a custom property. If a value is needed that
+// no token provides, add the token rather than inlining it.
+body {
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+  line-height: var(--leading-normal);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+}
+
+// The D2 source editor is code: it gets the mono face at the source size.
+.cm-editor {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-source);
+}

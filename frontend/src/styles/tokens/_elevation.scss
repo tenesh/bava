@@ -1,0 +1,15 @@
+// Shadows, verbatim from the design, and the focus ring recipe it describes.
+:root {
+  --shadow-floating: 0 6px 20px rgba(0, 0, 0, 0.1);
+  --shadow-overlay: 0 18px 48px rgba(0, 0, 0, 0.14);
+
+  // 1px accent border plus a 2px halo. Inside dense rows use
+  // `outline-offset: -2px` so the ring does not overlap the neighbour.
+  --focus-ring-width: 1px;
+  --focus-halo-width: 2px;
+}
+
+:root[data-theme='dark'] {
+  --shadow-floating: 0 6px 20px rgba(0, 0, 0, 0.5);
+  --shadow-overlay: 0 18px 48px rgba(0, 0, 0, 0.6);
+}

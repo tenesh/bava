@@ -5,6 +5,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/tenesh/bava/internal/render"
@@ -19,10 +20,38 @@ var update = flag.Bool("update", false, "rewrite golden SVG files")
 // Wails bump safe to do at all. Compared byte-for-byte, with no normalisation
 // — output was measured stable across processes, so any scrubbing step would
 // only hide a real regression.
+// The dark values, from frontend/src/styles/tokens/_color.scss. The token
+// layer is the source of truth; this is the fixture that proves the mapping
+// reaches the renderer.
+func goldenDarkTheme() *render.Theme {
+	return &render.Theme{
+		Background:    "#1b1c1f",
+		ContainerFill: "#1e2023",
+		NodeFill:      "#262a2f",
+		NodeStroke:    "#4a5058",
+		Label:         "#dcdcd8",
+		Edge:          "#7f857f",
+		EdgeLabel:     "#8b8f8a",
+	}
+}
+
 func TestGolden(t *testing.T) {
-	for _, name := range []string{"architecture", "containers"} {
+	cases := []struct {
+		name  string
+		theme *render.Theme
+	}{
+		{name: "architecture"},
+		{name: "containers"},
+		{name: "architecture-dark", theme: goldenDarkTheme()},
+		{name: "containers-dark", theme: goldenDarkTheme()},
+	}
+	for _, tc := range cases {
+		name := tc.name
 		t.Run(name, func(t *testing.T) {
-			sourcePath := filepath.Join("..", "..", "testdata", "golden", name+".d2")
+			// The dark fixtures render the same source as their light
+			// counterparts, so a difference can only come from the theme.
+			sourceName := strings.TrimSuffix(name, "-dark")
+			sourcePath := filepath.Join("..", "..", "testdata", "golden", sourceName+".d2")
 			goldenPath := filepath.Join("..", "..", "testdata", "golden", name+".svg")
 
 			source, err := os.ReadFile(sourcePath)
@@ -30,7 +59,7 @@ func TestGolden(t *testing.T) {
 				t.Fatalf("read fixture: %v", err)
 			}
 
-			res, err := render.Render(context.Background(), string(source), render.Options{})
+			res, err := render.Render(context.Background(), string(source), render.Options{Theme: tc.theme})
 			if err != nil {
 				t.Fatalf("Render returned error: %v", err)
 			}

@@ -1,0 +1,14 @@
+// The single stylesheet entry. Imported once from main.ts.
+//
+// Only token partials belong here. Component styles live with their
+// components, and nothing in this tree may carry a literal value.
+@use 'tokens/color';
+@use 'tokens/space';
+@use 'tokens/type';
+@use 'tokens/radius';
+@use 'tokens/elevation';
+@use 'tokens/motion';
+@use 'tokens/z';
+
+// Element defaults, after the tokens they consume.
+@use 'base';
