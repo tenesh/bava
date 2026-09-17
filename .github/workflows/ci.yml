@@ -1,7 +1,7 @@
 # Cross-platform verification.
 #
 # This exists because a local `wails3 build` on macOS proves nothing about
-# Windows or Linux — the webviews differ (WKWebView, WebView2, WebKitGTK) and
+# Windows or Linux: the webviews differ (WKWebView, WebView2, WebKitGTK) and
 # so do the toolchains. Until this workflow is green, no claim that Bava
 # "builds on all platforms" is supportable.
 #
@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@v4
 
       # Wails v3 defaults to GTK4 + WebKitGTK 6.0 on Linux. The GTK3 variant
-      # exists but is opt-in behind a `gtk3` build tag — see the cgo tags in
+      # exists but is opt-in behind a `gtk3` build tag; see the cgo tags in
       # wails/v3/pkg/application/linux_cgo.go (`!gtk3`) versus
       # linux_cgo_gtk3.go (`gtk3`). Installing the GTK3 packages produces a
       # pkg-config failure for gtk4/webkitgtk-6.0 that reads like a missing
@@ -83,7 +83,7 @@ jobs:
         run: npm test
 
       # This must come before any Go step. main.go has `//go:embed
-      # all:frontend/dist`, and frontend/dist is gitignored — so a fresh
+      # all:frontend/dist`, and frontend/dist is gitignored, so a fresh
       # checkout has no such directory and every Go command that compiles the
       # root package fails with "pattern all:frontend/dist: no matching files
       # found". Locally it appears to work only because a stale dist/ is
@@ -127,7 +127,7 @@ jobs:
       - uses: actions/checkout@v4
 
       # Wails v3 defaults to GTK4 + WebKitGTK 6.0 on Linux. The GTK3 variant
-      # exists but is opt-in behind a `gtk3` build tag — see the cgo tags in
+      # exists but is opt-in behind a `gtk3` build tag; see the cgo tags in
       # wails/v3/pkg/application/linux_cgo.go (`!gtk3`) versus
       # linux_cgo_gtk3.go (`gtk3`). Installing the GTK3 packages produces a
       # pkg-config failure for gtk4/webkitgtk-6.0 that reads like a missing

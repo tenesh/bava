@@ -13,7 +13,7 @@ pipeline survives, in a narrower role.
 
 ## The product
 
-A free-placement canvas — place, draw and connect anything, anywhere — on
+A free-placement canvas (place, draw and connect anything, anywhere) on
 which one kind of element renders itself from code. Not a layout-engine tool
 with a visual skin, and not a whiteboard with no structure. Both, with a
 defined seam between them.
@@ -40,7 +40,7 @@ The user switches between `Document | Both | Canvas`. One file, three views.
 ## The diagram element
 
 A `diagram` element holds D2 source inline and is rendered by
-`internal/render` — the Milestone 1 pipeline, unchanged in shape:
+`internal/render`, the Milestone 1 pipeline, unchanged in shape:
 
 ```
 Render(source, opts) -> { svg, errors, nodeMap }
@@ -54,7 +54,7 @@ where the element goes. That is the whole seam.
 referencing would scatter a sidecar `.d2` per diagram per canvas, and the
 binding model below assumes the diagram is an object in the same file.
 
-## Bindings — the hard part
+## Bindings: the hard part
 
 An arrow may bind to a whole element, or **into a diagram's interior**:
 
@@ -72,7 +72,7 @@ from the source rather than from geometry. Re-layout does not change them. That
 is the anchor a binding needs, and Milestone 1 already returns it.
 
 **Geometry.** `nodeMap` must additionally carry each node's rect in
-diagram-local coordinates. D2 already exposes it — `diagram.Shapes[]` carries
+diagram-local coordinates. D2 already exposes it: `diagram.Shapes[]` carries
 `Pos`, `Width`, `Height`. **Add these fields before the canvas is built on top
 of the contract, not after**: `ipc.md` warned that retrofitting `nodeMap` meant
 touching the whole pipeline, and this is the same lesson arriving a second
@@ -86,7 +86,7 @@ debounce, an arrow attached to a node visibly follows as the D2 is edited.
 That behaviour is what makes the hybrid feel like one tool rather than two
 modes sharing a window.
 
-**Dangling bindings.** Renaming or deleting a node breaks its binding — and
+**Dangling bindings.** Renaming or deleting a node breaks its binding, and
 semantically it *is* a different node. Defined behaviour: the arrow remains,
 its endpoint freezes at the last known position, and it is marked detached.
 Never silently delete something the user drew.
@@ -110,8 +110,8 @@ same key used for bindings and for jump-to-source.
 | Text measurement | All in Go | D2 text still in Go; canvas text in the frontend |
 
 **Canvas text measurement moves to the frontend**, which narrows a rule that
-was previously absolute. The reason the rule existed does not go away —
-WebKitGTK and WebView2 disagree on glyph advances — so the mitigation is:
+was previously absolute. The reason the rule existed does not go away
+(WebKitGTK and WebView2 disagree on glyph advances), so the mitigation is:
 fonts are bundled (Geist, done), and **measured text dimensions are stored in
 the file**, so a scene reopens identically on another platform rather than
 being re-measured. D2 diagram text is unaffected: it is measured in Go as

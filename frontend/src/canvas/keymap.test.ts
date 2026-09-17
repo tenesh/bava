@@ -65,7 +65,7 @@ describe('keymap', () => {
   });
 
   // A shortcut the native menu binds must not also be handled here, or one
-  // keypress acts twice — two undos, two pastes. Read from the spec, so a new
+  // keypress acts twice: two undos, two pastes. Read from the spec, so a new
   // menu accelerator is checked without editing this test.
   it('TestKeymapDoesNotHandleMenuBoundShortcuts', () => {
     const accelerators = menuAccelerators();

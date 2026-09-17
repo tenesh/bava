@@ -27,7 +27,7 @@ var work sync.WaitGroup
 
 // Go runs fn on a new goroutine that cannot take the app down. A panic is
 // logged with its stack and reported through emit; the goroutine ends and the
-// app carries on. Every goroutine Bava starts goes through here — Wails only
+// app carries on. Every goroutine Bava starts goes through here: Wails only
 // recovers the ones it starts itself, and its default reaction is to exit.
 func Go(logger *slog.Logger, emit func(AppError), fn func()) {
 	work.Add(1)
@@ -48,7 +48,7 @@ func WaitForWork() { work.Wait() }
 
 // PanicHandler is Bava's application.Options.PanicHandler. Wails has already
 // recovered the goroutine by the time it is called, so logging and telling the
-// user is enough — with one exception, below — and unlike Wails' default it
+// user is enough (with one exception, below), and unlike Wails' default it
 // does not exit.
 func PanicHandler(logger *slog.Logger, emit func(AppError)) func(*application.PanicDetails) {
 	return PanicHandlerWithExit(logger, emit, os.Exit)
@@ -57,7 +57,7 @@ func PanicHandler(logger *slog.Logger, emit func(AppError)) func(*application.Pa
 // PanicHandlerWithExit is PanicHandler with the exit injectable.
 //
 // Wails' InvokeSync runs fn on the main thread as `defer handlePanic(); fn();
-// wg.Done()` — Done is not deferred. A panic there leaves the caller blocked on
+// wg.Done()`; Done is not deferred. A panic there leaves the caller blocked on
 // wg.Wait() forever if the handler returns: a bound call that never answers, or
 // a quit that never finishes. Exiting is the lesser harm: the session is left
 // open, so the next launch reports the unexpected exit.
@@ -78,7 +78,7 @@ func PanicHandlerWithExit(logger *slog.Logger, emit func(AppError), exit func(in
 }
 
 // report logs a recovered panic. The panic value is logged as it is: panic
-// messages are written by code, never built from user content — a rule for
+// messages are written by code, never built from user content, a rule for
 // every panic in Bava (.ai/rules/logging.md).
 func report(logger *slog.Logger, emit func(AppError), err error, stack string) {
 	id := newErrorID()

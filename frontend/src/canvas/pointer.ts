@@ -2,8 +2,8 @@
  * Pointer input: turning presses, drags and releases into scene operations.
  *
  * Kept free of Konva and the DOM so the behaviour that is easy to get subtly
- * wrong — a drag that goes up and to the left, a click that creates an
- * invisible element, a drag that records fifty undo steps — is testable
+ * wrong (a drag that goes up and to the left, a click that creates an
+ * invisible element, a drag that records fifty undo steps) is testable
  * directly.
  *
  * Every mutation goes through history. One drag is one step: a user who drags

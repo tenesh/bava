@@ -2,7 +2,7 @@
  * The active tool.
  *
  * Shared state, so it lives in a runes module the rail can read. The canvas
- * consumes it imperatively — the rail emits a choice and never reaches into
+ * consumes it imperatively: the rail emits a choice and never reaches into
  * the stage.
  */
 import type { MessageKey } from '../i18n/messages';

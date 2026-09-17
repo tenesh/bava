@@ -1,7 +1,7 @@
 /**
  * The render client: the frontend half of the one IPC surface.
  *
- * It owns three things the canvas rule is explicit about — a 250ms debounce,
+ * It owns three things the canvas rule is explicit about: a 250ms debounce,
  * an incrementing request id, and dropping responses that are not the latest.
  * Without the id check a slow TALA render can land after a faster later one and
  * the diagram flickers between states, which looks like a layout bug and is not.
@@ -13,7 +13,7 @@ import type { Diagnostic, Result, Span } from '../../bindings/github.com/tenesh/
  * Milliseconds of quiet before a render is issued.
  *
  * The default, and the fallback when settings cannot be read. The user's value
- * comes from the settings file via `createRenderClient({ debounceMs })` — it
+ * comes from the settings file via `createRenderClient({ debounceMs })`; it
  * was a compile-time constant until Milestone 5.
  */
 export const DEBOUNCE_MS = 250;
@@ -80,7 +80,7 @@ export function createRenderClient(options: RenderClientOptions = {}) {
       }
     } catch (cause) {
       // A rejection here is a malformed request or a transport failure, not a
-      // diagram problem — compile errors arrive as data on a successful call.
+      // diagram problem: compile errors arrive as data on a successful call.
       // It must still reach the user rather than becoming an unhandled
       // rejection that silently does nothing.
       if (id !== latestRequestID) return;

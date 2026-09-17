@@ -1,7 +1,7 @@
 /**
  * The scene: what is on the canvas, and where.
  *
- * Pure data and pure functions — no Konva, no DOM. The scene is the source of
+ * Pure data and pure functions: no Konva, no DOM. The scene is the source of
  * truth for position: every element carries its own geometry and nothing
  * computes it. That is what makes the canvas free-placement rather than a
  * layout engine with a visual skin.

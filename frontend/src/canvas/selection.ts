@@ -1,7 +1,7 @@
 /**
  * What is selected.
  *
- * Pure logic over scene data — no Konva, no DOM — so the behaviour that is
+ * Pure logic over scene data (no Konva, no DOM), so the behaviour that is
  * easy to get subtly wrong (additive clicks, marquee edges, keyboard
  * traversal) is testable directly.
  *

@@ -4,7 +4,7 @@
 
   type Props = {
     title: string;
-    /** Shown at the right of the header — a count, a state, a control. */
+    /** Shown at the right of the header: a count, a state, a control. */
     meta?: string;
     children: Snippet;
   };

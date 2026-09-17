@@ -1,7 +1,7 @@
 /**
  * Undo and redo over scene mutations.
  *
- * One history. Every mutation — a drag, a tool, an AI edit later — goes
+ * One history. Every mutation (a drag, a tool, an AI edit later) goes
  * through `mutate`, so Ctrl+Z means one thing. Two histories is where undo
  * becomes unpredictable, and the first thing a user does after a change they
  * dislike is press it.
@@ -38,7 +38,7 @@ export function createHistory(initial: SceneData) {
       return future.length > 0;
     },
 
-    /** Start over from data, with nothing to undo — a document was loaded. */
+    /** Start over from data, with nothing to undo: a document was loaded. */
     reset(data: SceneData): void {
       current = data;
       past.length = 0;
@@ -50,7 +50,7 @@ export function createHistory(initial: SceneData) {
       const [next, forward, inverse] = produceWithPatches(current, recipe);
 
       // A mutation that changed nothing must not consume a step, or undo
-      // appears to do nothing — which reads as a broken undo.
+      // appears to do nothing, which reads as a broken undo.
       if (forward.length === 0) return;
 
       current = next;

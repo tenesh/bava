@@ -46,7 +46,7 @@ func TestUnterminatedFenceIsNotABlock(t *testing.T) {
 	blocks := format.Scan(src)
 
 	if len(blocks) != 0 {
-		t.Errorf("found %d blocks, want 0 — an unterminated fence is prose", len(blocks))
+		t.Errorf("found %d blocks, want 0; an unterminated fence is prose", len(blocks))
 	}
 }
 

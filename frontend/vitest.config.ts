@@ -16,7 +16,7 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     // Konva needs a 2D context, which jsdom does not implement. A pure-JS mock
     // rather than the native `canvas` package: this has to build on three CI
-    // platforms, and a native module there is a maintenance bill for nothing —
+    // platforms, and a native module there is a maintenance bill for nothing:
     // the tests assert scene patching, not pixels.
     setupFiles: ['vitest-canvas-mock'],
   },

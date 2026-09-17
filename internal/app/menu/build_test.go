@@ -84,7 +84,7 @@ func TestPaneTogglesReflectState(t *testing.T) {
 }
 
 // Menus are never inspected by a test runner's click, so emission is checked
-// by applying recents and asserting Apply does not panic on repeated calls —
+// by applying recents and asserting Apply does not panic on repeated calls;
 // the recents submenu is cleared and rebuilt each time.
 func TestRecentsCanBeReappliedRepeatedly(t *testing.T) {
 	built, _ := build(t, "darwin")
@@ -94,7 +94,7 @@ func TestRecentsCanBeReappliedRepeatedly(t *testing.T) {
 }
 
 // Only Windows right-aligns text after a tab in a menu label. macOS and GTK
-// print the tab as spacing, so a hint lands mid-row — seen in a running app.
+// print the tab as spacing, so a hint lands mid-row (seen in a running app).
 // Elsewhere the label is plain, and the Shortcuts dialog lists every key.
 func TestHintsAreInTheLabelOnWindowsOnly(t *testing.T) {
 	cases := map[string]string{"windows": "Rectangle\tR", "darwin": "Rectangle", "linux": "Rectangle"}

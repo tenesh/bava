@@ -35,7 +35,7 @@ type Item struct {
 	ID          string `json:"id,omitempty"`
 	Label       string `json:"label,omitempty"`
 	Accelerator string `json:"accelerator,omitempty"`
-	// Hint is a shortcut shown in the label but not bound natively — tool
+	// Hint is a shortcut shown in the label but not bound natively: tool
 	// letters and Delete, which a native accelerator would steal from text
 	// fields.
 	Hint string `json:"hint,omitempty"`
@@ -221,7 +221,7 @@ var knownRoles = map[string]bool{
 // would silently lose to Hide.
 //
 // Only roles the spec is allowed to use are listed. The Delete role is absent
-// on purpose — it binds bare Backspace, which would steal the key from every
+// on purpose: it binds bare Backspace, which would steal the key from every
 // text field in the app, so Delete is a custom command instead. Cut, Copy and
 // Paste are absent too: on Windows those roles run clipboard scripts in the
 // page that never reach the canvas, so they are custom commands as well.

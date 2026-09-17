@@ -6,8 +6,8 @@
 // Bava's own state, not work product: deleting them costs history, never work.
 //
 // A log never contains document content, D2 source, AI prompts or replies, or
-// credentials. That is a rule for callers — this package cannot tell content
-// from a message — but it does redact the one thing every path carries: the
+// credentials. That is a rule for callers (this package cannot tell content
+// from a message), but it does redact the one thing every path carries: the
 // user's home directory, written as "~".
 package logs
 
@@ -184,7 +184,7 @@ func Discard() *Session {
 }
 
 // WailsLogger is the logger to hand Wails. Wails logs every bound call's
-// arguments and result at debug level — whole documents — and quotes input in
+// arguments and result at debug level (whole documents) and quotes input in
 // some warnings. This logger never goes below warn, whatever the verbose
 // setting, and keeps each attribute's name but not its value.
 func (s *Session) WailsLogger() *slog.Logger {
@@ -411,7 +411,7 @@ func redactHome(home string) func([]string, slog.Attr) slog.Attr {
 }
 
 // cappedWriter appends to a file until it would pass max bytes, then moves it
-// aside as <name>.1.log — replacing an earlier one — and starts afresh, so the
+// aside as <name>.1.log, replacing an earlier one, and starts afresh, so the
 // newest lines are always kept and a live file is never rewritten.
 type cappedWriter struct {
 	mu   sync.Mutex

@@ -1,4 +1,4 @@
-# Brand — decisions
+# Brand: decisions
 
 From the Claude Design brand handover (v3), received 2026-09-17. The design
 folders outside the repo are temporary; **the repo holds the only copies the
@@ -14,7 +14,7 @@ Nothing in code or tests may read a path outside the repository.
 ## The mark
 
 - One drawing at every size: `brand/panda.svg`, one path, `currentColor`,
-  evenodd knockouts for the eyes and nose. No small-size variant — the
+  evenodd knockouts for the eyes and nose. No small-size variant; the
   handover tried one and rejected it. Below 20px the ear notches soften, which
   is accepted.
 - 20px is the floor for brand placements (About, empty states). System chrome
@@ -23,7 +23,7 @@ Nothing in code or tests may read a path outside the repository.
   `<metadata>`). It is stripped when vendored: the app ships the drawing, not
   the export tool's metadata.
 
-## Colour — decided 2026-09-17
+## Colour: decided 2026-09-17
 
 **Paper on ink, always.** Asked and answered: the v2 handover's rule replaces
 the roadmap's v1 wording ("ink on light, paper on dark").
@@ -35,7 +35,7 @@ the roadmap's v1 wording ("ink on light, paper on dark").
 - Misuse (from sheet 5a): no stretching, rotating, recolouring, mid-tone
   grounds, or inverting.
 
-## Faded mark — decided 2026-09-17, after review
+## Faded mark: decided 2026-09-17, after review
 
 Sheet 4c fades the mark to 32% behind an empty state, but shows only the dark
 theme, where the mark sits bare. On light, fading would also fade the ink tile
@@ -48,7 +48,7 @@ Revisit if the designer supplies a light-theme treatment.
 - Wordmark: Geist Medium, lowercase `bava`, −0.4px tracking at 22px and above.
 - Descriptor: Geist Mono, caps, 0.9px tracking.
 
-## App icons — decided 2026-09-17
+## App icons: decided 2026-09-17
 
 **Designer-exported PNGs**, committed as delivered. Asked and answered: not
 generated in-repo, and no rasteriser dependency. Every change to the mark
@@ -57,22 +57,22 @@ needs a new export.
 Delivered 2026-09-17, each 1024×1024 PNG. Construction, from the handover's
 sheet 06:
 
-1. macOS — `icon-macos-1024.png`: 824px squircle tile, 100 margin, radius
+1. macOS (`icon-macos-1024.png`): 824px squircle tile, 100 margin, radius
    186, shadow baked in. → `build/darwin/appicon-mac.png` → `icons.icns`.
-2. Windows — `icon-windows-1024.png`: full bleed, no radius (Windows masks).
+2. Windows (`icon-windows-1024.png`): full bleed, no radius (Windows masks).
    → `build/windows/appicon-windows.png` → `icon.ico` at 256–16.
-3. Linux — `icon-linux-1024.png`: full bleed, radius 128 baked in.
+3. Linux (`icon-linux-1024.png`): full bleed, radius 128 baked in.
    → `build/appicon.png`, copied by the AppImage task and by nfpm (deb, rpm)
-   into `hicolor/128x128` — a 1024px file in a 128px slot, carried to
+   into `hicolor/128x128`, a 1024px file in a 128px slot, carried to
    Milestone 16.
 
-Not done: sheet 06's Linux `hicolor/<size>` PNG set and `scalable/apps/bava.svg`
-— the Wails Linux packaging takes one PNG. The DMG file icon
-(`build/darwin/dmg-file-icon.*`) and `dmg-background.png` are still the Wails
-template — decided 2026-09-17 to leave them for Milestone 16 (release), since
-nothing ships a DMG before then. The DMG volume icon already uses `icons.icns`.
-The Windows MSIX package has the same problem: `wails3 tool msix` writes Wails
-placeholder tile and logo PNGs. Also Milestone 16.
+Not done: sheet 06's Linux `hicolor/<size>` PNG set and
+`scalable/apps/bava.svg`; the Wails Linux packaging takes one PNG. The DMG file
+icon (`build/darwin/dmg-file-icon.*`) and `dmg-background.png` are still the
+Wails template. Decided 2026-09-17 to leave them for Milestone 16 (release),
+since nothing ships a DMG before then. The DMG volume icon already uses
+`icons.icns`. The Windows MSIX package has the same problem: `wails3 tool msix`
+writes Wails placeholder tile and logo PNGs. Also Milestone 16.
 
 **macOS 26 `Assets.car` is not rebuilt.** `Info.plist` names both
 `CFBundleIconName` (Assets.car, compiled from `build/appicon.icon` by Xcode's

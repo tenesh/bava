@@ -99,7 +99,7 @@ func TestSeveralDiagramBlocks(t *testing.T) {
 }
 
 func TestDiagramBlockWithoutAnIdIsIgnoredForReferences(t *testing.T) {
-	// Still prose, still written back — just not referenceable from the canvas.
+	// Still prose, still written back, just not referenceable from the canvas.
 	file, err := format.Read("a\n\n```d2\nx -> y\n```\n")
 	if err != nil {
 		t.Fatalf("Read: %v", err)

@@ -110,7 +110,7 @@ web.api -> db: query
     noticeTimer = setTimeout(() => (notice = null), 6000);
   }
 
-  // The scene itself is not reactive — `canvas.md` forbids reactive geometry —
+  // The scene itself is not reactive (`canvas.md` forbids reactive geometry),
   // so the current snapshot is published here and the render effect reads it.
   // A counter would work too, but this makes the dependency the actual data.
   let published = $state.raw<SceneData>(history.current);
@@ -226,7 +226,7 @@ web.api -> db: query
 
   /**
    * Edit commands arrive from the menu, not as key presses, so they go
-   * wherever focus is: the source editor, a text field, or the canvas — and
+   * wherever focus is: the source editor, a text field, or the canvas; and
    * nowhere when the canvas is hidden or a dialog has focus.
    */
   async function routeEdit(actions: {
@@ -417,7 +417,7 @@ web.api -> db: query
     // text field has it, or typing D2 would switch tools on every keystroke.
     const onKeyDown = (event: KeyboardEvent) => {
       // Canvas keys stand down while typing, inside a dialog, or with the
-      // canvas hidden — Backspace must not empty a canvas nobody can see.
+      // canvas hidden. Backspace must not empty a canvas nobody can see.
       const typing =
         editTarget(event.target as Element | null, { canvasVisible: view.showsCanvas }) !== 'canvas';
 
@@ -456,8 +456,8 @@ web.api -> db: query
     };
     window.addEventListener('keydown', onKeyDown);
 
-    // Shortcuts on punctuation keys cannot be native accelerators — Wails on
-    // Windows never matches them — so the page handles them, in the capture
+    // Shortcuts on punctuation keys cannot be native accelerators (Wails on
+    // Windows never matches them), so the page handles them, in the capture
     // phase so no editor or field answers first.
     const onShortcut = (event: KeyboardEvent) => {
       const id = shortcutFor(event);
@@ -517,7 +517,7 @@ web.api -> db: query
   //
   // The D2 preview is not wired to the canvas in this milestone. The canvas is
   // a drawing surface now, and a rendered diagram becomes an element on it in
-  // Milestone 6. The pipeline still runs — diagnostics below prove it — but
+  // Milestone 6. The pipeline still runs (diagnostics below prove it), but
   // nothing paints it. Recorded as a known regression.
   $effect(() => {
     pane.setDiagnostics(client.state.errors);
@@ -536,7 +536,7 @@ web.api -> db: query
       recents: recents.paths,
     };
     void MenuService.SetState(state).catch(() => {
-      // Outside the app shell — a test, a plain browser — there is no menu.
+      // Outside the app shell (a test, a plain browser) there is no menu.
     });
   });
 
@@ -618,7 +618,7 @@ web.api -> db: query
 <!--
   Keyed on the item shown: dismissing with Escape or a click outside sets the
   dialog's own open state to false, and a reused instance would then show the
-  next queued item closed — invisible, and stuck.
+  next queued item closed: invisible, and stuck.
 -->
 {#key errors.current}
 {#if errors.current}

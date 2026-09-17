@@ -12,7 +12,7 @@ import (
 // drift back to something too narrow for four panes.
 func TestWindowFitsFourRegions(t *testing.T) {
 	if app.WindowWidth < 1280 {
-		t.Errorf("WindowWidth = %d, want at least 1280 — the width the shell was designed against", app.WindowWidth)
+		t.Errorf("WindowWidth = %d, want at least 1280, the width the shell was designed against", app.WindowWidth)
 	}
 	if app.WindowHeight < 800 {
 		t.Errorf("WindowHeight = %d, want at least 800", app.WindowHeight)

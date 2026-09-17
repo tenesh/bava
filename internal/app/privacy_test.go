@@ -16,7 +16,7 @@ import (
 )
 
 // A log never contains document prose, D2 source, canvas content or labels,
-// and never the home directory — at any level, including verbose. This runs
+// and never the home directory, at any level, including verbose. This runs
 // the real services at debug level over a fixture full of sentinels and reads
 // the whole log back.
 func TestLogsNeverContainContent(t *testing.T) {

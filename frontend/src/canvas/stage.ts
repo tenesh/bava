@@ -39,7 +39,7 @@ export class CanvasStage {
   /**
    * Patch the stage to match the scene.
    *
-   * Existing nodes are updated in place and only missing ones are created —
+   * Existing nodes are updated in place and only missing ones are created;
    * rebuilding every node on every render is the performance trap this class
    * exists to avoid.
    */

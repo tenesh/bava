@@ -2,7 +2,7 @@
  * Frontend errors, into Bava's log.
  *
  * Everything goes to Go's `LogService.Report`, which writes the session log on
- * the user's machine. Nothing is sent anywhere else — there is nowhere else.
+ * the user's machine. Nothing is sent anywhere else; there is nowhere else.
  */
 import { LogService } from '../../bindings/github.com/tenesh/bava/internal/app';
 
@@ -10,8 +10,8 @@ export type LogEntry = { level: 'error' | 'warn'; kind: string; stack: string; s
 
 /**
  * What of a thrown value may be logged: its kind and its stack frames, never
- * its message or its value. JavaScript messages quote input — a JSON syntax
- * error shows the text it choked on — and a thrown value can be anything.
+ * its message or its value. JavaScript messages quote input (a JSON syntax
+ * error shows the text it choked on), and a thrown value can be anything.
  */
 export function normalise(value: unknown): { kind: string; stack: string } {
   if (value instanceof Error) {

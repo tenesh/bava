@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * Engine, node count, error count, and a message when something needs
-   * noticing without interrupting — autosave pausing on a conflict.
+   * noticing without interrupting, such as autosave pausing on a conflict.
    *
    * Everything arrives as props: a component holds no IPC and no D2 knowledge,
    * so the shell reads the render result and hands the numbers down.

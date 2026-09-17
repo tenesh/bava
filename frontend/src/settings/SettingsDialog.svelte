@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
-   * Settings. Later milestones add sections — Files, AI Providers, Updates,
-   * Keyboard, About — each with the milestone that owns it. Appearance is
+   * Settings. Later milestones add sections (Files, AI Providers, Updates,
+   * Keyboard, About), each with the milestone that owns it. Appearance is
    * first because the theme layer already exists.
    */
   import type { Snippet } from 'svelte';
@@ -15,7 +15,7 @@
     choice: ThemeChoice;
     onChoose: (choice: ThemeChoice) => void;
     onOpenChange: (open: boolean) => void;
-    /** Sections owned elsewhere — Files, from the autosave settings. */
+    /** Sections owned elsewhere: Files, from the autosave settings. */
     sections?: Snippet;
   };
 

@@ -56,7 +56,7 @@ export type CommandId = (typeof COMMAND_IDS)[number];
 /** What the Go side emits on `menu:command`. */
 export type Command = { id: string; arg?: string };
 
-/** `arg` is set only by commands that carry data — the path, for a recent file. */
+/** `arg` is set only by commands that carry data: the path, for a recent file. */
 export type CommandHandlers = Record<CommandId, (arg?: string) => void | Promise<void>>;
 
 export const MENU_COMMAND_EVENT = 'menu:command';

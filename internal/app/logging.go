@@ -15,7 +15,7 @@ import (
 //
 // A log folder that cannot be used must not stop the app starting. It falls
 // back to a per-user cache folder, and failing that to a session that records
-// nothing — the app runs, its log is empty, and stderr says why.
+// nothing: the app runs, its log is empty, and stderr says why.
 func StartLogging() *logs.Session {
 	env := logs.EnvFromOS()
 	settings, _ := config.Load()

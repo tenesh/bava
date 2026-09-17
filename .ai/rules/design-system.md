@@ -15,13 +15,13 @@ under `:root[data-theme="dark"]`, and the app sets `data-theme` on `<html>`.
 
 | File | Holds |
 |---|---|
-| `_color.scss` | semantic colour only — see below |
+| `_color.scss` | semantic colour only; see below |
 | `_space.scss` | `--space-1` … `--space-12` (4px unit), `--border-width`, fixed chrome heights |
 | `_type.scss` | family, size, weight, line-height, letter-spacing |
 | `_radius.scss` | `--radius-sm/md/lg/full` |
 | `_elevation.scss` | shadows and overlay layering |
 | `_motion.scss` | durations and easings |
-| `_z.scss` | named stacking levels — see Stacking below |
+| `_z.scss` | named stacking levels; see Stacking below |
 
 **Colour tokens are semantic, never literal.** `--color-surface-raised`, not
 `--color-gray-100`. `--color-border-subtle`, not `--color-gray-300`. Literal
@@ -32,7 +32,7 @@ The test: switching to dark mode should not require touching any file outside
 `tokens/`. If it does, a component contains a literal.
 
 **This is enforced, not merely stated.** `src/styles/no-literals.test.ts` fails
-the suite on any hex, `rgb()`/`hsl()`, or `px` value outside `tokens/` — in
+the suite on any hex, `rgb()`/`hsl()`, or `px` value outside `tokens/`, in
 comments as well as in code. A rule with nothing behind it decays.
 
 ### The set
@@ -51,7 +51,7 @@ than invented: **`text-prose`** (document body copy, softer than
 `text-primary`) and **`focus-halo`** (the halo the design's focus recipe
 describes in prose but never names).
 
-**No hover or pressed tokens exist yet.** The mockups contain no such states —
+**No hover or pressed tokens exist yet.** The mockups contain no such states:
 checked, rather than assumed. They arrive with the first component that needs
 one, which is what this file already says to do.
 
@@ -61,7 +61,7 @@ here.
 
 **No component writes a literal value.** No hex codes, no `px` outside the
 token files, no one-off shadows. If a value is needed that no token provides,
-add the token — do not inline it.
+add the token; do not inline it.
 
 ## Stacking
 
@@ -93,7 +93,7 @@ introduce a second portal root, and do not set a raw `z-index` anywhere.
 
 This is a desktop app, not a web page. Base font size is 13px and the spacing
 unit is 4px. Web-scaled spacing looks bloated in a tool window. Calibrate
-against desktop editors — Linear, Zed, Sublime — not web apps.
+against desktop editors (Linear, Zed, Sublime), not web apps.
 
 ## Ark UI usage
 
@@ -104,16 +104,16 @@ against desktop editors — Linear, Zed, Sublime — not web apps.
   directly. This keeps the swap surface to one file per primitive.
 - Ark components are **compound** (`Root` / `Trigger` / `Content` / `Item`).
   Keep that structure inside the wrapper rather than flattening it to a single
-  prop-driven component — flattening loses composition and fights the library.
+  prop-driven component: flattening loses composition and fights the library.
 - **Ark's docs show React examples in places.** Svelte usage differs. Read the
   Svelte tab, or query Context7 with library id `/chakra-ui/ark`. Never port a
   React snippet by hand.
 - **Prefix class names used on Ark's own elements.** Ark renders those elements
   itself, so Svelte's scoping cannot reach them and the rules must be
   `:global()`. A generic name like `.content` or `.title` then leaks across the
-  whole app — use `.bava-dialog-content` and the like.
+  whole app. Use `.bava-dialog-content` and the like.
 - Portalled content (Dialog, Popover, Tooltip, Menu) mounts at `body` level,
-  outside `#app` — `<Portal>` defaults its container to `document.body`.
+  outside `#app`: `<Portal>` defaults its container to `document.body`.
   Positioning and edge handling work correctly in the webview; only stacking
   is our problem. See Stacking above.
 
@@ -130,7 +130,7 @@ change how components and their tests are written:
   events (`pointerover` / `pointerenter` / `pointermove`) open and position
   it. Write tooltip tests with pointer events.
 - **A modal Dialog sets `pointer-events: none` on `body`** while open. This
-  reaches the canvas — see `.ai/rules/canvas.md`.
+  reaches the canvas; see `.ai/rules/canvas.md`.
 - **Bundle cost is real.** Dialog + Tooltip + Portal alone took the bundle
   from 57.61 kB (21.20 gzip) to 173.51 kB (58.28 gzip). Not a network cost in
   a desktop app, but track it: if each further primitive adds similar weight,
@@ -161,7 +161,7 @@ Dialog, Editable, Field, Fieldset, FileUpload, Menu, NumberInput, Popover,
 Progress, RadioGroup, SegmentGroup, Select, Slider, Splitter, Switch, Tabs,
 Toast, Toggle, ToggleGroup, Tooltip, **TreeView**.
 
-TreeView covers the file sidebar and Splitter may cover the pane layout —
+TreeView covers the file sidebar and Splitter may cover the pane layout;
 check both before building either by hand.
 
 **Built in-house** (no adequate primitive, or too app-specific):
@@ -172,7 +172,7 @@ check both before building either by hand.
 | `ViewSwitcher` ✓ | `Document │ Both │ Canvas`, over `Segments`. |
 | `Segments` ✓ | A few exclusive choices, wrapping Ark's SegmentGroup. Use it rather than buttons with `role="radio"`, which lack arrow-key navigation. |
 | `ShortcutsDialog` ✓ | Shortcut groups, as the caller derives them from the menu spec. |
-| `StatusBar` ✓ | Engine, node count, error count, and an optional message — autosave paused, a command that failed. |
+| `StatusBar` ✓ | Engine, node count, error count, and an optional message: autosave paused, a command that failed. |
 | `FileTree` ✓ | Workspace listing. Emits a path on activation; opens nothing itself. |
 | `ConfirmDialog` ✓ | A question with fixed answers. Dismissing it is a cancel, never an accident. |
 | `CanvasControls` ✓ | Tool rail with shortcut keys, and the zoom readout. |
@@ -187,7 +187,7 @@ check both before building either by hand.
 | `AboutDialog` ✓ | Mark, wordmark, tagline, licence. No version until Milestone 16. |
 | `Icon` ✓ | Single sprite wrapper so icon sizing is tokenised. No set is bundled until Milestone 9. |
 
-✓ marks what exists. Build the rest as screens need them, not upfront — an
+✓ marks what exists. Build the rest as screens need them, not upfront: an
 unused component is an unmaintained one.
 
 **Wrapped from Ark so far**: `Dialog`, `Splitter`, SegmentGroup inside
@@ -197,7 +197,7 @@ unused component is an unmaintained one.
 
 The panda mark is **paper on ink, always** (`--color-mark`,
 `--color-mark-tile`): bare on a dark ground, in its own ink tile on a light
-one. It never inverts to ink on paper and never takes the accent — that is
+one. It never inverts to ink on paper and never takes the accent, which is
 reserved for selection and focus. Use `Mark`, never an `<img>` of the SVG: an
 image cannot take its colour from a token.
 
@@ -214,13 +214,13 @@ Scene elements are drawn by the frontend and take their colours from tokens
 like everything else. **`diagram` elements are the exception**: their SVG is
 rendered in Go and does **not** inherit CSS. The active theme's colour tokens
 are passed to `Render` as options and applied by D2's theme system. **A theme
-change must update both** — chrome via CSS custom properties, every diagram
+change must update both**: chrome via CSS custom properties, every diagram
 element via a re-render.
 
 The mapping lives in `internal/render/theme.go`, and D2's palette has a trap in
 it: the neutrals `N1`–`N7` carry **text and canvas**, while the `B` and `A`
-families carry **shapes**. Mapping stroke and fill onto `N4`/`N5` — the obvious
-reading — leaves node borders D2's default blue whatever the theme says. Every
+families carry **shapes**. Mapping stroke and fill onto `N4`/`N5` (the obvious
+reading) leaves node borders D2's default blue whatever the theme says. Every
 slot is mapped, because an unmapped one keeps its pale default and surfaces on
 whichever shape type happens to use it: a cylinder nested in a container, or a
 person shape, long after the theme looked right on a rectangle. That one was
@@ -229,7 +229,7 @@ caught by looking at a golden, not by a passing test.
 Consequence: adding a colour token that the diagram uses means updating the
 Go-side theme mapping in the same change. Tokens the chrome alone uses do not.
 
-Watch for the canvas lagging the chrome by one render on theme toggle — that
+Watch for the canvas lagging the chrome by one render on theme toggle; that
 is the symptom of the two paths being updated in the wrong order.
 
 ## Adding a component
@@ -238,7 +238,7 @@ is the symptom of the two paths being updated in the wrong order.
 2. Check whether Ark UI provides the primitive before writing behaviour.
 3. If it wraps an Ark primitive, the wrapper goes in `components/` and the
    screen imports the wrapper.
-4. Tokens only — no literal values. Add missing tokens first.
+4. Tokens only: no literal values. Add missing tokens first.
 5. Keyboard and focus states before visual polish.
 6. Check both themes.
 7. Add it to the inventory table above in the same change.

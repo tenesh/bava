@@ -43,7 +43,7 @@ export function createDocument(io: DocumentIO = overIPC) {
   let stamp = $state.raw<Stamp | null>(null);
   let dirty = $state.raw(false);
   // Counts edits. A save records the count it started from and marks the
-  // document clean only if nothing changed while it was writing — an autosave
+  // document clean only if nothing changed while it was writing: an autosave
   // runs while the user keeps working.
   let revision = 0;
   let error = $state.raw<string | null>(null);
@@ -89,7 +89,7 @@ export function createDocument(io: DocumentIO = overIPC) {
     },
 
     /**
-     * Write to a new path — an untitled document, or Save As.
+     * Write to a new path: an untitled document, or Save As.
      *
      * Deliberately does not open the path first. The file usually does not
      * exist yet, and opening it fails and leaves no path to save to: exactly

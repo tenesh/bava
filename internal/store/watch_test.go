@@ -28,7 +28,7 @@ func TestUnchangedFileIsNotReportedAsChanged(t *testing.T) {
 	}
 }
 
-// Another editor writing the file is the case this exists for — the user is
+// Another editor writing the file is the case this exists for: the user is
 // told rather than silently overwriting someone else's work.
 func TestDetectsAChangeOnDisk(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "notes.md")

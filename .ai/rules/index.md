@@ -2,7 +2,7 @@
 
 Committed, area-grouped rules: settled decisions, non-obvious traps, standing
 constraints. Read every file whose globs cover the paths in scope before
-writing code. A path match alone misses things — also run
+writing code. A path match alone misses things; also run
 `grep -rin '<keyword>' .ai/rules`.
 
 Add new rules here as they are discovered. A rule earns a place when it is
@@ -26,7 +26,7 @@ wrong), and scoped (it belongs to some paths, not all).
 
 ## Writing a rule file
 
-Keep them short — a rule nobody reads is worse than no rule.
+Keep them short: a rule nobody reads is worse than no rule.
 
 ```markdown
 # <Area>

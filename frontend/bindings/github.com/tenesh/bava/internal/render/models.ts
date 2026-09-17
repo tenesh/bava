@@ -57,7 +57,7 @@ export interface Result {
  * Span locates something in the source.
  * 
  * From and To are offsets in UTF-16 code units, which is how JavaScript and
- * CodeMirror index a document — not byte offsets. Line is 1-indexed; D2's own
+ * CodeMirror index a document, not byte offsets. Line is 1-indexed; D2's own
  * lines are 0-indexed and the conversion happens here, once, so nothing
  * downstream repeats it.
  */

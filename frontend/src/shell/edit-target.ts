@@ -2,7 +2,7 @@
  * Where an edit command goes.
  *
  * Undo, Redo, Select All and Delete come from the native menu as commands,
- * so the focused element — not the key event — decides who receives them.
+ * so the focused element, not the key event, decides who receives them.
  * The source editor keeps its own history; a text field keeps the browser's;
  * everything else is the canvas.
  */

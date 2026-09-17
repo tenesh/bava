@@ -1,8 +1,8 @@
 // Package render is the one path from D2 source to a rendered diagram.
 //
 // It owns parse, layout, render and text measurement. There is deliberately a
-// single entry point: a second render path — for previews, exports or
-// thumbnails — would drift from this one and produce output that differs from
+// single entry point: a second render path (for previews, exports or
+// thumbnails) would drift from this one and produce output that differs from
 // what the user saw.
 package render
 
@@ -38,7 +38,7 @@ type Options struct {
 // Span locates something in the source.
 //
 // From and To are offsets in UTF-16 code units, which is how JavaScript and
-// CodeMirror index a document — not byte offsets. Line is 1-indexed; D2's own
+// CodeMirror index a document, not byte offsets. Line is 1-indexed; D2's own
 // lines are 0-indexed and the conversion happens here, once, so nothing
 // downstream repeats it.
 type Span struct {
@@ -71,7 +71,7 @@ type Result struct {
 
 // Render compiles, lays out and renders source.
 //
-// A returned error means the request itself was malformed — an unknown engine,
+// A returned error means the request itself was malformed: an unknown engine,
 // a ruler that would not initialise. Problems with the diagram text come back
 // in Result.Errors with the call succeeding.
 func Render(ctx context.Context, source string, opts Options) (Result, error) {
@@ -105,8 +105,8 @@ func Render(ctx context.Context, source string, opts Options) (Result, error) {
 	engineName := engine.Name
 	diagram, graph, err := d2lib.Compile(ctx, source, &d2lib.CompileOptions{
 		// Positions must be counted the way the consumer counts.
-		// D2 reports UTF-8 byte offsets by default; JavaScript — and so
-		// CodeMirror — indexes strings in UTF-16 code units. Without this, a
+		// D2 reports UTF-8 byte offsets by default; JavaScript (and so
+		// CodeMirror) indexes strings in UTF-16 code units. Without this, a
 		// single non-ASCII label shifts every diagnostic and every jump-to-
 		// source by the number of extra bytes ahead of it.
 		UTF16Pos:       true,
@@ -154,8 +154,8 @@ func nodeMap(graph *d2graph.Graph) map[string]Span {
 }
 
 // declarationSpan locates where an object was declared. An object can be
-// referenced several times — `web.api` is both declared inside `web` and named
-// again by an edge — and jumping to source should land on the declaration, so
+// referenced several times (`web.api` is both declared inside `web` and named
+// again by an edge), and jumping to source should land on the declaration, so
 // the earliest reference wins.
 func declarationSpan(obj *d2graph.Object) (Span, bool) {
 	var best Span

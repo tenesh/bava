@@ -3,7 +3,7 @@
  *
  * The measurement is stored on the element and never recomputed on open.
  * WebKitGTK and WebView2 disagree on glyph advances, so a scene re-measured on
- * another machine reflows — which is why `canvas.md` requires bundled fonts
+ * another machine reflows, which is why `canvas.md` requires bundled fonts
  * *and* persisted dimensions, not one or the other.
  */
 export type Measurement = { width: number; height: number };

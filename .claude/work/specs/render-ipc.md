@@ -19,7 +19,7 @@ Render(source string, opts RenderOptions) -> RenderResult
 Per `.ai/rules/ipc.md`: one render path, options struct rather than a family of
 narrow methods, errors are data rather than a failed call.
 
-## RenderResult.nodeMap — decided 2026-09-16
+## RenderResult.nodeMap: decided 2026-09-16
 
 Keyed by SVG element id, valued by source location:
 
@@ -43,14 +43,14 @@ ids (`users`, `web`, `web.api`) that match `graph.Objects[].AbsID()`, and
 
 ## Positions: D2 is 0-indexed, CodeMirror is not
 
-Measured: D2 ranges serialise as `,1:3:10-3:0:28` — that is
+Measured: D2 ranges serialise as `,1:3:10-3:0:28`, that is
 `start line:col:byte - end line:col:byte`, with **lines and columns
 0-indexed**. Error messages embed the same 0-indexed pair (`2:4: maps must be
 terminated with }` points at input line 3).
 
 `from`/`to` in `nodeMap` and in errors are offsets in **UTF-16 code units**,
 set by `CompileOptions.UTF16Pos`. An earlier version of this spec said "byte
-offsets, because CodeMirror addresses documents by absolute offset" — the
+offsets, because CodeMirror addresses documents by absolute offset"; the
 second half is right and the first half was wrong. JavaScript indexes strings
 in UTF-16 code units, D2 reports UTF-8 bytes by default, and the two diverge at
 the first non-ASCII character: measured on `café: Café\nweb: Web`, `web` is at
@@ -73,7 +73,7 @@ populated, and the caller keeps the previous good SVG on screen.
 ## OmitVersion is set on every render
 
 Measured: output carries `data-d2-version="v0.8.1-HEAD"` while the module is
-v0.9.0 — the staleness `.ai/rules/d2.md` warns about, confirmed. `RenderOpts`
+v0.9.0: the staleness `.ai/rules/d2.md` warns about, confirmed. `RenderOpts`
 has `OmitVersion`, and we set it. A golden file must not record a version
 string that is false, and the attribute is worthless as a cache key anyway.
 
@@ -99,7 +99,7 @@ determinism. Milestone 1 leaves it unset.
 
 TALA is the default and the only engine Milestone 1 exercises. `opts` carries
 the engine so the contract does not change when `CanvasControls` exposes the
-picker in Milestone 3. `direction` is not exposed while TALA is active — it is
+picker in Milestone 3. `direction` is not exposed while TALA is active; it is
 ignored. dagre and elk are reachable through the same resolver; measured
 working at v0.9.0.
 

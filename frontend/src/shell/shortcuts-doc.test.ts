@@ -20,7 +20,7 @@ function expectedRows(): string[] {
     return labels.map((label) => {
       const m = macRows.find((r) => r.label === label)?.keys;
       const o = otherRows.find((r) => r.label === label)?.keys;
-      const cell = (keys: string | undefined) => (keys ? `\`${keys}\`` : '—');
+      const cell = (keys: string | undefined) => (keys ? `\`${keys}\`` : 'none');
       return `| ${title} | ${label} | ${cell(m)} | ${cell(o)} |`;
     });
   });

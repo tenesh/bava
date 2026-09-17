@@ -2,8 +2,8 @@
  * Theme state: light, dark, or follow the system.
  *
  * The resolved theme is written to `data-theme` on the document element, which
- * is what the token layer keys off. Persistence is a per-viewer convenience —
- * it lives in localStorage, never in a document — and every access is guarded,
+ * is what the token layer keys off. Persistence is a per-viewer convenience
+ * (it lives in localStorage, never in a document), and every access is guarded,
  * because a private window or blocked site data makes localStorage throw.
  */
 

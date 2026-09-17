@@ -1,7 +1,7 @@
 /**
  * Every user-facing string in the product.
  *
- * One locale, and no plural or date formatting yet — so this is a typed map
+ * One locale, and no plural or date formatting yet, so this is a typed map
  * rather than a library, which would be weight without a use. What matters is
  * the rule it enforces: no user-facing string is written inline in a
  * component, so adding a locale later is a data problem rather than a hunt.

@@ -16,7 +16,7 @@ func Write(file File) (string, error) {
 	existing := canvasBlock(file.Source)
 
 	// A scene with nothing in it adds no block, and removes one that is now
-	// empty — a document stays a document.
+	// empty: a document stays a document.
 	//
 	// "Nothing" means no elements *and* nothing a newer version left behind.
 	// Dropping the block because we see no elements would delete data we were

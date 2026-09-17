@@ -5,7 +5,7 @@ That makes it the sharpest edge in the product, and it is held to a promise:
 it fetches public release metadata, sends no user data, and carries no
 identifier.
 
-No unique install id. No version string in a query parameter — that is a usage
+No unique install id. No version string in a query parameter; that is a usage
 counter wearing a disguise. No telemetry riding along with the check. The
 request shape is pinned by a test, because this is the one place where a small
 convenient addition silently turns Bava into something that reports on its

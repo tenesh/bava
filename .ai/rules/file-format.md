@@ -14,7 +14,7 @@ a hosted one.
 
 A scene is JSON, which is plain text in the letter but not hand-editable in the
 spirit. That is accepted for a scene, because coordinates are not something a
-human edits by hand — but it raises the bar on the rest: **D2 source inside a
+human edits by hand, but it raises the bar on the rest: **D2 source inside a
 diagram element is stored as readable source, never escaped into
 unrecognisability**, and document prose stays Markdown.
 
@@ -30,7 +30,7 @@ obvious and both are required:
 
 ## Round-trip tests are mandatory
 Every format change ships with a test: write → read → compare. Not a unit test
-of the writer and a separate one of the reader — the round trip, because that
+of the writer and a separate one of the reader: the round trip, because that
 is where asymmetries hide.
 
 ## Forward compatibility

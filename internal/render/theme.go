@@ -55,7 +55,7 @@ func (t *Theme) validate() error {
 //	never reached  : N4 N5 · B3 B6 · AA2 AA5 · AB4 AB5
 //
 // So shape stroke and fill must go through the B family. Mapping them onto N4
-// and N5 — the obvious reading of "neutral scale" — produces a diagram where
+// and N5 (the obvious reading of "neutral scale") produces a diagram where
 // the node borders keep D2's default blue however the theme is set.
 //
 // Several slots are doubled up because D2 distinguishes shades we do not: it
@@ -81,8 +81,8 @@ func (t *Theme) overrides() *d2target.ThemeOverrides {
 		AA2: &t.NodeStroke,
 		// Shape fills, D2's light tints. Every one is set: an unmapped slot
 		// keeps its default pale blue and surfaces on whichever shape type
-		// happens to use it — a cylinder nested in a container, or a person
-		// shape — long after the theme looked correct on a rectangle.
+		// happens to use it (a cylinder nested in a container, or a person
+		// shape) long after the theme looked correct on a rectangle.
 		B3:  &t.NodeFill,
 		B4:  &t.NodeFill,
 		AB4: &t.NodeFill,

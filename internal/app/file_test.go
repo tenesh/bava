@@ -32,7 +32,7 @@ func TestOpenReturnsProseAndScene(t *testing.T) {
 }
 
 // A missing file is something the user can act on, so it is data rather than
-// a failed call — the same shape as a compile diagnostic.
+// a failed call, the same shape as a compile diagnostic.
 func TestOpenMissingFileReportsInError(t *testing.T) {
 	result := app.NewFileService().Open(filepath.Join(t.TempDir(), "absent.md"))
 	if result.Error == "" {

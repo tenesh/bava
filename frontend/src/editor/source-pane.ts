@@ -5,7 +5,7 @@
  * destroyed by the caller's cleanup. It is never handed reactive props: if a
  * `$derived` ever feeds this, the design has gone wrong.
  *
- * No D2 language mode yet — plain text with diagnostics. Highlighting is
+ * No D2 language mode yet: plain text with diagnostics. Highlighting is
  * Milestone 3.5, before documents embed editors of their own.
  */
 import { EditorState, type Extension } from '@codemirror/state';
@@ -103,7 +103,7 @@ export class SourcePane {
     return view.state.selection.ranges.map((r) => view.state.sliceDoc(r.from, r.to)).join('\n');
   }
 
-  /** Replace the selection — Paste with text, Cut with nothing. One undo step. */
+  /** Replace the selection: Paste with text, Cut with nothing. One undo step. */
   replaceSelection(text: string): void {
     const view = this.#view;
     if (!view) return;

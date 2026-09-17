@@ -2,8 +2,8 @@
  * Icon sizing.
  *
  * A string union rather than a number, so an icon cannot quietly acquire a
- * size that is not on the scale. No icon set is bundled yet — Milestone 9 does
- * that — so the component takes an SVG path and renders it.
+ * size that is not on the scale. No icon set is bundled yet (Milestone 9 does
+ * that), so the component takes an SVG path and renders it.
  */
 export type IconSize = 'sm' | 'md' | 'lg';
 

@@ -2,7 +2,7 @@
  * Maps compiler diagnostics from the render response onto CodeMirror.
  *
  * The positions come from the response and are never recomputed here: Go
- * compiles with UTF16Pos set, so offsets arrive in UTF-16 code units — the
+ * compiles with UTF16Pos set, so offsets arrive in UTF-16 code units, the
  * units JavaScript and CodeMirror index by. They are not byte offsets, and a
  * non-ASCII label would shift every marker if they were. Re-parsing in the
  * frontend to find a position would be a second source of truth.

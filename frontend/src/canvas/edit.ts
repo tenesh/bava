@@ -38,7 +38,7 @@ export function group(scene: Scene, ids: ElementId[]): GroupElement | undefined 
 /**
  * Remove a group, leaving its children in place.
  *
- * The children were never moved, so there is nothing to undo — which is why
+ * The children were never moved, so there is nothing to undo, which is why
  * grouping is defined not to move them.
  */
 export function ungroup(scene: Scene, id: ElementId): void {

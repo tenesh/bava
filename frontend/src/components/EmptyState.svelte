@@ -5,7 +5,7 @@
   type Props = {
     title: string;
     body?: string;
-    /** Show the faded brand mark above the title — for "nothing open yet" states. */
+    /** Show the faded brand mark above the title, for "nothing open yet" states. */
     mark?: boolean;
   };
 

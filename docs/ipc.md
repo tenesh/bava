@@ -4,8 +4,8 @@ The frontend reaches Go through exactly one bound method. Every method here is
 API that must survive a Wails beta upgrade, so the surface stays small on
 purpose.
 
-**Scope:** this surface renders `diagram` elements — the blocks that hold D2
-source — and nothing else. The canvas scene is drawn in the frontend and never
+**Scope:** this surface renders `diagram` elements (the blocks that hold D2
+source) and nothing else. The canvas scene is drawn in the frontend and never
 round-trips through Go.
 
 ## Render
@@ -50,12 +50,12 @@ this document describes the contract the canvas is built against.
 
 **Errors are data, not exceptions.** Source that does not compile returns a
 successful call with `errors` populated and `svg` empty. The frontend keeps the
-last good diagram on screen — users type through invalid states constantly, and
+last good diagram on screen; users type through invalid states constantly, and
 blanking the canvas on every half-finished line would be unusable. A returned
 `error` means the request itself was malformed.
 
-**Positions.** `from` and `to` are offsets in **UTF-16 code units** — the
-units JavaScript and CodeMirror index by — because the pipeline compiles with
+**Positions.** `from` and `to` are offsets in **UTF-16 code units** (the
+units JavaScript and CodeMirror index by), because the pipeline compiles with
 `UTF16Pos` set. They are *not* byte offsets: D2 reports UTF-8 bytes by default,
 and a single non-ASCII label then shifts every marker by the extra bytes ahead
 of it. `line` is **1-indexed**; D2 reports 0-indexed lines and the conversion
@@ -82,7 +82,7 @@ Owned by the frontend client in `frontend/src/ipc/render.svelte.ts`:
 - 250ms of quiet before a request is issued.
 - Every request carries an incrementing id; responses whose id is not the
   latest are discarded. Without this a slow TALA render can land after a faster
-  later one and the diagram flickers between states — a symptom that looks like
+  later one and the diagram flickers between states, a symptom that looks like
   a layout bug and is not.
 
 ### Rendering details fixed at the boundary
@@ -102,17 +102,17 @@ them beyond handing the parse to `internal/format`.
 
 | Method | Returns |
 |---|---|
-| `Open(path)` | `OpenResult` — prose, diagram blocks by id, scene, stamp, error |
-| `Save(path, source, scene)` | `SaveResult` — path, new stamp, error |
+| `Open(path)` | `OpenResult`: prose, diagram blocks by id, scene, stamp, error |
+| `Save(path, source, scene)` | `SaveResult`: path, new stamp, error |
 | `ChangedOnDisk(path, stamp)` | bool |
-| `ChooseFileToOpen()` | `DialogResult` — a path, or empty when cancelled |
-| `ChooseFileToSave(suggestedName)` | `DialogResult` — a path, or empty when cancelled |
-| `ListWorkspace(dir)` | `ListResult` — folders then `.md`/`.d2` files, hidden entries skipped |
+| `ChooseFileToOpen()` | `DialogResult`: a path, or empty when cancelled |
+| `ChooseFileToSave(suggestedName)` | `DialogResult`: a path, or empty when cancelled |
+| `ListWorkspace(dir)` | `ListResult`: folders then `.md`/`.d2` files, hidden entries skipped |
 | `Settings()` | the user's preferences, defaults when unreadable |
 | `SaveSettings(settings)` | an error string, empty on success |
 
 **Errors are data here too.** A missing file, a permission denial, a malformed
-canvas block — all things the user can act on — come back in `error` rather
+canvas block (all things the user can act on) come back in `error` rather
 than as a failed call. A returned error means the request itself was malformed.
 
 **A malformed canvas block still returns the prose.** Losing a whole document
@@ -128,7 +128,7 @@ their mind, which is a normal outcome and is not reported as a failure.
 
 **A workspace lists only what Bava edits.** A project folder is usually full of
 things Bava has no business showing, so `.md` and `.d2` only, folders first,
-and nothing beginning with a dot — that is Bava's own state or the user's
+and nothing beginning with a dot: that is Bava's own state or the user's
 tooling, not their documents.
 
 
@@ -138,7 +138,7 @@ Added in Milestone 5.6. The native menu bar is declared in
 `internal/app/menu/spec.json` and built from it in Go. It names commands; it
 does not perform them.
 
-### `menu:command` — Go → frontend
+### `menu:command` (Go → frontend)
 
 An event, not a binding. Every click on a dispatchable item emits one:
 
@@ -152,7 +152,7 @@ spec and fails when an id has no handler, or a handler has no spec entry.
 An unknown id is ignored rather than thrown, so a newer menu cannot crash an
 older frontend.
 
-Native roles — Hide, Quit, Close Window, Minimise, Zoom, Full Screen — never
+Native roles (Hide, Quit, Close Window, Minimise, Zoom, Full Screen) never
 emit; they act through the platform. Cut, Copy and Paste are **not** roles:
 on Windows those roles run clipboard scripts in the page that never reach the
 canvas, so they are commands like Undo, and text goes through the Wails
@@ -162,7 +162,7 @@ Items with a `shortcut` (punctuation keys) never emit from a key press either:
 the page matches the key itself and dispatches the same command id through
 the same dispatcher. A click on the item still emits `menu:command`.
 
-### `MenuService.SetState(state)` — frontend → Go
+### `MenuService.SetState(state)` (frontend → Go)
 
 The one bound method. The frontend reports what the menu reflects, and Go
 never guesses:
@@ -178,7 +178,7 @@ never guesses:
 
 Checks and enabled state are set on the native items directly. The menu is
 rebuilt (`Menu.Update`, on the main thread) only when the recents list
-changed — every tool switch and selection change calls `SetState`, and a
+changed; every tool switch and selection change calls `SetState`, and a
 rebuild each time would be wasteful everywhere and a GTK call off the main
 thread on Linux.
 
@@ -194,13 +194,13 @@ Milestone 16 confirms the public tracker.
 
 | Method | Returns |
 |---|---|
-| `Report(entry)` | nothing — logs a frontend error; `entry` is `{level, kind, stack, source}`: the error's kind and stack frames, **never its message**, which can quote input. Kind capped at 200 characters, stack at 8,000. At most 20 per 10 seconds; the number dropped is noted when the next report arrives |
+| `Report(entry)` | nothing (logs a frontend error); `entry` is `{level, kind, stack, source}`: the error's kind and stack frames, **never its message**, which can quote input. Kind capped at 200 characters, stack at 8,000. At most 20 per 10 seconds; the number dropped is noted when the next report arrives |
 | `Diagnostics(userAgent)` | plain text for the user to copy: build, OS, webview, whether the last session ended unexpectedly, and the last 200 log lines, already redacted |
 | `OpenLogsFolder()` | an error message, empty on success |
 | `TakeNotices()` | pending notices, once: `{kind: "unexpectedExit" \| "webviewReloaded", session}` |
 | `SetVerbose(on)` | an error message, empty on success; switches the live level and saves `verboseLogging` |
 
-### `app:error` — Go → frontend
+### `app:error` (Go → frontend)
 
 Emitted when Go recovers from a panic, whether in a bound method, a Wails
 goroutine, or one Bava started with `app.Go`. Carries `{id}`, which finds the

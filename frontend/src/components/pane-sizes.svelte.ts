@@ -2,7 +2,7 @@
  * Pane widths, as percentages of the shell.
  *
  * A per-viewer convenience, so it lives in localStorage and every access is
- * guarded — a private window or blocked site data makes it throw, and losing
+ * guarded: a private window or blocked site data makes it throw, and losing
  * the layout must never cost more than the layout.
  */
 export const PANE_SIZES_KEY = 'bava.pane-sizes';

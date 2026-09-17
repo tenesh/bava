@@ -11,7 +11,7 @@ import (
 
 // The TypeScript side consumes these names. A Go field rename that forgets the
 // json tag would compile, pass every other test, and break the frontend
-// silently — this is the test that catches it.
+// silently. This is the test that catches it.
 func TestResultJSONFieldNames(t *testing.T) {
 	b, err := json.Marshal(render.Result{})
 	if err != nil {
