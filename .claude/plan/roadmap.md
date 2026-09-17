@@ -22,8 +22,15 @@ traded away under schedule pressure:
 
 **Re-planned 2026-09-16.** Milestones 2 onward were rebuilt around a
 free-placement canvas after the product direction was settled; see
-`.claude/work/specs/canvas-architecture.md`. Milestone 1's D2 pipeline survives
-in a narrower role — it renders `diagram` elements rather than the whole app.
+`.claude/work/specs/canvas-architecture.md`.
+
+**Re-planned again 2026-09-17, from Milestone 6.** A diagram is no longer a
+live block rendered from D2. D2 *generates* a diagram — from code the user
+writes or the AI writes — and the result is converted into ordinary canvas
+shapes, arrows and containers that can be moved and edited freely; the D2 is
+then discarded. Decisions in `.claude/work/specs/diagrams-as-shapes.md`.
+Milestone 1's pipeline survives as the generator: compile, lay out, and hand
+the geometry to conversion.
 
 ---
 
@@ -349,74 +356,96 @@ always, never the accent.
 
 ---
 
-## Milestone 6 — Diagram elements
+## Milestone 5.8 — Errors and logs
 
-**Goal:** Drop a diagram-as-code block onto the canvas, edit its source, watch
-it render in place.
+**Goal:** When something fails, the user sees what happened and can hand us the
+logs — and nothing reaches us unless they send it.
 
-**Scope:** The `diagram` element type: inline D2 source, rendered through the
-Milestone 1 pipeline and rasterised into the stage. Its own code editor, the
-250ms debounce, stale-response dropping, and diagnostics in the block's gutter.
-Click-into-source through `nodeMap`. **`Render` gains node geometry** — `x`,
-`y`, `w`, `h` per node in diagram-local coordinates — which Milestone 7 binds
-against, and which is added here rather than retrofitted later.
+**Why now:** in a release build Wails discards every log line, and a panic
+outside a bound method closes the app without a word. Cheaper to fix before
+Milestone 6 adds more ways to fail, and every later milestone logs from its
+first line. Design: `.claude/work/specs/errors-and-logs.md`.
+
+**Scope:**
+- Per-session log files in the platform log folder, with pruning; the same
+  logger handed to Wails.
+- Frontend errors forwarded to the log.
+- A panel-level `<svelte:boundary>`.
+- A `PanicHandler` and recover wrappers for our goroutines.
+- An unexpected-exit marker and the next-launch notice.
+- The "Something went wrong" dialog for unexpected errors.
+- Help ▸ Open Logs Folder and Copy Diagnostics. Report Issue… is built but
+  hidden until Milestone 16 confirms the public repository.
+- Retention: the last 10 sessions, 50 MB total.
+- A Verbose logging setting, off by default.
+- Webview content-process termination on macOS, with the Windows and Linux
+  equivalents checked.
 
 **Exit criterion:**
 
 ```sh
-go test ./internal/... . && go test ./internal/render -run Golden \
+go test ./internal/... . && go vet ./internal/... . \
   && (cd frontend && npm run check && npm run lint && npm test)
 ```
 
-green, including a Go test that every rendered shape has bounds in `nodeMap`,
-and a frontend test that a click inside a rendered diagram resolves to the
-right node id.
+green, including:
+- a test that a log from an open–edit–render–save cycle contains none of the
+  fixture's content
+- a test that a panic in a goroutine is logged and does not exit the process
+- a test that a missing clean-exit marker produces the next-launch notice
+- a test that pruning keeps the configured number of sessions
 
-**Depends on:** Milestone 5 (a diagram is stored in a file), Milestone 4 (it is
-an element on a stage), Milestone 1 (the pipeline).
+Plus a human check at a running release build: force a panic and a frontend
+exception, and find both in the log folder.
+
+**Depends on:** Milestone 5.6 (the Help menu).
+
+**Out of scope:** recovering unsaved work after a crash — Milestone 16. Any
+automatic upload — never.
 
 ---
 
-## Milestone 7 — Connectors and bindings
+## Milestone 6 — Shapes that look right
 
-**Goal:** Arrows that attach to things and follow them — including nodes
-*inside* a generated diagram.
+**Goal:** Everything drawn on the canvas is visible, styled and selectable,
+with the shape set diagrams need.
 
-**Scope:** Arrows binding to whole elements and to diagram interiors as
-`{element, node, side}`. Re-anchoring on every render: node rect in
-diagram-local space, transformed by the diagram element's position and scale.
-Routing, and the detached state — when a bound node disappears from the source,
-the arrow freezes at its last position and is marked detached, never deleted.
-Hit-testing into a rendered diagram against the bounds index.
-
-This is the milestone that makes the hybrid one tool rather than two modes
-sharing a window. Budget accordingly.
+**Scope:** The rendering the Milestone 5.5 window check found missing: shapes
+draw with no stroke or fill, lines and arrows have no points, selection is not
+shown, and zoom does not reach the stage. The shape set shared by D2 and
+Eraser as canvas shapes and drawing tools — rectangle, ellipse, diamond,
+cylinder, hexagon, parallelogram, document, person, cloud. A text label inside
+any shape. Per-shape fill, border and text colour from a palette of named
+swatches, each resolving to a light and a dark value; the file stores the
+swatch name. A selection outline with resize handles, and a way to recolour a
+selection. The file format specifies all of it before anything writes it.
 
 **Exit criterion:**
 
 ```sh
-(cd frontend && npm run check && npm run lint && npm test)
+go test ./internal/format -run RoundTrip && go test ./internal/... . \
+  && (cd frontend && npm run check && npm run lint && npm test)
 ```
 
-green, with tests that: an arrow bound to a node follows when the D2 is edited
-and the node moves; renaming the node detaches the arrow without deleting it;
-and an endpoint resolves correctly after the diagram element is moved and
-scaled.
+green, with tests that inspect the Konva nodes actually created — stroke,
+fill, points, label — rather than only the scene data, a round trip of every
+shape with label and colours, and a human look at a running window in both
+themes.
 
-**Depends on:** Milestone 6.
+**Depends on:** Milestone 5.8.
 
 ---
 
-## Milestone 8 — Documents
+## Milestone 6.5 — Connections and containers
 
-**Goal:** Prose alongside the canvas, with diagrams embedded in the text.
+**Goal:** Arrows that stay attached as things move, and containers that carry
+their contents.
 
-**Scope:** ProseMirror over Markdown, so every document Bava writes opens
-cleanly in any editor. Markdown input rules, a slash menu, a selection bubble.
-Diagrams embedded as fenced `d2` blocks whose NodeView hosts a CodeMirror
-instance and a rendered result. The three seams from ProseMirror's own
-embedded-editor example: escaping the inner editor with arrow keys, one undo
-history across the boundary, and focus tracking.
+**Scope:** An arrow attached to its start and end elements; moving either
+re-routes it. Attachment is stored by element id, never coordinates.
+Containers — the `frame` element — own the elements inside them: dragging a
+container moves its contents, dragging an element out removes it, dropping one
+in adds it. Arrow labels.
 
 **Exit criterion:**
 
@@ -425,10 +454,95 @@ go test ./internal/format -run RoundTrip \
   && (cd frontend && npm run check && npm run lint && npm test)
 ```
 
-green, with tests for cursor escape, cross-boundary undo, focus tracking, and a
-round trip of a document containing a diagram block.
+green, with tests that an attached arrow follows its endpoints through a move
+and through undo, that moving a container moves its contents in one history
+step, and a round trip of attachments and containment.
 
-**Depends on:** Milestone 5, Milestone 6.
+**Depends on:** Milestone 6.
+
+---
+
+## Milestone 6.6 — Diagram from code
+
+**Goal:** Type or paste D2, and it lands on the canvas as free shapes.
+
+**Scope:** Insert ▸ Diagram from code: a dialog with a D2 editor and a live
+preview, using the 250ms debounce, stale-response dropping and diagnostics.
+**`Render` gains layout geometry** — each node's shape, position, size,
+colours, label and container, and each connection's endpoints, route and
+label. Conversion, in the frontend, maps that onto canvas elements: D2 shapes
+onto the canvas shape set (queue, page, package, step, callout, stored data
+and C4 person become rectangles keeping their label), colours onto the nearest
+swatch, containers onto frames, connections onto attached arrows. The inserted
+diagram is one undoable step. The D2 is not kept. SQL tables, UML classes and
+code blocks are deferred to Milestone 15.
+
+**Exit criterion:**
+
+```sh
+go test ./internal/... . && go test ./internal/render -run Golden \
+  && (cd frontend && npm run check && npm run lint && npm test)
+```
+
+green, with a Go test that every node and connection in a layout fixture
+appears in the geometry, a frontend test converting that fixture into the
+expected elements, and a test that one undo removes an inserted diagram.
+
+**Depends on:** Milestone 6.5, Milestone 1 (the pipeline).
+
+---
+
+## Milestone 7 — Snapping and detached arrows
+
+**Goal:** Arrows drawn by hand attach to shapes as naturally as generated ones.
+
+**Scope:** Attachment moved to Milestone 6.5; this milestone is the rest.
+Drawing or dragging an arrow end onto a shape snaps and attaches it, with a
+visible target. Choosing the side it attaches to. The detached state: when an
+attached element is deleted, the arrow stays, freezes at its last position and
+is marked detached — never deleted, because the user drew it. Hit-testing at
+scale with a spatial index if measured need arrives. Also carried from
+Milestone 6: rotation, and stroke width and dash options.
+
+**Exit criterion:**
+
+```sh
+(cd frontend && npm run check && npm run lint && npm test)
+```
+
+green, with tests that dropping an arrow end on a shape attaches it, that
+deleting the shape detaches rather than deletes the arrow, and that undo
+restores the attachment.
+
+**Depends on:** Milestone 6.5.
+
+---
+
+## Milestone 8 — Documents
+
+**Goal:** Prose alongside the canvas, with parts of the canvas embedded in the
+text.
+
+**Scope:** ProseMirror over Markdown, so every document Bava writes opens
+cleanly in any editor. Markdown input rules, a slash menu, a selection bubble.
+**Embeds of a canvas selection**, decided 2026-09-17: shown as an inline link
+or rendered in place, at the user's choice. Editing an embed moves focus to the
+canvas with those elements selected; there is no editor inside the document.
+Open questions, to settle when this milestone is planned: whether an embed is
+the picked elements or a region, live or a snapshot, how it reads in a plain
+Markdown viewer, and what it shows when its elements are deleted.
+
+**Exit criterion:**
+
+```sh
+go test ./internal/format -run RoundTrip \
+  && (cd frontend && npm run check && npm run lint && npm test)
+```
+
+green, with tests that activating an embed selects its elements on the canvas,
+and a round trip of a document containing an embed.
+
+**Depends on:** Milestone 5, Milestone 6.5.
 
 ---
 
@@ -438,11 +552,12 @@ round trip of a document containing a diagram block.
 
 **Scope:** Bundled Lucide (ISC) for general icons and tech logos from Simple
 Icons (CC0) or Devicon (MIT), with a searchable picker. User-imported SVGs as
-the "custom icons" category. Icons used by a diagram are resolved locally and
-inlined — **a remote icon URL is never fetched**: D2 emits `href="https://…"`
-straight into its SVG, so opening a file from elsewhere would phone a CDN and
-leak that you opened it. A file arriving with a remote icon URL gets a
-diagnostic and an explicit one-time fetch offer, never a silent request.
+the "custom icons" category, placed as `icon` elements. D2's `icon:` becomes
+an icon element during conversion, resolved from the local library — **a
+remote icon URL is never fetched**: D2 code from elsewhere, or from a model,
+may name `https://…` icons, and fetching one would phone a CDN. An unresolved
+remote icon converts to a placeholder with an explicit one-time fetch offer,
+never a silent request.
 
 **Cannot be bundled:** the AWS, Azure and Google Cloud architecture icon sets
 are not open-source licensed. They arrive by user import only.
@@ -454,20 +569,21 @@ go test ./internal/... . \
   && (cd frontend && npm run check && npm run lint && npm test)
 ```
 
-green, with a test that a remote icon URL never reaches the rendered output,
+green, with a test that conversion never produces a remote icon reference,
 and every bundled set recorded in `NOTICE`.
 
-**Depends on:** Milestone 6.
+**Depends on:** Milestone 6.6.
 
 ---
 
 ## Milestone 10 — Source editor polish
 
-**Goal:** Make D2 source a real editing experience.
+**Goal:** Make writing D2 in the Diagram from code dialog pleasant.
 
-**Scope:** A D2 language mode for CodeMirror — keywords, shape and style keys,
-edges, containers, comments, strings — the editor keymap, and
-`docs/shortcuts.md` created in the same change, covering canvas tools as well.
+**Scope:** Narrowed 2026-09-17: the dialog is now the only place D2 is edited.
+A D2 language mode for CodeMirror — keywords, shape and style keys, edges,
+containers, comments, strings — and its keymap. `docs/shortcuts.md` already
+exists and gains the dialog's keys.
 
 **Exit criterion:**
 
@@ -479,10 +595,7 @@ edges, containers, comments, strings — the editor keymap, and
 green, with tests over the tokeniser — expected token types at known offsets in
 a fixture — not over how it looks.
 
-**Depends on:** Milestone 6, Milestone 2 (highlight colours are tokens).
-
-**Why before the AI milestones:** generated D2 lands in these editors, and
-reading it unhighlighted is a poor first impression of the feature.
+**Depends on:** Milestone 6.6, Milestone 2 (highlight colours are tokens).
 
 ---
 
@@ -495,9 +608,10 @@ before it is shown.
 LM Studio, llama.cpp, LocalAI — all OpenAI-compatible over localhost). The
 dockable chat pane, one thread per file covering the document and every
 diagram on the canvas, persisted as append-only JSONL in the platform data
-directory. Generation, staged visibly — planning, then a placeholder element on
-the canvas, then the filled diagram. The compile-and-repair loop: output is
-compiled in-process, diagnostics fed back, **capped at two retries**.
+directory. Generation, staged visibly — planning, then a placeholder on the
+canvas, then the diagram converted into free shapes through Milestone 6.6's
+conversion. The compile-and-repair loop: output is compiled in-process,
+diagnostics fed back, **capped at two retries**.
 
 **Chat rendering — candidate library, decided 2026-09-17, pending a spike:**
 `markstream-svelte` (MIT) renders streamed replies: markdown, highlighted code
@@ -505,7 +619,7 @@ blocks, safe HTML, and custom components for tags such as a thinking block. It
 is the first choice because one library covers what would otherwise be
 `@humanspeak/svelte-markdown` plus Shiki. Unchanged either way: provider calls,
 credentials and the repair loop stay in Go; dropdowns, menus and collapsibles
-are Ark UI wrapped in `components/`; a D2 block in a reply renders through
+are Ark UI wrapped in `components/`; a D2 block in a reply previews through
 `Render`, never Mermaid.
 
 The milestone's first task is a throwaway spike in the real webview. Adopt
@@ -539,7 +653,7 @@ green, including a test that invalid output is repaired rather than shown, that
 the retry cap holds, and a transcript round trip. Tests run against a local
 stub server, never a live endpoint.
 
-**Depends on:** Milestone 6, Milestone 5, Milestone 3.
+**Depends on:** Milestone 6.6, Milestone 5, Milestone 3.
 
 ---
 
@@ -547,8 +661,9 @@ stub server, never a live endpoint.
 
 **Goal:** Select something, ask for a fix, see a diff, accept or reject.
 
-**Scope:** Selection-scoped edits — a CodeMirror range in a diagram, a
-ProseMirror range in a document, a selection on the canvas. Edits enter as
+**Scope:** Selection-scoped edits — a ProseMirror range in a document, or a
+selection on the canvas, where the model's change arrives as new or modified
+elements through conversion. Edits enter as
 **transactions** so one undo history survives. The inline edit box is
 ephemeral: it shows a diff and vanishes on accept or reject, and is not written
 to the transcript.
@@ -624,6 +739,10 @@ copy to clipboard. Diagram elements export **through the existing `Render`
 path**, never a second renderer. Workspace search with results, jump-to-match,
 and the `EmptyState` the design system already assumes exists for it.
 
+**Carried from Milestone 6:** arbitrary hex colours for shapes, beyond the
+swatch palette. Carried from Milestone 6.6: SQL table, UML class and code-block
+shapes.
+
 **Exit criterion:**
 
 ```sh
@@ -661,6 +780,10 @@ already uses `icons.icns`. A test then forbids the template files, as
 Windows MSIX tiles, which `wails3 tool msix` fills with Wails placeholders, and
 to Linux: deb/rpm install the 1024px `appicon.png` into `hicolor/128x128`.
 
+**Carried from Milestone 5.8:** recovering unsaved work after a crash —
+backups kept outside the project, offered at the next launch.
+Also: confirm the public issue tracker and un-hide Help ▸ Report Issue….
+
 **Exit criterion:**
 
 ```sh
@@ -695,5 +818,6 @@ a local build.
   same change as the code that makes them true, per the build loop's checklist.
 - **Accessibility debt from Milestone 1.** Paid in part in Milestone 4: scene
   elements are keyboard selectable and tab order is paint order. The remaining
-  half — reaching a node *inside* a diagram — moves to Milestone 6, because
-  diagram elements do not exist before it.
+  half — reaching a node *inside* a diagram — dissolved on 2026-09-17: a
+  converted diagram's nodes are ordinary elements, reachable the same way.
+  Milestone 6.6 confirms tab order covers them.

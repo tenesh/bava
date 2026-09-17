@@ -1,5 +1,12 @@
 # Canvas architecture
 
+> **Superseded in part, 2026-09-17.** The `diagram` element, bindings into a
+> diagram's interior, and rasterising diagrams into the stage are retired: D2
+> now generates a diagram once and it is converted into ordinary shapes,
+> arrows and containers. See `diagrams-as-shapes.md`, which wins wherever the
+> two disagree. The element model, free placement, the Konva foundation, text
+> measurement and "what Bava will not have" below still hold.
+
 Decided 2026-09-16. This supersedes the "source pane → Go compile → SVG
 display" architecture that Milestone 1 was built against. Milestone 1's
 pipeline survives, in a narrower role.
