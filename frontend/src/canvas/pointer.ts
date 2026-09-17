@@ -15,6 +15,7 @@ import type { ToolId } from './tools.svelte';
 import { produce } from 'immer';
 import type { ElementId, SceneData, SceneElement } from './scene';
 import { simplify } from './stroke';
+import { snapAngle, squareBox } from './constrain';
 import { erasableAlong, eraseSet } from './eraser';
 import { boundsOf } from './edit';
 import { handleAt, resizeBox, scaleInto, tidy, type Handle } from './resize';
@@ -77,7 +78,9 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   let trailEnd: Point | null = null;
   let trail: number[] = [];
   let marquee: Box | null = null;
-  let keepAspect = false;
+  // Shift, as it was on the last event: constraints follow the key during the
+  // drag rather than being decided when the pointer went down.
+  let shift = false;
   // Half a handle's side, in scene units: the caller divides the on-screen size
   // by the zoom. The zone matches the drawn handle, no larger.
   const handleSize = options.handleSize ?? (() => 4);
@@ -113,7 +116,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       return marquee;
     },
 
-    down(point: Point, options: { additive?: boolean; keepAspect?: boolean } = {}): void {
+    down(point: Point, options: { additive?: boolean; shift?: boolean } = {}): void {
+      shift = Boolean(options.shift);
       if (tools.active === 'eraser') {
         erasing = new Set();
         trailEnd = point;
@@ -141,7 +145,6 @@ export function createPointerHandler(options: PointerHandlerOptions) {
             resize: { handle, bounds, originals: new Map(selected.map((e) => [e.id, e])) },
             newId: '',
           };
-          keepAspect = Boolean(options.keepAspect);
           return;
         }
       }
@@ -172,8 +175,9 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       };
     },
 
-    move(point: Point, options: { alt?: boolean } = {}): void {
+    move(point: Point, options: { alt?: boolean; shift?: boolean } = {}): void {
       if (!drag) return;
+      shift = Boolean(options.shift);
 
       if (tools.active === 'eraser') {
         extendTrail(point, Boolean(options.alt));
@@ -185,26 +189,32 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         return;
       }
 
-      if (tools.active === 'select' && drag.moving.length === 0) {
+      // A resize is a select-tool drag that moves nothing; the marquee belongs
+      // to dragging empty space, not to it.
+      if (tools.active === 'select' && !drag.resize && drag.moving.length === 0) {
         marquee = boxBetween(drag.origin, point);
       }
     },
 
     /**
      * The scene the drag would produce if released at `point`, for the canvas
-     * to draw while the pointer moves. History is untouched. Null when there is
+     * to draw while the pointer moves. History is untouched, though the
+     * modifier is recorded: every call states whether Shift is held, so a
+     * preview and the release that follows cannot disagree. Null when there is
      * no drag or it would change nothing.
      */
-    preview(point: Point): SceneData | null {
+    preview(point: Point, options: { shift?: boolean } = {}): SceneData | null {
       if (!drag) return null;
+      shift = Boolean(options.shift);
       const recipe = changeFor(drag, point);
       if (!recipe) return null;
       const next = produce(history.current, recipe);
       return next === history.current ? null : next;
     },
 
-    up(point: Point, options: { alt?: boolean } = {}): void {
+    up(point: Point, options: { alt?: boolean; shift?: boolean } = {}): void {
       if (!drag) return;
+      shift = Boolean(options.shift);
       const started = drag;
       drag = null;
       marquee = null;
@@ -263,7 +273,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const dx = point.x - started.origin.x;
       const dy = point.y - started.origin.y;
       if (dx === 0 && dy === 0) return null;
-      const next = resizeBox(bounds, handle, dx, dy, { keepAspect });
+      const next = resizeBox(bounds, handle, dx, dy, { keepAspect: shift });
       return (scene) => {
         for (let i = 0; i < scene.elements.length; i += 1) {
           const original = originals.get(scene.elements[i].id);
@@ -315,18 +325,20 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     // A shape tool. A click is not a shape.
     if (!farEnough(started.origin, point)) return null;
 
-    const raw = boxBetween(started.origin, point);
+    const type = tools.active;
+    const linear = type === 'line' || type === 'arrow';
+    // Shift constrains: a square box, or an angle in 15° steps.
+    const end = shift && linear ? snapAngle(started.origin, point) : point;
+    const raw = shift && !linear ? squareBox(started.origin, point) : boxBetween(started.origin, end);
     // Tidy: a zoom or fractional pan leaves 83.33333333333333, written into
     // the user's file otherwise.
     const box = { x: tidy(raw.x), y: tidy(raw.y), w: tidy(raw.w), h: tidy(raw.h) };
-    const type = tools.active;
     // Text is typed, not dragged: its tool is handled with the label editor.
     if (type === 'text') return null;
-    const extra =
-      type === 'line' || type === 'arrow'
+    const extra = linear
         ? {
             // From where the drag started to where it ended, relative to the box.
-            points: [started.origin.x - box.x, started.origin.y - box.y, point.x - box.x, point.y - box.y].map(tidy),
+            points: [started.origin.x - box.x, started.origin.y - box.y, end.x - box.x, end.y - box.y].map(tidy),
           }
         : {};
     return (scene) => {

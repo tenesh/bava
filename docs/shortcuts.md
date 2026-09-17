@@ -129,10 +129,11 @@ or the source editor has it.
 
 | Gesture | Action |
 |---|---|
-| Drag with a shape tool | Create that shape |
+| Drag with a shape tool | Create that shape; hold `⇧` for a square (a circle, a square box) |
+| Drag with Line or Arrow | Draw it; hold `⇧` to snap to 15° steps |
 | Click with Text | Place text and start typing; nothing is added until you type |
 | Double-click a shape, frame or text | Type into its label or text |
-| Drag a selection handle | Resize; `⇧` keeps the proportions |
+| Drag a selection handle | Resize; hold `⇧` to keep the proportions, from any handle |
 | Scroll | Pan |
 | `⌘` / `Ctrl` + scroll, or pinch | Zoom about the pointer |
 | Middle-button drag | Pan |
@@ -143,6 +144,9 @@ or the source editor has it.
 | Drag with Draw | Freehand stroke |
 | Drag with Eraser | Fade what the trail crosses, delete it on release; `⌥` while dragging restores |
 | Click with Eraser | Delete the topmost element under the pointer |
+
+`⇧` is read while you drag: pressing or releasing it changes what you see at
+once, and the release commits exactly that.
 
 A drag, a resize or an erase is one undo step, however many pointer events it
 took. Shapes, strokes, moves and resizes draw live while you drag.

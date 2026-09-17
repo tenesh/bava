@@ -64,14 +64,24 @@ export function resizeBox(box: Box, handle: Handle, dx: number, dy: number, opti
   if (handle.startsWith('top')) top = Math.min(top + dy, bottom - MIN_SIZE);
   if (handle.startsWith('bottom')) bottom = Math.max(bottom + dy, top + MIN_SIZE);
 
-  const corner = handle.includes('-');
   // A line has no width or height, so no ratio to keep.
-  if (options.keepAspect && corner && box.w > 0 && box.h > 0) {
+  if (options.keepAspect && box.w > 0 && box.h > 0) {
     const aspect = box.w / box.h;
-    const width = right - left;
-    const height = Math.max(MIN_SIZE, width / aspect);
+    const drivesHeight = handle === 'top' || handle === 'bottom';
+    // The dragged edge drives one side; the other follows at the ratio, and
+    // both are scaled up together if that would fall below the minimum, so a
+    // collapsed drag still keeps the proportions.
+    let width = drivesHeight ? (bottom - top) * aspect : right - left;
+    let height = drivesHeight ? bottom - top : (right - left) / aspect;
+    const scale = Math.max(1, MIN_SIZE / width, MIN_SIZE / height);
+    width *= scale;
+    height *= scale;
+    // The edges the drag did not touch stay put: a top handle keeps the
+    // bottom, a left handle keeps the right, and the width grows rightward.
     if (handle.startsWith('top')) top = bottom - height;
     else bottom = top + height;
+    if (handle.includes('left')) left = right - width;
+    else right = left + width;
   }
 
   return { x: left, y: top, w: right - left, h: bottom - top };

@@ -195,7 +195,7 @@ check both before building either by hand.
 | `InsertPanel` ✓ | Search, category rows (right chevron clear of the text), a category's tile grid, footer hint. State in `shell/insert.svelte.ts`. |
 | `SelectionToolbar` ✓ | Bottom-centre toolbar for a selection: `StyleBar` pickers, align and distribute, More. Model in `canvas/toolbar.ts`. |
 | `ContextMenu` ✓ | A menu opened at a point, wrapping Ark's Menu, with nested submenus. Used for right-click and More. Tree in `canvas/context-menu.ts`. |
-| `Tooltip` ✓ | A button that names itself (and its key) on hover and keyboard focus, wrapping Ark's Tooltip. |
+| `Tooltip` ✓ | Names a control (and its key) on hover and keyboard focus, wrapping Ark's Tooltip. It renders the button itself, or wraps a control the caller renders through `trigger`, which avoids a button inside a button. |
 | `ToolIcon` ✓ | Interface icons by id: Lucide (ISC), plus the in-house parallelogram. |
 | `Toolbar` | Contextual: changes with the current selection. |
 | `LayoutEnginePicker` | Per `diagram` element, not per canvas. |
@@ -206,7 +206,7 @@ check both before building either by hand.
 | `Mark` ✓ | The brand mark, inlined from `src/brand/panda.svg` at one of four `--size-mark-*` sizes. |
 | `ErrorDialog` ✓ | An unexpected failure: one sentence, collapsed details, Copy details, Open logs folder. Never a stack. |
 | `PanelBoundary` ✓ | `<svelte:boundary>` around each shell region; a crash shows "This panel hit a problem" and Reload panel. |
-| `StyleBar` ✓ | Fill, border and text swatch pickers, wrapping Ark's Popover and RadioGroup. A group inside `SelectionToolbar`, which draws the surface. |
+| `StyleBar` ✓ | Fill, border and text pickers as swatch chips, named by their tooltip, wrapping Ark's Popover and RadioGroup. A group inside `SelectionToolbar`, which draws the surface. |
 | `Disclosure` ✓ | A collapsed-by-default section, wrapping Ark's Collapsible. |
 | `AboutDialog` ✓ | Mark, wordmark, tagline, licence. No version until Milestone 16. |
 | `Icon` ✓ | Single sprite wrapper so icon sizing is tokenised. No set is bundled until Milestone 9. |

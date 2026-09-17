@@ -209,3 +209,43 @@ Export moves forward from Milestone 15 and code blocks from Milestone 15.
 
 Decided by the user: no comments. Bava is local only with no sharing, so a
 comment has no one to address. The rail has no Comment tool.
+
+## Colour: decided 2026-09-18
+
+- **The swatch palette stays as it is**: the eight main hues (gray, blue,
+  green, yellow, orange, red, purple, pink) plus the theme default, each
+  resolving to a light and a dark value. Main colours only, no shades, as in
+  Excalidraw's quick row. The file keeps storing the name.
+- **A colour picker joins them** (06.3), for any colour. The picked value is
+  stored once and **adjusted for the other theme** so it stays legible; the
+  picker previews both. Not a pair of values: one colour, one documented rule.
+  Asked and answered: Excalidraw stores a literal colour and inverts the whole
+  canvas in dark mode, which Bava cannot do because it themes per element. The
+  user confirmed Eraser's colours differ between themes, and Eraser's docs
+  agree: `color` takes a name or a hex value, dark mode is a per-user setting
+  (never stored in the file), and a team palette's "Colors adapt automatically
+  for dark mode" (docs.eraser.io/custom-styles, /dark-mode). One authored
+  colour, adapted at render, is what both products do.
+- The picker's exact storage (`"#e03131"` beside a swatch name) and the
+  adjustment rule are specified in `docs/file-format.md` before any code
+  writes them.
+
+## Toolbar colours show swatches only: decided 2026-09-18
+
+The selection toolbar's colour controls show the swatch chip alone, with no
+"Fill colour" text beside it. The name is in the tooltip. The bar is a row of
+chips, not a row of labelled buttons.
+
+## Constrained drawing and resizing: decided 2026-09-18
+
+Holding **Shift** constrains, and is read continuously during the drag so
+pressing or releasing it changes the preview at once:
+
+- Drawing a rectangle, ellipse or any shape: a square, a circle, a shape in a
+  square box.
+- Drawing a line or arrow: snapped to 15° steps.
+- Resizing: the selection keeps its proportions.
+
+A resize never draws the marquee: the dashed rectangle belongs to dragging
+empty space.
+

@@ -614,6 +614,9 @@
     let spaceHeld = false;
     let panningFrom: { x: number; y: number } | null = null;
 
+    // Where the pointer last was during a drag, so a modifier pressed without
+    // moving it can redraw the preview.
+    let lastDragPoint: { x: number; y: number } | null = null;
     const onDown = (event: PointerEvent) => {
       // A press inside the label editor is typing, not a canvas gesture.
       if (labelEditor?.contains(event.target)) return;
@@ -626,7 +629,7 @@
       }
       // Text is placed with a click and typed; it is not a drag.
       if (tools.active === 'text') return;
-      pointer.down(scenePoint(event), { additive: event.shiftKey, keepAspect: event.shiftKey });
+      pointer.down(scenePoint(event), { additive: event.shiftKey, shift: event.shiftKey });
       // A click selects; show it now rather than on release.
       syncSelection();
     };
@@ -639,7 +642,8 @@
         return;
       }
       const point = scenePoint(event);
-      pointer.move(point, { alt: event.altKey });
+      lastDragPoint = point;
+      pointer.move(point, { alt: event.altKey, shift: event.shiftKey });
       if (!pointer.dragging) return;
       if (tools.active === 'eraser') {
         canvas.setErasing(pointer.erasing, pointer.eraserTrail);
@@ -647,13 +651,14 @@
       }
       // Live feedback: the drag's result drawn as it would be committed, or the
       // scene as it is when the drag would change nothing.
-      canvas.render(pointer.preview(point) ?? history.current);
+      canvas.render(pointer.preview(point, { shift: event.shiftKey }) ?? history.current);
       canvas.setMarquee(pointer.marquee);
     };
     const onUp = (event: PointerEvent) => {
       if (labelEditor?.contains(event.target)) return;
       // The right button belongs to the context menu, on release as on press.
       if (event.button === 2) return;
+      lastDragPoint = null;
       if (panningFrom) {
         panningFrom = null;
         return;
@@ -665,7 +670,7 @@
         queueMicrotask(() => placeText(point));
         return;
       }
-      pointer.up(scenePoint(event), { alt: event.altKey });
+      pointer.up(scenePoint(event), { alt: event.altKey, shift: event.shiftKey });
       canvas.setMarquee(null);
       canvas.setErasing(new Set(), []);
       commit();
@@ -700,6 +705,13 @@
         applyView();
       }
     };
+    // Shift constrains a drag, and the preview follows the key even when the
+    // pointer does not move: the drag is redrawn where the pointer last was.
+    const onShift = (event: KeyboardEvent) => {
+      if (event.key !== 'Shift' || !pointer.dragging || !lastDragPoint) return;
+      const held = event.type === 'keydown';
+      canvas.render(pointer.preview(lastDragPoint, { shift: held }) ?? history.current);
+    };
     const onSpace = (event: KeyboardEvent) => {
       if (event.key !== ' ') return;
       // Always cleared on release, wherever focus went while it was held.
@@ -722,6 +734,8 @@
     labelEditor = new LabelEditor(diagramHost);
     window.addEventListener('keydown', onSpace);
     window.addEventListener('keyup', onSpace);
+    window.addEventListener('keydown', onShift);
+    window.addEventListener('keyup', onShift);
     window.addEventListener('blur', releaseSpace);
 
     // The stage is sized at mount; follow the pane as the window or the
@@ -841,6 +855,8 @@
       labelEditor = null;
       window.removeEventListener('keydown', onSpace);
       window.removeEventListener('keyup', onSpace);
+      window.removeEventListener('keydown', onShift);
+      window.removeEventListener('keyup', onShift);
       window.removeEventListener('blur', releaseSpace);
       sizeObserver?.disconnect();
       window.removeEventListener('keydown', onKeyDown);

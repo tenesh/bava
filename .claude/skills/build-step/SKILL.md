@@ -658,6 +658,25 @@ deliberately at `5.24.2` or later.
 - **Status-bar messages are a usable probe inside WKWebView** when headless
   Chrome cannot reproduce: temporary, removed after.
 
+### Milestone 6.2.1 findings, 2026-09-18
+
+- **Two Ark machines on one element need one id.** Spreading one trigger's
+  props over another's leaves the second machine unable to find its element:
+  no anchoring, no toggle. Pass the same `ids.trigger` to both roots and merge
+  the props through nested `asChild` snippets.
+- **Vite's hot update can break Svelte 5 snippets** (`invalid_snippet_arguments`
+  in a panel that works after a full reload). Restart the app before believing
+  a snippet error seen only in the dev window.
+
+- **A feature invisible in tests can hide a second one.** The marquee was
+  tracked during resizes since Milestone 5.5 and only became visible when 06.2
+  drew it.
+- **Ark triggers nest badly.** A tooltip around another Ark trigger would put a
+  button inside a button; `Tooltip` takes a `trigger` snippet and passes Ark's
+  `asChild` props through instead. Type that snippet as
+  `TooltipTriggerProps['asChild']`, not a hand-written signature.
+- Shift and Alt are drag-time state in `pointer.ts`; see `.ai/rules/canvas.md`.
+
 ### Settled facts that still hold
 
 - D2 spike verified: library links cleanly, TALA output quality is good.
