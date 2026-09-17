@@ -8,6 +8,7 @@
    * navigation between them.
    */
   import { Popover, Portal, RadioGroup } from '@ark-ui/svelte';
+  import Tooltip from './Tooltip.svelte';
   import { portalRoot } from './portal-root';
   import { SWATCHES, isSwatch } from '../canvas/palette';
   import type { StyleKey } from '../canvas/style';
@@ -49,11 +50,28 @@
 
 <div class="bar" role="group" aria-label={t('style.toolbar')}>
   {#each pickers as picker (picker.key)}
-    <Popover.Root lazyMount unmountOnExit>
-      <Popover.Trigger class="bava-style-trigger" aria-label={picker.label}>
-        <span class="chip" class:mixed={picker.current === 'mixed'} style:background={chip(picker.current, picker.part)}></span>
-        <span class="trigger-label">{picker.label}</span>
-      </Popover.Trigger>
+    {@const triggerId = `bava-style-${picker.key}-trigger`}
+    <!--
+      One chip, two machines: the popover opens the swatches and the tooltip
+      names it. Both are told the same trigger id, and the popover's props are
+      merged into the tooltip's, so each finds the element and keeps its own
+      attributes.
+    -->
+    <Popover.Root lazyMount unmountOnExit ids={{ trigger: triggerId }}>
+      <Tooltip label={picker.label} placement="top" {triggerId}>
+        {#snippet trigger(tipProps)}
+          {#snippet chipButton(popoverProps: typeof tipProps)}
+            <button {...tipProps(popoverProps())} class="bava-style-trigger" aria-label={picker.label}>
+              <span
+                class="chip"
+                class:mixed={picker.current === 'mixed'}
+                style:background={chip(picker.current, picker.part)}
+              ></span>
+            </button>
+          {/snippet}
+          <Popover.Trigger asChild={chipButton} />
+        {/snippet}
+      </Tooltip>
       <Portal container={portalRoot()}>
         <Popover.Positioner>
           <Popover.Content class="bava-style-popover">
@@ -89,13 +107,14 @@
     gap: var(--space-1);
   }
 
+  /* The chip is the control: a square button showing the swatch. */
   :global(.bava-style-trigger) {
-    white-space: nowrap;
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    justify-content: center;
+    width: var(--size-row);
     height: var(--size-row);
-    padding: 0 var(--space-2);
+    padding: 0;
     border: 0;
     border-radius: var(--radius-sm);
     background: transparent;

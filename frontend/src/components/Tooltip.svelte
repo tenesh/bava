@@ -4,10 +4,12 @@
    *
    * The button is the trigger: every attribute and handler passed in lands on
    * it, so a caller writes one element, not a wrapper around its own button.
+   * A caller that already renders its own control (another Ark trigger, say)
+   * passes `trigger` instead, and spreads the props it is handed onto it.
    * Presentational only.
    */
   import type { Snippet } from 'svelte';
-  import { Portal, Tooltip } from '@ark-ui/svelte';
+  import { Portal, Tooltip, type TooltipTriggerProps } from '@ark-ui/svelte';
   import { portalRoot } from './portal-root';
 
   type Placement = 'right' | 'left' | 'top' | 'bottom';
@@ -26,24 +28,48 @@
     onclick?: (event: MouseEvent) => void;
   };
 
-  type Props = ButtonProps & {
+  type Common = {
     label: string;
     /** The key that does the same, shown after the label. */
     keys?: string;
     placement?: Placement;
-    children: Snippet;
+    /**
+     * The trigger's element id. Pass it when another machine (a popover, say)
+     * shares this element: both then address the same node by the same id.
+     */
+    triggerId?: string;
   };
 
-  let { label, keys, placement = 'right', children, ...button }: Props = $props();
+  /**
+   * Either the tooltip renders the button (with the button props), or the
+   * caller renders the control through `trigger` and the props go to it. The
+   * two are exclusive, so button props cannot be passed and silently dropped.
+   */
+  type Props = Common &
+    (
+      | (ButtonProps & { children: Snippet; trigger?: never })
+      | { trigger: TooltipTriggerProps['asChild']; children?: never }
+    );
+
+  let { label, keys, placement = 'right', children, trigger, triggerId, ...button }: Props = $props();
 
   /** Long enough not to flash while the pointer crosses a toolbar; a named tunable. */
   const OPEN_DELAY_MS = 400;
 </script>
 
-<Tooltip.Root openDelay={OPEN_DELAY_MS} closeDelay={0} positioning={{ placement }}>
-  <Tooltip.Trigger {...button}>
-    {@render children()}
-  </Tooltip.Trigger>
+<Tooltip.Root
+  openDelay={OPEN_DELAY_MS}
+  closeDelay={0}
+  positioning={{ placement }}
+  ids={triggerId ? { trigger: triggerId } : undefined}
+>
+  {#if trigger}
+    <Tooltip.Trigger asChild={trigger} />
+  {:else}
+    <Tooltip.Trigger {...button}>
+      {@render children?.()}
+    </Tooltip.Trigger>
+  {/if}
   <Portal container={portalRoot()}>
     <Tooltip.Positioner>
       <Tooltip.Content class="bava-tooltip">

@@ -442,3 +442,71 @@ describe('what the eraser shows as marked', () => {
     expect([...handler.erasing].sort()).toEqual(['a', 'b', 'g']);
   });
 });
+
+// The dashed rectangle belongs to dragging empty space. A resize is a drag
+// with nothing being marquee'd, and drew one over every resize.
+describe('a resize drag', () => {
+  function selectedRect() {
+    const h = harness('rect');
+    h.handler.down(at(0, 0));
+    h.handler.up(at(100, 60));
+    h.tools.activate('select');
+    h.selection.click(h.history.current.elements[0].id);
+    return h;
+  }
+
+  it('draws no marquee', () => {
+    const { handler } = selectedRect();
+    handler.down(at(100, 60));
+    handler.move(at(140, 90));
+    expect(handler.marquee).toBeNull();
+    expect(handler.preview(at(140, 90))?.elements[0]).toMatchObject({ w: 140, h: 90 });
+  });
+});
+
+// Shift is read while dragging, as Excalidraw does: pressing or releasing it
+// mid-drag changes what the preview shows and what release commits.
+describe('Shift during a drag', () => {
+  it('constrains when Shift goes down mid-drag, and stops when it is released', () => {
+    const { handler } = harness('rect');
+    handler.down(at(0, 0));
+    expect(handler.preview(at(100, 40))?.elements[0]).toMatchObject({ w: 100, h: 40 });
+    handler.move(at(100, 40), { shift: true });
+    expect(handler.preview(at(100, 40), { shift: true })?.elements[0]).toMatchObject({ w: 100, h: 100 });
+    handler.move(at(100, 40));
+    expect(handler.preview(at(100, 40))?.elements[0]).toMatchObject({ w: 100, h: 40 });
+  });
+
+  it('commits what the last preview showed', () => {
+    const { history, handler } = harness('ellipse');
+    handler.down(at(0, 0));
+    const shown = handler.preview(at(60, 20), { shift: true })?.elements[0];
+    handler.up(at(60, 20), { shift: true });
+    expect(history.current.elements[0]).toEqual(shown);
+  });
+
+  // Every call says what Shift is. A release that leaves it out means "not
+  // held", so a constrained preview cannot be committed as a free box or the
+  // other way round.
+  it('reads a missing shift option as not held, everywhere', () => {
+    const { history, handler } = harness('rect');
+    handler.down(at(0, 0));
+    handler.preview(at(60, 20), { shift: true });
+    handler.up(at(60, 20));
+    expect(history.current.elements[0]).toMatchObject({ w: 60, h: 20 });
+  });
+
+  it('keeps a resize in proportion while Shift is held', () => {
+    const { history, selection, handler, tools } = harness('rect');
+    handler.down(at(0, 0));
+    handler.up(at(100, 50));
+    tools.activate('select');
+    selection.click(history.current.elements[0].id);
+
+    handler.down(at(100, 50));
+    const free = handler.preview(at(140, 60))?.elements[0];
+    expect(free).toMatchObject({ w: 140, h: 60 });
+    const held = handler.preview(at(140, 60), { shift: true })?.elements[0];
+    expect(held).toMatchObject({ w: 140, h: 70 });
+  });
+});

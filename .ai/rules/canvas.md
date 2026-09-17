@@ -108,6 +108,18 @@ the drag would commit if released there, computed by the same function the
 release commits. History changes only on release, one step. The element being
 drawn keeps one id for the whole drag, so the stage patches one node.
 
+## Modifiers are read during a drag, never at the press
+Shift (constrain) and Alt (the eraser's restore) are passed on every move and
+release, so pressing or releasing a key mid-drag changes the preview at once.
+A modifier captured in `down()` cannot do that, which is how Shift silently
+did nothing for new shapes.
+
+## A linear element's box is not its shape
+A line, arrow or stroke is hit-tested by its box outside the eraser, so an
+axis-aligned one (a Shift-drawn horizontal line) has a zero-height box and is
+clickable only on an exact coordinate. `eraser.ts` already tests the drawn
+path with a tolerance; selection has yet to. Carried to Milestone 6.3.
+
 ## The eraser marks, then deletes on release
 The trail marks elements it crosses (drawn at `--opacity-erasing`); release
 deletes them and their outermost groups in one step. A group is hit only

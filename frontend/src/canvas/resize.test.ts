@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HANDLES, handleAt, resizeBox, scaleInto } from './resize';
+import { HANDLES, MIN_SIZE, handleAt, resizeBox, scaleInto } from './resize';
 
 const box = { x: 100, y: 100, w: 200, h: 100 };
 
@@ -78,5 +78,50 @@ describe('scaleInto for text', () => {
       measuredWidth: 50,
       measuredHeight: 20,
     });
+  });
+});
+
+// Shift keeps the proportions from any handle: an edge scales the other axis
+// about the opposite edge, as Excalidraw does.
+describe('keeping proportions', () => {
+  const box = { x: 0, y: 0, w: 100, h: 50 };
+
+  it('keeps them from a corner', () => {
+    expect(resizeBox(box, 'bottom-right', 100, 0, { keepAspect: true })).toEqual({ x: 0, y: 0, w: 200, h: 100 });
+  });
+
+  it('keeps them from a side handle, growing the other axis', () => {
+    expect(resizeBox(box, 'right', 100, 0, { keepAspect: true })).toEqual({ x: 0, y: 0, w: 200, h: 100 });
+  });
+
+  it('keeps them from a top handle, anchored at the bottom', () => {
+    expect(resizeBox(box, 'top', -50, -50, { keepAspect: true })).toEqual({ x: 0, y: -50, w: 200, h: 100 });
+  });
+
+  it('leaves the free resize alone', () => {
+    expect(resizeBox(box, 'right', 100, 0)).toEqual({ x: 0, y: 0, w: 200, h: 50 });
+  });
+});
+
+describe('keeping proportions at the limits', () => {
+  it('keeps the ratio when a drag collapses the box to its minimum', () => {
+    const result = resizeBox({ x: 0, y: 0, w: 100, h: 50 }, 'right', -98, 0, { keepAspect: true });
+    expect(result.w / result.h).toBeCloseTo(2, 5);
+    expect(Math.min(result.w, result.h)).toBeGreaterThanOrEqual(MIN_SIZE);
+  });
+
+  it('leaves a flat element alone: it has no ratio', () => {
+    expect(resizeBox({ x: 0, y: 0, w: 100, h: 0 }, 'right', 50, 0, { keepAspect: true })).toMatchObject({ w: 150, h: 0 });
+  });
+
+  it('scales a points-bearing element with the box', () => {
+    const line = { id: 'l', z: 1, type: 'line', x: 0, y: 0, w: 100, h: 50, points: [0, 0, 100, 50] } as never;
+    const scaled = scaleInto(line, { x: 0, y: 0, w: 100, h: 50 }, { x: 0, y: 0, w: 200, h: 100 }) as unknown as {
+      points: number[];
+      w: number;
+      h: number;
+    };
+    expect(scaled.points).toEqual([0, 0, 200, 100]);
+    expect(scaled).toMatchObject({ w: 200, h: 100 });
   });
 });

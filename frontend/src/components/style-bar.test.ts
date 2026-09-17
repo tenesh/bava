@@ -43,3 +43,56 @@ describe('StyleBar', () => {
     unmount(app);
   });
 });
+
+// The bar is a row of chips: the name is in the tooltip, not beside the chip.
+describe('StyleBar chips', () => {
+  it('shows the swatch alone, keeping the accessible name', () => {
+    const { target, app } = render({});
+    const trigger = target.querySelector('button[aria-label="Fill colour"]') as HTMLElement;
+    expect(trigger.textContent?.trim()).toBe('');
+    expect(trigger.querySelector('.chip')).not.toBeNull();
+    expect(target.querySelector('.trigger-label')).toBeNull();
+    unmount(app);
+  });
+
+  it('names the chip in a tooltip on hover', async () => {
+    const { target, app } = render({});
+    const trigger = target.querySelector('button[aria-label="Border colour"]') as HTMLElement;
+    trigger.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }));
+    await vi.waitFor(
+      () => expect(document.querySelector('[data-part="content"]:not([hidden])')?.textContent).toContain('Border colour'),
+      { timeout: 2000 },
+    );
+    unmount(app);
+  });
+});
+
+// The chip is both the popover's trigger and the tooltip's. Spreading one
+// machine's props over the other left the popover with no trigger element: it
+// could not anchor its panel and the chip stopped opening it (seen at a
+// running window; jsdom has no layout, so only the parts are observable).
+describe('StyleBar chip wiring', () => {
+  it('gives both machines the same trigger, by one id', () => {
+    const { target, app } = render({});
+    const trigger = target.querySelector('button[aria-label="Fill colour"]') as HTMLElement;
+    // One element, one id, addressable by both machines.
+    expect(trigger.id).toBe('bava-style-fill-trigger');
+    expect(document.getElementById(trigger.id)).toBe(trigger);
+    // The popover's own attributes survived the merge with the tooltip's.
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
+    expect(trigger.getAttribute('aria-controls')).toMatch(/popover/);
+    unmount(app);
+  });
+
+  it('names the chip on keyboard focus too', async () => {
+    const { target, app } = render({});
+    const trigger = target.querySelector('button[aria-label="Fill colour"]') as HTMLElement;
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    trigger.focus();
+    await vi.waitFor(
+      () => expect(document.querySelector('[data-part="content"]:not([hidden])')?.textContent).toContain('Fill colour'),
+      { timeout: 2000 },
+    );
+    unmount(app);
+  });
+});

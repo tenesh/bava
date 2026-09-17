@@ -111,3 +111,7 @@ could reasonably have gone another way.
 | 2026-09-18 | Lucide is bundled now, at 1.44.0 | Brought forward from Milestone 9 for interface icons. Pinned to a release older than the project's 7-day minimum; 1.47.0 was a day old. |
 | 2026-09-18 | macOS uses the standard hidden title bar | The inset variant placed the traffic lights for a ~52pt toolbar, below Bava's 36px bar. |
 | 2026-09-18 | Export and code blocks move forward, to Milestones 6.4 and 6.7 | Sequencing agreed with the user; rotation joins 6.3. |
+| 2026-09-18 | Shift constrains a drag, and is read while dragging | A square, a circle, 15° lines, and proportions kept from any resize handle. Read on every move so the preview follows the key, as Excalidraw does; read at the press it could not. |
+| 2026-09-18 | A resize draws no marquee | The dashed rectangle belongs to dragging empty space. A resize is a select-drag that moves nothing, so it drew one. |
+| 2026-09-18 | The toolbar's colour controls are chips, named by tooltip | Labels beside each chip made the bar wide enough to wrap once align buttons joined it. |
+| 2026-09-18 | A picked colour is stored once and adapted to the other theme | Excalidraw stores a literal colour and inverts the whole canvas in dark mode, which Bava cannot do (it themes per element). Eraser stores one authored colour and adapts it for dark mode. The swatch palette stays theme-aware. Storage and the adaptation rule land in Milestone 6.3, in `docs/file-format.md` first. |
