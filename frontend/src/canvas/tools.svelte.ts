@@ -15,7 +15,12 @@ export type ToolId =
   | 'line'
   | 'pen'
   | 'text'
-  | 'frame';
+  | 'frame'
+  | 'eraser'
+  | ShapeToolId;
+
+/** The shapes added in Milestone 6, chosen from the rail's shape menu. */
+export type ShapeToolId = 'diamond' | 'cylinder' | 'hexagon' | 'parallelogram' | 'document' | 'person' | 'cloud';
 
 export type Tool = {
   id: ToolId;
@@ -33,6 +38,22 @@ export const TOOLS: Tool[] = [
   { id: 'pen', key: 'd', labelKey: 'tool.pen' },
   { id: 'text', key: 't', labelKey: 'tool.text' },
   { id: 'frame', key: 'f', labelKey: 'tool.frame' },
+  { id: 'eraser', key: 'e', labelKey: 'tool.eraser' },
+];
+
+/**
+ * The seven shapes without a single-key shortcut: the letters stay free, and a
+ * key meaning "cloud" would be unguessable. They are reached from the rail's
+ * shape menu and Canvas ▸ Tools.
+ */
+export const SHAPE_TOOLS: { id: ShapeToolId; labelKey: MessageKey }[] = [
+  { id: 'diamond', labelKey: 'tool.diamond' },
+  { id: 'cylinder', labelKey: 'tool.cylinder' },
+  { id: 'hexagon', labelKey: 'tool.hexagon' },
+  { id: 'parallelogram', labelKey: 'tool.parallelogram' },
+  { id: 'document', labelKey: 'tool.document' },
+  { id: 'person', labelKey: 'tool.person' },
+  { id: 'cloud', labelKey: 'tool.cloud' },
 ];
 
 export function toolForKey(key: string): ToolId | undefined {

@@ -69,6 +69,11 @@ Minified JSON is one enormous line, and one enormous line makes every git diff
 useless. Readability of the *diff* is what matters here, not of the JSON.
 
 ### Diagram source stays readable
+> **Superseded 2026-09-17** (`.claude/work/specs/diagrams-as-shapes.md`): D2
+> now generates a diagram once and it is converted into ordinary shapes, so no
+> element references a `d2` block. Milestone 6.6 rewrites this section. Fenced
+> `d2` blocks a person writes in prose are still kept as they are.
+
 A `diagram` element's D2 lives in its own fenced `d2` block in the prose, not
 escaped into a JSON string. The canvas block references it by the `id` in the
 fence info string, and stores only placement:
@@ -110,6 +115,71 @@ deleted: the user drew it.
 ### Ids are stable within a file
 An element's `id` is unique within its file and does not change once written.
 Bindings and diagram-block references depend on it.
+
+## Elements
+
+Every element carries `id`, `type`, `x`, `y`, `w`, `h` and `z`. The types a
+canvas holds, and the keys each adds, are below. Specified in Milestone 6,
+before any code writes them.
+
+### Shapes
+Nine closed shapes, each filling its `x, y, w, h` box:
+
+| `type` | Shape |
+|---|---|
+| `rect` | rectangle |
+| `ellipse` | ellipse |
+| `diamond` | diamond, vertices at the box's edge midpoints |
+| `cylinder` | cylinder, the database symbol |
+| `hexagon` | hexagon, flat top and bottom |
+| `parallelogram` | parallelogram, slanted to the right |
+| `document` | document, a rectangle with a wavy bottom edge |
+| `person` | person, head and shoulders |
+| `cloud` | cloud |
+
+`rect` and `ellipse` keep the names Milestone 5 wrote, so files from before
+Milestone 6 read unchanged. The shape set is the one D2 and Eraser share; see
+`.claude/work/specs/diagrams-as-shapes.md`.
+
+Optional keys on every shape:
+
+| Key | Value | Absent means |
+|---|---|---|
+| `label` | plain text, drawn centred and wrapped inside the shape's box | no label |
+| `fill` | a swatch name | the theme's default fill |
+| `stroke` | a swatch name | the theme's default border |
+| `color` | a swatch name, for the label | the theme's default text colour |
+
+```json
+{ "id": "e4", "type": "cylinder", "x": 40, "y": 24, "w": 120, "h": 90, "z": 2, "label": "Postgres", "fill": "blue", "stroke": "blue", "color": "blue" }
+```
+
+**A label is not separately measured.** It wraps inside its shape's box, so a
+glyph's difference between WebKitGTK and WebView2 reflows it within the box
+without moving anything else. Free text elements are different: see "Text
+carries its measured size".
+
+### Swatches
+Colours are stored as swatch names, never as colour values. Each swatch has a
+light and a dark value, so a choice stays readable when the theme changes; the
+values live in the app, not the file.
+
+`gray`, `blue`, `green`, `yellow`, `orange`, `red`, `purple`, `pink`.
+
+**An unknown swatch name renders as the default and is written back
+unchanged**, like any unknown value: a newer Bava may add swatches.
+
+### Lines, arrows and strokes
+`line`, `arrow` and `stroke` carry `points`: a flat list `[x1, y1, x2, y2,
+...]` relative to the element's `x, y`. `line` and `arrow` have two points
+when drawn; `stroke` has as many as the pen recorded. They take `stroke`, and
+never `fill`.
+
+### Text, frames and groups
+- `text` carries `text`, `measuredWidth` and `measuredHeight`, and may take
+  `color`.
+- `frame` may carry a `label`, and takes `stroke` and `color`.
+- `group` carries `children`, a list of element ids.
 
 ## What is not in a file
 

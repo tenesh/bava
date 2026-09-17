@@ -25,16 +25,45 @@
   --size-titlebar: 36px;
   --size-statusbar: 24px;
 
+  // Drawing on the canvas, in scene units.
+  --size-shape-stroke: 1.5px;
+  --size-pen-stroke: 2.25px;
+  --size-arrowhead: 10px;
+  // Space between a label and its shape's edge.
+  --size-label-inset: 6px;
+  // A selection handle's side on screen, whatever the zoom.
+  --size-selection-handle: 8px;
+  // The marquee's dash and gap on screen, whatever the zoom.
+  --size-marquee-dash: 4px;
+  // The eraser trail's width on screen, whatever the zoom.
+  --size-eraser-trail: 6px;
+  // A tool rail button, square.
+  --size-rail-button: 32px;
+  // The insert panel beside the rail, and a tile in its grid.
+  --size-insert-panel: 400px;
+  --size-insert-tile: 52px;
+  // A menu is never narrower than this, so short labels still leave room for keys.
+  --size-menu-min: 200px;
+  // The label editor never shrinks below a usable box.
+  --size-label-editor-min-width: 40px;
+  --size-label-editor-min-height: 20px;
+
   // Room the title bar leaves for native window controls drawn over the page.
-  // Only macOS's hidden-inset title bar does that; see below.
+  // Only macOS's hidden title bar does that; see below.
   --size-titlebar-inset-start: 0px;
 
-  // The brand mark, one drawing at four sizes. 20px is the floor for brand
+  // The brand mark, one drawing at five sizes. 20px is the floor for brand
   // placements; system chrome may go to 16px.
   --size-mark-chrome: 16px;
   --size-mark-brand: 20px;
   --size-mark-hero: 46px;
   --size-mark-about: 64px;
+  // The launch splash: the largest placement.
+  --size-mark-splash: 88px;
+
+  // The launch splash's progress bar: a short, thin rule.
+  --size-progress-splash: 148px;
+  --size-progress-thickness: 2px;
 
   // A dialog scrolls rather than outgrowing the window.
   --size-dialog-body-max: 60vh;

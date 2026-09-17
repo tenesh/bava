@@ -55,3 +55,138 @@ export function paste(scene: Scene, elements: SceneElement[]): SceneElement[] {
     return scene.add(copy);
   });
 }
+
+/**
+ * The elements plus, for every group among them, its children (and theirs):
+ * what a geometric edit of a group has to touch, since children keep their
+ * own coordinates.
+ */
+export function withDescendants(scene: Scene, elements: SceneElement[]): SceneElement[] {
+  const seen = new Map<ElementId, SceneElement>();
+  const visit = (element: SceneElement | undefined) => {
+    if (!element || seen.has(element.id)) return;
+    seen.set(element.id, element);
+    if (element.type === 'group') element.children.forEach((id) => visit(scene.get(id)));
+  };
+  elements.forEach(visit);
+  return [...seen.values()];
+}
+
+/**
+ * Copy elements beside themselves. A group's children are copied with it and
+ * the copy's children point at the copies. Returns the copies of the elements
+ * asked for, not of their descendants.
+ */
+export function duplicate(scene: Scene, elements: SceneElement[]): SceneElement[] {
+  const all = withDescendants(scene, elements).sort((a, b) => a.z - b.z);
+  const copies = new Map<ElementId, SceneElement>();
+  // Non-groups first, so every group's children have their new ids.
+  const ordered = [...all.filter((e) => e.type !== 'group'), ...all.filter((e) => e.type === 'group')];
+  for (const element of ordered) {
+    const moved = { ...element, x: element.x + PASTE_OFFSET, y: element.y + PASTE_OFFSET };
+    if (moved.type === 'group') {
+      moved.children = moved.children.map((id) => copies.get(id)?.id ?? id);
+    }
+    copies.set(element.id, scene.add(moved));
+  }
+  return elements.map((e) => copies.get(e.id)).filter((e): e is SceneElement => Boolean(e));
+}
+
+/** Mirror elements across the bounds of `selection`, in place. */
+export function flip(scene: Scene, selection: SceneElement[], axis: 'horizontal' | 'vertical'): void {
+  const bounds = boundsOf(selection);
+  for (const element of withDescendants(scene, selection)) {
+    if (axis === 'horizontal') {
+      const x = 2 * bounds.x + bounds.w - element.x - element.w;
+      const points = 'points' in element ? element.points.map((v, i) => (i % 2 === 0 ? element.w - v : v)) : undefined;
+      scene.update(element.id, points ? ({ x, points } as Partial<SceneElement>) : { x });
+    } else {
+      const y = 2 * bounds.y + bounds.h - element.y - element.h;
+      const points = 'points' in element ? element.points.map((v, i) => (i % 2 === 1 ? element.h - v : v)) : undefined;
+      scene.update(element.id, points ? ({ y, points } as Partial<SceneElement>) : { y });
+    }
+  }
+}
+
+/**
+ * Move each selected element one step up (or down) the paint order, past its
+ * nearest unselected neighbour. A run of selected elements moves together and
+ * keeps its order. Returns the new order.
+ */
+export function stepOrder(ordered: SceneElement[], selected: Set<ElementId>, direction: 1 | -1): SceneElement[] {
+  const list = [...ordered];
+  const indices = list.map((_, i) => i);
+  if (direction === 1) indices.reverse();
+  for (const i of indices) {
+    const j = i + direction;
+    if (!selected.has(list[i].id) || j < 0 || j >= list.length || selected.has(list[j].id)) continue;
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+}
+
+/**
+ * The selected units: selected elements that are not inside another selected
+ * element's group. Select All picks a group and its children together; each
+ * must still act once.
+ */
+export function topLevel(scene: Scene, elements: SceneElement[]): SceneElement[] {
+  const selected = new Set(elements.map((e) => e.id));
+  const parentOf = new Map<ElementId, ElementId>();
+  for (const element of scene.ordered()) {
+    if (element.type === 'group') element.children.forEach((child) => parentOf.set(child, element.id));
+  }
+  const hasSelectedAncestor = (id: ElementId): boolean => {
+    let parent = parentOf.get(id);
+    while (parent) {
+      if (selected.has(parent)) return true;
+      parent = parentOf.get(parent);
+    }
+    return false;
+  };
+  return elements.filter((e) => !hasSelectedAncestor(e.id));
+}
+
+/**
+ * Paint order after stepping the selection one place, as the full element
+ * list. Groups draw nothing, so they are never the neighbour stepped past; a
+ * selected group moves as its children. Each group is placed just above its
+ * last child, so clicking its area still finds the group first.
+ */
+export function steppedOrder(scene: Scene, selectedIds: ElementId[], direction: 1 | -1): SceneElement[] {
+  const all = scene.ordered();
+  const byId = new Map(all.map((e) => [e.id, e]));
+  const selected = new Set(
+    withDescendants(scene, selectedIds.map((id) => byId.get(id)).filter((e): e is SceneElement => Boolean(e)))
+      .filter((e) => e.type !== 'group')
+      .map((e) => e.id),
+  );
+  const visible = stepOrder(all.filter((e) => e.type !== 'group'), selected, direction);
+
+  const groups = all.filter((e): e is Extract<SceneElement, { type: 'group' }> => e.type === 'group');
+  const placed = new Set<ElementId>();
+  const result: SceneElement[] = [];
+  const allPlaced = (group: Extract<SceneElement, { type: 'group' }>): boolean =>
+    group.children.every((child) => placed.has(child) || !byId.has(child));
+  const placeReadyGroups = () => {
+    let added = true;
+    while (added) {
+      added = false;
+      for (const group of groups) {
+        if (!placed.has(group.id) && allPlaced(group)) {
+          placed.add(group.id);
+          result.push(group);
+          added = true;
+        }
+      }
+    }
+  };
+  for (const element of visible) {
+    placed.add(element.id);
+    result.push(element);
+    placeReadyGroups();
+  }
+  placeReadyGroups();
+  return result;
+}
+

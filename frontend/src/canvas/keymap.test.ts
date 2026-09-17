@@ -11,6 +11,8 @@ function actions() {
     nudge: vi.fn(),
     escape: vi.fn(),
     activateTool: vi.fn(),
+    editSelection: vi.fn(),
+    openInsert: vi.fn(),
   };
 }
 
@@ -18,6 +20,16 @@ const key = (over: Partial<KeyboardEvent> = {}) =>
   ({ key: 'a', metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, ...over }) as KeyboardEvent;
 
 describe('keymap', () => {
+  // "/" opens the insert panel, like the rail's + button, but never while typing.
+  it('opens the insert panel with /, not while typing', () => {
+    const a = actions();
+    expect(handleKey(key({ key: '/' }), a, { typing: false })).toBe(true);
+    expect(a.openInsert).toHaveBeenCalledTimes(1);
+    const b = actions();
+    expect(handleKey(key({ key: '/' }), b, { typing: true })).toBe(false);
+    expect(b.openInsert).not.toHaveBeenCalled();
+  });
+
   it('deletes the selection', () => {
     const a = actions();
     handleKey(key({ key: 'Backspace' }), a, { typing: false });
@@ -78,6 +90,14 @@ describe('keymap', () => {
         expect(Object.values(a).some((fn) => fn.mock.calls.length > 0), accelerator).toBe(false);
       }
     }
+  });
+
+  it('opens the label editor with Enter', () => {
+    const a = actions();
+    expect(handleKey(key({ key: 'Enter' }), a, { typing: false })).toBe(true);
+    expect(a.editSelection).toHaveBeenCalledTimes(1);
+    handleKey(key({ key: 'Enter' }), a, { typing: true });
+    expect(a.editSelection).toHaveBeenCalledTimes(1);
   });
 
   it('reports whether it handled the key', () => {

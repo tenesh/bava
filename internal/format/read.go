@@ -61,7 +61,7 @@ func parseScene(body string) (Scene, error) {
 				if err := json.Unmarshal(raw, &element); err != nil {
 					return Scene{}, fmt.Errorf("element: %w", err)
 				}
-				element.Raw = raw
+				// Element.UnmarshalJSON has kept the whole object, unescaped.
 				scene.Elements = append(scene.Elements, element)
 			}
 		default:

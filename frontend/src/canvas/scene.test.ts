@@ -84,3 +84,17 @@ describe('scene', () => {
     expect(b.id).toBeDefined();
   });
 });
+
+// An opened file carries ids like "e1". A session counter that ignores them
+// handed out the same id and replaced the user's element.
+describe('adding to a scene that already has ids', () => {
+  it('never reuses an id already in the scene', () => {
+    const existing = Array.from({ length: 50 }, (_, i) => ({
+      id: `e${i + 1}`, type: 'rect', x: 0, y: 0, w: 1, h: 1, z: i + 1,
+    })) as never;
+    const scene = createScene({ elements: existing });
+    const added = scene.add({ type: 'rect', x: 5, y: 5, w: 1, h: 1 });
+    expect(scene.data().elements).toHaveLength(51);
+    expect(Array.from({ length: 50 }, (_, i) => `e${i + 1}`)).not.toContain(added.id);
+  });
+});

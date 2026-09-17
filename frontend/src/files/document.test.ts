@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDocument } from './document.svelte';
+import { createDocument, sceneToSave } from './document.svelte';
 
 const emptyScene = { version: 1, elements: [] };
 
@@ -144,6 +144,36 @@ describe('document state', () => {
   });
 });
 
+// Bava launches with nothing open. New and a successful open are the only
+// ways in; a failed open from nothing leaves nothing open.
+describe('whether a document is open', () => {
+  it('starts with no document open', () => {
+    expect(createDocument(stubIO()).isOpen).toBe(false);
+  });
+
+  it('new opens an untitled document', () => {
+    const doc = createDocument(stubIO());
+    doc.reset();
+    expect(doc.isOpen).toBe(true);
+    expect(doc.path).toBeNull();
+  });
+
+  it('a successful open opens', async () => {
+    const doc = createDocument(stubIO());
+    await doc.open('/w/notes.md');
+    expect(doc.isOpen).toBe(true);
+  });
+
+  it('a failed open from nothing stays closed', async () => {
+    const doc = createDocument(
+      stubIO({ open: vi.fn().mockResolvedValue({ path: '', source: '', diagrams: null, scene: emptyScene, stamp: { size: 0, modifiedUnixNano: 0 }, error: 'cannot read' }) }),
+    );
+    await doc.open('/w/missing.md');
+    expect(doc.isOpen).toBe(false);
+    expect(doc.error).toBe('cannot read');
+  });
+});
+
 describe('saving a new document', () => {
   // The flow this whole milestone exists for. Every earlier test saved a
   // document that had been opened first, which is how this went unnoticed:
@@ -194,5 +224,34 @@ describe('saving a new document', () => {
     expect(doc.path).toBeNull();
     expect(doc.dirty).toBe(true);
     expect(doc.error).toContain('permission denied');
+  });
+});
+
+describe('the scene around the elements', () => {
+  // A newer Bava may put keys beside `elements`, and a higher version. Saving
+  // from this one must write both back, not replace them with {version: 1}.
+  it('keeps the opened scene\'s version and unknown top-level keys for saving', async () => {
+    const io = stubIO({
+      open: vi.fn().mockResolvedValue({
+        path: '/w/notes.md',
+        source: '',
+        diagrams: {},
+        scene: { version: 2, elements: [{ id: 'e1' }], grid: { size: 8 } },
+        stamp: { size: 1, modifiedUnixNano: 1 },
+        error: '',
+      }),
+    });
+    const doc = createDocument(io);
+    await doc.open('/w/notes.md');
+
+    const saved = sceneToSave(doc.sceneExtra, [{ id: 'e2' }]);
+    expect(saved).toEqual({ version: 2, grid: { size: 8 }, elements: [{ id: 'e2' }] });
+  });
+
+  it('starts a new document at the current version with nothing extra', async () => {
+    const doc = createDocument(stubIO());
+    await doc.open('/w/notes.md');
+    doc.reset();
+    expect(sceneToSave(doc.sceneExtra, [])).toEqual({ version: 1, elements: [] });
   });
 });

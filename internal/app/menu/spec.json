@@ -100,15 +100,64 @@
             { "kind": "radio", "id": "tool.line", "group": "canvas.tool", "label": "Line", "hint": "L" },
             { "kind": "radio", "id": "tool.pen", "group": "canvas.tool", "label": "Draw", "hint": "D" },
             { "kind": "radio", "id": "tool.text", "group": "canvas.tool", "label": "Text", "hint": "T" },
-            { "kind": "radio", "id": "tool.frame", "group": "canvas.tool", "label": "Frame", "hint": "F" }
+            { "kind": "radio", "id": "tool.frame", "group": "canvas.tool", "label": "Frame", "hint": "F" },
+            { "kind": "radio", "id": "tool.eraser", "group": "canvas.tool", "label": "Eraser", "hint": "E" },
+            { "kind": "separator" },
+            { "kind": "radio", "id": "tool.diamond", "group": "canvas.tool", "label": "Diamond" },
+            { "kind": "radio", "id": "tool.cylinder", "group": "canvas.tool", "label": "Cylinder" },
+            { "kind": "radio", "id": "tool.hexagon", "group": "canvas.tool", "label": "Hexagon" },
+            { "kind": "radio", "id": "tool.parallelogram", "group": "canvas.tool", "label": "Parallelogram" },
+            { "kind": "radio", "id": "tool.document", "group": "canvas.tool", "label": "Document" },
+            { "kind": "radio", "id": "tool.person", "group": "canvas.tool", "label": "Person" },
+            { "kind": "radio", "id": "tool.cloud", "group": "canvas.tool", "label": "Cloud" }
           ]
         },
         { "kind": "separator" },
         { "kind": "command", "id": "canvas.group", "label": "Group", "accelerator": "CmdOrCtrl+G" },
         { "kind": "command", "id": "canvas.ungroup", "label": "Ungroup", "accelerator": "Shift+CmdOrCtrl+G" },
         { "kind": "separator" },
-        { "kind": "command", "id": "canvas.bringToFront", "label": "Bring to Front", "shortcut": "Shift+CmdOrCtrl+]" },
-        { "kind": "command", "id": "canvas.sendToBack", "label": "Send to Back", "shortcut": "Shift+CmdOrCtrl+[" }
+        {
+          "kind": "submenu",
+          "id": "canvas.arrange",
+          "label": "Arrange",
+          "items": [
+            { "kind": "command", "id": "canvas.bringToFront", "label": "Bring to Front", "shortcut": "OptionOrAlt+CmdOrCtrl+]", "scope": "canvas" },
+            { "kind": "command", "id": "canvas.bringForward", "label": "Bring Forward", "shortcut": "CmdOrCtrl+]", "scope": "canvas" },
+            { "kind": "command", "id": "canvas.sendBackward", "label": "Send Backward", "shortcut": "CmdOrCtrl+[", "scope": "canvas" },
+            { "kind": "command", "id": "canvas.sendToBack", "label": "Send to Back", "shortcut": "OptionOrAlt+CmdOrCtrl+[", "scope": "canvas" }
+          ]
+        },
+        {
+          "kind": "submenu",
+          "id": "canvas.align",
+          "label": "Align",
+          "items": [
+            { "kind": "command", "id": "canvas.alignLeft", "label": "Align Left", "shortcut": "Shift+CmdOrCtrl+Left", "scope": "canvas" },
+            { "kind": "command", "id": "canvas.alignCenter", "label": "Centre Horizontally" },
+            { "kind": "command", "id": "canvas.alignRight", "label": "Align Right", "shortcut": "Shift+CmdOrCtrl+Right", "scope": "canvas" },
+            { "kind": "separator" },
+            { "kind": "command", "id": "canvas.alignTop", "label": "Align Top", "shortcut": "Shift+CmdOrCtrl+Up", "scope": "canvas" },
+            { "kind": "command", "id": "canvas.alignMiddle", "label": "Centre Vertically" },
+            { "kind": "command", "id": "canvas.alignBottom", "label": "Align Bottom", "shortcut": "Shift+CmdOrCtrl+Down", "scope": "canvas" },
+            { "kind": "separator" },
+            { "kind": "command", "id": "canvas.distributeHorizontal", "label": "Distribute Horizontally", "shortcut": "OptionOrAlt+H", "scope": "canvas" },
+            { "kind": "command", "id": "canvas.distributeVertical", "label": "Distribute Vertically", "shortcut": "OptionOrAlt+V", "scope": "canvas" }
+          ]
+        },
+        {
+          "kind": "submenu",
+          "id": "canvas.flip",
+          "label": "Flip",
+          "items": [
+            { "kind": "command", "id": "canvas.flipHorizontal", "label": "Flip Horizontal", "shortcut": "Shift+H", "scope": "canvas" },
+            { "kind": "command", "id": "canvas.flipVertical", "label": "Flip Vertical", "shortcut": "Shift+V", "scope": "canvas" }
+          ]
+        },
+        { "kind": "separator" },
+        { "kind": "command", "id": "canvas.duplicate", "label": "Duplicate", "shortcut": "CmdOrCtrl+D", "scope": "canvas" },
+        { "kind": "separator" },
+        { "kind": "command", "id": "canvas.copyStyles", "label": "Copy Styles", "shortcut": "OptionOrAlt+CmdOrCtrl+C", "scope": "canvas" },
+        { "kind": "command", "id": "canvas.pasteStyles", "label": "Paste Styles", "shortcut": "OptionOrAlt+CmdOrCtrl+V", "scope": "canvas" }
       ]
     },
     {

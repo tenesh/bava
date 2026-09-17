@@ -184,7 +184,7 @@ Before any claim of done, passing, fixed or working:
 
 | Claim | Requires |
 |---|---|
-| Tests pass | `go test ./...` output in this session, 0 failures |
+| Tests pass | `go test ./...` output in this session, 0 failures; for `npm test`, the **exit code**, not the passed count |
 | Goldens clean | Golden run output, and the SVG diff reviewed by eye if any changed |
 | Types clean | `npm run check` output |
 | Lint clean | `npm run lint` output |
@@ -277,9 +277,10 @@ wrong facts. When a milestone closes, update this section in the same change.
   platform log folder; `LogService` binding; `app.Go` for goroutines;
   `app.PanicHandler`; `ErrorDialog`, `PanelBoundary`; Help ▸ Open Logs Folder
   and Copy Diagnostics. Report Issue… built but hidden until Milestone 16.
-- **Milestone 6 is planned and approved** (`.claude/work/plans/06-shapes.md`),
-  not started; the roadmap was re-planned around diagrams as generated free
-  shapes (`.claude/work/specs/diagrams-as-shapes.md`).
+- **Milestone 6 (shapes) passes its gates** (2026-09-17). Not complete until a
+  human draws every shape, labels, recolours, resizes, zooms and pans at a
+  running window in both themes. It also fixed shipped data loss: saving from
+  the app had dropped points, text, children and unknown keys.
 - **Native menu bar** from `internal/app/menu/spec.json`; clicks arrive as
   `menu:command` and dispatch through `frontend/src/shell/commands.ts`. The
   title-bar Open/Save buttons are gone. Edit commands, clipboard included,
@@ -582,6 +583,80 @@ deliberately at `5.24.2` or later.
   `data-state` on the content, in jsdom.
 - **`go build .` writes a 46MB `bava` binary into the repo root.** Deleted
   after use; build into `bin/` or use `go vet`.
+
+### Milestone 6 findings, 2026-09-17
+
+- **A green test count is not a green gate.** `npm test` reported 340 passed
+  and exited 1 on two unhandled rejections (jsdom has no ResizeObserver; a stub
+  is in `src/test-setup.ts`). Filtering output for the "Tests" line hid it for
+  a whole milestone. Check the exit code.
+- **encoding/json HTML-escapes**, both `json.Marshal` and anything a
+  `MarshalJSON` returns: a label "A -> B" was written as "A -\u003e B". The
+  format writer encodes with `SetEscapeHTML(false)` and normalises raw element
+  bytes on decode.
+- **The frontend had its own lossy copy of the scene**: it saved
+  `{version: 1, elements}` and dropped a newer scene's version and top-level
+  keys. `sceneToSave` keeps them.
+
+- **Go round-trip tests missed a data-loss bug on the app's real path.** The
+  scene crosses encoding/json to the frontend and back; `json:"-"` dropped
+  everything unmodelled. Test that path (`.ai/rules/file-format.md`).
+- **Scene-data tests missed invisible shapes.** Stage tests now inspect Konva
+  nodes (`.ai/rules/canvas.md`).
+- **Ellipses and strokes were mispositioned**: an ellipse centred on its
+  corner, and stroke points stored absolute and drawn offset again.
+- **Ark Menu and RadioGroup selection in jsdom:** Menu needs keyboard events
+  (ArrowDown, Enter); RadioGroup items accept a click. Popovers render closed
+  content unless `lazyMount`.
+
+### Milestone 6.1 findings (window check and launch), 2026-09-17
+
+- **The first window check found three defects every test missed**: a
+  "closed unexpectedly" notice after every quit, the shape menu stuck open,
+  and a zero-height canvas (no rail, no drawing). Plan
+  `.claude/work/plans/06.1-window-check-and-launch.md`. Gates green; the
+  running-window look in both themes is **still owed** (the display was asleep
+  when this was written).
+- **On macOS `Run` never returns**: the session closes in `PostShutdown`
+  (`.ai/rules/wails.md`).
+- **Panes were never filling their region** (predates Milestone 6), and
+  **Ark content closed with `hidden` is overridden by any `display` rule**
+  (`.ai/rules/design-system.md`).
+- **A screenshot is possible now**: `screencapture -x bin/shot.png` works from
+  Warp, and so do `osascript` keystrokes. Without a running Wails window,
+  headless Chrome over CDP against the Vite dev URL measures layout and takes
+  screenshots; Go calls fail there, so "Settings could not be read" is expected.
+- **Launch:** no file open at start, splash until settings and fonts settle
+  (`.claude/work/specs/launch.md`). Settings left the title bar. A test raises
+  a menu command with `window._wails.dispatchWailsEvent`.
+- **An Ark portal mounts a tick late in jsdom**: a test asserting absence must
+  wait first, or it passes whatever the component does.
+- **Not fixed, noticed:** the source pane never shows an opened file's source
+  (it mounts once, empty), and CodeMirror's active-line gutter paints a light
+  box in the dark theme.
+
+### Milestone 6.2 findings (canvas interface), 2026-09-18
+
+- **Gates green; seen at a running window on macOS, dark theme**: live
+  drawing, icon rail, insert panel, selection toolbar, right-click menu with
+  cascading submenus, aligned traffic lights. Light theme and Windows/Linux
+  not seen. Plan `.claude/work/plans/06.2-canvas-interface.md` lists
+  deviations.
+- **Page shortcuts are matched before any editor.** A key that means
+  something in CodeMirror or a text field must be `scope: "canvas"`.
+- **jsdom computes no floating positions.** A menu placed off-screen passes
+  every jsdom test; check placement at a running window.
+- **View mode persists across App tests** (it is a remembered preference): a
+  test that needs the canvas visible must choose Canvas first.
+- **The no-literals test reads `#faded` as a hex colour.** Name private
+  fields accordingly.
+- **Driving the app:** confirm Bava is frontmost before every synthetic key or
+  click (a ⌘N once reached Finder). The session scratchpad had `bava-front.sh`,
+  a CGEvent `mouse` helper and `rclick`; match the process with
+  `^bin/bava.dev.app/Contents/MacOS/bava$`, not a looser pattern that finds
+  the shell wrapper first.
+- **Status-bar messages are a usable probe inside WKWebView** when headless
+  Chrome cannot reproduce: temporary, removed after.
 
 ### Settled facts that still hold
 

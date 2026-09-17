@@ -18,13 +18,15 @@ type Command struct {
 
 // State is what the frontend reports so the menu reflects the app.
 type State struct {
-	ViewMode     string   `json:"viewMode"`
-	ShowsFiles   bool     `json:"showsFiles"`
-	ShowsAI      bool     `json:"showsAI"`
-	Theme        string   `json:"theme"`
-	Tool         string   `json:"tool"`
-	HasSelection bool     `json:"hasSelection"`
-	Recents      []string `json:"recents"`
+	ViewMode     string `json:"viewMode"`
+	ShowsFiles   bool   `json:"showsFiles"`
+	ShowsAI      bool   `json:"showsAI"`
+	Theme        string `json:"theme"`
+	Tool         string `json:"tool"`
+	HasSelection bool   `json:"hasSelection"`
+	// CanPasteStyles reports a style copied with Copy Styles.
+	CanPasteStyles bool     `json:"canPasteStyles"`
+	Recents        []string `json:"recents"`
 }
 
 // Built is a constructed menu bar and handles to the items state changes.
@@ -196,9 +198,18 @@ func (b *Built) Apply(state State) bool {
 			check(id, id == "tool."+state.Tool)
 		}
 	}
-	for _, id := range []string{"canvas.group", "canvas.ungroup", "canvas.bringToFront", "canvas.sendToBack"} {
+	for _, id := range []string{
+		"canvas.group", "canvas.ungroup",
+		"canvas.bringToFront", "canvas.bringForward", "canvas.sendBackward", "canvas.sendToBack",
+		"canvas.flipHorizontal", "canvas.flipVertical", "canvas.duplicate",
+		"canvas.alignLeft", "canvas.alignCenter", "canvas.alignRight",
+		"canvas.alignTop", "canvas.alignMiddle", "canvas.alignBottom",
+		"canvas.distributeHorizontal", "canvas.distributeVertical",
+		"canvas.copyStyles",
+	} {
 		enable(id, state.HasSelection)
 	}
+	enable("canvas.pasteStyles", state.HasSelection && state.CanPasteStyles)
 
 	if b.recents == nil || (b.shown != nil && slices.Equal(b.shown, state.Recents)) {
 		return false

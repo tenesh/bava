@@ -18,6 +18,6 @@ export default defineConfig({
     // rather than the native `canvas` package: this has to build on three CI
     // platforms, and a native module there is a maintenance bill for nothing:
     // the tests assert scene patching, not pixels.
-    setupFiles: ['vitest-canvas-mock'],
+    setupFiles: ['vitest-canvas-mock', './src/test-setup.ts'],
   },
 });

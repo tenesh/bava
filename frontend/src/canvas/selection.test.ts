@@ -114,4 +114,13 @@ describe('intersects', () => {
   it('is true for containment', () => {
     expect(intersects({ x: 0, y: 0, w: 100, h: 100 }, { x: 10, y: 10, w: 5, h: 5 })).toBe(true);
   });
+
+  // Undo can remove a selected element; its id must not stay selected.
+  it('retain drops ids that no longer exist', () => {
+    const selection = createSelection();
+    selection.click('a');
+    selection.click('b', { additive: true });
+    selection.retain(['b', 'c']);
+    expect(selection.ids).toEqual(['b']);
+  });
 });

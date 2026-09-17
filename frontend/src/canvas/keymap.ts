@@ -21,6 +21,10 @@ export type KeymapActions = {
   nudge(dx: number, dy: number): void;
   escape(): void;
   activateTool(tool: ToolId): void;
+  /** Type into the selected shape's label or text. */
+  editSelection(): void;
+  /** Open the insert panel, as the rail's + does. */
+  openInsert(): void;
 };
 
 export function handleKey(
@@ -47,6 +51,12 @@ export function handleKey(
     case 'Escape':
       actions.escape();
       return true;
+    case 'Enter':
+      actions.editSelection();
+      return true;
+    case '/':
+      actions.openInsert();
+      return true;
     case 'ArrowLeft':
       actions.nudge(-1, 0);
       return true;
@@ -63,6 +73,9 @@ export function handleKey(
       break;
   }
 
+  // A tool is its bare letter. Shift or Option with a letter is something
+  // else: ⇧H flips.
+  if (event.shiftKey || event.altKey) return false;
   const tool = toolForKey(event.key);
   if (tool) {
     actions.activateTool(tool);

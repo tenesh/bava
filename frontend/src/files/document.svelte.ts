@@ -36,7 +36,32 @@ const overIPC: DocumentIO = {
     FileService.ChangedOnDisk(path, stamp) as unknown as Promise<boolean>,
 };
 
+/** Everything in a scene except its elements: `version`, and unknown keys. */
+export type SceneExtra = Record<string, unknown>;
+
+/** The scene format generation this frontend writes. */
+export const SCENE_VERSION = 1;
+
+/**
+ * The scene to save: this document's elements inside everything else the
+ * opened scene held. A newer Bava's version and top-level keys go back as they
+ * came; replacing them with `{version: 1}` would delete what the file format
+ * promises to keep.
+ */
+export function sceneToSave(extra: SceneExtra, elements: unknown[]): Scene {
+  return { version: SCENE_VERSION, ...extra, elements } as Scene;
+}
+
+function extraOf(scene: Scene | null | undefined): SceneExtra {
+  if (!scene || typeof scene !== 'object') return {};
+  const extra: SceneExtra = { ...(scene as Record<string, unknown>) };
+  delete extra.elements;
+  return extra;
+}
+
 export function createDocument(io: DocumentIO = overIPC) {
+  // Bava launches with nothing open: New or a successful open opens one.
+  let isOpen = $state.raw(false);
   let path = $state.raw<string | null>(null);
   let source = $state.raw('');
   let diagrams = $state.raw<Record<string, string>>({});
@@ -47,8 +72,13 @@ export function createDocument(io: DocumentIO = overIPC) {
   // runs while the user keeps working.
   let revision = 0;
   let error = $state.raw<string | null>(null);
+  let sceneExtra: SceneExtra = {};
 
   return {
+    /** Whether any document, untitled or not, is open. */
+    get isOpen() {
+      return isOpen;
+    },
     get path() {
       return path;
     },
@@ -63,6 +93,10 @@ export function createDocument(io: DocumentIO = overIPC) {
     },
     get error() {
       return error;
+    },
+    /** The opened scene's version and unknown top-level keys, for saving. */
+    get sceneExtra(): SceneExtra {
+      return sceneExtra;
     },
 
     /** Mark the document changed. Called by the canvas and the editor. */
@@ -79,9 +113,11 @@ export function createDocument(io: DocumentIO = overIPC) {
         error = result.error;
         return result;
       }
+      isOpen = true;
       path = result.path;
       source = result.source;
       diagrams = result.diagrams ?? {};
+      sceneExtra = extraOf(result.scene);
       stamp = result.stamp;
       dirty = false;
       error = null;
@@ -113,9 +149,11 @@ export function createDocument(io: DocumentIO = overIPC) {
 
     /** Become a new, clean, untitled document. The caller settles unsaved work first. */
     reset() {
+      isOpen = true;
       path = null;
       source = '';
       diagrams = {};
+      sceneExtra = {};
       stamp = null;
       dirty = false;
       error = null;

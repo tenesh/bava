@@ -81,7 +81,7 @@ func encodeScene(scene Scene) (string, error) {
 		}
 		elements = append(elements, encoded)
 	}
-	encodedElements, err := json.Marshal(elements)
+	encodedElements, err := marshalUnescaped(elements)
 	if err != nil {
 		return "", err
 	}
@@ -92,6 +92,9 @@ func encodeScene(scene Scene) (string, error) {
 	// Pretty-printed: minified JSON is one enormous line, and one enormous
 	// line makes every git diff useless. The diff is what has to stay readable.
 	encoder.SetIndent("", "  ")
+	// Not HTML-escaped: a label "A -> B" must stay "A -> B" in the user's
+	// file, not become "A -\u003e B" on every save.
+	encoder.SetEscapeHTML(false)
 	if err := encoder.Encode(top); err != nil {
 		return "", err
 	}
@@ -128,5 +131,17 @@ func encodeElement(element Element) (json.RawMessage, error) {
 		fields[key] = value
 	}
 
-	return json.Marshal(fields)
+	return marshalUnescaped(fields)
+}
+
+// marshalUnescaped is json.Marshal without HTML escaping, which would rewrite
+// "<", ">" and "&" in text the user wrote.
+func marshalUnescaped(value any) ([]byte, error) {
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(value); err != nil {
+		return nil, err
+	}
+	return bytes.TrimRight(buffer.Bytes(), "\n"), nil
 }

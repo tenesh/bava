@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import spec from '../../../internal/app/menu/spec.json';
-import { formatAccelerator, matchShortcut, reservedByMenu, shortcutGroups, type MenuSpec } from './shortcuts';
+import { canvasScoped, formatAccelerator, keysFor, matchShortcut, reservedByMenu, shortcutGroups, type MenuSpec } from './shortcuts';
 
 describe('formatAccelerator', () => {
   it('uses symbols on macOS, in the platform order', () => {
@@ -8,9 +8,26 @@ describe('formatAccelerator', () => {
     expect(formatAccelerator('OptionOrAlt+CmdOrCtrl+I', 'darwin')).toBe('⌥⌘I');
   });
 
+  it('shows arrow keys as arrows', () => {
+    expect(formatAccelerator('Shift+CmdOrCtrl+Left', 'darwin')).toBe('⇧⌘←');
+    expect(formatAccelerator('Shift+CmdOrCtrl+Up', 'windows')).toBe('Ctrl+Shift+↑');
+  });
+
   it('spells modifiers out elsewhere', () => {
     expect(formatAccelerator('Shift+CmdOrCtrl+Z', 'windows')).toBe('Ctrl+Shift+Z');
     expect(formatAccelerator('CmdOrCtrl+=', 'linux')).toBe('Ctrl+=');
+  });
+});
+
+// The no-file state shows the keys for Open and New: whatever the menu binds.
+describe('keysFor', () => {
+  it('formats the key the menu binds for a command, per platform', () => {
+    expect(keysFor(spec as MenuSpec, 'file.open', 'darwin')).toBe('⌘O');
+    expect(keysFor(spec as MenuSpec, 'file.new', 'windows')).toBe('Ctrl+N');
+  });
+
+  it('is empty for a command with no key', () => {
+    expect(keysFor(spec as MenuSpec, 'no.such.command', 'darwin')).toBe('');
   });
 });
 
@@ -43,8 +60,8 @@ describe('matchShortcut', () => {
   const windows = matchShortcut(spec as MenuSpec, 'windows');
 
   it('matches a shortcut by physical key, whatever Shift turns it into', () => {
-    // Shift+] reports key "}" on a US layout; the code is what the user pressed.
-    expect(mac(key({ key: '}', code: 'BracketRight', metaKey: true, shiftKey: true }))).toBe('canvas.bringToFront');
+    // Option+] reports key "‘" on a US Mac layout; the code is what the user pressed.
+    expect(mac(key({ key: '‘', code: 'BracketRight', metaKey: true, altKey: true }))).toBe('canvas.bringToFront');
     expect(windows(key({ key: '=', code: 'Equal', ctrlKey: true }))).toBe('view.zoomIn');
     expect(windows(key({ key: ',', code: 'Comma', ctrlKey: true }))).toBe('file.settings');
   });
@@ -58,7 +75,7 @@ describe('matchShortcut', () => {
 
   it('requires exactly the modifiers the shortcut names', () => {
     expect(windows(key({ key: '=', code: 'Equal', altKey: true }))).toBeUndefined();
-    expect(mac(key({ key: ']', code: 'BracketRight', metaKey: true }))).toBeUndefined();
+    expect(mac(key({ key: '}', code: 'BracketRight', metaKey: true, shiftKey: true }))).toBeUndefined();
     expect(windows(key({ key: '=', code: 'Equal', ctrlKey: true, altKey: true }))).toBeUndefined();
   });
 
@@ -66,6 +83,37 @@ describe('matchShortcut', () => {
   // run the command twice.
   it('ignores native accelerators', () => {
     expect(mac(key({ key: 's', code: 'KeyS', metaKey: true }))).toBeUndefined();
+  });
+});
+
+// Canvas-scoped shortcuts act only on the canvas. The source editor keeps the
+// same keys: ⌘] indents there, ⌘D selects the next match.
+describe('canvas-scoped shortcuts', () => {
+  it('leaves their keys to the source editor', () => {
+    const mac = reservedByMenu(spec as MenuSpec, 'darwin');
+    expect(mac({ key: 'Mod-]' })).toBe(false);
+    expect(mac({ key: 'Mod-[' })).toBe(false);
+    expect(mac({ key: 'Mod-d' })).toBe(false);
+  });
+
+  it('are listed, so the page can ignore them away from the canvas', () => {
+    const scoped = canvasScoped(spec as MenuSpec);
+    expect(scoped.has('canvas.bringForward')).toBe(true);
+    expect(scoped.has('canvas.duplicate')).toBe(true);
+    expect(scoped.has('canvas.flipHorizontal')).toBe(true);
+    expect(scoped.has('file.save')).toBe(false);
+  });
+
+  it('still match their keys', () => {
+    const match = matchShortcut(spec as MenuSpec, 'darwin');
+    const press = (code: string, mods: Partial<KeyboardEvent>) =>
+      match(key({ code, key: code.replace(/^Key/, '').toLowerCase(), ...mods }));
+    expect(press('BracketRight', { metaKey: true })).toBe('canvas.bringForward');
+    expect(press('BracketRight', { metaKey: true, altKey: true })).toBe('canvas.bringToFront');
+    expect(press('KeyH', { shiftKey: true })).toBe('canvas.flipHorizontal');
+    expect(press('KeyD', { metaKey: true })).toBe('canvas.duplicate');
+    expect(match(key({ key: 'ArrowLeft', code: 'ArrowLeft', metaKey: true, shiftKey: true }))).toBe('canvas.alignLeft');
+    expect(press('KeyH', { altKey: true })).toBe('canvas.distributeHorizontal');
   });
 });
 

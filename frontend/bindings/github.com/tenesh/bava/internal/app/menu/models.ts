@@ -11,5 +11,10 @@ export interface State {
     "theme": string;
     "tool": string;
     "hasSelection": boolean;
+
+    /**
+     * CanPasteStyles reports a style copied with Copy Styles.
+     */
+    "canPasteStyles": boolean;
     "recents": string[] | null;
 }

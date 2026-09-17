@@ -1,8 +1,13 @@
 package app_test
 
 import (
+	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/tenesh/bava/internal/app"
 )
@@ -44,5 +49,32 @@ func TestContentProcessDeathLogsQueuesAndReloads(t *testing.T) {
 	notices := service.TakeNotices()
 	if len(notices) != 1 || notices[0].Kind != app.NoticeWebviewReloaded {
 		t.Errorf("notices = %+v, want one webview-reloaded notice", notices)
+	}
+}
+
+// The inset title bar positions the traffic lights for a ~52pt toolbar; Bava's
+// bar is 36px, so they sat below its content and touched its border (seen at
+// a running window, 2026-09-17). The standard hidden title bar centres them
+// near a 36px bar, and the draggable strip is exactly the bar.
+func TestMacTitleBarIsStandardAndMatchesTheBar(t *testing.T) {
+	mac := app.MainWindowOptions().Mac
+	if mac.TitleBar != application.MacTitleBarHidden {
+		t.Errorf("TitleBar = %+v, want MacTitleBarHidden", mac.TitleBar)
+	}
+	if mac.InvisibleTitleBarHeight != app.TitleBarHeight {
+		t.Errorf("InvisibleTitleBarHeight = %d, want the title bar's %d", mac.InvisibleTitleBarHeight, app.TitleBarHeight)
+	}
+	// The page draws the bar from the --size-titlebar token; the window's
+	// draggable strip must follow it if the token changes.
+	tokens, err := os.ReadFile("../../frontend/src/styles/tokens/_space.scss")
+	if err != nil {
+		t.Fatal(err)
+	}
+	match := regexp.MustCompile(`--size-titlebar:\s*(\d+)px;`).FindSubmatch(tokens)
+	if match == nil {
+		t.Fatal("--size-titlebar not found in _space.scss")
+	}
+	if want, _ := strconv.Atoi(string(match[1])); app.TitleBarHeight != want {
+		t.Errorf("TitleBarHeight = %d, want --size-titlebar's %d", app.TitleBarHeight, want)
 	}
 }

@@ -1,0 +1,59 @@
+// Shape colour swatches, and the default shape colours.
+//
+// Shape colours are scene data: a file stores the swatch *name*. The values
+// here are what each name means in each theme, chosen so a label in the
+// swatch's text colour stays readable on its fill. Names are listed once, in
+// `src/canvas/palette.ts`; `tokens.test.ts` holds this file to that list.
+//
+// Additions beyond the design sheet (decided 2026-09-17, Milestone 6).
+
+$swatches-light: (
+  'gray': (fill: #f1f1ee, stroke: #8a8a82, text: #3a3a35),
+  'blue': (fill: #e6eef7, stroke: #4a7fb5, text: #1f4a73),
+  'green': (fill: #e7f2ea, stroke: #4f8a5e, text: #25502f),
+  'yellow': (fill: #fbf4d8, stroke: #b49a2e, text: #5c4b0e),
+  'orange': (fill: #fcebdc, stroke: #c77a3a, text: #6b3a12),
+  'red': (fill: #fbe6e4, stroke: #c2544a, text: #6e231d),
+  'purple': (fill: #efe8f6, stroke: #8563b0, text: #45306a),
+  'pink': (fill: #fbe7f0, stroke: #c25c8a, text: #6d2447),
+);
+
+$swatches-dark: (
+  'gray': (fill: #2a2c30, stroke: #8d918c, text: #dcdcd8),
+  'blue': (fill: #1d2a38, stroke: #6a9bcf, text: #cfe1f3),
+  'green': (fill: #1e2e23, stroke: #6fae80, text: #d3ebd9),
+  'yellow': (fill: #332d18, stroke: #d1b852, text: #f2e7bd),
+  'orange': (fill: #36261a, stroke: #df9658, text: #f5dcc6),
+  'red': (fill: #3a2220, stroke: #e07a70, text: #f6d3cf),
+  'purple': (fill: #2c2438, stroke: #a88bd1, text: #e3d8f2),
+  'pink': (fill: #37212b, stroke: #dd82ab, text: #f5d3e2),
+);
+
+@mixin swatch-vars($swatches) {
+  @each $name, $parts in $swatches {
+    @each $part, $value in $parts {
+      --swatch-#{$name}-#{$part}: #{$value};
+    }
+  }
+}
+
+:root {
+  @include swatch-vars($swatches-light);
+
+  // An unstyled shape: a quiet fill that separates it from the canvas, a
+  // visible border, and body text.
+  --color-shape-fill: #fbfbf9;
+  --color-shape-stroke: #8b8b83;
+  --color-shape-text: #25251f;
+  // Selection outline and resize handles.
+  --color-selection-handle: #2f6ba3;
+}
+
+:root[data-theme='dark'] {
+  @include swatch-vars($swatches-dark);
+
+  --color-shape-fill: #202226;
+  --color-shape-stroke: #7f857f;
+  --color-shape-text: #dcdcd8;
+  --color-selection-handle: #7fabd9;
+}

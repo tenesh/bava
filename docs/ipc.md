@@ -111,6 +111,13 @@ them beyond handing the parse to `internal/format`.
 | `Settings()` | the user's preferences, defaults when unreadable |
 | `SaveSettings(settings)` | an error string, empty on success |
 
+**A scene crosses the bridge whole.** `format.Scene` and `format.Element`
+implement their own JSON encoding, so every key an element has, known or not,
+reaches the frontend and comes back to be saved (fixed in Milestone 6: a plain
+decode dropped points, text and unknown keys). As a result Wails types `Scene`
+as `any` in the generated TypeScript; the frontend's own scene types in
+`canvas/scene.ts` describe it.
+
 **Errors are data here too.** A missing file, a permission denial, a malformed
 canvas block (all things the user can act on) come back in `error` rather
 than as a failed call. A returned error means the request itself was malformed.

@@ -9,8 +9,9 @@
   import { t } from '../i18n/t';
 
   type Props = {
-    engine: string;
-    nodes: number;
+    /** Engine and node count describe a document: omitted when none is open. */
+    engine?: string;
+    nodes?: number;
     errors: number;
     message?: string;
   };
@@ -19,8 +20,12 @@
 </script>
 
 <footer class="status">
-  <span class="item">{t('status.engine')} <b>{engine}</b></span>
-  <span class="item">{t('status.nodes')} <b>{nodes}</b></span>
+  {#if engine !== undefined}
+    <span class="item">{t('status.engine')} <b>{engine}</b></span>
+  {/if}
+  {#if nodes !== undefined}
+    <span class="item">{t('status.nodes')} <b>{nodes}</b></span>
+  {/if}
   <span class="item" class:has-errors={errors > 0}>
     {t('status.errors')} <b>{errors}</b>
   </span>

@@ -1,0 +1,31 @@
+// Elements the canvas code creates imperatively, outside any component, so
+// their styles cannot live in one. Tokens only, like everything else.
+
+// The label editor: a textarea over a shape's label or a text element while it
+// is being typed (canvas/label-editor.ts).
+.bava-label-editor {
+  position: absolute;
+  z-index: var(--z-floating);
+  box-sizing: border-box;
+  min-width: var(--size-label-editor-min-width);
+  min-height: var(--size-label-editor-min-height);
+  margin: 0;
+  padding: var(--space-1);
+  border: var(--border-width) solid var(--color-selection-handle);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+  line-height: var(--leading-tight);
+  color: var(--color-text-primary);
+  resize: none;
+  outline: none;
+}
+
+.bava-label-editor[data-align='center'] {
+  text-align: center;
+}
+
+.bava-label-editor[data-align='left'] {
+  text-align: left;
+}

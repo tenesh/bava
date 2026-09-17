@@ -55,6 +55,12 @@ export function createSelection() {
       ids = [];
     },
 
+    /** Keep only ids that still exist, for after an undo removes elements. */
+    retain(existing: ElementId[]): void {
+      const present = new Set(existing);
+      if (ids.some((id) => !present.has(id))) ids = ids.filter((id) => present.has(id));
+    },
+
     /** Tab order is paint order, which is the order a reader sees them in. */
     selectNext(data: SceneData): void {
       if (data.elements.length === 0) return;

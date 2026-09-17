@@ -226,6 +226,27 @@ func TestCleanCloseReportsCleanNextTime(t *testing.T) {
 	}
 }
 
+// Close runs from Wails' shutdown hook and again after Run returns, on the
+// platforms where it does: the second call must be harmless and must not log
+// a second end into a closed file.
+func TestCloseTwiceIsClean(t *testing.T) {
+	dir := t.TempDir()
+	s := start(t, dir, base)
+	if err := s.Close(); err != nil {
+		t.Fatalf("first Close: %v", err)
+	}
+	if err := s.Close(); err != nil {
+		t.Errorf("second Close: %v", err)
+	}
+	body, err := os.ReadFile(s.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(string(body), "session end"); n != 1 {
+		t.Errorf("session end logged %d times, want 1", n)
+	}
+}
+
 // A session that never closed (a crash, a force quit, a power cut) leaves
 // its marker behind, and the next launch names it.
 func TestMissingCloseReportsUnexpectedWithTheSessionName(t *testing.T) {

@@ -115,9 +115,11 @@ type Session struct {
 	Dir      string
 	Previous Ended
 
-	level  *slog.LevelVar
-	writer *cappedWriter
-	home   string
+	level     *slog.LevelVar
+	writer    *cappedWriter
+	home      string
+	closeOnce sync.Once
+	closeErr  error
 }
 
 // Start opens a new session: reads how earlier sessions ended, writes this
@@ -224,17 +226,22 @@ func (s *Session) Path() string {
 	return filepath.Join(s.Dir, s.Name)
 }
 
-// Close records a clean end and removes the marker.
+// Close records a clean end and removes the marker. Only the first call does
+// anything: the app closes the session from its shutdown hook, and again after
+// Run returns on the platforms where Run does return.
 func (s *Session) Close() error {
 	if s.writer == nil {
 		return nil
 	}
-	s.Logger.Warn("session end")
-	err := s.writer.Close()
-	if removeErr := os.Remove(filepath.Join(s.Dir, markerFor(s.Name))); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
-		err = errors.Join(err, removeErr)
-	}
-	return err
+	s.closeOnce.Do(func() {
+		s.Logger.Warn("session end")
+		err := s.writer.Close()
+		if removeErr := os.Remove(filepath.Join(s.Dir, markerFor(s.Name))); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+			err = errors.Join(err, removeErr)
+		}
+		s.closeErr = err
+	})
+	return s.closeErr
 }
 
 // Tail returns up to n of the session's most recent lines.

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { editTarget as target, fieldSelection } from './edit-target';
+import { canvasKeyStandsDown, editTarget as target, fieldSelection } from './edit-target';
 
 const editTarget = (el: Element | null) => target(el, { canvasVisible: true });
 
@@ -42,5 +42,32 @@ describe('editTarget', () => {
     const input = inside('<input value="hello world">', 'input') as HTMLInputElement;
     input.setSelectionRange(0, 5);
     expect(fieldSelection(input)).toBe('hello');
+  });
+});
+
+describe('canvasKeyStandsDown', () => {
+  // Enter and Space activate a focused button; arrows move within a menu or a
+  // radio group. The canvas must leave those keys to the control, or buttons
+  // stop working from the keyboard.
+  it('leaves activation and navigation keys to a focused control', () => {
+    const button = inside('<button></button>', 'button');
+    for (const key of ['Enter', ' ', 'ArrowDown', 'ArrowLeft', 'Tab']) {
+      expect(canvasKeyStandsDown(button, key, false), key).toBe(true);
+    }
+    const radio = inside('<div role="radiogroup"><div role="radio" tabindex="0"></div></div>', '[role=radio]');
+    expect(canvasKeyStandsDown(radio, 'ArrowRight', false)).toBe(true);
+  });
+
+  // Tool letters and Delete still act on the canvas after clicking a rail
+  // button, which keeps the focus.
+  it('lets tool letters and Delete through from a focused control', () => {
+    const button = inside('<button></button>', 'button');
+    expect(canvasKeyStandsDown(button, 'r', false)).toBe(false);
+    expect(canvasKeyStandsDown(button, 'Backspace', false)).toBe(false);
+  });
+
+  it('stands down for a key something else already handled', () => {
+    expect(canvasKeyStandsDown(document.body, 'Enter', true)).toBe(true);
+    expect(canvasKeyStandsDown(document.body, 'Enter', false)).toBe(false);
   });
 });

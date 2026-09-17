@@ -12,6 +12,9 @@
   --duration-slow: 220ms;
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  // One sweep of an indeterminate progress bar. Not zeroed under reduced
+  // motion: a zero-length loop flickers, so the bar stops animating instead.
+  --duration-indeterminate: 1400ms;
 }
 
 @media (prefers-reduced-motion: reduce) {

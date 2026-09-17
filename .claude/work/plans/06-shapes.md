@@ -77,13 +77,13 @@ with no points.
 **Behavior:** `Element` implements `MarshalJSON` and `UnmarshalJSON`, carrying
 every key in both directions. Known fields are merged over the raw object,
 exactly as `encodeElement` does today.
-- [ ] Failing test: `TestElementJSONKeepsEveryKey`: decode then encode keeps
+- [x] Failing test: `TestElementJSONKeepsEveryKey`: decode then encode keeps
       `points`, `text` and an unknown key. Expected failure: they are dropped.
-- [ ] Failing test: `TestSceneSurvivesTheFrontendBridge`: `Read` a file, send
+- [x] Failing test: `TestSceneSurvivesTheFrontendBridge`: `Read` a file, send
       the scene through `json.Marshal`/`json.Unmarshal` (what Wails does), then
       `Write`: byte-identical. Expected failure: the canvas block loses keys.
-- [ ] Implement
-- [ ] Green: `go test ./internal/format`
+- [x] Implement
+- [x] Green: `go test ./internal/format`
 
 ### Task 2: Specify the shapes in the file format
 **Files:**
@@ -100,10 +100,10 @@ exactly as `encodeElement` does today.
 - `points` on `line` and `arrow` relative to `x, y`
 - the swatch names
 
-- [ ] Write the section
-- [ ] Failing test: `TestRoundTripEveryShapeWithLabelAndColours`: expected
+- [x] Write the section
+- [x] Failing test: `TestRoundTripEveryShapeWithLabelAndColours`: expected
       failure before Task 1 lands; after it, passes as a guard
-- [ ] Green: `go test ./internal/format -run RoundTrip`
+- [x] Green: `go test ./internal/format -run RoundTrip`
 
 ### Task 3: The swatch palette
 **Files:**
@@ -120,11 +120,11 @@ exactly as `encodeElement` does today.
   injected `(cssVar) => string` reader: `getComputedStyle` in the app, a map in
   tests.
 - An unknown name resolves to the default.
-- [ ] Failing test: every swatch defines fill, stroke and text in both themes
-- [ ] Failing test: `resolveStyle` returns defaults for no swatch and for an
+- [x] Failing test: every swatch defines fill, stroke and text in both themes
+- [x] Failing test: `resolveStyle` returns defaults for no swatch and for an
       unknown one
-- [ ] Implement
-- [ ] Green: `cd frontend && npx vitest run src/styles src/canvas/palette.test.ts`
+- [x] Implement
+- [x] Green: `cd frontend && npx vitest run src/styles src/canvas/palette.test.ts`
 
 ### Task 4: Shape geometry
 **Files:**
@@ -135,11 +135,11 @@ exactly as `encodeElement` does today.
 `sceneFunc` calls it with the canvas context; tests call it with a recorder.
 Every point stays inside `[0,w]×[0,h]`, and the diamond and hexagon hit their
 defining vertices.
-- [ ] Failing test: each of the seven new shapes stays within bounds at
+- [x] Failing test: each of the seven new shapes stays within bounds at
       several sizes
-- [ ] Failing test: diamond vertices at the edge midpoints; hexagon symmetric
-- [ ] Implement
-- [ ] Green: `cd frontend && npx vitest run src/canvas/shapes.test.ts`
+- [x] Failing test: diamond vertices at the edge midpoints; hexagon symmetric
+- [x] Implement
+- [x] Green: `cd frontend && npx vitest run src/canvas/shapes.test.ts`
 
 ### Task 5: The stage draws what the scene says
 **Files:**
@@ -159,14 +159,14 @@ defining vertices.
   start to end, relative to `x, y`.
 - **Theme changes:** the stage re-resolves colours on a theme change
   (`restyle()`), without recreating nodes.
-- [ ] Failing test: a rect node has a non-empty stroke and fill after render.
+- [x] Failing test: a rect node has a non-empty stroke and fill after render.
       Expected failure: none set (the bug seen at the window)
-- [ ] Failing test: a drawn arrow has two points and is a `Konva.Arrow`
-- [ ] Failing test: a label renders as text inside the shape's bounds
-- [ ] Failing test: `restyle()` changes colours on existing nodes, same node
+- [x] Failing test: a drawn arrow has two points and is a `Konva.Arrow`
+- [x] Failing test: a label renders as text inside the shape's bounds
+- [x] Failing test: `restyle()` changes colours on existing nodes, same node
       identity
-- [ ] Implement
-- [ ] Green: `cd frontend && npx vitest run src/canvas`
+- [x] Implement
+- [x] Green: `cd frontend && npx vitest run src/canvas`
 
 ### Task 6: The new shapes as tools
 **Files:**
@@ -185,11 +185,11 @@ defining vertices.
   keeps the letters free. The button shows the last shape chosen.
 - **Menu:** Canvas ▸ Tools gains the seven shapes as radio items.
 - **Drawing:** dragging with a shape tool creates that element type.
-- [ ] Failing test: activating `diamond` then dragging creates a `diamond`
+- [x] Failing test: activating `diamond` then dragging creates a `diamond`
       element
-- [ ] Failing test (spec guards, existing): every new menu id has a handler
-- [ ] Implement
-- [ ] Green: `go test ./internal/app/menu && cd frontend && npm test`
+- [x] Failing test (spec guards, existing): every new menu id has a handler
+- [x] Implement
+- [x] Green: `go test ./internal/app/menu && cd frontend && npm test`
 - [ ] Keyboard pass on the shape menu: arrows, Enter, Escape
 
 ### Task 7: Selection outline and resize
@@ -206,13 +206,13 @@ defining vertices.
   size, shift keeps aspect ratio).
 - Lines and arrows scale their points.
 - Rotation is out of scope.
-- [ ] Failing test: `resize` from the bottom-right handle grows w and h and
+- [x] Failing test: `resize` from the bottom-right handle grows w and h and
       keeps x, y
-- [ ] Failing test: a resize is one undo step
-- [ ] Failing test: the stage attaches the transformer to the selected nodes
+- [x] Failing test: a resize is one undo step
+- [x] Failing test: the stage attaches the transformer to the selected nodes
       only
-- [ ] Implement
-- [ ] Green: `cd frontend && npx vitest run src/canvas`
+- [x] Implement
+- [x] Green: `cd frontend && npx vitest run src/canvas`
 
 ### Task 8: Zoom and pan reach the stage
 **Files:**
@@ -227,11 +227,11 @@ defining vertices.
 - **Pan:** wheel scrolls, and space-drag or middle-drag pans.
 - **Pointer:** coordinates stay correct under zoom, as the viewport already
   computes.
-- [ ] Failing test: `zoomAt(point, factor)` keeps the scene point under the
+- [x] Failing test: `zoomAt(point, factor)` keeps the scene point under the
       pointer fixed
-- [ ] Failing test: after a zoom, the stage's scale equals the viewport's zoom
-- [ ] Implement
-- [ ] Green: `cd frontend && npx vitest run src/canvas`
+- [x] Failing test: after a zoom, the stage's scale equals the viewport's zoom
+- [x] Implement
+- [x] Green: `cd frontend && npx vitest run src/canvas`
 
 ### Task 9: Labels and text you can type
 **Files:**
@@ -248,12 +248,12 @@ defining vertices.
   `measuredWidth` and `measuredHeight`.
 - **The overlay** is plain DOM, owned imperatively like the stage, not a
   Svelte component per element.
-- [ ] Failing test: committing sets `label` in one history step
-- [ ] Failing test: committing text stores its measurement
-- [ ] Failing test: while the overlay is open, canvas keys stand down (typing
+- [x] Failing test: committing sets `label` in one history step
+- [x] Failing test: committing text stores its measurement
+- [x] Failing test: while the overlay is open, canvas keys stand down (typing
       "r" does not switch tools)
-- [ ] Implement
-- [ ] Green: `cd frontend && npm test`
+- [x] Implement
+- [x] Green: `cd frontend && npm test`
 
 ### Task 10: Recolour a selection
 **Files:**
@@ -269,13 +269,59 @@ defining vertices.
   one history step. A mixed selection shows no swatch as current.
 - **Scope:** only elements that have that property change (a pen stroke has no
   fill).
-- [ ] Failing test: `applyStyle(selection, 'fill', 'blue')` is one step and
+- [x] Failing test: `applyStyle(selection, 'fill', 'blue')` is one step and
       skips elements without fill
-- [ ] Failing test: `currentStyle` of a mixed selection is `mixed`
-- [ ] Implement
-- [ ] Green: `cd frontend && npm test`
+- [x] Failing test: `currentStyle` of a mixed selection is `mixed`
+- [x] Implement
+- [x] Green: `cd frontend && npm test`
 - [ ] Keyboard pass: tab into the bar, arrows through swatches, Enter applies,
       Escape closes
+
+## Status, 2026-09-17
+
+Tasks 1 to 10 implemented and gated. Open: the human check at a running window
+in both themes (draw every shape, label, recolour, resize, zoom and pan), and
+the keyboard pass on `StyleBar`.
+
+Deviations:
+- **Task 1** also covers `format.Scene`, whose unknown top-level keys crossed
+  the bridge the same lossy way. A consequence: Wails now types `Scene` as
+  `any` in TypeScript.
+- **Task 5** found and fixed two shipped positioning bugs: ellipses were
+  centred on their corner, and pen stroke points were stored absolute, which
+  drew each stroke offset by its own position. Each element is now a Konva
+  group (body plus optional label). Stroke width is a new token,
+  `--size-shape-stroke`.
+- **Task 6:** the rail keeps its Rectangle and Ellipse buttons, and the shape
+  menu lists the seven new shapes rather than all nine.
+- **Task 7:** no Konva Transformer. Handles are drawn on a non-listening
+  overlay layer and hit-tested by the pointer handler, so all input keeps one
+  path. Resizes commit on release with no live preview, like moves already do.
+  Scaled geometry is rounded to three decimals.
+- **Task 8:** the stage also follows its host's size through a
+  `ResizeObserver`. Wheel policy is a pure module, `canvas/navigation.ts`.
+- **Task 9:** the text tool places text on click, then returns to Select.
+  `⌘Enter` or `Esc` finishes typing; plain `Enter` is a new line.
+
+Spec review fixes (22 findings, 7 blockers, each verified):
+- `npm test` exited 1 on unhandled rejections while every test passed; jsdom
+  now has a ResizeObserver stub.
+- The frontend dropped a scene's version and unknown top-level keys on save;
+  `sceneToSave` keeps them. The Go writer HTML-escaped labels; it no longer
+  does, and raw element bytes are normalised on decode. A null element is a
+  decode error, not a panic.
+- Multi-line text is measured line by line and drawn with the same line
+  height. The text tool records one step, only when text is typed.
+- The handle hit zone matches the drawn handle; a small selection moves when
+  pressed inside. Enter, Space, Tab and arrows stay with a focused control.
+- Also: keep-aspect ignores zero-size boxes; frame labels are drawn and
+  editable; the editor ignores its own events, commits before reopening or on
+  a view change, and left-aligns free text; Space pan always releases; text
+  keeps its measured size through a resize; drawn and moved numbers are tidied;
+  undo prunes the selection; token reads are cached per render; sizes moved to
+  tokens and keyword fallbacks removed; swatch keys quoted; the StyleBar chip
+  shows the default for an unknown swatch; one wheel event zooms at most about
+  1.28 times; the label editor's styles moved to `styles/canvas-overlays.scss`.
 
 ## Artifacts
 

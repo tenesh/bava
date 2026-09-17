@@ -24,6 +24,11 @@ Runtime and framework
   Wails v3: MIT
   Svelte: MIT
 
+Icons
+  Lucide (@lucide/svelte): ISC
+    Copyright (c) 2026 Lucide Icons and Contributors
+    https://github.com/lucide-icons/lucide
+
 (Icon sets, canvas libraries and remaining runtime dependencies are added here
 as they land. Sets under proprietary terms, including the AWS, Azure and
 Google Cloud architecture icon sets, are never bundled; users import those

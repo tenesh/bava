@@ -23,9 +23,12 @@
 </section>
 
 <style>
+  /* Fills its region: the region is a block, so without a height the pane
+     shrinks to its header and the body (the canvas stage) is zero tall. */
   .pane {
     display: flex;
     flex-direction: column;
+    height: 100%;
     min-width: 0;
     min-height: 0;
     background: var(--color-surface);
