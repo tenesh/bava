@@ -160,3 +160,21 @@ func TestAutosaveDelayIsClampedToASensibleRange(t *testing.T) {
 		})
 	}
 }
+
+// Verbose logging records more detail — still never content — and is opt-in.
+func TestVerboseLoggingDefaultsToOff(t *testing.T) {
+	if config.Defaults().VerboseLogging {
+		t.Error("VerboseLogging defaults to on")
+	}
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := config.SaveTo(path, config.Settings{VerboseLogging: true}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := config.LoadFrom(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.VerboseLogging {
+		t.Error("VerboseLogging did not survive a save")
+	}
+}

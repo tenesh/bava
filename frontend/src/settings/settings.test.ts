@@ -8,12 +8,14 @@ const defaults = {
   layoutEngine: 'tala',
   autosave: 'off',
   autosaveDelayMs: 1000,
+  verboseLogging: false,
 };
 
 function io(over: Partial<SettingsIO> = {}): SettingsIO {
   return {
     load: vi.fn().mockResolvedValue({ ...defaults }),
     save: vi.fn().mockResolvedValue(''),
+    setVerbose: vi.fn().mockResolvedValue(''),
     ...over,
   };
 }
@@ -83,5 +85,24 @@ describe('settings', () => {
     expect(AUTOSAVE_DELAY_LIMITS).toEqual({ min: constant('MinAutosaveDelayMS'), max: constant('MaxAutosaveDelayMS') });
     expect(go).toContain(`AutosaveDelayMS: ${SETTINGS_DEFAULTS.autosaveDelayMs},`);
     expect(go).toContain(`DebounceMS:   ${SETTINGS_DEFAULTS.debounceMs},`);
+  });
+
+  // Go owns the verbose flag: it changes the live log level as well as the
+  // saved preference, so the settings module asks it rather than saving itself.
+  it('toggling verbose logging goes through the log service and reflects the result', async () => {
+    const stored = io();
+    const settings = createSettings(stored);
+    await settings.load();
+    expect(await settings.setVerboseLogging(true)).toBe('');
+    expect(stored.setVerbose).toHaveBeenCalledWith(true);
+    expect(stored.save).not.toHaveBeenCalled();
+    expect(settings.verboseLogging).toBe(true);
+  });
+
+  it('keeps verbose logging as it was when the change fails', async () => {
+    const settings = createSettings(io({ setVerbose: vi.fn().mockResolvedValue('disk full') }));
+    await settings.load();
+    expect(await settings.setVerboseLogging(true)).toBe('disk full');
+    expect(settings.verboseLogging).toBe(false);
   });
 });

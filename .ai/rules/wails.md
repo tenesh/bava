@@ -131,3 +131,29 @@ aligns and matches by character; the page's matcher must then stand down.
 Windows `info.json`, NSIS and MSIX files all said "My Product". macOS shows
 `CFBundleName` as the application menu's title. Pinned by
 `TestPackagingMetadataIsNotTheWailsTemplate`.
+
+## A release build discards every log line
+`pkg/application/logger_prod.go` makes the production `DefaultLogger` write to
+`io.Discard`. Bava passes its session logger as `Options.Logger`; without that,
+nothing Wails reports in a shipped app is kept.
+
+## The default PanicHandler exits the process
+`defaultPanicHandler` calls `fatal`, which calls `os.Exit(1)`. Panics inside
+bound methods are already turned into a rejected call (beta.20, "#5037"), but
+a panic anywhere else closed the app without a word. Bava's
+`app.PanicHandler` logs, emits `app:error`, and does not exit — except:
+
+- **Inside `InvokeSync*`** (`mainthread.go`): `wg.Done()` is not deferred, so a
+  handler that returns leaves the caller blocked forever. Bava logs and exits.
+- **Window-event and event hooks** are not recovered by Wails; a panic there
+  ends the process. The next launch reports it through the session marker.
+
+## Wails logs bound-call arguments at debug level
+`messageprocessor_call.go` logs `"Binding call complete:"` with the full JSON
+arguments and result — a whole document for `Save`. Never hand Wails a logger
+that records debug, or one that records attribute values.
+
+## Webview crash events are macOS-only
+beta.20 exposes `mac:WebViewWebContentProcessDidTerminate` and no equivalent
+for WebView2 or WebKitGTK. On Windows and Linux a dead content process still
+leaves a blank window. Re-check at every Wails bump.

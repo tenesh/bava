@@ -30,4 +30,10 @@ export interface Settings {
      * AutosaveDelayMS is the quiet period for AutosaveAfterDelay.
      */
     "autosaveDelayMs": number;
+
+    /**
+     * VerboseLogging adds debug detail to Bava's log while someone reproduces
+     * a problem. Off by default; the log never holds content at any level.
+     */
+    "verboseLogging": boolean;
 }

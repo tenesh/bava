@@ -35,3 +35,16 @@ func MainWindowOptions() application.WebviewWindowOptions {
 		UseApplicationMenu: true,
 	}
 }
+
+// ContentProcessDied handles the webview's content process terminating — on
+// macOS, WKWebView reports it and the window is left blank. It logs, queues a
+// notice so the reloaded page can say what happened, and reloads.
+//
+// Wails v3.0.0-beta.20 exposes this event on macOS only. WebView2's
+// ProcessFailed and WebKitGTK's equivalent are not surfaced, so on Windows and
+// Linux a dead content process still leaves a blank window.
+func ContentProcessDied(service *LogService, reload func()) {
+	service.logger().Error("webview content process terminated; reloading the window")
+	service.addNotice(Notice{Kind: NoticeWebviewReloaded})
+	reload()
+}

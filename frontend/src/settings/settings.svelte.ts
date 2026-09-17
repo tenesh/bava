@@ -5,7 +5,7 @@
  * the loaded values and writes back the whole object, so keys it does not edit
  * survive a save.
  */
-import { FileService } from '../../bindings/github.com/tenesh/bava/internal/app';
+import { FileService, LogService } from '../../bindings/github.com/tenesh/bava/internal/app';
 import type { Settings } from '../../bindings/github.com/tenesh/bava/internal/config/models';
 import type { AutosaveMode } from '../files/autosave.svelte';
 
@@ -13,11 +13,14 @@ export type SettingsIO = {
   load(): Promise<Settings>;
   /** Resolves with an error message, or '' on success. */
   save(settings: Settings): Promise<string>;
+  /** Switches the live log level and saves the preference, in Go. */
+  setVerbose(on: boolean): Promise<string>;
 };
 
 const overIPC: SettingsIO = {
   load: () => FileService.Settings(),
   save: (settings) => FileService.SaveSettings(settings),
+  setVerbose: (on) => LogService.SetVerbose(on),
 };
 
 export { AUTOSAVE_DELAY_LIMITS } from './limits';
@@ -28,6 +31,7 @@ export const SETTINGS_DEFAULTS: Settings = {
   layoutEngine: 'tala',
   autosave: 'off',
   autosaveDelayMs: 1000,
+  verboseLogging: false,
 };
 
 function isMode(value: string): value is AutosaveMode {
@@ -56,6 +60,9 @@ export function createSettings(io: SettingsIO = overIPC) {
     get autosaveDelayMs(): number {
       return values.autosaveDelayMs;
     },
+    get verboseLogging(): boolean {
+      return values.verboseLogging;
+    },
 
     async load(): Promise<void> {
       values = await io.load();
@@ -64,6 +71,16 @@ export function createSettings(io: SettingsIO = overIPC) {
 
     setAutosave: (mode: AutosaveMode) => update({ autosave: mode }),
     setAutosaveDelay: (ms: number) => update({ autosaveDelayMs: ms }),
+
+    /**
+     * Go owns this one: it changes the live log level too. Saving it here as
+     * well would race Go's write of the same file.
+     */
+    async setVerboseLogging(on: boolean): Promise<string> {
+      const error = await io.setVerbose(on);
+      if (!error) values = { ...values, verboseLogging: on };
+      return error;
+    },
   };
 }
 

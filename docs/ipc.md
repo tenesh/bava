@@ -185,3 +185,29 @@ thread on Linux.
 Calling it before the menu is installed does nothing. Building the menu is
 deliberately not bound: `app.InstallMenu` is a package function main calls
 after `application.New`.
+
+## LogService
+
+Added in Milestone 5.8. The frontend's way into Bava's own log. Nothing here
+leaves the machine: there is no upload, and Report Issue… stays hidden until
+Milestone 16 confirms the public tracker.
+
+| Method | Returns |
+|---|---|
+| `Report(entry)` | nothing — logs a frontend error; `entry` is `{level, kind, stack, source}`: the error's kind and stack frames, **never its message**, which can quote input. Kind capped at 200 characters, stack at 8,000. At most 20 per 10 seconds; the number dropped is noted when the next report arrives |
+| `Diagnostics(userAgent)` | plain text for the user to copy: build, OS, webview, whether the last session ended unexpectedly, and the last 200 log lines, already redacted |
+| `OpenLogsFolder()` | an error message, empty on success |
+| `TakeNotices()` | pending notices, once: `{kind: "unexpectedExit" \| "webviewReloaded", session}` |
+| `SetVerbose(on)` | an error message, empty on success; switches the live level and saves `verboseLogging` |
+
+### `app:error` — Go → frontend
+
+Emitted when Go recovers from a panic, whether in a bound method, a Wails
+goroutine, or one Bava started with `app.Go`. Carries `{id}`, which finds the
+full stack in the log; the frontend supplies the words. Never the stack, never
+content.
+
+A panic inside Wails' `InvokeSync` is the exception: its caller would wait
+forever, so Bava logs it and exits instead, and the next launch reports the
+unexpected exit. Panics in Wails' window-event and event hooks are not
+recovered by Wails at all and end the process the same way.

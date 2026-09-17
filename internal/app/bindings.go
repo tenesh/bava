@@ -8,6 +8,8 @@ package app
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	"github.com/tenesh/bava/internal/render"
 )
@@ -27,5 +29,17 @@ func NewRenderService() *RenderService { return &RenderService{} }
 // compile is not an error: it comes back in Result.Errors, and the frontend
 // keeps the last good diagram on screen.
 func (s *RenderService) Render(source string, opts render.Options) (render.Result, error) {
-	return render.Render(context.Background(), source, opts)
+	started := time.Now()
+	result, err := render.Render(context.Background(), source, opts)
+	// Sizes and timings only: never the source, the SVG or a diagnostic's
+	// message, which quotes the source.
+	slog.Debug("render",
+		"engine", opts.Engine,
+		"sourceBytes", len(source),
+		"diagnostics", len(result.Errors),
+		"nodes", len(result.NodeMap),
+		"failed", err != nil,
+		"duration", time.Since(started),
+	)
+	return result, err
 }

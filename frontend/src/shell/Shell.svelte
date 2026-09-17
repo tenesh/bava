@@ -13,6 +13,7 @@
   import type { Snippet } from 'svelte';
   import Mark from '../components/Mark.svelte';
   import Pane from '../components/Pane.svelte';
+  import PanelBoundary from '../components/PanelBoundary.svelte';
   import EmptyState from '../components/EmptyState.svelte';
   import StatusBar from '../components/StatusBar.svelte';
   import ViewSwitcher from '../components/ViewSwitcher.svelte';
@@ -40,6 +41,8 @@
     settingsOpen?: boolean;
     /** Extra sections for the settings dialog, after Appearance. */
     settings?: Snippet;
+    /** A panel crashed while rendering. The shell keeps it contained. */
+    onPanelError?: (panel: string, error: unknown) => void;
   };
 
   let {
@@ -57,6 +60,7 @@
     view,
     settingsOpen = $bindable(false),
     settings,
+    onPanelError = () => {},
   }: Props = $props();
 </script>
 
@@ -84,11 +88,13 @@
     {#if view.showsFiles}
       <div class="region region-files">
         <Pane title={t('pane.files')}>
-          {#if filesPane}
-            {@render filesPane()}
-          {:else}
-            <EmptyState title={t('empty.files.title')} body={t('empty.files.body')} />
-          {/if}
+          <PanelBoundary name={t('pane.files')} onError={(error) => onPanelError('files', error)}>
+            {#if filesPane}
+              {@render filesPane()}
+            {:else}
+              <EmptyState title={t('empty.files.title')} body={t('empty.files.body')} />
+            {/if}
+          </PanelBoundary>
         </Pane>
       </div>
     {/if}
@@ -101,20 +107,26 @@
     -->
     <div class="region region-main" class:hidden={!view.showsDocument}>
       <Pane title={t('pane.document')}>
-        {@render documentPane()}
+        <PanelBoundary name={t('pane.document')} onError={(error) => onPanelError('document', error)}>
+          {@render documentPane()}
+        </PanelBoundary>
       </Pane>
     </div>
 
     <div class="region region-main" class:hidden={!view.showsCanvas}>
       <Pane title={t('pane.canvas')}>
-        {@render canvasPane()}
+        <PanelBoundary name={t('pane.canvas')} onError={(error) => onPanelError('canvas', error)}>
+          {@render canvasPane()}
+        </PanelBoundary>
       </Pane>
     </div>
 
     {#if view.showsAI}
       <div class="region region-ai">
         <Pane title={t('pane.ai')}>
-          <EmptyState title={t('empty.canvas.title')} />
+          <PanelBoundary name={t('pane.ai')} onError={(error) => onPanelError('ai', error)}>
+            <EmptyState title={t('empty.canvas.title')} />
+          </PanelBoundary>
         </Pane>
       </div>
     {/if}

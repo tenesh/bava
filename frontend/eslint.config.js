@@ -18,6 +18,11 @@ export default tseslint.config(
     languageOptions: {
       globals: { ...globals.browser },
     },
+    rules: {
+      // Positional parameters a signature forces on us — a Svelte snippet's
+      // `failed(error, reset)` needs only `reset` — are marked with `_`.
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
   },
 
   // Svelte 5: runes files (`.svelte`, `.svelte.ts`) parse through

@@ -26,7 +26,11 @@
   import EmptyState from './components/EmptyState.svelte';
   import ShortcutsDialog from './components/ShortcutsDialog.svelte';
   import AboutDialog from './components/AboutDialog.svelte';
+  import ErrorDialog from './components/ErrorDialog.svelte';
+  import { installErrorHandlers, report } from './ipc/log';
+  import { createErrorPolicy, type GoError, type GoNotice } from './shell/errors.svelte';
   import FilesSection from './settings/FilesSection.svelte';
+  import AdvancedSection from './settings/AdvancedSection.svelte';
   import { createSettings } from './settings/settings.svelte';
   import { createRecents } from './files/recents.svelte';
   import { createAutosave } from './files/autosave.svelte';
@@ -36,7 +40,7 @@
   import { currentPlatform, matchShortcut, reservedByMenu, shortcutGroups, type MenuSpec } from './shell/shortcuts';
   import menuSpec from '../../internal/app/menu/spec.json';
   import { Clipboard, Events } from '@wailsio/runtime';
-  import { FileService, MenuService } from '../bindings/github.com/tenesh/bava/internal/app';
+  import { FileService, LogService, MenuService } from '../bindings/github.com/tenesh/bava/internal/app';
   import { t } from './i18n/t';
 
   const initialSource = `users: Users {shape: person}
@@ -78,6 +82,23 @@ web.api -> db: query
   // A passing message for the status bar: a command or a setting that failed.
   let notice = $state.raw<string | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const errors = createErrorPolicy({ notify: () => notify(t('error.another')), translate: t });
+
+  const errorText = {
+    unexpected: { title: t('error.unexpected.title'), body: t('error.unexpected.body') },
+    unexpectedExit: { title: t('error.unexpectedExit.title'), body: t('error.unexpectedExit.body') },
+    webviewReloaded: { title: t('error.webviewReloaded.title'), body: t('error.webviewReloaded.body') },
+  };
+
+  async function copyText(text: string, confirmation: string) {
+    await Clipboard.SetText(text);
+    notify(confirmation);
+  }
+
+  async function openLogsFolder() {
+    if (await LogService.OpenLogsFolder()) notify(t('error.logsUnavailable'));
+  }
 
   function reportSettingsError(error: string) {
     if (error) notify(t('error.settingsSave'));
@@ -332,6 +353,10 @@ web.api -> db: query
     'help.shortcuts': () => {
       shortcutsOpen = true;
     },
+    'help.openLogs': () => openLogsFolder(),
+    'help.copyDiagnostics': async () => {
+      await copyText(await LogService.Diagnostics(navigator.userAgent), t('error.diagnosticsCopied'));
+    },
     'help.about': () => {
       aboutOpen = true;
     },
@@ -340,7 +365,7 @@ web.api -> db: query
   const dispatcher = createDispatcher(handlers, {
     // Shown, and logged locally: there is nowhere to report to, by design.
     onError: (id, error) => {
-      console.error(`menu command ${id} failed`, error);
+      void report(error, `command:${id}`);
       notify(t('error.command'));
     },
   });
@@ -451,11 +476,26 @@ web.api -> db: query
     });
 
     void settingsState.load().catch((error: unknown) => {
-      console.error('settings failed to load', error);
+      void report(error, 'settings');
       notify(t('error.settingsLoad'));
     });
 
+    // Anything nothing else caught: logged, and shown per the error policy.
+    const removeErrorHandlers = installErrorHandlers(window, {
+      report,
+      onUnexpected: (error) => errors.unexpected(error),
+    });
+    // Go recovered from a panic.
+    const offAppError = Events.On('app:error', (event) => errors.unexpected(event.data as GoError));
+    // Told once: the previous session ended unexpectedly, or the webview was
+    // reloaded after its process died.
+    void LogService.TakeNotices()
+      .then((notices) => (notices ?? []).forEach((notice) => errors.notice(notice as GoNotice)))
+      .catch((error: unknown) => void report(error, 'notices'));
+
     return () => {
+      removeErrorHandlers();
+      offAppError();
       offMenu();
       window.removeEventListener('keydown', onShortcut, true);
       clearTimeout(noticeTimer);
@@ -522,6 +562,7 @@ web.api -> db: query
   onChooseTheme={(choice) => theme.set(choice)}
   {view}
   bind:settingsOpen
+  onPanelError={(panel, error) => void report(error, `panel:${panel}`)}
 >
   {#snippet settings()}
     <FilesSection
@@ -529,6 +570,10 @@ web.api -> db: query
       delayMs={settingsState.autosaveDelayMs}
       onModeChange={(mode) => void settingsState.setAutosave(mode).then(reportSettingsError)}
       onDelayChange={(ms) => void settingsState.setAutosaveDelay(ms).then(reportSettingsError)}
+    />
+    <AdvancedSection
+      verbose={settingsState.verboseLogging}
+      onVerboseChange={(on) => void settingsState.setVerboseLogging(on).then(reportSettingsError)}
     />
   {/snippet}
 
@@ -569,6 +614,25 @@ web.api -> db: query
   groups={shortcuts}
   onOpenChange={(open) => (shortcutsOpen = open)}
 />
+
+<!--
+  Keyed on the item shown: dismissing with Escape or a click outside sets the
+  dialog's own open state to false, and a reused instance would then show the
+  next queued item closed — invisible, and stuck.
+-->
+{#key errors.current}
+{#if errors.current}
+  <ErrorDialog
+    open
+    title={errorText[errors.current.kind].title}
+    body={errorText[errors.current.kind].body}
+    details={errors.current.details}
+    onCopyDetails={(details) => void copyText(details, t('error.detailsCopied'))}
+    onOpenLogs={() => void openLogsFolder()}
+    onClose={() => errors.dismiss()}
+  />
+{/if}
+{/key}
 
 <AboutDialog bind:open={aboutOpen} onOpenChange={(open) => (aboutOpen = open)} />
 

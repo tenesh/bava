@@ -356,7 +356,7 @@ always, never the accent.
 
 ---
 
-## Milestone 5.8 — Errors and logs
+## Milestone 5.8 — Errors and logs *(gated; awaiting the release-build check)*
 
 **Goal:** When something fails, the user sees what happened and can hand us the
 logs — and nothing reaches us unless they send it.

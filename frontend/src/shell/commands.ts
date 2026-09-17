@@ -46,6 +46,8 @@ export const COMMAND_IDS = [
   'canvas.bringToFront',
   'canvas.sendToBack',
   'help.shortcuts',
+  'help.openLogs',
+  'help.copyDiagnostics',
   'help.about',
 ] as const;
 
