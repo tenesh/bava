@@ -5,7 +5,7 @@ something must land before the milestone that depends on it. Each has one goal,
 one exit criterion provable by running a
 command, and its dependencies. The build loop in
 `.claude/skills/build-step/SKILL.md` reads this file to locate the current
-milestone — determine it from what exists in the tree, not from what a
+milestone; determine it from what exists in the tree, not from what a
 previous session claimed.
 
 Sequence is fixed. Two standing orderings come from the rules and cannot be
@@ -25,8 +25,8 @@ free-placement canvas after the product direction was settled; see
 `.claude/work/specs/canvas-architecture.md`.
 
 **Re-planned again 2026-09-17, from Milestone 6.** A diagram is no longer a
-live block rendered from D2. D2 *generates* a diagram — from code the user
-writes or the AI writes — and the result is converted into ordinary canvas
+live block rendered from D2. D2 *generates* a diagram (from code the user
+writes or the AI writes), and the result is converted into ordinary canvas
 shapes, arrows and containers that can be moved and edited freely; the D2 is
 then discarded. Decisions in `.claude/work/specs/diagrams-as-shapes.md`.
 Milestone 1's pipeline survives as the generator: compile, lay out, and hand
@@ -34,7 +34,7 @@ the geometry to conversion.
 
 ---
 
-## Milestone 0 — Scaffold *(complete)*
+## Milestone 0: Scaffold *(complete)*
 
 **Goal:** Wails v3 + Svelte 5 + TypeScript shell that builds and runs on the
 dev machine.
@@ -53,7 +53,7 @@ be tightened to include it once that removal is committed.
 
 ---
 
-## Milestone 0.5 — Toolchain and doc alignment
+## Milestone 0.5: Toolchain and doc alignment
 
 **Goal:** Make the gates runnable and make every documented fact about the
 tree true, before any milestone depends on either.
@@ -62,11 +62,11 @@ tree true, before any milestone depends on either.
 
 | Item | Status |
 |---|---|
-| Skill file named `SKILL.md` | Already correct on disk; the skill loads. No rename was needed, and `git mv` would not have applied — `.claude/` is untracked. |
+| Skill file named `SKILL.md` | Already correct on disk; the skill loads. No rename was needed, and `git mv` would not have applied: `.claude/` is untracked. |
 | Module `github.com/tenesh/bava`, `go 1.27.0` | Already applied in the working tree; toolchain `go1.27.1` confirmed. |
-| D2 `v0.9.0` in the module graph | Present, still `// indirect`. Dropped once by `go mod tidy` during the bindings regeneration and re-added — see the trap below. |
-| `npm run lint` — ESLint 10 + `eslint-plugin-svelte` 3 + typescript-eslint 8 | Added: `frontend/eslint.config.js`, flat config, `bindings/` and `dist/` ignored. |
-| `npm test` — Vitest 5 | Added. No tests yet; Milestone 1 writes the first. |
+| D2 `v0.9.0` in the module graph | Present, still `// indirect`. Dropped once by `go mod tidy` during the bindings regeneration and re-added; see the trap below. |
+| `npm run lint` (ESLint 10 + `eslint-plugin-svelte` 3 + typescript-eslint 8) | Added: `frontend/eslint.config.js`, flat config, `bindings/` and `dist/` ignored. |
+| `npm test` (Vitest 5) | Added. No tests yet; Milestone 1 writes the first. |
 | CLAUDE.md states intent only | Done: version pins now point at `go.mod`, spike timings and tree inventory moved to the build loop's repo-state section. |
 | Mobile targets removed | Done: `git rm -r build/android build/ios` (46 files, staged and awaiting your commit), plus their references in `Taskfile.yml`, `build/Taskfile.yml`, `.gitignore` and `build/config.yml`. `go build ./...` passes again. |
 | Bindings match the module path | Done: regenerated to `frontend/bindings/github.com/tenesh/bava/`, stale `changeme/` removed, `src/App.svelte` import updated. |
@@ -89,7 +89,7 @@ Milestone 1 starting.
 **Depends on:** Milestone 0.
 
 **Requires the user:** the 46 mobile-target deletions are staged in the index
-and need committing — until then a `git reset` restores them. Commit this
+and need committing; until then a `git reset` restores them. Commit this
 milestone separately from Milestone 1 so the removal is legible in history,
 which is what `.ai/rules/wails.md` describes.
 
@@ -100,15 +100,15 @@ Milestone 1's first import makes the requirement direct.
 
 ---
 
-## Milestone 1 — The spine *(complete)*
+## Milestone 1: The spine *(complete)*
 
 **Goal:** Type D2 in a source pane, Go compiles and lays it out, the resulting
 SVG appears on screen.
 
 **Role after the 2026-09-16 re-plan:** this pipeline is no longer the whole
 app. It renders `diagram` elements placed on the canvas. Everything built here
-— the `Render` surface, the debounce and staleness handling, errors-as-data,
-`nodeMap`, the golden fixtures — carries forward unchanged into Milestone 6,
+(the `Render` surface, the debounce and staleness handling, errors-as-data,
+`nodeMap`, the golden fixtures) carries forward unchanged into Milestone 6,
 which adds node geometry to `nodeMap` and places the result on a stage. The
 two-pane shell and the interim `DiagramCanvas` class built here are replaced by
 Milestones 3 and 4.
@@ -144,20 +144,20 @@ first test is written; nothing else in 0.5 blocks it).
 three standing lint errors, and the first `internal/` package makes the D2
 requirement direct so `go mod tidy` stops dropping it.
 
-**Out of scope:** writes nothing to disk — no save, no autosave, no
+**Out of scope:** writes nothing to disk: no save, no autosave, no
 `localStorage` for document state. Source lives in memory until Milestone 5.
 Unstyled two-pane layout; no `frontend/src/components/` work, because tokens
 do not exist yet.
 
 ---
 
-## Milestone 2 — Design tokens and theming *(complete)*
+## Milestone 2: Design tokens and theming *(complete)*
 
 **Goal:** A semantic token layer plus light/dark theming, so component work can
 start without a literal value anywhere.
 
-**Scope:** `frontend/src/styles/tokens/` — `_color`, `_space`, `_type`,
-`_radius`, `_elevation`, `_motion`, `_z` — emitted on `:root`, redefined under
+**Scope:** `frontend/src/styles/tokens/` (`_color`, `_space`, `_type`,
+`_radius`, `_elevation`, `_motion`, `_z`), emitted on `:root`, redefined under
 `:root[data-theme="dark"]`, with `data-theme` on `<html>`. 13px base, 4px
 spacing unit, desktop density. The bundled Geist and Geist Mono faces move into
 `_type.scss` as `--font-ui` and `--font-mono`, replacing the interim
@@ -182,13 +182,13 @@ debts from Milestone 1: the `13px` base and the `1px` divider.
 
 ---
 
-## Milestone 3 — App shell *(complete)*
+## Milestone 3: App shell *(complete)*
 
 **Goal:** The three-view window: document, canvas, or both, with the chrome
 around them.
 
 **Scope:** The `Document | Both | Canvas` switcher. Resizable, collapsible
-panes on Ark's Splitter — file tree, main area, dockable AI pane — with pane
+panes on Ark's Splitter (file tree, main area, dockable AI pane), with pane
 visibility and widths kept in `localStorage` inside try/catch. `StatusBar`,
 `EmptyState`, `Icon`, and the settings shell whose sections later milestones
 fill in. The default window grows from 1000×618 to a size where four regions
@@ -208,20 +208,20 @@ both-themes check per component.
 
 ---
 
-## Milestone 4 — Canvas foundation *(complete)*
+## Milestone 4: Canvas foundation *(complete)*
 
 **Goal:** An infinite canvas you can draw on: place, select, move, group,
 undo.
 
 **Scope:** The Konva stage as a plain TypeScript class. Pan and zoom. Tools
-with their keyboard shortcuts — select (V), rectangle (R), ellipse (O), arrow
+with their keyboard shortcuts: select (V), rectangle (R), ellipse (O), arrow
 (A), line (L), pen (D), text (T), frame (F). Freehand via `perfect-freehand`.
 Selection, multi-select, transform handles, z-order, labelled groups, copy and
 paste, and an undo/redo history over scene mutations. The contextual toolbar
 that changes with selection.
 
 Canvas text is measured here, in the frontend, and the measurement is stored on
-the element — the mitigation `canvas.md` requires now that measurement has left
+the element, the mitigation `canvas.md` requires now that measurement has left
 Go.
 
 **Inherited debt, moved here from Milestone 3 on 2026-09-17:** click-on-node
@@ -242,12 +242,12 @@ byte-identical state after an arbitrary sequence of mutations.
 
 **Depends on:** Milestone 3.
 
-**Out of scope:** persistence — the scene lives in memory until Milestone 5.
+**Out of scope:** persistence; the scene lives in memory until Milestone 5.
 Diagram elements, connectors and bindings are Milestones 6 and 7.
 
 ---
 
-## Milestone 5 — File format and persistence *(complete)*
+## Milestone 5: File format and persistence *(complete)*
 
 **Goal:** Open and save real files, in a format specified before a byte is
 written.
@@ -261,8 +261,8 @@ keys and unknown element types survive a round trip untouched. Then
 tree on Ark's TreeView, recent files, and the unsaved-changes and
 file-changed-on-disk flows.
 
-The two tunables Milestone 1 left as compile-time constants — the 250ms
-debounce and the default layout engine — move behind the settings file here.
+The two tunables Milestone 1 left as compile-time constants (the 250ms
+debounce and the default layout engine) move behind the settings file here.
 
 **Exit criterion:**
 
@@ -281,7 +281,7 @@ persistence code merges before it.
 
 ---
 
-## Milestone 5.5 — Wiring *(complete)*
+## Milestone 5.5: Wiring *(complete)*
 
 **Goal:** Make what Milestones 4 and 5 built reachable from the window. Draw on
 the canvas; open and save a file. No new capability.
@@ -304,7 +304,7 @@ reopen, and confirm the drawing is intact.
 
 ---
 
-## Milestone 5.6 — Chrome *(gated; awaiting the window check; brand deferred)*
+## Milestone 5.6: Chrome *(gated; awaiting the window check; brand deferred)*
 
 **Goal:** A real desktop menu bar in place of title-bar buttons, and autosave.
 
@@ -321,7 +321,7 @@ go vet ./internal/... . && go test ./internal/... . \
   && (cd frontend && npm run check && npm run lint && npm test)
 ```
 
-green, plus a hand check at a running window — macOS at least, Windows and
+green, plus a hand check at a running window: macOS at least, Windows and
 Linux through the CI build and a person where possible: the menu bar appears,
 every item does what it says, ⌘Z undoes once in the canvas and once in the
 source editor, Copy/Paste work on a canvas selection and in the editor, and
@@ -331,12 +331,12 @@ source editor, Copy/Paste work on a canvas selection and in the editor, and
 
 ---
 
-## Milestone 5.7 — Brand *(gated; awaiting a human look at the icons and both themes)*
+## Milestone 5.7: Brand *(gated; awaiting a human look at the icons and both themes)*
 
 **Goal:** The mark as app icon, in the title bar, the files empty state and
 About.
 
-**Art:** vendored in the repo — `frontend/src/brand/panda.svg`, one drawing at
+**Art:** vendored in the repo: `frontend/src/brand/panda.svg`, one drawing at
 every size (a small-size variant was tried and rejected), and designer-
 exported 1024px icon masters per platform beside their outputs in `build/`.
 Rules and decisions in `.claude/work/specs/brand.md`.
@@ -356,10 +356,10 @@ always, never the accent.
 
 ---
 
-## Milestone 5.8 — Errors and logs *(gated; awaiting the release-build check)*
+## Milestone 5.8: Errors and logs *(gated; awaiting the release-build check)*
 
 **Goal:** When something fails, the user sees what happened and can hand us the
-logs — and nothing reaches us unless they send it.
+logs, and nothing reaches us unless they send it.
 
 **Why now:** in a release build Wails discards every log line, and a panic
 outside a bound method closes the app without a word. Cheaper to fix before
@@ -400,12 +400,12 @@ exception, and find both in the log folder.
 
 **Depends on:** Milestone 5.6 (the Help menu).
 
-**Out of scope:** recovering unsaved work after a crash — Milestone 16. Any
-automatic upload — never.
+**Out of scope:** recovering unsaved work after a crash: Milestone 16. Any
+automatic upload: never.
 
 ---
 
-## Milestone 6 — Shapes that look right
+## Milestone 6: Shapes that look right
 
 **Goal:** Everything drawn on the canvas is visible, styled and selectable,
 with the shape set diagrams need.
@@ -413,7 +413,7 @@ with the shape set diagrams need.
 **Scope:** The rendering the Milestone 5.5 window check found missing: shapes
 draw with no stroke or fill, lines and arrows have no points, selection is not
 shown, and zoom does not reach the stage. The shape set shared by D2 and
-Eraser as canvas shapes and drawing tools — rectangle, ellipse, diamond,
+Eraser as canvas shapes and drawing tools: rectangle, ellipse, diamond,
 cylinder, hexagon, parallelogram, document, person, cloud. A text label inside
 any shape. Per-shape fill, border and text colour from a palette of named
 swatches, each resolving to a light and a dark value; the file stores the
@@ -427,8 +427,8 @@ go test ./internal/format -run RoundTrip && go test ./internal/... . \
   && (cd frontend && npm run check && npm run lint && npm test)
 ```
 
-green, with tests that inspect the Konva nodes actually created — stroke,
-fill, points, label — rather than only the scene data, a round trip of every
+green, with tests that inspect the Konva nodes actually created (stroke,
+fill, points, label) rather than only the scene data, a round trip of every
 shape with label and colours, and a human look at a running window in both
 themes.
 
@@ -436,14 +436,14 @@ themes.
 
 ---
 
-## Milestone 6.5 — Connections and containers
+## Milestone 6.5: Connections and containers
 
 **Goal:** Arrows that stay attached as things move, and containers that carry
 their contents.
 
 **Scope:** An arrow attached to its start and end elements; moving either
 re-routes it. Attachment is stored by element id, never coordinates.
-Containers — the `frame` element — own the elements inside them: dragging a
+Containers (the `frame` element) own the elements inside them: dragging a
 container moves its contents, dragging an element out removes it, dropping one
 in adds it. Arrow labels.
 
@@ -462,13 +462,13 @@ step, and a round trip of attachments and containment.
 
 ---
 
-## Milestone 6.6 — Diagram from code
+## Milestone 6.6: Diagram from code
 
 **Goal:** Type or paste D2, and it lands on the canvas as free shapes.
 
 **Scope:** Insert ▸ Diagram from code: a dialog with a D2 editor and a live
 preview, using the 250ms debounce, stale-response dropping and diagnostics.
-**`Render` gains layout geometry** — each node's shape, position, size,
+**`Render` gains layout geometry**: each node's shape, position, size,
 colours, label and container, and each connection's endpoints, route and
 label. Conversion, in the frontend, maps that onto canvas elements: D2 shapes
 onto the canvas shape set (queue, page, package, step, callout, stored data
@@ -492,7 +492,7 @@ expected elements, and a test that one undo removes an inserted diagram.
 
 ---
 
-## Milestone 7 — Snapping and detached arrows
+## Milestone 7: Snapping and detached arrows
 
 **Goal:** Arrows drawn by hand attach to shapes as naturally as generated ones.
 
@@ -500,7 +500,7 @@ expected elements, and a test that one undo removes an inserted diagram.
 Drawing or dragging an arrow end onto a shape snaps and attaches it, with a
 visible target. Choosing the side it attaches to. The detached state: when an
 attached element is deleted, the arrow stays, freezes at its last position and
-is marked detached — never deleted, because the user drew it. Hit-testing at
+is marked detached, never deleted, because the user drew it. Hit-testing at
 scale with a spatial index if measured need arrives. Also carried from
 Milestone 6: rotation, and stroke width and dash options.
 
@@ -518,7 +518,7 @@ restores the attachment.
 
 ---
 
-## Milestone 8 — Documents
+## Milestone 8: Documents
 
 **Goal:** Prose alongside the canvas, with parts of the canvas embedded in the
 text.
@@ -546,14 +546,14 @@ and a round trip of a document containing an embed.
 
 ---
 
-## Milestone 9 — Icons and assets
+## Milestone 9: Icons and assets
 
 **Goal:** A searchable icon library, plus the user's own.
 
 **Scope:** Bundled Lucide (ISC) for general icons and tech logos from Simple
 Icons (CC0) or Devicon (MIT), with a searchable picker. User-imported SVGs as
 the "custom icons" category, placed as `icon` elements. D2's `icon:` becomes
-an icon element during conversion, resolved from the local library — **a
+an icon element during conversion, resolved from the local library; **a
 remote icon URL is never fetched**: D2 code from elsewhere, or from a model,
 may name `https://…` icons, and fetching one would phone a CDN. An unresolved
 remote icon converts to a placeholder with an explicit one-time fetch offer,
@@ -576,13 +576,13 @@ and every bundled set recorded in `NOTICE`.
 
 ---
 
-## Milestone 10 — Source editor polish
+## Milestone 10: Source editor polish
 
 **Goal:** Make writing D2 in the Diagram from code dialog pleasant.
 
 **Scope:** Narrowed 2026-09-17: the dialog is now the only place D2 is edited.
-A D2 language mode for CodeMirror — keywords, shape and style keys, edges,
-containers, comments, strings — and its keymap. `docs/shortcuts.md` already
+A D2 language mode for CodeMirror (keywords, shape and style keys, edges,
+containers, comments, strings) and its keymap. `docs/shortcuts.md` already
 exists and gains the dialog's keys.
 
 **Exit criterion:**
@@ -592,28 +592,28 @@ exists and gains the dialog's keys.
   && test -f docs/shortcuts.md
 ```
 
-green, with tests over the tokeniser — expected token types at known offsets in
-a fixture — not over how it looks.
+green, with tests over the tokeniser (expected token types at known offsets in
+a fixture), not over how it looks.
 
 **Depends on:** Milestone 6.6, Milestone 2 (highlight colours are tokens).
 
 ---
 
-## Milestone 11 — AI foundation
+## Milestone 11: AI foundation
 
 **Goal:** A chat pane that generates a diagram, with the model's D2 verified
 before it is shown.
 
 **Scope:** `internal/ai` against a user-configured **local** endpoint (Ollama,
-LM Studio, llama.cpp, LocalAI — all OpenAI-compatible over localhost). The
+LM Studio, llama.cpp, LocalAI, all OpenAI-compatible over localhost). The
 dockable chat pane, one thread per file covering the document and every
 diagram on the canvas, persisted as append-only JSONL in the platform data
-directory. Generation, staged visibly — planning, then a placeholder on the
+directory. Generation, staged visibly: planning, then a placeholder on the
 canvas, then the diagram converted into free shapes through Milestone 6.6's
 conversion. The compile-and-repair loop: output is compiled in-process,
 diagnostics fed back, **capped at two retries**.
 
-**Chat rendering — candidate library, decided 2026-09-17, pending a spike:**
+**Chat rendering: candidate library, decided 2026-09-17, pending a spike:**
 `markstream-svelte` (MIT) renders streamed replies: markdown, highlighted code
 blocks, safe HTML, and custom components for tags such as a thinking block. It
 is the first choice because one library covers what would otherwise be
@@ -625,7 +625,7 @@ are Ark UI wrapped in `components/`; a D2 block in a reply previews through
 The milestone's first task is a throwaway spike in the real webview. Adopt
 only if all four hold:
 
-1. **No network, at all** — streaming a reply with code and math makes zero
+1. **No network, at all:** streaming a reply with code and math makes zero
    requests. Its code blocks depend on `stream-diffs`, and math and diagrams
    run in web workers; none may fetch from a CDN. A failure here is a
    non-negotiable, not a trade-off.
@@ -635,7 +635,7 @@ only if all four hold:
 3. **Bundle size** measured with Mermaid excluded (~1.5MB, and Bava's diagrams
    are D2), and KaTeX only if math is wanted.
 4. **Streaming stays smooth** on a long reply in WKWebView, and the Svelte port
-   — marked beta/experimental upstream — is stable enough across a pinned
+   (marked beta/experimental upstream) is stable enough across a pinned
    version.
 
 **Fallback:** `@humanspeak/svelte-markdown` (MIT, ships no styles, per-element
@@ -657,11 +657,11 @@ stub server, never a live endpoint.
 
 ---
 
-## Milestone 12 — AI editing
+## Milestone 12: AI editing
 
 **Goal:** Select something, ask for a fix, see a diff, accept or reject.
 
-**Scope:** Selection-scoped edits — a ProseMirror range in a document, or a
+**Scope:** Selection-scoped edits: a ProseMirror range in a document, or a
 selection on the canvas, where the model's change arrives as new or modified
 elements through conversion. Edits enter as
 **transactions** so one undo history survives. The inline edit box is
@@ -681,12 +681,12 @@ that Ctrl+Z after an accepted edit undoes it in one step.
 
 ---
 
-## Milestone 13 — Hosted providers
+## Milestone 13: Hosted providers
 
 **Goal:** Bring your own key, with the user knowing what leaves the machine.
 
-**Scope:** Hosted providers by API key. Credentials in the OS secret store —
-Keychain, Credential Manager, libsecret — never a file. The consent surface
+**Scope:** Hosted providers by API key. Credentials in the OS secret store
+(Keychain, Credential Manager, libsecret), never a file. The consent surface
 before the first hosted call, stating plainly that a highlighted paragraph
 sends the surrounding file. Provider and model pickers in the settings shell.
 The error taxonomy: invalid key, rate limit, offline, model unavailable,
@@ -708,7 +708,7 @@ first call until accepted.
 
 ---
 
-## Milestone 14 — Provider login
+## Milestone 14: Provider login
 
 **Goal:** Sign in with a provider account, for users on subscription plans
 rather than API credit.
@@ -730,7 +730,7 @@ refresh.
 
 ---
 
-## Milestone 15 — Export and search
+## Milestone 15: Export and search
 
 **Goal:** Get work out of Bava, and find things across a workspace.
 
@@ -752,19 +752,19 @@ go test ./internal/export ./internal/search -v \
 ```
 
 green, including a test asserting an exported diagram is byte-identical to the
-`Render` output for the same source — the regression a second render path would
+`Render` output for the same source, the regression a second render path would
 cause.
 
 **Depends on:** Milestone 8, Milestone 5.
 
 ---
 
-## Milestone 16 — Release readiness
+## Milestone 16: Release readiness
 
 **Goal:** Everything between "it works on my machine" and "someone else can
 install it".
 
-**Scope:** First-run experience — no account, no network — choosing a workspace
+**Scope:** First-run experience (no account, no network): choosing a workspace
 folder and a theme. The About screen rendering `NOTICE`, which is a licence
 obligation and not decoration. The in-app updater: available, release notes,
 downloading, restart to apply, failed. Signature verification before anything
@@ -773,14 +773,14 @@ macOS, Linux and Windows.
 
 **Installer branding, carried from Milestone 5.7:** the DMG's file icon
 (`build/darwin/dmg-file-icon.*`) and background (`dmg-background.png`) are
-still the Wails template. Either replace them with Bava art or drop them — all
+still the Wails template. Either replace them with Bava art or drop them; all
 three DMG images are optional in `wails3 tool package`, and the volume icon
 already uses `icons.icns`. A test then forbids the template files, as
 `internal/app/icons_test.go` does for the app icons. The same applies to the
 Windows MSIX tiles, which `wails3 tool msix` fills with Wails placeholders, and
 to Linux: deb/rpm install the 1024px `appicon.png` into `hicolor/128x128`.
 
-**Carried from Milestone 5.8:** recovering unsaved work after a crash —
+**Carried from Milestone 5.8:** recovering unsaved work after a crash:
 backups kept outside the project, offered at the next launch.
 Also: confirm the public issue tracker and un-hide Help ▸ Report Issue….
 
@@ -791,8 +791,8 @@ go test ./internal/update/... -v && go test ./internal/... . \
   && gh run list --workflow=ci.yml --limit 1
 ```
 
-green, with a test pinning the update request's shape — no identifier, no
-version in a query parameter, no user data — and a CI matrix result rather than
+green, with a test pinning the update request's shape (no identifier, no
+version in a query parameter, no user data) and a CI matrix result rather than
 a local build.
 
 **Depends on:** Milestone 3 (settings shell), and everything it ships.
@@ -801,7 +801,7 @@ a local build.
 
 ## Cross-cutting, no milestone of its own
 
-- **CI build matrix.** `.github/workflows/ci.yml` — test and build jobs across
+- **CI build matrix.** `.github/workflows/ci.yml`: test and build jobs across
   ubuntu/macos/windows. Its first run failed on all three (Go steps ran before
   the frontend was built, and `frontend/dist` is gitignored); fixed, awaiting a
   re-run. Until it goes green, no claim that Bava "builds on all platforms" is
@@ -818,6 +818,6 @@ a local build.
   same change as the code that makes them true, per the build loop's checklist.
 - **Accessibility debt from Milestone 1.** Paid in part in Milestone 4: scene
   elements are keyboard selectable and tab order is paint order. The remaining
-  half — reaching a node *inside* a diagram — dissolved on 2026-09-17: a
+  half (reaching a node *inside* a diagram) dissolved on 2026-09-17: a
   converted diagram's nodes are ordinary elements, reachable the same way.
   Milestone 6.6 confirms tab order covers them.

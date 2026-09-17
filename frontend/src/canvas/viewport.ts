@@ -1,7 +1,7 @@
 /**
  * Pan and zoom, as pure coordinate arithmetic.
  *
- * Kept free of Konva so it can be tested directly — `canvas.md` names
+ * Kept free of Konva so it can be tested directly; `canvas.md` names
  * coordinate maths as one of the few places in canvas code where real logic
  * lives and tests earn their keep.
  */

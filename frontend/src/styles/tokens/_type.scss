@@ -1,6 +1,6 @@
 // Type: the bundled faces, the family stacks, and the scale.
 //
-// Fonts are bundled and referenced here, never relied on from the system —
+// Fonts are bundled and referenced here, never relied on from the system:
 // `.ai/rules/canvas.md` requires it, and a desktop app cannot assume a font is
 // installed. Variable woff2, so one file covers every weight.
 //
@@ -55,7 +55,7 @@
   --weight-semibold: 600;
 
   // The wordmark: Geist Medium, lowercase. Its negative tracking holds at this
-  // size and above only — tighter than that and the letters touch.
+  // size and above only; tighter than that and the letters touch.
   --text-wordmark: 22px;
   --tracking-wordmark: -0.4px;
 

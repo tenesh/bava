@@ -3,7 +3,7 @@
 Local-only, open-source diagrams-and-docs desktop app, Apache-2.0. Eraser.io in
 spirit: offline, free, file-based.
 
-A free-placement canvas — place, draw and connect anything, anywhere — on which
+A free-placement canvas (place, draw and connect anything, anywhere) on which
 one kind of element renders itself from D2 code. Not a layout-engine tool with
 a visual skin, and not a whiteboard with no structure. Both, with a defined
 seam between them. Documents sit alongside, sharing the same file.
@@ -15,18 +15,18 @@ Go + Wails v3 + Svelte 5 + Konva, with D2 rendering diagram elements.
 These hold in every phase, whatever the pressure.
 
 1. **No service of ours.** Bava has no backend. No accounts with us, no sync,
-   no telemetry, no analytics, no crash reporting — nothing about a user or
+   no telemetry, no analytics, no crash reporting. Nothing about a user or
    their work reaches anyone operating this project, ever. Network calls happen
    only where the user configured or triggered them: an LLM endpoint they
    chose, local or hosted, with credentials they supplied; and the update
    check, which fetches public release metadata, sends no user data and
    carries no identifier. If a feature would require a server we run, stop and
    raise it.
-2. **Files are the source of truth.** Work product — diagrams and documents —
+2. **Files are the source of truth.** Work product (diagrams and documents)
    is plain text on disk that a user can read, edit and diff in any editor,
    and lose nothing if Bava disappears. No database, no proprietary container,
-   no hidden state behind their work. Bava's own state — chat transcripts,
-   caches, credentials — lives in documented locations outside the project;
+   no hidden state behind their work. Bava's own state (chat transcripts,
+   caches, credentials) lives in documented locations outside the project;
    deleting it costs history or convenience, never work. Credentials are the
    one thing Bava writes that a user cannot read: they go to the OS secret
    store, never to a file.
@@ -34,7 +34,7 @@ These hold in every phase, whatever the pressure.
    template's `build/android/` and `build/ios/` targets are not part of this
    product: no build script targets them, no code imports them, and they are
    never revived. Whether they are still sitting in the tree is a repo-state
-   question — see the repo-state section of `.claude/skills/build-step/SKILL.md`.
+   question; see the repo-state section of `.claude/skills/build-step/SKILL.md`.
 4. **Never run git write operations.** No add, commit, push, tag, branch,
    worktree, stash or reset. The user does all git himself, whatever a skill
    instructs. Read-only git (status, diff, log, rev-parse) is fine.
@@ -56,13 +56,13 @@ These hold in every phase, whatever the pressure.
 | Licence | Apache-2.0 | `LICENSE`; third-party attribution in `NOTICE` |
 | AI | Local endpoints and hosted providers | BYOK or provider login; credentials in the OS secret store; no service we operate |
 
-## Version rules — read before writing any code
+## Version rules: read before writing any code
 
 This project sits on several recently-changed APIs. Most wrong code here will
 be wrong in one of these ways:
 
 - **Wails v3 only.** Never v2 `runtime` package calls. Never the v3 *alpha*
-  docs — they are outdated and still online at `v3alpha.wails.io`. The pinned
+  docs; they are outdated and still online at `v3alpha.wails.io`. The pinned
   version is pinned in `go.mod`, and the vendored reference belongs in
   `docs/wails-v3/`.
 - **Svelte 5 runes only.** `$state`, `$derived`, `$effect`, `$props`. Never
@@ -92,7 +92,7 @@ When in doubt, look it up rather than recalling it. See Documentation Lookup.
   via `lib/localfile`. Never pass an unrooted FS for user-supplied files.
 - Leave `MaxVariableExpansion`, `MaxGlobExpansion` and `MaxEdgeExpansion` at
   zero (the secure defaults) unless there is a stated reason.
-- Do not read `data-d2-version` from output SVG — it is stale and does not
+- Do not read `data-d2-version` from output SVG: it is stale and does not
   track the module version.
 
 Spike timings live in the build loop's repo-state section, not here: they
@@ -125,15 +125,15 @@ engine does. Full detail in `.claude/work/specs/canvas-architecture.md`.
   source text and survive re-layout; coordinates do not. A binding whose node
   disappears freezes and is marked detached, never silently deleted.
 - Debounce 250ms after typing stops. Tag every request with an incrementing
-  ID and drop stale responses — out-of-order results cause flicker that is
+  ID and drop stale responses: out-of-order results cause flicker that is
   hard to diagnose later.
 - **The canvas lives outside Svelte reactivity.** It is a plain TypeScript
   class owning a Konva stage, mounted once into a `<div>`. Svelte never renders
   scene elements. Per-element Svelte components are the single most likely
   cause of a sluggish canvas.
 - **Text measurement is split.** D2 diagram text is measured in Go via
-  `textmeasure`. Canvas text is measured in the frontend — unavoidable, since
-  the frontend owns that layout — so fonts are bundled and **measured
+  `textmeasure`. Canvas text is measured in the frontend (unavoidable, since
+  the frontend owns that layout), so fonts are bundled and **measured
   dimensions are stored in the file**, because WebKitGTK and WebView2 disagree
   on glyph advances.
 - CodeMirror and ProseMirror are mounted imperatively in `onMount` and
@@ -227,7 +227,7 @@ self-contained. Do not invoke other build-discipline skills.
   code. Exported functions documented.
 - Svelte: one component per file. Logic in `.svelte.ts` modules, not in
   markup.
-- TypeScript only — no `.js` source files.
+- TypeScript only: no `.js` source files.
 - Commits: imperative mood, scoped prefix (`layout:`, `editor:`, `ipc:`,
   `ui:`, `docs:`).
 

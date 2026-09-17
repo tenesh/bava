@@ -29,7 +29,7 @@
   bind:open
   {title}
   onOpenChange={(next) => {
-    // Dismissing — escape, a backdrop click — is a cancel, never an accident.
+    // Dismissing (escape, a backdrop click) is a cancel, never an accident.
     if (!next) onChoose('cancel');
   }}
 >

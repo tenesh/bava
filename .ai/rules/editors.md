@@ -28,5 +28,5 @@ looking wrong implementations are easy to produce.
 ## Compiler errors
 D2 diagnostics come back from `Render` with positions. Surface them through
 `@codemirror/lint` in the source pane and in `ErrorList`. Clicking a
-diagnostic jumps to the line — that mapping comes from the render response,
+diagnostic jumps to the line; that mapping comes from the render response,
 never from re-parsing in the frontend.

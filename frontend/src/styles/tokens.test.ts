@@ -10,7 +10,7 @@ const css = compile(fileURLToPath(new URL('./index.scss', import.meta.url)), {
 }).css;
 
 // Every partial emits its own rule, so a selector appears many times and all
-// of its blocks have to be collected — reading only the first silently tests
+// of its blocks have to be collected; reading only the first silently tests
 // one file and passes.
 function block(selector: string): string {
   const out: string[] = [];

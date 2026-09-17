@@ -4,9 +4,9 @@ import "github.com/wailsapp/wails/v3/pkg/application"
 
 // Window dimensions.
 //
-// Four regions have to fit side by side — file tree, document, canvas, AI pane
-// — and the design's artboard is 1280 wide for that reason. Narrower and the
-// panes stop being usable rather than merely tight.
+// Four regions have to fit side by side (file tree, document, canvas, AI
+// pane), and the design's artboard is 1280 wide for that reason. Narrower
+// and the panes stop being usable rather than merely tight.
 //
 // The native background colour is deliberately not set here. The scaffold
 // pinned it to a near-black, which fights the stylesheet's
@@ -36,7 +36,7 @@ func MainWindowOptions() application.WebviewWindowOptions {
 	}
 }
 
-// ContentProcessDied handles the webview's content process terminating — on
+// ContentProcessDied handles the webview's content process terminating. On
 // macOS, WKWebView reports it and the window is left blank. It logs, queues a
 // notice so the reloaded page can say what happened, and reloads.
 //

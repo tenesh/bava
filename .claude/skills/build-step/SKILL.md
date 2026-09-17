@@ -26,7 +26,7 @@ himself. Read-only git (status, diff, log, rev-parse) is fine.
 
 1. **Locate the milestone.** Read `.claude/plan/roadmap.md`; determine the
    current milestone from what actually exists in the tree, not from what the
-   last session claimed. If ambiguous, ask — never guess which is next.
+   last session claimed. If ambiguous, ask; never guess which is next.
 2. **Read the specs.** Every spec the milestone lists, plus the relevant file
    in `docs/`. The docs are the spec: if one seems wrong, incomplete or
    self-contradictory, stop and raise it. Never improvise around a spec, and
@@ -35,8 +35,8 @@ himself. Read-only git (status, diff, log, rev-parse) is fine.
    out with the user before planning and write the outcome to
    `.claude/work/specs/<topic>.md`. One question at a time, decisions recorded
    as they are made. This is for holes, not for re-opening settled decisions.
-4. **File-format check.** If the milestone changes what Bava writes to disk —
-   new frontmatter key, new block type, new sidecar file — the format change
+4. **File-format check.** If the milestone changes what Bava writes to disk
+   (new frontmatter key, new block type, new sidecar file), the format change
    is specified in `docs/file-format.md` *before* the code that writes it, and
    a round-trip test exists. The format is the product's long-term contract
    with its users; it is the one thing that cannot be quietly refactored.
@@ -46,18 +46,18 @@ himself. Read-only git (status, diff, log, rev-parse) is fine.
    to `frontend/src/styles/tokens/` before the component that uses them.
 6. **Plan and get approval.** Write `.claude/work/plans/<NN>-<name>.md` in the
    format below. Present it and wait for explicit approval. No implementation
-   before approval — not "just the scaffolding", not "just the types".
+   before approval: not "just the scaffolding", not "just the types".
 7. **Implement.** Task by task in plan order, test-driven per the table below.
    Run the affected tests after each task, not just at the end.
 8. **Sync artifacts.** The checklist below, in the same change as the code.
 9. **Gates.** `go vet`, `go test ./...`, `npm run check`, `npm run lint`,
-   `npm test` — all green, with output shown. See the gate-status table in
+   `npm test`: all green, with output shown. See the gate-status table in
    repo state for any gate currently known-red and why.
 10. **Review.** Dispatch the `spec-reviewer` agent on the working-tree diff.
     Verify each finding before acting on it. Do not implement a finding you
     believe is wrong: say so with reasoning.
 11. **Report.** What shipped, files touched, test counts, and every deviation
-    from spec flagged loudly. Then stop — the user commits.
+    from spec flagged loudly. Then stop; the user commits.
 
 ## Commands
 
@@ -87,10 +87,10 @@ where a red-first cycle proves nothing.
 | Diagram output | Golden file. Add the fixture, watch it fail, implement, then review the generated SVG **by eye** before committing the golden. A golden blessed without looking at it asserts nothing. |
 | Wails bindings, config, build scripts | Implement, then a contract test pinning the outcome. |
 | Design system components | Build against `.ai/rules/design-system.md`. Verify with `npm run check` and `npm run lint`, plus a manual keyboard pass (tab order, escape, arrow keys) before done. |
-| Canvas interaction, editor wiring | Tests where real logic exists — coordinate math, staleness handling, debounce, selection state. Not for markup. |
+| Canvas interaction, editor wiring | Tests where real logic exists: coordinate math, staleness handling, debounce, selection state. Not for markup. |
 
 Test quality: one behavior per test, named for the behavior. Before writing a
-test, name the production change that would make it fail — if you cannot, the
+test, name the production change that would make it fail; if you cannot, the
 test asserts nothing.
 
 ## Plan format
@@ -113,7 +113,7 @@ names).
 ### Task N: <name>
 **Files:** create / modify / test: exact paths.
 **Behavior:** what it must do, from the spec.
-- [ ] Failing test: <name> — expected failure: <what and why>
+- [ ] Failing test: <name>; expected failure: <what and why>
 - [ ] Implement
 - [ ] Green: `<exact command>`
 
@@ -142,13 +142,13 @@ patching and work the phases in order.
 After three failed fixes, stop fixing: the architecture or your model of it is
 wrong. Say so rather than attempting a fourth.
 
-**Known false trails in this repo** — check these before deep investigation:
+**Known false trails in this repo:** check these before deep investigation:
 
 - Stack traces from `d2lib.Compile` usually mean a missing logger in the
   context, not a compile error. Add `d2log.With`.
 - **D2 missing from `go.mod`** means a `go mod tidy` ran, not a broken module
   cache. Until something in `internal/` imports it, the requirement is
-  indirect and does not survive tidy — and the bindings task depends on tidy.
+  indirect and does not survive tidy, and the bindings task depends on tidy.
   Re-add with `go get github.com/d2lang/d2@v0.9.0`.
 - A stale or flickering diagram is usually an out-of-order IPC response, not a
   layout bug. Check the request ID.
@@ -157,7 +157,7 @@ wrong. Say so rather than attempting a fourth.
   rule before adding a `$derived`.
 - Layout differing between machines means text measurement leaked into the
   frontend. All measurement happens in Go via `textmeasure`.
-- Canvas pointer handling that stops working usually means a modal is open —
+- Canvas pointer handling that stops working usually means a modal is open:
   Ark's modal Dialog sets `pointer-events: none` on `body`. Check before
   investigating the canvas.
 - A dialog, popover or tooltip positioned wrongly is usually portal target or
@@ -168,7 +168,7 @@ wrong. Say so rather than attempting a fourth.
 
 **A measurement that confirms what you expected is the one to re-check.** The
 Ark spike produced two confident false results in a row because the probe was
-skipped by hit-testing — first for `pointer-events: none` on the probe itself,
+skipped by hit-testing, first for `pointer-events: none` on the probe itself,
 then for the modal's override on `body`. If a hit-test, visibility check or
 stacking assertion agrees with your hypothesis on the first try, verify the
 instrument before believing the reading.
@@ -178,7 +178,7 @@ instrument before believing the reading.
 Before any claim of done, passing, fixed or working:
 
 1. Identify the command that proves the claim.
-2. Run it fresh and in full — not a subset, not a remembered earlier run.
+2. Run it fresh and in full: not a subset, not a remembered earlier run.
 3. Read the whole output, including exit code and failure count.
 4. If it does not confirm the claim, state the real status with the evidence.
 
@@ -193,7 +193,7 @@ Before any claim of done, passing, fixed or working:
 | Spike cleaned up | Restored state **shown** to match, not asserted: diff the touched files against their pre-spike state, confirm the dependency is gone from `package.json`, the lockfile *and* `node_modules`, and check the bundle size returned to baseline. A backup taken after an install restores the install. |
 | Visual behaviour verified | Seen by a human in a running window. Geometry and DOM measurements from inside the webview are evidence about layout, not about appearance. |
 | Builds on all platforms | CI matrix result, not a local `wails3 build` |
-| Subagent finished | The diff, read — not the agent's own success report |
+| Subagent finished | The diff, read, not the agent's own success report |
 
 A local build proving nothing about Windows or Linux is the most common false
 claim in this repo. Cross-platform claims need CI.
@@ -252,7 +252,7 @@ Catch yourself thinking any of these and stop. The thought is the signal.
 Facts that affect the gates, **verified 2026-09-16**. This is the only place
 volatile facts live: `CLAUDE.md` and `.ai/rules/` state intent and settled
 decisions; this section states what is true in the tree today. Re-verify
-before trusting any line — every session that trusts a stale line starts from
+before trusting any line; every session that trusts a stale line starts from
 wrong facts. When a milestone closes, update this section in the same change.
 
 ### Milestones
@@ -306,20 +306,20 @@ wrong facts. When a milestone closes, update this section in the same change.
   replaced the interim `DiagramCanvas` with a Konva stage, and the `diagram`
   element that puts a rendered diagram back on the canvas arrives in Milestone
   6. The pipeline, its tests and its goldens are untouched; diagnostics still
-  reach the editor gutter. Do not "fix" this — it is recorded in
+  reach the editor gutter. Do not "fix" this; it is recorded in
   `docs/decisions.md`.
 - Everything since the scaffold is uncommitted apart from Milestone 0.5; the
   user commits.
 - `.claude/plan/roadmap.md` holds the sequence.
 
-### Toolchain — verified by command
+### Toolchain, verified by command
 
 - Go module path `github.com/tenesh/bava`, `go 1.27.0` directive, toolchain
   `go1.27.1 darwin/arm64`. `GOPATH` at `/Users/tenesh/Workspace/tools/go`.
 - D2 `v0.9.0` is a **direct** requirement in `go.mod` (`internal/layout` and
   `internal/render` import it). The `go mod tidy` trap from Milestone 0.5 is
   over: tidy keeps it now that real code imports it. TALA ships in-library at
-  `d2layouts/d2talalayout` — no external binary plugin.
+  `d2layouts/d2talalayout`, with no external binary plugin.
 - Wails `v3.0.0-beta.20` on both sides. `@wailsio/runtime` is pinned exactly to
   `3.0.0-beta.20`; it had floated on `latest` and resolved to `beta.21`,
   mismatching the Go half. Never float it again.
@@ -336,19 +336,19 @@ wrong facts. When a milestone closes, update this section in the same change.
   0.5 `--passWithNoTests` flag is gone: with real tests, a flag that keeps the
   gate green when every test vanishes is not a gate.
 
-### Gate status — last run 2026-09-16, after Milestone 1
+### Gate status: last run 2026-09-16, after Milestone 1
 
 | Gate | Result |
 |---|---|
 | `go vet ./...` | exit 0 |
 | `go build ./...` | exit 0 (linker warns about macOS deployment target; harmless) |
-| `go test ./...` | exit 0 — 3 packages: `internal/app`, `internal/layout`, `internal/render` |
-| `go test ./internal/render -run Golden` | exit 0 — 4 goldens (light and dark) under `testdata/golden/` |
-| `npm run check` | exit 0 — 0 errors, 0 warnings, 173 files |
+| `go test ./...` | exit 0; 3 packages: `internal/app`, `internal/layout`, `internal/render` |
+| `go test ./internal/render -run Golden` | exit 0; 4 goldens (light and dark) under `testdata/golden/` |
+| `npm run check` | exit 0; 0 errors, 0 warnings, 173 files |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0 — 185 tests across 28 files |
+| `npm test` | exit 0; 185 tests across 28 files |
 | `npm run build` | exit 0 |
-| `wails3 build` | exit 0 on macOS — 30MB binary in `bin/`; unverified elsewhere |
+| `wails3 build` | exit 0 on macOS; 30MB binary in `bin/`; unverified elsewhere |
 
 ### Open problems
 
@@ -389,12 +389,12 @@ wrong facts. When a milestone closes, update this section in the same change.
   on Ubuntu 22.04 through 26.04.
   First failure (all three platforms): First run failed identically on ubuntu, macos and
   windows at `go vet` with `pattern all:frontend/dist: no matching files
-  found` — the Go steps ran before the frontend was built, and `frontend/dist`
+  found`: the Go steps ran before the frontend was built, and `frontend/dist`
   is gitignored so a fresh checkout has none. The workflow now builds the
   frontend first, and both Go gates are scoped to `./internal/... .` because
   `node_modules` exists by then and ships a Go package. Verified locally from a
   deleted `dist/`: all eight steps pass in the workflow's order. **Still not a
-  green matrix** — that needs a push and a new run.
+  green matrix**; that needs a push and a new run.
 - The question CI exists to answer is still open: whether D2 renders
   byte-identical SVG on Linux and Windows, which every golden file assumes.
   Nothing else can answer it.
@@ -404,7 +404,7 @@ wrong facts. When a milestone closes, update this section in the same change.
   dependency lands with it, alongside `perfect-freehand`, `perfect-arrows`,
   `@dagrejs/dagre` and `rbush`. All MIT.
 
-### Spike findings — Ark UI in the Wails webview, 2026-09-16
+### Spike findings: Ark UI in the Wails webview, 2026-09-16
 
 Throwaway spike, since deleted: an Ark Dialog + two Tooltips rendered under
 `wails3 dev`, measuring themselves from inside the webview and reporting
@@ -414,18 +414,18 @@ Wails `v3.0.0-beta.20`, macOS 26.6.2. Webview confirmed as WKWebView
 
 **Caveat on method:** `screencapture` is unavailable in this environment, so
 nothing here was seen by eye. Every statement is a geometry or DOM measurement
-taken inside the real webview. Visual appearance — colour, overlap, painting
-artefacts — remains unverified and needs a human look at a running window.
+taken inside the real webview. Visual appearance (colour, overlap, painting
+artefacts) remains unverified and needs a human look at a running window.
 
 What worked:
 
 - **Portalling works.** Dialog and Tooltip content both mount at `body` level,
   outside `#app`. No webview-specific breakage.
 - **Dialog geometry is exact.** Content measured 320×154 at (340, 232) in a
-  1000×618 viewport — centred to the pixel. Focus moved into the content on
+  1000×618 viewport, centred to the pixel. Focus moved into the content on
   open; Escape closed it.
 - **Tooltip positioning works, including edge handling.** A tooltip on a
-  trigger at (958, 600) — bottom-right corner — was shifted to (656, 566) at
+  trigger at (958, 600), bottom-right corner, was shifted to (656, 566) at
   337×26, right edge 993 of 1000. The popper keeps content on screen.
 - **No JavaScript errors** in the webview during any run.
 
@@ -453,7 +453,7 @@ afterwards, with `package.json`, the lockfile and `node_modules` all confirmed
 clean and the bundle back to 57.61 kB. Milestone 2 or 3 adds it back
 deliberately at `5.24.2` or later.
 
-### Milestone 2 findings — 2026-09-17
+### Milestone 2 findings, 2026-09-17
 
 - **D2's palette has two families and they are not interchangeable.** Neutrals
   `N1`–`N7` carry text and canvas; the `B` and `A` families carry shapes.
@@ -473,7 +473,7 @@ deliberately at `5.24.2` or later.
 - The frontend has `sass` and `@types/node` as devDependencies; `svelte-check`
   covers test files, so Node APIs in tests need the types.
 
-### Milestone 3 findings — 2026-09-17
+### Milestone 3 findings, 2026-09-17
 
 - **Regions are hidden with CSS, never unmounted.** CodeMirror and the canvas
   own their own DOM and are mounted once; a conditional `{#if}` around a region
@@ -490,7 +490,7 @@ deliberately at `5.24.2` or later.
   are **unticked** and need a human at a running window.
 - The window is 1280×800, from `internal/app/window.go`, pinned by a test.
 
-### Milestone 4 findings — 2026-09-17
+### Milestone 4 findings, 2026-09-17
 
 - **Konva needs a 2D context jsdom does not provide.** `vitest-canvas-mock` is
   wired in `vitest.config.ts`. Without it Konva throws `Cannot read properties
@@ -506,7 +506,7 @@ deliberately at `5.24.2` or later.
 - `docs/shortcuts.md` exists now, and lists what is *not* bound as well as what
   is.
 
-### Milestone 5 findings — 2026-09-17
+### Milestone 5 findings, 2026-09-17
 
 - **`docs/file-format.md` exists and is the specification.** A Bava file is
   Markdown: prose, fenced `d2` blocks with an `id`, and one trailing
@@ -517,12 +517,12 @@ deliberately at `5.24.2` or later.
   preserved verbatim.** A bug found during this milestone: dropping the canvas
   block because a scene had no elements also dropped a newer version's
   top-level keys. Emptiness means no elements *and* nothing preserved.
-- **Saves are atomic** — temp file in the same directory, fsync, rename.
+- **Saves are atomic:** temp file in the same directory, fsync, rename.
 - **Conflict detection is size plus mtime**, not a content hash.
 - Go packages now: `app`, `app/menu`, `config`, `format`, `layout`, `logs`,
   `render`, `store`.
 
-### Milestone 5.5 findings — 2026-09-17
+### Milestone 5.5 findings, 2026-09-17
 
 - **Tests that only exercise the happy path through a stateful flow will miss
   the flow that matters.** Every save test opened a document first, so none
@@ -536,10 +536,10 @@ deliberately at `5.24.2` or later.
 - **Template snippet names share scope with script variables.** A snippet called
   `files` shadowed an object called `files` inside it.
 
-### Milestone 5.6 findings — 2026-09-17
+### Milestone 5.6 findings, 2026-09-17
 
 - **Wails role items panic outside a running app**, and **roles bind
-  accelerators the spec never names** — including Delete binding bare
+  accelerators the spec never names**, including Delete binding bare
   Backspace. Both recorded in `.ai/rules/wails.md`; `menu.Build` takes an
   injectable role adder for tests.
 - **An exported method on a registered service is bound.** `Build` leaked into
@@ -555,7 +555,7 @@ deliberately at `5.24.2` or later.
 - **An autosave races the user.** A save that clears `dirty` without checking
   for edits made during the write loses work. Fixed with an edit counter.
 
-### Milestone 5.7 findings — 2026-09-17
+### Milestone 5.7 findings, 2026-09-17
 
 - **The template ships icons in three places**, and macOS 26 reads the one
   you did not replace: `Assets.car` via `CFBundleIconName`. Removed, with a
@@ -568,7 +568,7 @@ deliberately at `5.24.2` or later.
 - **A comment counts as a literal.** `no-literals.test.ts` rejected `16px` in
   a doc comment; name the token instead.
 
-### Milestone 5.8 findings — 2026-09-17
+### Milestone 5.8 findings, 2026-09-17
 
 - **A release build of Wails keeps no logs and exits on any panic** outside a
   bound method. Both recorded in `.ai/rules/wails.md`.
@@ -589,7 +589,7 @@ deliberately at `5.24.2` or later.
   Timings on a ~25 node architecture diagram, warm: dagre 12ms, elk 7ms,
   TALA 96ms. Re-measure after any D2 bump.
 - `.gitattributes` forces LF except Windows scripts. This is what makes golden
-  SVGs byte-comparable across platforms — do not relax it.
+  SVGs byte-comparable across platforms; do not relax it.
 - `docs/` and `internal/` are empty by design: the target layout in
   `CLAUDE.md`, created by the milestone that needs each package.
   `docs/wails-v3/` is not vendored yet.

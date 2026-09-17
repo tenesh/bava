@@ -54,7 +54,7 @@ func TestCanvasBlockIsPrettyPrinted(t *testing.T) {
 
 	block := format.Scan(out)[0]
 	if !strings.Contains(block.Body, "\n  ") {
-		t.Errorf("canvas block is not indented — one long line makes every diff useless:\n%s", block.Body)
+		t.Errorf("canvas block is not indented; one long line makes every diff useless:\n%s", block.Body)
 	}
 }
 

@@ -116,7 +116,7 @@ func TestAutosaveDefaultsToOff(t *testing.T) {
 	}
 }
 
-// A mode this version does not know — a typo, or a newer version's setting —
+// A mode this version does not know (a typo, or a newer version's setting)
 // must not turn into some other kind of autosave. Off is the only safe guess.
 func TestUnknownAutosaveModeFallsBackToOff(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
@@ -161,7 +161,7 @@ func TestAutosaveDelayIsClampedToASensibleRange(t *testing.T) {
 	}
 }
 
-// Verbose logging records more detail — still never content — and is opt-in.
+// Verbose logging records more detail (still never content) and is opt-in.
 func TestVerboseLoggingDefaultsToOff(t *testing.T) {
 	if config.Defaults().VerboseLogging {
 		t.Error("VerboseLogging defaults to on")

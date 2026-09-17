@@ -14,7 +14,7 @@ Data flows in, events flow out. **No reactive state holds geometry.**
 ## The scene is the source of truth for position
 Every element carries its own `x, y, w, h, z`. Nothing computes them. The one
 exception is the interior of a `diagram` element, where the D2 layout engine
-decides where nodes sit — and that interior is opaque to the scene except
+decides where nodes sit, and that interior is opaque to the scene except
 through the bounds the render response returns.
 
 ## Bindings resolve through node ids, never coordinates
@@ -33,10 +33,10 @@ The user drew it; it is not ours to delete.
 Not kept as live SVG DOM. A DOM layer inside a canvas stage fights z-order and
 transforms, and the node bounds from the render response give hit-testing
 everything it needs. A click inside a diagram resolves against the bounds index
-to a node id — the same key used for bindings and jump-to-source.
+to a node id, the same key used for bindings and jump-to-source.
 
 ## Canvas text is measured in the frontend, and the measurement is stored
-Text inside a D2 diagram is measured in Go, as before. Canvas text cannot be —
+Text inside a D2 diagram is measured in Go, as before. Canvas text cannot be:
 the frontend owns that layout.
 
 The old hazard has not gone away: WebKitGTK and WebView2 disagree on glyph
@@ -50,7 +50,7 @@ layout instead of re-deriving it.
 Render requests for diagram elements are debounced 250ms and tagged with an
 incrementing id. Responses whose id is not the latest are discarded. Without
 this, a slow render can land after a faster later one and the diagram flickers
-between states — a symptom that looks like a layout bug and is not.
+between states, a symptom that looks like a layout bug and is not.
 
 ## Undo is one history
 Scene mutations, diagram source edits and AI edits all enter through the same
@@ -61,7 +61,7 @@ a user does after a change they dislike is press Ctrl+Z.
 Canvas tests run under jsdom with `vitest-canvas-mock` (pure JS), wired in
 `vitest.config.ts`. The native `canvas` package would be more faithful, but it
 has to build on three CI platforms and these tests assert scene patching rather
-than pixels — that is a maintenance bill for nothing.
+than pixels; that is a maintenance bill for nothing.
 
 Without the mock, Konva fails with `Cannot read properties of null (reading
 'scale')`, which reads like a Konva bug and is not.
@@ -73,7 +73,7 @@ its own. `scene.ts` defines a distributive version. The failure appears as a
 type error at the call site and looks like the element is wrong; the helper is.
 
 ## Scene mutations go through history, never around it
-Every change — a drag, a tool, an AI edit later — is applied with
+Every change (a drag, a tool, an AI edit later) is applied with
 `history.mutate`. A mutation that changes nothing records no step, so undo
 never appears to do nothing, which reads as a broken undo.
 

@@ -13,7 +13,7 @@ gradlew text eol=lf
 # Go
 *.go text eol=lf
 
-# Binary — never diff or normalize
+# Binary: never diff or normalize
 *.png  binary
 *.jpg  binary
 *.jpeg binary

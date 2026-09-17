@@ -1,6 +1,6 @@
 // Package store reads and writes files on disk.
 //
-// It knows nothing about the format — that is internal/format's job. This
+// It knows nothing about the format; that is internal/format's job. This
 // package owns durability: an interrupted save must leave the previous file
 // intact, and a file changed by another program must be noticed rather than
 // silently overwritten.
@@ -53,8 +53,8 @@ func Open(path string) (File, error) {
 
 // Save writes content to path atomically.
 //
-// The write goes to a temporary file in the *same directory* — a rename across
-// filesystems is not atomic — and is then renamed over the target. A crash
+// The write goes to a temporary file in the *same directory* (a rename across
+// filesystems is not atomic) and is then renamed over the target. A crash
 // mid-save leaves either the old file or the new one, never a truncated one.
 func Save(path, content string) error {
 	dir := filepath.Dir(path)

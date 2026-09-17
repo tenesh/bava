@@ -1,7 +1,7 @@
 // Motion.
 //
 // Derived: the design specifies no durations. These are conservative desktop
-// values — a tool window should feel immediate, not animated.
+// values: a tool window should feel immediate, not animated.
 //
 // The design does include a "reduce motion" setting that disables canvas
 // easing and panel transitions, so honouring the OS preference here is the

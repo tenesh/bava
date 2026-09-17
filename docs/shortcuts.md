@@ -13,31 +13,31 @@ undocumented may as well not have one.
 Everything in the menu, as each platform shows it. Three kinds, all declared in
 `spec.json`:
 
-- **Accelerators** — letters and digits with a modifier — are bound natively
+- **Accelerators** (letters and digits with a modifier) are bound natively
   and dispatch through the menu.
 - **Shortcuts** on punctuation keys (`⌘,` `⌘=` `⌘-` `⌘/` `⇧⌘[` `⇧⌘]`) are
-  handled by the page, matched by physical key — Wails on Windows matches
+  handled by the page, matched by physical key: Wails on Windows matches
   accelerators by virtual-key name and never fires a punctuation one. On macOS
   `⌘,` `⌘=` `⌘-` `⌘/` are real menu accelerators instead (`nativeOn`), since
   AppKit matches them correctly; `⇧⌘[` `⇧⌘]` stay page-handled there, because
   Shift changes the character AppKit compares.
-- **Hints** — single keys, and `⌫` for Delete — are never bound: a native
+- **Hints** (single keys, and `⌫` for Delete) are never bound: a native
   accelerator on a bare key would steal it from every text field. The canvas
   handles them itself, only while no text field has focus.
 
 Only Windows right-aligns text after a tab in a menu label, so page-handled
 shortcuts and hints appear in the menu row on Windows only. On macOS and Linux
-the row shows native accelerators alone, and this table — or Help ▸ Keyboard
-Shortcuts — lists the rest.
+the row shows native accelerators alone, and this table (or Help ▸ Keyboard
+Shortcuts) lists the rest.
 
 | Menu | Item | macOS | Windows / Linux |
 |---|---|---|---|
-| Bava | Settings… | `⌘,` | — |
+| Bava | Settings… | `⌘,` | none |
 | File | New | `⌘N` | `Ctrl+N` |
 | File | Open… | `⌘O` | `Ctrl+O` |
 | File | Save | `⌘S` | `Ctrl+S` |
 | File | Save As… | `⇧⌘S` | `Ctrl+Shift+S` |
-| File | Settings… | — | `Ctrl+,` |
+| File | Settings… | none | `Ctrl+,` |
 | Edit | Undo | `⌘Z` | `Ctrl+Z` |
 | Edit | Redo | `⇧⌘Z` | `Ctrl+Shift+Z` |
 | Edit | Cut | `⌘X` | `Ctrl+X` |
@@ -68,7 +68,7 @@ Shortcuts — lists the rest.
 | Help | Keyboard Shortcuts | `⌘/` | `Ctrl+/` |
 
 Undo, Redo, Cut, Copy, Paste, Select All and Delete go wherever focus is: the
-source editor, a text field, or the canvas — and nowhere while a dialog has
+source editor, a text field, or the canvas; and nowhere while a dialog has
 focus or the canvas is hidden. The source editor's own bindings for keys the
 menu owns are removed, so a key press has one meaning.
 
@@ -82,7 +82,7 @@ still counted when the spec is checked for clashes (`RoleAccelerators` in
 |---|---|
 | `⌘W` / `Ctrl+W` | Close window |
 | `⌘M` / `Ctrl+M` | Minimise |
-| `⌃⌘F` | Enter full screen — the role's own binding; unverified off macOS |
+| `⌃⌘F` | Enter full screen (the role's own binding; unverified off macOS) |
 | `⌘H` / `⌥⌘H` | Hide Bava / hide others (macOS) |
 | `⌘Q` | Quit (macOS) |
 
@@ -119,8 +119,8 @@ A drag is one undo step, however many pointer events it took.
 
 ## Not yet implemented
 
-- Resize and rotate handles — Milestone 6.
-- Find — Milestone 15.
+- Resize and rotate handles: Milestone 6.
+- Find: Milestone 15.
 - The Delete hint shows `⌫` on every platform; Windows and Linux users read it
   as Backspace, which is what it does.
 - **Not yet checked at a running window on any platform**: how a tab-separated

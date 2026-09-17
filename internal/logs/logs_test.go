@@ -226,7 +226,7 @@ func TestCleanCloseReportsCleanNextTime(t *testing.T) {
 	}
 }
 
-// A session that never closed — a crash, a force quit, a power cut — leaves
+// A session that never closed (a crash, a force quit, a power cut) leaves
 // its marker behind, and the next launch names it.
 func TestMissingCloseReportsUnexpectedWithTheSessionName(t *testing.T) {
 	dir := t.TempDir()
@@ -243,7 +243,7 @@ func TestMissingCloseReportsUnexpectedWithTheSessionName(t *testing.T) {
 	}
 }
 
-// Wails logs every bound call's arguments and result at debug level — whole
+// Wails logs every bound call's arguments and result at debug level: whole
 // documents. Its logger keeps only messages and attribute names, and never
 // goes below warn, whatever the verbose setting.
 func TestWailsLoggerNeverRecordsValuesOrDebug(t *testing.T) {

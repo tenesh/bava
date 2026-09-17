@@ -92,7 +92,7 @@ func LoadFrom(path string) (Settings, error) {
 		return settings, nil
 	}
 
-	// Decoded over the defaults, so a key the file omits keeps its default —
+	// Decoded over the defaults, so a key the file omits keeps its default,
 	// which is the normal case once a newer version adds one.
 	if err := json.Unmarshal(content, &settings); err != nil {
 		return Defaults(), nil

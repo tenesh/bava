@@ -6,7 +6,7 @@
  * 
  * The known fields are parsed; **the whole original object is kept in Raw**.
  * A newer Bava will write element types and keys this one does not know, and
- * dropping them destroys work silently — unrecoverable by the time anyone
+ * dropping them destroys work silently, unrecoverable by the time anyone
  * notices. Writing an element means writing Raw back with the known fields
  * merged over it.
  */

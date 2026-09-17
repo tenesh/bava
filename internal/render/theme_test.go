@@ -8,7 +8,7 @@ import (
 	"github.com/tenesh/bava/internal/render"
 )
 
-// Values come from frontend/src/styles/tokens/_color.scss — the token layer is
+// Values come from frontend/src/styles/tokens/_color.scss; the token layer is
 // the source of truth, and Go holds the mapping rather than a second copy of
 // the palette. These are the dark values.
 func darkTheme() *render.Theme {
@@ -63,7 +63,7 @@ func TestThemeValuesReachTheOutput(t *testing.T) {
 }
 
 // The existing goldens were rendered without a theme. If omitting one changed
-// anything, every committed golden would shift — this is the test that pins
+// anything, every committed golden would shift. This is the test that pins
 // that it does not.
 func TestUnsetThemeIsByteIdenticalToBefore(t *testing.T) {
 	a, err := render.Render(context.Background(), themeSource, render.Options{})

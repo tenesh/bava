@@ -14,7 +14,7 @@ import (
 	"github.com/tenesh/bava/internal/render"
 )
 
-// RenderService is the one render surface. Resist adding a second — a preview,
+// RenderService is the one render surface. Resist adding a second: a preview,
 // export or thumbnail renderer would drift from this one and produce output
 // that differs from what the user saw.
 type RenderService struct{}

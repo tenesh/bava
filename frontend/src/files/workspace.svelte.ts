@@ -1,7 +1,7 @@
 /**
  * The open workspace folder and its files.
  *
- * Listing is Go's job — this holds the result and the folder path, and emits
+ * Listing is Go's job; this holds the result and the folder path, and emits
  * nothing. The tree component renders it and reports an activation; opening a
  * file is the shell's decision.
  */
@@ -44,7 +44,7 @@ export function createWorkspace(io: WorkspaceIO = overIPC) {
       error = null;
     },
 
-    /** Re-read the folder — after a save, or when the window regains focus. */
+    /** Re-read the folder after a save, or when the window regains focus. */
     async refresh() {
       if (root) await this.open(root);
     },

@@ -87,7 +87,7 @@ func TestNodeMapLinesAreOneIndexed(t *testing.T) {
 // Positions cross the boundary in UTF-16 code units, because that is how
 // JavaScript indexes a string. Measured in UTF-8 bytes, `web` in this source
 // sits at 13; in UTF-16 it sits at 11. A frontend that trusts byte offsets
-// puts every marker two characters out as soon as one label is non-ASCII —
+// puts every marker two characters out as soon as one label is non-ASCII,
 // and an all-ASCII test suite never notices.
 const nonASCIISource = "café: Café\nweb: Web\ncafé -> web\n"
 

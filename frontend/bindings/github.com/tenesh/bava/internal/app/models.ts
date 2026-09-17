@@ -35,8 +35,8 @@ export interface ListResult {
 
 /**
  * LogEntry is an error the frontend reports. It carries the error's kind and
- * stack frames, never its message: JavaScript messages quote input — a JSON
- * syntax error shows the text it choked on — and a thrown value can be anything.
+ * stack frames, never its message: JavaScript messages quote input (a JSON
+ * syntax error shows the text it choked on), and a thrown value can be anything.
  */
 export interface LogEntry {
     "level": string;
@@ -70,8 +70,8 @@ export interface Notice {
 /**
  * OpenResult is a file, parsed.
  * 
- * Problems the user can act on — a missing file, a permission denial, a
- * malformed canvas block — come back in Error rather than as a failed call,
+ * Problems the user can act on (a missing file, a permission denial, a
+ * malformed canvas block) come back in Error rather than as a failed call,
  * the same way compile diagnostics do. A returned error means the request
  * itself was malformed.
  */

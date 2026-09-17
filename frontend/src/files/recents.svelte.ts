@@ -1,7 +1,7 @@
 /**
  * Recently opened files.
  *
- * A per-viewer convenience, so localStorage rather than a file — it is not
+ * A per-viewer convenience, so localStorage rather than a file: it is not
  * work product, and losing it costs nothing but a click. Every access is
  * guarded because a private window makes localStorage throw.
  */

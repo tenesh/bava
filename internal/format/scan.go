@@ -9,7 +9,7 @@ import "strings"
 
 // Block is a fenced code block found in a Markdown document.
 type Block struct {
-	// Info is the fence's info string — "d2 id=write-path", "bava-canvas".
+	// Info is the fence's info string, such as "d2 id=write-path", "bava-canvas".
 	Info string
 	// Body is the block's content, without the fences.
 	Body string
@@ -21,7 +21,7 @@ type Block struct {
 
 // Scan finds fenced code blocks.
 //
-// Deliberately not a Markdown parser. We need exactly two things — fenced
+// Deliberately not a Markdown parser. We need exactly two things: fenced
 // blocks with their info strings, and every other byte left alone. A real
 // parser round-trips prose *approximately*: it normalises whitespace, rewrites
 // emphasis markers, reorders reference links. Approximate is a synonym for

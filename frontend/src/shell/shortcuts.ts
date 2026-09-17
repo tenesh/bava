@@ -4,7 +4,7 @@
  * must leave to the menu.
  *
  * Derived rather than written down, so the Help dialog cannot drift from what
- * the menu actually binds. Hints — single keys the canvas handles itself — are
+ * the menu actually binds. Hints (single keys the canvas handles itself) are
  * listed alongside real accelerators, because to a user they are the same kind
  * of thing.
  */
@@ -133,7 +133,7 @@ function keyOf(event: KeyboardEvent): string {
 /**
  * The frontend's half of the menu's shortcuts: returns a function giving the
  * command id a key press should dispatch, if any. Only `shortcut` entries not
- * bound natively on this platform — native accelerators dispatch through the
+ * bound natively on this platform: native accelerators dispatch through the
  * menu, and matching them here would take the key first.
  */
 export function matchShortcut(spec: MenuSpec, platform: Platform) {

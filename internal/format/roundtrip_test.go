@@ -17,7 +17,7 @@ func TestRoundTripPreservesEverything(t *testing.T) {
 		"unknown element type":  "p\n\n```bava-canvas\n{\"version\":1,\"elements\":[{\"id\":\"x1\",\"type\":\"hologram\",\"x\":0,\"y\":0,\"w\":1,\"h\":1,\"z\":1,\"spin\":42}]}\n```\n",
 		"unknown keys":          "p\n\n```bava-canvas\n{\"version\":1,\"elements\":[{\"id\":\"e1\",\"type\":\"rect\",\"x\":0,\"y\":0,\"w\":1,\"h\":1,\"z\":1,\"glow\":true}]}\n```\n",
 		"unknown top level key": "p\n\n```bava-canvas\n{\"version\":1,\"elements\":[{\"id\":\"e1\",\"type\":\"rect\",\"x\":0,\"y\":0,\"w\":1,\"h\":1,\"z\":1}],\"grid\":{\"size\":8}}\n```\n",
-		"unicode prose":         "# Café ☕️\n\nThe naïve approach — résumé.\n",
+		"unicode prose":         "# Café ☕️\n\nThe naïve approach → résumé.\n",
 		"no trailing newline":   "# Title\n\nNo newline at the end.",
 		"crlf":                  "# Title\r\n\r\nWindows wrote this.\r\n",
 		"nested fences":         "````md\nexample:\n```d2\na -> b\n```\n````\n",

@@ -1,5 +1,5 @@
 // ESLint flat config. Named by the tool, so it is the one permitted `.js`
-// file alongside `svelte.config.js` — all source stays TypeScript.
+// file alongside `svelte.config.js`; all source stays TypeScript.
 import js from '@eslint/js';
 import globals from 'globals';
 import svelte from 'eslint-plugin-svelte';
@@ -19,8 +19,8 @@ export default tseslint.config(
       globals: { ...globals.browser },
     },
     rules: {
-      // Positional parameters a signature forces on us — a Svelte snippet's
-      // `failed(error, reset)` needs only `reset` — are marked with `_`.
+      // Positional parameters a signature forces on us (a Svelte snippet's
+      // `failed(error, reset)` needs only `reset`) are marked with `_`.
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },

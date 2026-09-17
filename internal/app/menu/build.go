@@ -12,7 +12,7 @@ import (
 // Command is what a menu click sends to the frontend.
 type Command struct {
 	ID string `json:"id"`
-	// Arg carries data a command needs — the path, for a recent file.
+	// Arg carries data a command needs: the path, for a recent file.
 	Arg string `json:"arg,omitempty"`
 }
 

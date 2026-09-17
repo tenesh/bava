@@ -4,19 +4,19 @@
 through one Go render path, with stale responses dropped.
 
 **Specs:**
-- `CLAUDE.md` — architecture, stack, non-negotiables
-- `.claude/plan/roadmap.md` — Milestone 1 scope and exit criterion
-- `.claude/work/specs/render-ipc.md` — the contract, decided 2026-09-16
+- `CLAUDE.md`: architecture, stack, non-negotiables
+- `.claude/plan/roadmap.md`: Milestone 1 scope and exit criterion
+- `.claude/work/specs/render-ipc.md`: the contract, decided 2026-09-16
 - `.ai/rules/ipc.md`, `canvas.md`, `d2.md`, `editors.md`, `svelte.md`,
   `testing.md`, `wails.md`
 
-**File format impact:** none. Milestone 1 writes nothing to disk — no save, no
+**File format impact:** none. Milestone 1 writes nothing to disk: no save, no
 autosave, no `localStorage` for document state. Source lives in memory.
 `docs/file-format.md` does not exist yet and nothing here needs it.
 
 **UI impact:** none in `frontend/src/components/`. No tokens exist yet
-(Milestone 2), so no component may be built. The shell is structural CSS only
-— grid tracks and sizes, no colours, no shadows, no one-off values that would
+(Milestone 2), so no component may be built. The shell is structural CSS only:
+grid tracks and sizes, no colours, no shadows, no one-off values that would
 later have to be un-inlined.
 
 ## Constraints
@@ -53,22 +53,22 @@ Copied from the specs, verbatim where they carry a value:
 **Behavior:** Resolve an engine name to a `d2graph.LayoutGraph`. `""` and
 `"tala"` resolve to `d2talalayout.DefaultLayout`; `"dagre"` and `"elk"` to
 their defaults. An unrecognised name is an **error**, not a silent fallback to
-TALA — `.ai/rules/d2.md` is explicit that the others are alternatives, not
+TALA; `.ai/rules/d2.md` is explicit that the others are alternatives, not
 fallbacks, and a typo silently changing layout engine is the kind of thing
 nobody notices for a month.
-- [x] Failing test: `TestDefaultEngineIsTALA` — expected failure: no `layout`
+- [x] Failing test: `TestDefaultEngineIsTALA`; expected failure: no `layout`
       package exists, so it will not compile.
 - [x] Failing test: `TestUnknownEngineIsAnError`
 - [x] Implement
 - [x] Green: `go test ./internal/layout`
 
-### Task 2: Render pipeline — SVG for valid source
+### Task 2: Render pipeline (SVG for valid source)
 **Files:** create `internal/render/render.go`, `internal/render/render_test.go`.
 **Behavior:** `Render(ctx, source, Options) (Result, error)` compiles through
 `d2lib.Compile` with a ruler, the resolver from Task 1, a logger in the
 context, and `OmitVersion` set; renders with `d2svg.Render`. Returns
 `Result.SVG` non-empty, beginning with `<svg`, and `Result.Errors` empty.
-- [x] Failing test: `TestRenderReturnsSVGForValidSource` — expected failure:
+- [x] Failing test: `TestRenderReturnsSVGForValidSource`; expected failure:
       `render` package does not exist.
 - [x] Implement
 - [x] Green: `go test ./internal/render -run TestRenderReturnsSVG`
@@ -80,10 +80,10 @@ context, and `OmitVersion` set; renders with `d2svg.Render`. Returns
 Each error carries `Message`, `From`, `To` (byte offsets) and `Line`
 (1-indexed). `Result.SVG` is empty on failure; keeping the previous diagram is
 the frontend's job, not Go's.
-- [x] Failing test: `TestBrokenSourceReturnsDiagnosticsNotError` — expected
+- [x] Failing test: `TestBrokenSourceReturnsDiagnosticsNotError`; expected
       failure: the current implementation returns D2's error straight through,
       so `err` is non-nil and `Errors` is empty.
-- [x] Failing test: `TestDiagnosticLineIsOneIndexed` — asserts the reported
+- [x] Failing test: `TestDiagnosticLineIsOneIndexed` asserts the reported
       line is D2's 0-indexed line **plus one**. This is the test that catches
       the off-by-one the spike found in `*d2parser.ParseError`.
 - [x] Implement
@@ -95,11 +95,11 @@ the frontend's job, not Go's.
 **Behavior:** `Result.NodeMap` is `map[string]Span` keyed by SVG element id
 (`users`, `web.api`), each `Span` carrying `From`, `To`, `Line`. Built from
 `graph.Objects[].AbsID()` and `References[0].Key.Range`.
-- [x] Failing test: `TestNodeMapSpansSliceTheSourceIdentifier` — for the
+- [x] Failing test: `TestNodeMapSpansSliceTheSourceIdentifier`; for the
       fixture, `source[span.From:span.To]` equals `"api"` for key `"web.api"`.
       Expected failure: `NodeMap` is nil today. This assertion is chosen
       because it fails if offsets drift by even one byte.
-- [x] Failing test: `TestNodeMapCoversEveryRenderedShape` — every
+- [x] Failing test: `TestNodeMapCoversEveryRenderedShape`; every
       `diagram.Shapes[].ID` has an entry.
 - [x] Implement
 - [x] Green: `go test ./internal/render -run TestNodeMap`
@@ -109,10 +109,10 @@ the frontend's job, not Go's.
 `testdata/golden/architecture.d2`, `testdata/golden/architecture.svg`,
 `testdata/golden/containers.d2`, `testdata/golden/containers.svg`.
 **Behavior:** Fixed `.d2` input renders to committed SVG, compared
-**byte-for-byte** with no normalisation — the spike measured output stable
+**byte-for-byte** with no normalisation: the spike measured output stable
 across processes with and without a salt, so no scrubbing step is warranted.
 `-update` regenerates.
-- [x] Failing test: `TestGoldenArchitecture` — expected failure: the `.svg`
+- [x] Failing test: `TestGoldenArchitecture`; expected failure: the `.svg`
       fixtures do not exist, so the read fails.
 - [x] Implement harness and generate with `-update`
 - [x] **Open each generated SVG and look at it** before committing. A golden
@@ -126,7 +126,7 @@ across processes with and without a salt, so no scrubbing step is warranted.
 `internal/render`. Registered in `main.go` in place of `GreetService`.
 Bindings are scaffolding, so this is implement-then-pin per the build loop.
 - [x] Implement
-- [x] Contract test: `TestResultJSONFieldNames` — marshals a `Result` and
+- [x] Contract test: `TestResultJSONFieldNames` marshals a `Result` and
       asserts the keys are exactly `svg`, `errors`, `nodeMap`, with error keys
       `message`, `from`, `to`, `line`. This is what stops a Go rename silently
       breaking the TypeScript side.
@@ -137,21 +137,21 @@ Bindings are scaffolding, so this is implement-then-pin per the build loop.
 `frontend/src/spike`-era leftovers (none expected); regenerate
 `frontend/bindings/`.
 **Behavior:** Two panes, structural CSS only. The Wails demo screen is
-deleted wholesale — which also clears the three standing lint errors recorded
+deleted wholesale, which also clears the three standing lint errors recorded
 in the build loop's repo-state section.
 - [x] Implement
-- [x] Green: `cd frontend && npm run check && npm run lint` — **lint must now
+- [x] Green: `cd frontend && npm run check && npm run lint`; **lint must now
       be exit 0**, for the first time in this repo.
 
-### Task 8: Render client — debounce and staleness
+### Task 8: Render client (debounce and staleness)
 **Files:** create `frontend/src/ipc/render.svelte.ts`,
 `frontend/src/ipc/render.test.ts`.
 **Behavior:** Debounce 250ms after the last keystroke; tag each request with an
 incrementing id; drop any response whose id is not the latest; on a response
 carrying errors, keep the last good SVG and surface the diagnostics.
-- [x] Failing test: `TestDebounceIssuesOneRequestAfterQuiet` — expected
+- [x] Failing test: `TestDebounceIssuesOneRequestAfterQuiet`; expected
       failure: module does not exist.
-- [x] Failing test: `TestStaleResponseIsDropped` — resolve request 2 before
+- [x] Failing test: `TestStaleResponseIsDropped`; resolve request 2 before
       request 1, assert the state holds request 2's SVG. Names the production
       change that would break it: removing the id comparison.
 - [x] Failing test: `TestErrorResponseKeepsLastGoodSVG`
@@ -163,8 +163,8 @@ carrying errors, keep the last good SVG and surface the diagnostics.
 `frontend/src/canvas/canvas.test.ts`.
 **Behavior:** Plain class. `mount(el)`, `setSVG(string)`, `destroy()`. Owns its
 DOM, patches on new render results, holds no reactive state, and is
-instantiated once in `onMount`. No per-node Svelte components — the documented
-performance trap.
+instantiated once in `onMount`. No per-node Svelte components (the documented
+performance trap).
 - [x] Failing test: `TestSetSVGReplacesRenderedContent`
 - [x] Failing test: `TestDestroyRemovesOwnedDOM`
 - [x] Implement
@@ -174,12 +174,12 @@ performance trap.
 **Files:** create `frontend/src/editor/source-pane.svelte.ts`; modify
 `frontend/src/App.svelte`.
 **Behavior:** CodeMirror 6 mounted imperatively in `onMount`, destroyed in the
-cleanup return, never passed reactive props. Plain text — **no D2 language
+cleanup return, never passed reactive props. Plain text: **no D2 language
 mode in this milestone**. Diagnostics from the render response surfaced through
 `@codemirror/lint`, positioned by the byte offsets in `Result.Errors`. Clicking
 a diagnostic jumps to its position; the mapping comes from the response, never
 from re-parsing in the frontend.
-- [x] Failing test: `TestDiagnosticsMapToEditorOffsets` — asserts a diagnostic
+- [x] Failing test: `TestDiagnosticsMapToEditorOffsets` asserts a diagnostic
       at Go offsets lands on the same characters in the editor document.
 - [x] Implement
 - [x] Green: `cd frontend && npm test && npm run check && npm run lint`
@@ -199,23 +199,23 @@ Same change as the code:
 
 ## Out of scope
 
-- Any persistence. No file open, save, autosave, or recent-files — Milestone 5
+- Any persistence. No file open, save, autosave, or recent-files: Milestone 5
   after the re-plan (was 4).
-- Tokens, components, theming, `--z-*` — Milestone 2.
-- Engine picker, StatusBar, ErrorList as components — Milestone 3. Diagnostics
+- Tokens, components, theming, `--z-*`: Milestone 2.
+- Engine picker, StatusBar, ErrorList as components: Milestone 3. Diagnostics
   in Milestone 1 appear in the editor gutter only.
-- D2 syntax highlighting — Milestone 10 after the 2026-09-16 re-plan
+- D2 syntax highlighting: Milestone 10 after the 2026-09-16 re-plan
   (was 3.5), before Milestone 8 embeds CodeMirror in ProseMirror NodeViews.
-- Pan and zoom beyond what the canvas class needs to display an SVG —
+- Pan and zoom beyond what the canvas class needs to display an SVG:
   Milestone 4 after the re-plan, which replaces this class with a Konva stage.
 - `internal/compile/` and `internal/store/`. `d2lib.Compile` already fuses
   parse, compile and layout, so a separate `compile` package would be an empty
   shell. **Deviation from the layout `.ai/rules/index.md` anticipated, flagged
-  deliberately** — its glob was subsequently removed from that file rather than
+  deliberately**; its glob was subsequently removed from that file rather than
   left registered and unused. `internal/store/` arrives at Milestone 5.
 
 
-## Completion record — 2026-09-16
+## Completion record: 2026-09-16
 
 Every box above was ticked in sequence: each test was written first and watched
 fail for the stated reason before the implementation existed.

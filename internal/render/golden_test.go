@@ -17,8 +17,8 @@ import (
 var update = flag.Bool("update", false, "rewrite golden SVG files")
 
 // Golden files are the primary safety net: they are what makes a D2, font or
-// Wails bump safe to do at all. Compared byte-for-byte, with no normalisation
-// — output was measured stable across processes, so any scrubbing step would
+// Wails bump safe to do at all. Compared byte-for-byte, with no normalisation:
+// output was measured stable across processes, so any scrubbing step would
 // only hide a real regression.
 // The dark values, from frontend/src/styles/tokens/_color.scss. The token
 // layer is the source of truth; this is the fixture that proves the mapping
@@ -71,7 +71,7 @@ func TestGolden(t *testing.T) {
 				if err := os.WriteFile(goldenPath, []byte(res.SVG), 0o644); err != nil {
 					t.Fatalf("write golden: %v", err)
 				}
-				t.Logf("wrote %s — open it and look at it before committing", goldenPath)
+				t.Logf("wrote %s; open it and look at it before committing", goldenPath)
 				return
 			}
 

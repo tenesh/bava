@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * An unexpected failure: one plain sentence, details for whoever asks, and
-   * ways to hand the problem over — copy the details, open the logs folder.
+   * ways to hand the problem over: copy the details, open the logs folder.
    *
    * Presentational. What happened, and what the buttons do, is the caller's.
    * Never shows a stack: details carry an error id that finds it in the log.

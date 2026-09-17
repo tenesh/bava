@@ -6,7 +6,7 @@
 // touching a file outside this directory.
 //
 // Values are the design's palette, verbatim. Two tokens are additions, both
-// evidenced by usage in the mockups rather than invented — see the comments.
+// evidenced by usage in the mockups rather than invented (see the comments).
 
 // -- light ------------------------------------------------------------------
 $l-surface: #f7f7f5;
@@ -30,7 +30,7 @@ $l-accent-subtle: rgba(47, 107, 163, 0.07);
 $l-selection: rgba(47, 107, 163, 0.18);
 $l-focus-ring: #2f6ba3;
 // Addition: the halo the design's focus recipe describes in prose but never
-// names — "1px accent border plus a 2px 22-25% halo".
+// names: "1px accent border plus a 2px 22-25% halo".
 $l-focus-halo: rgba(47, 107, 163, 0.22);
 $l-danger: #b3271c;
 $l-danger-subtle: rgba(179, 39, 28, 0.06);
@@ -74,7 +74,7 @@ $d-note-border: #4a4630;
 // Additions beyond the design sheet, from the v2 brand handover. The mark is
 // paper on ink, always: it never inverts to ink on a light page. On a light
 // ground it brings its own ink tile; on a dark ground the tile disappears.
-// Never the accent — that is reserved for selection and focus.
+// Never the accent: that is reserved for selection and focus.
 $brand-paper: #e6e6e3;
 $brand-ink: #131416;
 
@@ -129,7 +129,7 @@ $d-diagram-edge-label: #8b8f8a;
   --color-note-border: #{$l-note-border};
   --color-mark: #{$brand-paper};
   --color-mark-tile: #{$brand-ink};
-  // Behind an empty state the mark recedes (brand sheet 4c) — but only where it
+  // Behind an empty state the mark recedes (brand sheet 4c), but only where it
   // sits bare. Fading it here would fade its ink tile to a mid-grey ground,
   // which the brand forbids, so on light it stays at full strength.
   --opacity-mark-faded: 1;

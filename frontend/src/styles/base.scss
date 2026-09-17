@@ -1,4 +1,4 @@
-// Element defaults. Not tokens — these consume tokens.
+// Element defaults. Not tokens; these consume tokens.
 //
 // Anything here must resolve from a custom property. If a value is needed that
 // no token provides, add the token rather than inlining it.
@@ -17,7 +17,7 @@ body {
 }
 
 // The single portal root. Ark renders dialogs, popovers, menus and tooltips
-// outside the component tree and ships no z-index of its own — measured
+// outside the component tree and ships no z-index of its own. Measured
 // 2026-09-16, its content painted below a plain `z-index: 9999` element. This
 // rule is what stops that.
 #bava-portal-root {

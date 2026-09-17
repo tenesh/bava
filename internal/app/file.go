@@ -26,8 +26,8 @@ func NewFileService() *FileService { return &FileService{} }
 
 // OpenResult is a file, parsed.
 //
-// Problems the user can act on — a missing file, a permission denial, a
-// malformed canvas block — come back in Error rather than as a failed call,
+// Problems the user can act on (a missing file, a permission denial, a
+// malformed canvas block) come back in Error rather than as a failed call,
 // the same way compile diagnostics do. A returned error means the request
 // itself was malformed.
 type OpenResult struct {
@@ -211,7 +211,7 @@ func (s *FileService) ListWorkspace(dir string) ListResult {
 		})
 	}
 
-	// Folders first, then files, each alphabetically — the order a person
+	// Folders first, then files, each alphabetically: the order a person
 	// scanning a sidebar expects.
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].IsDir != out[j].IsDir {

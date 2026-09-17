@@ -3,7 +3,7 @@
    * Dialog, wrapping Ark's.
    *
    * The compound structure stays inside the wrapper rather than being
-   * flattened into props — flattening loses composition and fights the
+   * flattened into props: flattening loses composition and fights the
    * library. Screens import this, never `@ark-ui/svelte` directly, so the swap
    * surface stays one file.
    */

@@ -35,14 +35,14 @@ More prose.
 
 Three parts, in this order:
 
-1. **Prose** — ordinary Markdown. What every other editor sees first.
-2. **Diagram blocks** — fenced `d2`, with an `id` in the info string. Readable
+1. **Prose**: ordinary Markdown. What every other editor sees first.
+2. **Diagram blocks**: fenced `d2`, with an `id` in the info string. Readable
    and reviewable anywhere, and valid D2 that other tools can compile.
-3. **The canvas block** — one fenced `bava-canvas` block, last in the file.
+3. **The canvas block**: one fenced `bava-canvas` block, last in the file.
 
 ### Why one file rather than a sidecar
 
-The alternative — `notes.md` plus `notes.canvas`, or a `.bava/` directory —
+The alternative (`notes.md` plus `notes.canvas`, or a `.bava/` directory)
 keeps the Markdown pristine, and loses the user's work silently. Rename the
 file in Finder, copy one file to a USB stick, `git add notes.md`: the canvas is
 gone and nothing says so. For an app whose premise is that these are the user's
@@ -105,7 +105,7 @@ it is recomputed only when the text itself changes.
 An arrow bound to a node inside a diagram stores the node's D2 absolute id.
 Ids come from source text and survive re-layout; coordinates do not. A binding
 whose target no longer exists is kept, marked detached, and never silently
-deleted — the user drew it.
+deleted: the user drew it.
 
 ### Ids are stable within a file
 An element's `id` is unique within its file and does not change once written.
@@ -116,18 +116,18 @@ Bindings and diagram-block references depend on it.
 - No cursor position, zoom level, pane widths, or view mode. Those are
   per-viewer conveniences and live in `localStorage`.
 - No chat transcripts. Those are Bava's own state, in the platform data
-  directory as append-only JSONL — see `.ai/rules/ai.md`.
+  directory as append-only JSONL; see `.ai/rules/ai.md`.
 - No credentials, ever. Those are in the OS secret store.
 
 ## `.d2` files
 
 A standalone `.d2` file is exactly what it looks like: D2 source, nothing else.
 Bava opens it and shows the diagram. It has no canvas and no prose, and Bava
-writes nothing extra into it — another tool's `.d2` file goes home unchanged.
+writes nothing extra into it; another tool's `.d2` file goes home unchanged.
 
 ## Round-trip tests are mandatory
 
 Every change to this document ships with a test that writes, reads and
-compares — not a unit test of the writer and another of the reader, because
+compares, not a unit test of the writer and another of the reader, because
 that is exactly where asymmetries hide. The unknown-key and unknown-element
 cases are part of that test, not an afterthought.

@@ -204,7 +204,7 @@ func TestNativeAcceleratorKeysArePortable(t *testing.T) {
 			continue
 		}
 		if err := menu.ValidatePortableKey(item.Accelerator); err != nil {
-			t.Errorf("%s: %v — use \"shortcut\" instead", item.ID, err)
+			t.Errorf("%s: %v; use \"shortcut\" instead", item.ID, err)
 		}
 	}
 }

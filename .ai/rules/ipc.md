@@ -3,7 +3,7 @@
 ## One render surface
 `Render(source, opts) → {svg, errors, nodeMap}`. Every `diagram` element on a
 canvas renders through it, and so does export. Resist growing a second render
-path — a preview renderer, an export renderer, a thumbnail renderer. Divergent
+path: a preview renderer, an export renderer, a thumbnail renderer. Divergent
 paths drift and produce output that differs from what the user saw.
 
 Note the scope: this surface renders **diagram elements**, not the canvas. The
@@ -29,7 +29,7 @@ the latest. See `canvas.md` for why.
 ## Errors are data, not exceptions
 D2 compile failures are an expected state, not a failure of the call. They
 come back in `errors` with positions, and the previous good SVG stays on
-screen. Never blank the canvas on a compile error — users type through
+screen. Never blank the canvas on a compile error; users type through
 transient invalid states constantly.
 
 ## Keep the surface small
@@ -38,6 +38,6 @@ method with an options struct over five narrow methods.
 
 ## The menu names commands; the frontend performs them
 Go emits `menu:command` with an id and never decides what it does. The id list
-lives in `spec.json`, and `shell/commands.ts` must match it exactly — a test
+lives in `spec.json`, and `shell/commands.ts` must match it exactly; a test
 enforces both directions. Adding behaviour to a menu click in Go is how the
 native layer stops being thin.

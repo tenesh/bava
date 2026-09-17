@@ -5,7 +5,7 @@
 never `writable`/`readable` stores, never `export let`.
 
 Svelte 5 is recent enough that mixed Svelte 4/5 code appears constantly in
-training data and search results — a file with both idioms usually means a
+training data and search results; a file with both idioms usually means a
 snippet was pasted without translation.
 
 ## No store library
@@ -18,8 +18,8 @@ No `.js` source files. The sole exception is a config file the tooling
 requires by name (`svelte.config.js`).
 
 ## Logic out of markup
-One component per file. Anything beyond rendering — derivation, formatting,
-state machines — goes in a `.svelte.ts` module and is imported. Markup that
+One component per file. Anything beyond rendering (derivation, formatting,
+state machines) goes in a `.svelte.ts` module and is imported. Markup that
 contains logic cannot be tested and cannot be reused.
 
 ## Imperative libraries are not reactive

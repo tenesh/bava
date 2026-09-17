@@ -4,14 +4,14 @@
 saved intact, with the shape set diagrams need.
 
 **Specs:**
-- `.claude/work/specs/diagrams-as-shapes.md` — decisions made 2026-09-17
+- `.claude/work/specs/diagrams-as-shapes.md`: decisions made 2026-09-17
   (shape set, palette, labels)
-- `.claude/work/specs/canvas-architecture.md` — the parts not superseded
+- `.claude/work/specs/canvas-architecture.md`: the parts not superseded
   (element model, free placement, Konva, text measurement)
-- `docs/file-format.md` — preservation, measured text, pretty-printing
+- `docs/file-format.md`: preservation, measured text, pretty-printing
 - `.ai/rules/canvas.md`, `.ai/rules/file-format.md`,
   `.ai/rules/design-system.md`, `.ai/rules/svelte.md`
-- `.claude/plan/roadmap.md` — Milestone 6
+- `.claude/plan/roadmap.md`: Milestone 6
 
 **File format impact:**
 - New element types: `diamond`, `cylinder`, `hexagon`, `parallelogram`,
@@ -61,7 +61,7 @@ it, with a round-trip test.
 ## Tasks
 
 ### Task 1: Elements survive the trip through the frontend
-**Found while planning** — a data-loss bug in shipped code.
+**Found while planning**: a data-loss bug in shipped code.
 
 `format.Element` keeps unknown keys in `Raw json:"-"`. Wails encodes an opened
 scene for the frontend without them, and decodes a saved scene from the
@@ -77,9 +77,9 @@ with no points.
 **Behavior:** `Element` implements `MarshalJSON` and `UnmarshalJSON`, carrying
 every key in both directions. Known fields are merged over the raw object,
 exactly as `encodeElement` does today.
-- [ ] Failing test: `TestElementJSONKeepsEveryKey` — decode then encode keeps
+- [ ] Failing test: `TestElementJSONKeepsEveryKey`: decode then encode keeps
       `points`, `text` and an unknown key. Expected failure: they are dropped.
-- [ ] Failing test: `TestSceneSurvivesTheFrontendBridge` — `Read` a file, send
+- [ ] Failing test: `TestSceneSurvivesTheFrontendBridge`: `Read` a file, send
       the scene through `json.Marshal`/`json.Unmarshal` (what Wails does), then
       `Write`: byte-identical. Expected failure: the canvas block loses keys.
 - [ ] Implement
@@ -92,7 +92,7 @@ exactly as `encodeElement` does today.
 
 **Behavior:** the format document gains a "Shapes" section:
 - the nine shape types (`rect` and `ellipse` keep their names; seven are new)
-- `label` (plain text, wraps inside the shape's box, not separately measured —
+- `label` (plain text, wraps inside the shape's box, not separately measured;
   a label reflowing by a glyph between platforms stays inside its box)
 - `fill`, `stroke`, `color` as swatch names, where absent means the theme
   default and an unknown name renders as the default but is written back
@@ -101,7 +101,7 @@ exactly as `encodeElement` does today.
 - the swatch names
 
 - [ ] Write the section
-- [ ] Failing test: `TestRoundTripEveryShapeWithLabelAndColours` — expected
+- [ ] Failing test: `TestRoundTripEveryShapeWithLabelAndColours`: expected
       failure before Task 1 lands; after it, passes as a guard
 - [ ] Green: `go test ./internal/format -run RoundTrip`
 
@@ -159,8 +159,8 @@ defining vertices.
   start to end, relative to `x, y`.
 - **Theme changes:** the stage re-resolves colours on a theme change
   (`restyle()`), without recreating nodes.
-- [ ] Failing test: a rect node has a non-empty stroke and fill after render —
-      expected failure: none set (the bug seen at the window)
+- [ ] Failing test: a rect node has a non-empty stroke and fill after render.
+      Expected failure: none set (the bug seen at the window)
 - [ ] Failing test: a drawn arrow has two points and is a `Konva.Arrow`
 - [ ] Failing test: a label renders as text inside the shape's bounds
 - [ ] Failing test: `restyle()` changes colours on existing nodes, same node
@@ -279,20 +279,20 @@ defining vertices.
 
 ## Artifacts
 
-- `docs/file-format.md` — the Shapes section (Task 2)
-- `.ai/rules/file-format.md` — preservation must be tested through the
+- `docs/file-format.md`: the Shapes section (Task 2)
+- `.ai/rules/file-format.md`: preservation must be tested through the
   frontend bridge, not only Go read/write (Task 1's lesson)
 - `.ai/rules/canvas.md`:
   - the stage resolves colours through CSS variables and re-styles on theme
     change
   - tests inspect Konva nodes, not only scene data
-- `.ai/rules/design-system.md` — inventory: `StyleBar`, `ShapeMenu`; the
+- `.ai/rules/design-system.md`: inventory: `StyleBar`, `ShapeMenu`; the
   swatch tokens
-- `docs/shortcuts.md` — zoom gestures, pan, Enter to edit a label, the shape
+- `docs/shortcuts.md`: zoom gestures, pan, Enter to edit a label, the shape
   menu (checked against the spec by the existing test)
-- `docs/decisions.md` — the swatch names; labels not separately measured; the
+- `docs/decisions.md`: the swatch names; labels not separately measured; the
   Task 1 bug and its fix
-- `docs/ipc.md` — `Scene` elements now carry every key both ways
+- `docs/ipc.md`: `Scene` elements now carry every key both ways
 - Build-loop repo-state, and roadmap Milestone 6 status
 
 ## Out of scope

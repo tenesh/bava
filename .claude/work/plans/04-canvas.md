@@ -1,27 +1,27 @@
 # 04: Canvas foundation
 
-**Goal:** An infinite canvas you can draw on — place, select, move, group,
+**Goal:** An infinite canvas you can draw on: place, select, move, group,
 undo.
 
 **Specs:**
-- `.claude/plan/roadmap.md` — Milestone 4
-- `.ai/rules/canvas.md` — the canvas is a plain class; no reactive geometry;
+- `.claude/plan/roadmap.md`: Milestone 4
+- `.ai/rules/canvas.md`: the canvas is a plain class; no reactive geometry;
   measured text is stored
-- `.claude/work/specs/canvas-architecture.md` — the element model
-- `.ai/rules/design-system.md` — tool rail and contextual toolbar
+- `.claude/work/specs/canvas-architecture.md`: the element model
+- `.ai/rules/design-system.md`: tool rail and contextual toolbar
 - `~/Workspace/designs/bava/claude-design-v1` screens `2s`, `2r`, `2t`, `2v`.
   **Reference for appearance only.**
 
-**File format impact:** none — nothing is written to disk. The scene lives in
+**File format impact:** none. Nothing is written to disk. The scene lives in
 memory until Milestone 5 specifies a format for it. The in-memory element
 model here is deliberately close to what that format will hold, but it is not
 the format and must not be treated as one.
 
-**UI impact:** components added — `CanvasControls` (tool rail, zoom),
+**UI impact:** components added: `CanvasControls` (tool rail, zoom),
 `Toolbar` (contextual, changes with selection). Tokens: the first real use of
 `--color-canvas-bg`, `--color-canvas-dot`, `--color-selection`,
 `--color-note-fill`. If a hover or pressed state is needed, this is where the
-interaction tokens Milestone 2 deferred get added — to `tokens/` first.
+interaction tokens Milestone 2 deferred get added, to `tokens/` first.
 
 ## A regression this milestone causes
 
@@ -30,7 +30,7 @@ milestone replaces that pane with a Konva stage, and the `diagram` element type
 that puts a rendered diagram back on it does not arrive until Milestone 6.
 
 **So between Milestone 4 and Milestone 6, typing D2 shows no diagram.** The
-pipeline still works and is still tested — nothing is deleted — but the preview
+pipeline still works and is still tested (nothing is deleted), but the preview
 is gone from the window.
 
 The alternative is to pull a minimal diagram-as-image element forward into this
@@ -71,8 +71,8 @@ before starting if you would rather not.
   problem, not a precaution. Milestone 7 revisits it when bindings need
   hit-testing into diagrams.
 - **The keyboard debt is paid in part.** Scene elements become keyboard
-  selectable here. The specific Milestone 1 debt — a keyboard path to a node
-  *inside a diagram* — cannot be finished until diagram elements exist in
+  selectable here. The specific Milestone 1 debt (a keyboard path to a node
+  *inside a diagram*) cannot be finished until diagram elements exist in
   Milestone 6, and moves there with that reason recorded.
 
 ## Tasks
@@ -80,14 +80,14 @@ before starting if you would rather not.
 ### Task 1: The scene model
 **Files:** create `frontend/src/canvas/scene.ts`,
 `frontend/src/canvas/scene.test.ts`.
-**Behavior:** element types and a scene container — add, remove, reorder,
+**Behavior:** element types and a scene container: add, remove, reorder,
 query. Pure data and pure functions, no Konva, no DOM. Every element has an
 id, a type, geometry and a z-order.
 - [x] Failing test: `TestAddAssignsAStableId`
 - [x] Failing test: `TestZOrderReflectsInsertionAndCanBeChanged`
 - [x] Failing test: `TestRemoveLeavesOtherElementsUntouched`
-- [x] Failing test: `TestTextElementsCarryTheirMeasuredSize` — the rule this
-      milestone exists to respect
+- [x] Failing test: `TestTextElementsCarryTheirMeasuredSize` (the rule this
+      milestone exists to respect)
 - [x] Implement
 - [x] Green: `cd frontend && npm test`
 
@@ -96,27 +96,27 @@ id, a type, geometry and a z-order.
 `frontend/src/canvas/history.test.ts`.
 **Behavior:** every mutation produces forward and inverse patches. Undo and
 redo apply them. Redo is discarded on a new mutation.
-- [x] Failing test: `TestUndoRestoresTheExactPreviousScene` — compare
+- [x] Failing test: `TestUndoRestoresTheExactPreviousScene`; compare
       serialised scenes, not element counts, so a partially-reverted mutation
       fails
 - [x] Failing test: `TestRedoReappliesAnUndoneMutation`
 - [x] Failing test: `TestANewMutationDiscardsTheRedoStack`
-- [x] Failing test: `TestUndoOfASequenceReturnsToTheStart` — an arbitrary run
+- [x] Failing test: `TestUndoOfASequenceReturnsToTheStart`; an arbitrary run
       of adds, moves and deletes, undone, must equal the starting scene
       byte-for-byte
 - [x] Implement
 - [x] Green: `cd frontend && npm test`
 
-### Task 3: Viewport — pan and zoom
+### Task 3: Viewport (pan and zoom)
 **Files:** create `frontend/src/canvas/viewport.ts`,
 `frontend/src/canvas/viewport.test.ts`.
 **Behavior:** scene-to-screen and screen-to-scene transforms, zoom about a
-point, clamped zoom range. Pure maths, no Konva — this is the coordinate
+point, clamped zoom range. Pure maths, no Konva; this is the coordinate
 arithmetic `canvas.md` calls out as worth testing.
-- [x] Failing test: `TestScreenToSceneInvertsSceneToScreen` — round-trip an
+- [x] Failing test: `TestScreenToSceneInvertsSceneToScreen`; round-trip an
       arbitrary point at several zoom levels
-- [x] Failing test: `TestZoomKeepsThePointUnderTheCursorFixed` — the property
-      that makes zooming feel right, and the one that silently breaks
+- [x] Failing test: `TestZoomKeepsThePointUnderTheCursorFixed` (the property
+      that makes zooming feel right, and the one that silently breaks)
 - [x] Failing test: `TestZoomIsClamped`
 - [x] Implement
 - [x] Green: `cd frontend && npm test`
@@ -127,8 +127,8 @@ delete `frontend/src/canvas/canvas.ts` and its test.
 **Behavior:** mount, render a scene, patch on change, destroy. Replaces
 Milestone 1's `DiagramCanvas`. Owns its DOM, holds no reactive state.
 - [x] Failing test: `TestRenderingASceneCreatesANodePerElement`
-- [x] Failing test: `TestPatchingUpdatesInPlaceRatherThanRebuilding` — the
-      performance property the whole class exists for
+- [x] Failing test: `TestPatchingUpdatesInPlaceRatherThanRebuilding` (the
+      performance property the whole class exists for)
 - [x] Failing test: `TestDestroyReleasesTheStage`
 - [x] Implement
 - [x] Green: `cd frontend && npm test`
@@ -140,7 +140,7 @@ through elements, arrows to nudge, escape to clear. Selected elements draw with
 `--color-selection`.
 - [x] Failing test: `TestShiftClickAddsToSelection`
 - [x] Failing test: `TestMarqueeSelectsIntersectingElements`
-- [x] Failing test: `TestKeyboardReachesEveryElement` — pays the Milestone 1
+- [x] Failing test: `TestKeyboardReachesEveryElement` pays the Milestone 1
       debt as far as scene elements go
 - [x] Implement
 - [x] Green: `cd frontend && npm test`
@@ -151,7 +151,7 @@ through elements, arrows to nudge, escape to clear. Selected elements draw with
 **Behavior:** the active tool, its keyboard shortcut, and the rail that shows
 it. Rectangle, ellipse, line, arrow, text, frame create elements; select is the
 default and the escape hatch.
-- [x] Failing test: `TestEachToolHasAUniqueShortcut` — a duplicate shortcut is
+- [x] Failing test: `TestEachToolHasAUniqueShortcut`; a duplicate shortcut is
       silent and maddening
 - [x] Failing test: `TestEscapeReturnsToSelect`
 - [x] Implement
@@ -160,9 +160,9 @@ default and the escape hatch.
 ### Task 7: Freehand
 **Files:** create `frontend/src/canvas/stroke.ts`, plus tests.
 **Behavior:** `perfect-freehand` turns pointer samples into an outline. Points
-are simplified before they are stored — a raw pointer stream is thousands of
+are simplified before they are stored: a raw pointer stream is thousands of
 points and every one of them would end up in the file.
-- [x] Failing test: `TestSimplificationKeepsTheStrokeShape` — within a
+- [x] Failing test: `TestSimplificationKeepsTheStrokeShape` holds within a
       tolerance, so it cannot be "fixed" by dropping simplification
 - [x] Implement
 - [x] Green: `cd frontend && npm test`
@@ -192,27 +192,27 @@ has one.
 
 ## Artifacts
 
-- `docs/shortcuts.md` — created here
-- `.ai/rules/design-system.md` — `CanvasControls` and `Toolbar` marked as built
-- `.ai/rules/canvas.md` — anything measured about Konva that a future reader
+- `docs/shortcuts.md`: created here
+- `.ai/rules/design-system.md`: `CanvasControls` and `Toolbar` marked as built
+- `.ai/rules/canvas.md`: anything measured about Konva that a future reader
   would otherwise have to rediscover
-- `docs/decisions.md` — undo strategy, the deferred spatial index, the
+- `docs/decisions.md`: undo strategy, the deferred spatial index, the
   regression above, and any interaction token added
-- Build-loop repo-state — Milestone 4 closed, the regression recorded as a
+- Build-loop repo-state: Milestone 4 closed, the regression recorded as a
   known state of the app, Konva's version
-- `.claude/plan/roadmap.md` — Milestone 4 marked complete
+- `.claude/plan/roadmap.md`: Milestone 4 marked complete
 
 ## Out of scope
 
 - Persistence. Nothing reaches disk until Milestone 5.
-- `diagram` elements — Milestone 6.
-- Connectors and bindings — Milestone 7. Arrows here are plain elements that do
+- `diagram` elements: Milestone 6.
+- Connectors and bindings: Milestone 7. Arrows here are plain elements that do
   not attach to anything.
-- Icons and images — Milestone 9.
+- Icons and images: Milestone 9.
 - A spatial index, until there is a measured reason for one.
 
 
-## Completion record — 2026-09-17
+## Completion record: 2026-09-17
 
 129 frontend tests, every gate green, the app launches with the canvas pane.
 
@@ -225,8 +225,8 @@ tool shortcuts and zoom are wired; drawing with the tools is not.
 **Two bugs the type checker and linter caught, both real:**
 
 - `Omit<SceneElement, 'id' | 'z'>` collapses a union to its shared keys, so
-  `NewElement` silently rejected every element with fields of its own — text,
-  line, group. Replaced with a distributive version.
+  `NewElement` silently rejected every element with fields of its own (text,
+  line, group). Replaced with a distributive version.
 - `paste` destructured `id` and `z` only to discard them, which lint flagged;
   the copy now goes through `add()`, which assigns both anyway.
 
@@ -236,5 +236,5 @@ JS) rather than the native `canvas` package, which would have to build on three
 CI platforms.
 
 **The regression is live and recorded.** Typing D2 renders nothing until
-Milestone 6 puts a diagram element on the canvas. The pipeline still runs —
-diagnostics still reach the editor gutter — and all of its tests still pass.
+Milestone 6 puts a diagram element on the canvas. The pipeline still runs
+(diagnostics still reach the editor gutter), and all of its tests still pass.

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 // Desktop users keyboard far more than web users and notice immediately when
 // focus is invisible. This catches a component shipping with interactive
-// elements and no focus treatment at all — it cannot judge whether the ring is
+// elements and no focus treatment at all. It cannot judge whether the ring is
 // *good*, which is what the manual pass is for.
 
 const COMPONENT_DIRS = ['src/components', 'src/shell', 'src/settings'];

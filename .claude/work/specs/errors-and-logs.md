@@ -14,7 +14,7 @@ own action.
 | Panic elsewhere (startup, a goroutine) | The app vanishes: Wails' default panic handler calls `os.Exit(1)` | Nothing |
 | Uncaught frontend exception or rejection | Usually nothing; part of the UI may stop | Nothing, apart from two `console.error` calls |
 | Webview content process dies (macOS) | A blank window | Nothing: no listener for `EventWebViewWebContentProcessDidTerminate` |
-| Expected errors (conflict, save failure, bad D2) | Prompts, status bar, diagnostics | — |
+| Expected errors (conflict, save failure, bad D2) | Prompts, status bar, diagnostics | n/a |
 
 The root fact: `pkg/application/logger_prod.go` makes the production
 `DefaultLogger` write to `io.Discard`. Once built for release, nothing any
@@ -79,14 +79,14 @@ the milestone.
   last time", with Open Logs Folder, Copy Report, Report Issue… and Dismiss.
 
 ### 6. Help menu
-- **Open Logs Folder** — reveals the folder in Finder, Explorer or the file
+- **Open Logs Folder**: reveals the folder in Finder, Explorer or the file
   manager.
-- **Copy Diagnostics** — puts a plain-text report on the clipboard:
+- **Copy Diagnostics**: puts a plain-text report on the clipboard:
   - Bava version
   - OS and architecture
   - webview engine and version
   - the most recent log lines
-- **Report Issue…** — opens the project's new-issue page in the browser with a
+- **Report Issue…**: opens the project's new-issue page in the browser with a
   template. Nothing is attached or sent automatically; the user pastes or
   attaches what they choose.
 
@@ -94,7 +94,7 @@ the milestone.
 - document prose, D2 source, canvas content or labels
 - AI prompts, replies or transcripts
 - credentials or tokens, in any form
-- file paths or file names — found while implementing: a name can be content.
+- file paths or file names (found while implementing: a name can be content).
   The home directory is still redacted to `~` as a backstop for messages Bava
   does not write, such as Wails' own
 
@@ -110,24 +110,24 @@ with distinctive content, then asserts none of that content appears in the log.
 
 ## Decisions
 
-### Retention: the last 10 sessions, 50 MB total — 2026-09-17
+### Retention: the last 10 sessions, 50 MB total (2026-09-17)
 Asked and answered. At startup, sessions beyond the newest 10 are deleted, then
 the oldest are deleted until the folder is under 50 MB. Pruning happens only at
 startup, and never touches a session whose process is still running, so while
 Bava runs the folder can briefly exceed the cap by the live session and its
 roll. The current session
 is never pruned. A single session that grows past the cap rolls to
-`<name>.1.log`, replacing any earlier roll, and starts afresh — refined while
+`<name>.1.log`, replacing any earlier roll, and starts afresh. Refined while
 planning: the newest lines are always kept and a live file is never rewritten.
 
-### Verbose logging is a setting, off by default — 2026-09-17
+### Verbose logging is a setting, off by default (2026-09-17)
 Asked and answered. By default the log records warnings and errors, plus
 session start and end. Settings ▸ Advanced ▸ Verbose logging adds debug
-detail — timings, IPC calls, render durations — until turned off. It is a
+detail (timings, IPC calls, render durations) until turned off. It is a
 preference in `internal/config`, so it survives a restart while someone
 reproduces a problem. The privacy rules in section 7 apply at every level.
 
-### Report Issue's destination is decided at release — 2026-09-17
+### Report Issue's destination is decided at release (2026-09-17)
 Asked and answered. Milestone 5.8 builds Report Issue… and its bug template
 with the destination URL in a single constant, but the menu item stays hidden
 until Milestone 16 confirms the public repository. Open Logs Folder and Copy

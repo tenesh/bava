@@ -8,10 +8,10 @@ send breaks the first non-negotiable.
 
 ## A log never holds content
 Never document prose, D2 source, canvas text or labels, AI prompts or replies,
-or credentials — at any level, verbose included. **Never a file path or file
+or credentials, at any level, verbose included. **Never a file path or file
 name either**: a name can be content ("layoffs-march.md"). Log sizes, counts,
-durations and outcomes instead. Error messages that quote input — a D2
-diagnostic, a JSON syntax error, an OS error carrying the path — are not
+durations and outcomes instead. Error messages that quote input (a D2
+diagnostic, a JSON syntax error, an OS error carrying the path) are not
 logged verbatim; log what kind of failure it was.
 
 **Wails never gets the session logger.** It logs every bound call's arguments

@@ -2,7 +2,7 @@
    bundle. It exists only to stop the window flashing an unstyled page, so it
    carries nothing that belongs in the token layer.
 
-   Everything else — fonts, type scale, colours — lives in src/styles/. */
+   Everything else (fonts, type scale, colours) lives in src/styles/. */
 :root {
   /* Lets the platform paint the right background before any token is loaded. */
   color-scheme: light dark;

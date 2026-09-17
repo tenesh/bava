@@ -25,7 +25,7 @@ type Persisted = {
 const DEFAULTS: Persisted = {
   mode: 'both',
   showsFiles: true,
-  // Collapsed until a provider is configured — an empty pane taking a quarter
+  // Collapsed until a provider is configured: an empty pane taking a quarter
   // of the window teaches the user nothing.
   showsAI: false,
 };

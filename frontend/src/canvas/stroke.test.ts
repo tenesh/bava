@@ -44,7 +44,7 @@ function distanceToSegment(px: number, py: number, ax: number, ay: number, bx: n
 describe('stroke simplification', () => {
   // A raw pointer stream is thousands of points and every one would end up in
   // the file. Simplification has to shrink it *and* keep the shape, so the
-  // tolerance is asserted — it cannot be "fixed" by skipping simplification.
+  // tolerance is asserted: it cannot be "fixed" by skipping simplification.
   it('drops points from a dense straight line', () => {
     const dense = denseLine(400);
     const simplified = simplify(dense, 1);

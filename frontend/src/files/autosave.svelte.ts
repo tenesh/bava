@@ -5,7 +5,7 @@
  * writes an untitled document: that would mean a save dialog nobody asked
  * for, or a path made up for them.
  *
- * A conflict — another program wrote the file — pauses autosave rather than
+ * A conflict (another program wrote the file) pauses autosave rather than
  * prompting. A dialog appearing mid-sentence because a background save found
  * a conflict is worse than no autosave. The status bar says so, and the next
  * save the user makes by hand decides the conflict and resumes it.

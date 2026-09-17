@@ -32,8 +32,8 @@ const (
 )
 
 // LogEntry is an error the frontend reports. It carries the error's kind and
-// stack frames, never its message: JavaScript messages quote input — a JSON
-// syntax error shows the text it choked on — and a thrown value can be anything.
+// stack frames, never its message: JavaScript messages quote input (a JSON
+// syntax error shows the text it choked on), and a thrown value can be anything.
 type LogEntry struct {
 	Level string `json:"level"`
 	// Kind is the error's constructor name ("TypeError"), or the thrown

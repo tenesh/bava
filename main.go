@@ -28,8 +28,8 @@ var assets embed.FS
 // The native surface stays thin on purpose: the render pipeline, file I/O and
 // logging live in internal/, everything else in the frontend.
 func main() {
-	// Logging starts first, so everything after it — including Wails' own
-	// errors, which a release build would otherwise discard — is kept.
+	// Logging starts first, so everything after it (including Wails' own
+	// errors, which a release build would otherwise discard) is kept.
 	// It never fails: without a usable folder the session simply records nothing.
 	session := app.StartLogging()
 	// Bava's own packages log through slog's default logger, so it must be
@@ -60,7 +60,7 @@ func main() {
 
 	menus := app.NewMenuService()
 	wailsApp := application.New(application.Options{
-		// Wails builds the native role labels from this — "Hide Bava", "Quit Bava".
+		// Wails builds the native role labels from this: "Hide Bava", "Quit Bava".
 		Name:        "Bava",
 		Description: "Local-only diagrams and docs",
 		// Not the session logger itself: Wails logs every bound call's

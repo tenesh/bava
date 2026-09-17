@@ -4,17 +4,17 @@
 start in Milestone 3 without a literal value anywhere.
 
 **Specs:**
-- `.claude/plan/roadmap.md` — Milestone 2
-- `.ai/rules/design-system.md` — token rules, density, the theme/diagram split
-- `.ai/rules/canvas.md` — bundled fonts; diagram tokens are a separate layer
-- `~/Workspace/designs/bava/claude-design-v1/Bava Mockups.dc.html` — the
+- `.claude/plan/roadmap.md`: Milestone 2
+- `.ai/rules/design-system.md`: token rules, density, the theme/diagram split
+- `.ai/rules/canvas.md`: bundled fonts; diagram tokens are a separate layer
+- `~/Workspace/designs/bava/claude-design-v1/Bava Mockups.dc.html`: the
   palette. **Reference for appearance only**: behaviour and storage come from
   the code and the rules, never from a mockup caption.
-- Build-loop repo-state — the Ark portal finding that `--z-*` exists to fix
+- Build-loop repo-state: the Ark portal finding that `--z-*` exists to fix
 
 **File format impact:** none. Milestone 2 writes nothing to disk except the
 theme choice, which is a per-viewer UI convenience in `localStorage` inside
-try/catch — never document state.
+try/catch, never document state.
 
 **UI impact:** no components. `frontend/src/components/` stays empty until
 Milestone 3; this milestone is what makes it legal to start.
@@ -38,7 +38,7 @@ Copied from the specs, values verbatim:
   of its own and portalled content painted *below* a plain
   `position: fixed; z-index: 9999` element.
 - The `diagram-*` group is a separate layer. A diagram's SVG is rendered in Go
-  and does not inherit CSS, so a theme change must update both — chrome via
+  and does not inherit CSS, so a theme change must update both: chrome via
   custom properties, every diagram element via a re-render.
 
 ### The palette, verbatim from the design
@@ -111,7 +111,7 @@ reader knows it came from us rather than the design.
 `frontend/src/styles/index.scss`.
 **Behavior:** `sass` added as a devDependency so Vite compiles `.scss`. A
 single entry stylesheet imports the token partials and is imported once from
-`main.ts`. Declarative scaffolding — implement, then pin.
+`main.ts`. Declarative scaffolding: implement, then pin.
 - [x] Implement
 - [x] Green: `cd frontend && npm run build` and the compiled CSS contains
       `--color-surface`
@@ -127,8 +127,8 @@ was derived and why.
 - [x] Implement
 - [x] Contract test `tokens.test.ts`: every colour token defined on `:root` has
       a counterpart under `[data-theme="dark"]`. **This is the test that fails
-      if someone adds a light value and forgets the dark one** — the most
-      likely error in this milestone.
+      if someone adds a light value and forgets the dark one** (the most
+      likely error in this milestone).
 - [x] Contract test: the token names match the design sheet exactly, so a
       rename is a deliberate act rather than a typo.
 - [x] Green: `cd frontend && npm test`
@@ -139,20 +139,20 @@ was derived and why.
 13px base move into `_type.scss`. `public/style.css` keeps only what must load
 before the app does. This clears two debts named in Milestone 1's comments.
 - [x] Implement
-- [x] Green: `cd frontend && npm run build`, and the fonts still resolve —
+- [x] Green: `cd frontend && npm run build`, and the fonts still resolve:
       `dist/` contains the woff2 files and the compiled CSS references them
 
 ### Task 4: Theme state
 **Files:** create `frontend/src/styles/theme.svelte.ts`,
 `frontend/src/styles/theme.test.ts`; modify `frontend/src/App.svelte`.
-**Behavior:** three states — light, dark, follow-system. The resolved theme is
+**Behavior:** three states: light, dark, follow-system. The resolved theme is
 written to `data-theme` on `<html>`. The choice persists in `localStorage`
 inside try/catch; a throw or missing value falls back to follow-system.
 Follow-system tracks `prefers-color-scheme` changes live.
-- [x] Failing test: `TestResolvesSystemPreferenceWhenFollowing` — expected
+- [x] Failing test: `TestResolvesSystemPreferenceWhenFollowing`; expected
       failure: module does not exist
 - [x] Failing test: `TestExplicitChoiceOverridesSystem`
-- [x] Failing test: `TestUnavailableLocalStorageFallsBackToSystem` — a throwing
+- [x] Failing test: `TestUnavailableLocalStorageFallsBackToSystem`; a throwing
       `localStorage` must not break theming, which is the failure mode the
       try/catch rule exists for
 - [x] Failing test: `TestSystemChangeUpdatesResolvedThemeWhileFollowing`
@@ -166,13 +166,13 @@ modify `internal/render/render.go`.
 `d2target.ThemeOverrides` and are passed to `d2svg.RenderOpts`. This is the
 "update both paths" requirement: chrome via custom properties, diagram via a
 re-render.
-- [x] Failing test: `TestDarkThemeChangesRenderedColours` — the same source
+- [x] Failing test: `TestDarkThemeChangesRenderedColours`; the same source
       rendered light and dark produces different SVG. Expected failure:
       `Options` has no theme field, so both are identical.
-- [x] Failing test: `TestThemeOverridesCarryTokenValues` — a named token value
+- [x] Failing test: `TestThemeOverridesCarryTokenValues`; a named token value
       appears in the rendered SVG, so a mapping that silently drops a field
       fails here rather than looking subtly wrong on screen
-- [x] Failing test: `TestUnsetThemeRendersDefault` — omitting the theme keeps
+- [x] Failing test: `TestUnsetThemeRendersDefault`; omitting the theme keeps
       Milestone 1's output byte-identical, which is what stops the existing
       goldens changing
 - [x] Implement
@@ -185,7 +185,7 @@ re-render.
 **Behavior:** the existing fixtures rendered with the dark theme, committed as
 goldens. The light goldens must not change; if they do, the mapping is leaking
 into the default path.
-- [x] Failing test: `TestGolden/architecture-dark` — expected failure: the
+- [x] Failing test: `TestGolden/architecture-dark`; expected failure: the
       `.svg` does not exist
 - [x] Implement, generate with `-update`
 - [x] **Open both generated SVGs and look at them** before committing
@@ -197,7 +197,7 @@ into the default path.
 outside `styles/tokens/` and fails listing every offender. The roadmap's exit
 criterion is a grep; this makes it a gate that runs on every commit and in CI,
 because a rule nothing enforces decays.
-- [x] Failing test: it must fail right now — `App.svelte` still carries the
+- [x] Failing test: it must fail right now; `App.svelte` still carries the
       `1px` divider from Milestone 1. Watch it fail, then fix the divider to
       use a token, then watch it pass.
 - [x] Implement
@@ -205,28 +205,28 @@ because a rule nothing enforces decays.
 
 ## Artifacts
 
-- `.ai/rules/design-system.md` — the token table updated with the real names,
+- `.ai/rules/design-system.md`: the token table updated with the real names,
   and the derived tokens marked as derived
-- `docs/decisions.md` — dated rows for each derivation: radius scale, motion,
+- `docs/decisions.md`: dated rows for each derivation: radius scale, motion,
   z-layers, `warning`, the two interaction-state tokens, the focus halo, and
   the decision that the element colour palette is scene data rather than a
   token
-- Build-loop repo-state — Milestone 2 closed, the two Milestone 1 debts
+- Build-loop repo-state: Milestone 2 closed, the two Milestone 1 debts
   cleared, dark goldens counted
-- `.claude/plan/roadmap.md` — Milestone 2 marked complete
+- `.claude/plan/roadmap.md`: Milestone 2 marked complete
 
 ## Out of scope
 
 - Any component. `frontend/src/components/` stays empty until Milestone 3.
 - Ark UI, which is not a dependency yet. `--z-*` is defined here and first
   exercised in Milestone 3.
-- The native window background colour removed from `main.go` in Milestone 1 —
+- The native window background colour removed from `main.go` in Milestone 1;
   it needs a Wails window API call, which belongs with the shell in
   Milestone 3.
 - Canvas element styling. The canvas does not exist until Milestone 4.
 
 
-## Completion record — 2026-09-17
+## Completion record: 2026-09-17
 
 All seven tasks complete; 48 frontend tests, four goldens, every gate green.
 
@@ -237,12 +237,12 @@ Corrections to this plan, made while executing it:
   a text colour rather than a surface. Added `--color-text-prose`; did not
   invent interaction tokens.
 - **The D2 mapping was wrong twice.** First onto `N4`/`N5`, which never reach
-  the output — shapes come from the `B` family. Then with several fill slots
+  the output; shapes come from the `B` family. Then with several fill slots
   left unmapped, which rendered a nested cylinder near-white and a person shape
   pale lavender. Both found by rasterising the dark golden and looking at it,
   after the byte test had already passed.
 - **The theme attribute was written from an `$effect`**, which flushes a
-  microtask late — the document would paint once with the wrong theme. Now
+  microtask late: the document would paint once with the wrong theme. Now
   written synchronously, which also removed an undisposed `$effect.root`.
 
 Milestone 1 debts cleared: the 13px base, the font wiring, and the `1px`

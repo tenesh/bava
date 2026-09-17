@@ -41,7 +41,7 @@ Check every item. **Absence of evidence is a finding, not a pass.**
   store imports, and `export let` in any `.svelte` file.
 - **D2:** import path must be `github.com/d2lang/d2`. Flag any
   `oss.terrastruct.com/d2` import or doc reference.
-- **Ark UI:** flag any code that looks ported from a React example — JSX-style
+- **Ark UI:** flag any code that looks ported from a React example: JSX-style
   prop spreading, `onOpenChange`-style React callbacks where the Svelte
   adapter differs, `className`.
 - **TypeScript only.** Flag new `.js` source files (config files excepted
@@ -52,7 +52,7 @@ Check every item. **Absence of evidence is a finding, not a pass.**
 - Every `d2lib.Compile` call site has a logger-bearing context
   (`d2log.With(ctx, ...)`). A bare `context.Background()` reaching `Compile`
   is a finding.
-- No shelling out to a `d2` binary — grep for `exec.Command` with `d2`.
+- No shelling out to a `d2` binary; grep for `exec.Command` with `d2`.
 - TALA remains the default engine; dagre/elk are alternatives, not fallbacks.
 - `CompileOptions.FS` is nil, or rooted via `lib/localfile`. An unrooted FS
   handling user-supplied paths is a blocker.
@@ -66,7 +66,7 @@ Check every item. **Absence of evidence is a finding, not a pass.**
 - CodeMirror and ProseMirror are mounted in `onMount` and destroyed in the
   cleanup return. Flag reactive props passed into either.
 - One render IPC surface. Flag a second render path, and flag any
-  frontend-side layout or text measurement — all measurement happens in Go via
+  frontend-side layout or text measurement; all measurement happens in Go via
   `textmeasure`.
 - Render requests carry an incrementing ID and stale responses are dropped.
   A debounced call without staleness handling is a finding.
@@ -109,7 +109,7 @@ Check every item. **Absence of evidence is a finding, not a pass.**
 
 - Errors wrapped with context; no panics in library code.
 - Exported Go functions documented.
-- No hardcoded user-facing strings — everything through translation files.
+- No hardcoded user-facing strings: everything through translation files.
 - No hardcoded tunables (debounce ms, default engine, spacing constants):
   these resolve from config or tokens.
 - **Flag any git write operation attempted by an agent as a blocker,

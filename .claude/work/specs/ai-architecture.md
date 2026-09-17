@@ -13,12 +13,12 @@ governing principle changes from **no network** to **no service we operate**:
 > Nothing is stored or hosted on Bava's side. Every call goes from the user's
 > machine to an endpoint the user chose, with credentials the user supplied.
 
-Telemetry, analytics and crash reporting stay forbidden — that is not what this
+Telemetry, analytics and crash reporting stay forbidden; that is not what this
 change was for.
 
 ## Two AI features, not one
 
-**Generation.** Prompt in, whole artifact out — a diagram or document content.
+**Generation.** Prompt in, whole artifact out: a diagram or document content.
 Nothing existed before, so accept-or-discard is sufficient.
 
 **Targeted edit.** The user selects a range and asks for a fix or a review.
@@ -35,7 +35,7 @@ that behaves strangely once, the feature is never trusted again.
 which flows through the existing `Render` path, debounce and goldens. No second
 render path.
 
-## Compile-and-repair loop — decided
+## Compile-and-repair loop: decided
 
 Model output is compiled in-process before the user sees it. On a diagnostic,
 the error is fed back to the model and retried, **capped at 2 retries**, with a
@@ -44,10 +44,10 @@ visible "checking" state. Only then does it reach the canvas.
 This is the payoff of owning the compiler in-process: the app can verify the
 model's work before presenting it. It costs a couple of cheap round trips and
 substantially lifts the hit rate of "draw me this". On a hosted provider those
-retries are the user's money, so the cap is fixed and the state is visible —
+retries are the user's money, so the cap is fixed and the state is visible,
 never a silent loop.
 
-## Chat persistence — decided
+## Chat persistence: decided
 
 Per-file threads, **JSONL, append-only**, in a central user-level store:
 
@@ -63,7 +63,7 @@ Application Support on macOS, `%APPDATA%` on Windows.
 state, not work product: losing it costs history, never work. Append-only
 writing is crash-safe (a crash costs the last line, not the file), fits
 streaming responses, keeps tool calls and model metadata structured, and gets
-`file-format.md`'s forward-compatibility requirement for free — unknown keys
+`file-format.md`'s forward-compatibility requirement for free: unknown keys
 survive because existing lines are never rewritten. It is still plain text:
 greppable, `jq`-able, no database, no binary container.
 
@@ -75,8 +75,8 @@ travel when a project is cloned or shared.
 key, and an external rename or a moved project folder detaches history.
 Detached history is never deleted; a "relink history" action is owed later.
 
-**One chat per file, not per object.** The pane serves the whole file —
-document and every diagram on the canvas — as a single conversation. A diagram
+**One chat per file, not per object.** The pane serves the whole file
+(document and every diagram on the canvas) as a single conversation. A diagram
 is attached to a *message* as a context reference, not as a separate thread, so
 "about this diagram" is scoping within one transcript rather than a second one.
 This keeps the per-file JSONL decision intact: one file, one thread.
@@ -86,16 +86,16 @@ conversation and persists; the inline edit box shows a diff and vanishes on
 accept or reject. The thread stays readable as a conversation. Accepted cost:
 no audit trail of what AI changed in a document.
 
-## Credentials — decided
+## Credentials: decided
 
-API keys and OAuth tokens go to the **OS secret store** — macOS Keychain,
+API keys and OAuth tokens go to the **OS secret store**: macOS Keychain,
 Windows Credential Manager, libsecret on Linux. Never in a config file, never
 in a transcript, never in a log. This needs a per-platform code path and will
 need a headless story for CI.
 
 ## Context and consent
 
-A targeted edit needs surrounding context, usually the whole file — so
+A targeted edit needs surrounding context, usually the whole file, so
 highlighting one paragraph sends far more than the paragraph. The consent
 screen must say this plainly before the first hosted call, not in a settings
 page nobody opens.

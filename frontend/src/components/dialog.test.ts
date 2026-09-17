@@ -27,7 +27,7 @@ describe('portal root', () => {
 
 describe('portal stacking', () => {
   // jsdom does not paint, so paint order cannot be asserted here. What can be
-  // asserted is that the rule exists and resolves from the token — which is
+  // asserted is that the rule exists and resolves from the token, which is
   // the thing that was missing when the spike found Ark content rendering
   // below ordinary app chrome.
   // Relative to the vitest root, not import.meta.url: under jsdom that is not

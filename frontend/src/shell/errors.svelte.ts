@@ -3,8 +3,8 @@
  *
  * The first unexpected error in a session opens a dialog; after that, errors
  * are only logged and noted in the status bar, so a failure repeating in a
- * loop cannot stack modals. Notices from Go — the previous session ended
- * unexpectedly, the webview was reloaded — each open the dialog once.
+ * loop cannot stack modals. Notices from Go (the previous session ended
+ * unexpectedly, the webview was reloaded) each open the dialog once.
  *
  * Expected errors (a save conflict, a file that will not open) never come
  * here: they have their own plain-language prompts.

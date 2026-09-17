@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * The panda mark. One drawing at every size — never redrawn, stretched or
+   * The panda mark. One drawing at every size, never redrawn, stretched or
    * recoloured.
    *
    * Paper on ink, always: the colour and the tile come from `--color-mark`
