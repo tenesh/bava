@@ -405,7 +405,7 @@ automatic upload: never.
 
 ---
 
-## Milestone 6: Shapes that look right
+## Milestone 6: Shapes that look right *(gated; awaiting the window check in both themes)*
 
 **Goal:** Everything drawn on the canvas is visible, styled and selectable,
 with the shape set diagrams need.
@@ -436,6 +436,60 @@ themes.
 
 ---
 
+## Milestone 6.1: Window check and launch *(gated; awaiting a human look in both themes)*
+
+**Goal:** Fix what Milestone 6's first window check found, and launch into a
+splash and a no-file state. Plan `.claude/work/plans/06.1-window-check-and-launch.md`;
+decisions `.claude/work/specs/launch.md`.
+
+**Depends on:** Milestone 6.
+
+---
+
+## Milestone 6.2: Canvas interface
+
+**Goal:** A canvas that responds live and reads like a tool: icon rail with
+eraser, insert panel, a selection toolbar, a grouped right-click menu, align
+and distribute, and the window-check fixes. No file format change.
+
+**Scope and decisions:** `.claude/work/specs/canvas-toolbar.md` (Sequencing,
+06.2 row).
+
+**Exit criterion:** `go test ./internal/... .` and `(cd frontend && npm run
+check && npm run lint && npm test)` green, plus a look at a running window.
+
+**Depends on:** Milestone 6.1.
+
+---
+
+## Milestone 6.3: Styles and rotation
+
+**Goal:** The style properties of the adapted Excalidraw baseline, and
+rotation, each specified in `docs/file-format.md` before anything writes it.
+
+**Scope and decisions:** `.claude/work/specs/canvas-toolbar.md` (Adapted
+baseline, Rotation).
+
+**Exit criterion:** `go test ./internal/format -run RoundTrip && go test
+./internal/... .` and the frontend gates green, with a round trip of every new
+field and a look at a running window.
+
+**Depends on:** Milestone 6.2.
+
+---
+
+## Milestone 6.4: Export *(moved forward from Milestone 15, 2026-09-18)*
+
+**Goal:** Copy a selection as PNG or SVG, and export through a settings dialog.
+
+**Scope:** Canvas elements. Diagram elements join through the existing
+`Render` path in Milestone 6.6, never a second renderer. Dialog settings in
+`.claude/work/specs/canvas-toolbar.md`.
+
+**Depends on:** Milestone 6.3.
+
+---
+
 ## Milestone 6.5: Connections and containers
 
 **Goal:** Arrows that stay attached as things move, and containers that carry
@@ -458,7 +512,8 @@ green, with tests that an attached arrow follows its endpoints through a move
 and through undo, that moving a container moves its contents in one history
 step, and a round trip of attachments and containment.
 
-**Depends on:** Milestone 6.
+**Depends on:** Milestone 6.4. Arrow types and arrowheads exist from 6.3;
+this milestone adds attachment and routing that follows moves.
 
 ---
 
@@ -489,6 +544,16 @@ appears in the geometry, a frontend test converting that fixture into the
 expected elements, and a test that one undo removes an inserted diagram.
 
 **Depends on:** Milestone 6.5, Milestone 1 (the pipeline).
+
+---
+
+## Milestone 6.7: Code block *(moved forward from Milestone 15, 2026-09-18)*
+
+**Goal:** A code element with a chosen language and syntax highlighting, in
+Geist Mono, using CodeMirror's language support. Specified in
+`docs/file-format.md` first.
+
+**Depends on:** Milestone 6.6.
 
 ---
 
@@ -740,8 +805,9 @@ path**, never a second renderer. Workspace search with results, jump-to-match,
 and the `EmptyState` the design system already assumes exists for it.
 
 **Carried from Milestone 6:** arbitrary hex colours for shapes, beyond the
-swatch palette. Carried from Milestone 6.6: SQL table, UML class and code-block
-shapes.
+swatch palette. Carried from Milestone 6.6: SQL table and UML class shapes.
+Canvas export and code blocks moved forward to Milestones 6.4 and 6.7
+(2026-09-18); this milestone keeps document export and PDF.
 
 **Exit criterion:**
 

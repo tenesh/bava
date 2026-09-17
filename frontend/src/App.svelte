@@ -8,22 +8,39 @@
   import { createViewport } from './canvas/viewport';
   import { createTools } from './canvas/tools.svelte';
   import CanvasControls from './components/CanvasControls.svelte';
+  import ToolRail from './components/ToolRail.svelte';
+  import InsertPanel from './components/InsertPanel.svelte';
+  import { createInsert } from './shell/insert.svelte';
+  import ContextMenu from './components/ContextMenu.svelte';
+  import { contextMenuFor, contextSelection, type MenuNode } from './canvas/context-menu';
+  import { topLevel } from './canvas/edit';
+  import { createScene } from './canvas/scene';
+  import { topmostAt } from './canvas/eraser';
   import { SourcePane } from './editor/source-pane';
   import { createRenderClient } from './ipc/render.svelte';
   import { createTheme } from './styles/theme.svelte';
   import Shell from './shell/Shell.svelte';
-  import { createDocument } from './files/document.svelte';
+  import { createDocument, sceneToSave } from './files/document.svelte';
   import { createWorkspace } from './files/workspace.svelte';
   import { createHistory } from './canvas/history';
   import { createSelection } from './canvas/selection';
   import { createPointerHandler } from './canvas/pointer';
   import { handleKey } from './canvas/keymap';
   import { createCanvasCommands } from './canvas/commands';
-  import type { SceneData } from './canvas/scene';
+  import { wheelAction } from './canvas/navigation';
+  import { LabelEditor, commitLabel, commitText, editableAt, insertText } from './canvas/label-editor';
+  import { canvasLineWidth, measureTextBlock } from './canvas/text-measure';
+  import { applyStyle, currentStyle } from './canvas/style';
+  import SelectionToolbar from './components/SelectionToolbar.svelte';
+  import { toolbarFor } from './canvas/toolbar';
+  import { readRootVariable } from './canvas/palette';
+  import type { SceneData, SceneElement } from './canvas/scene';
   import FileTree from './components/FileTree.svelte';
   import ConfirmDialog from './components/ConfirmDialog.svelte';
   import { createFileActions, type Choice, type PromptKind } from './files/actions.svelte';
   import EmptyState from './components/EmptyState.svelte';
+  import Splash from './components/Splash.svelte';
+  import { createLaunch, LAUNCH_CAP_MS } from './shell/launch.svelte';
   import ShortcutsDialog from './components/ShortcutsDialog.svelte';
   import AboutDialog from './components/AboutDialog.svelte';
   import ErrorDialog from './components/ErrorDialog.svelte';
@@ -36,22 +53,20 @@
   import { createAutosave } from './files/autosave.svelte';
   import { createViewState } from './shell/view.svelte';
   import { createDispatcher, MENU_COMMAND_EVENT, type Command, type CommandHandlers } from './shell/commands';
-  import { editTarget, fieldSelection } from './shell/edit-target';
-  import { currentPlatform, matchShortcut, reservedByMenu, shortcutGroups, type MenuSpec } from './shell/shortcuts';
+  import { canvasKeyStandsDown, editTarget, fieldSelection } from './shell/edit-target';
+  import {
+    canvasScoped,
+    currentPlatform,
+    keysFor,
+    matchShortcut,
+    reservedByMenu,
+    shortcutGroups,
+    type MenuSpec,
+  } from './shell/shortcuts';
   import menuSpec from '../../internal/app/menu/spec.json';
   import { Clipboard, Events } from '@wailsio/runtime';
   import { FileService, LogService, MenuService } from '../bindings/github.com/tenesh/bava/internal/app';
   import { t } from './i18n/t';
-
-  const initialSource = `users: Users {shape: person}
-web: Web App {
-  api: API
-}
-db: Postgres {shape: cylinder}
-
-users -> web.api: request
-web.api -> db: query
-`;
 
   const client = createRenderClient();
   const theme = createTheme();
@@ -66,7 +81,15 @@ web.api -> db: query
   const tools = createTools();
   const history = createHistory({ elements: [] });
   const selection = createSelection();
-  const pointer = createPointerHandler({ history, selection, tools });
+  const pointer = createPointerHandler({
+    history,
+    selection,
+    tools,
+    // Half a handle's on-screen side, in scene units at the current zoom.
+    handleSize: () => (parseFloat(readRootVariable('--size-selection-handle')) || 0) / 2 / viewport.zoom,
+    // Half the trail's on-screen width, in scene units: what the trail visibly covers.
+    eraserTolerance: () => (parseFloat(readRootVariable('--size-eraser-trail')) || 0) / 2 / viewport.zoom,
+  });
   const canvasCommands = createCanvasCommands({ history, selection });
   const view = createViewState();
   const settingsState = createSettings();
@@ -74,14 +97,74 @@ web.api -> db: query
   const platform = currentPlatform();
   const shortcuts = shortcutGroups(menuSpec as MenuSpec, platform);
   const shortcutFor = matchShortcut(menuSpec as MenuSpec, platform);
+  const canvasOnly = canvasScoped(menuSpec as MenuSpec);
   let zoom = $state.raw(viewport.zoom);
   let hasSelection = $state.raw(false);
+  // Whether Copy Styles has copied anything, for the native menu.
+  let canPasteStyles = $state.raw(false);
   let settingsOpen = $state(false);
+  // The right-click menu, and where it opens.
+  let contextMenu = $state.raw<{ items: MenuNode[]; anchor: { x: number; y: number } } | null>(null);
+
+  function selectionInfo() {
+    const selected = history.current.elements.filter((e) => selection.has(e.id));
+    const units = topLevel(createScene(history.current), selected).length;
+    return {
+      units,
+      canGroup: units >= 2,
+      canUngroup: selected.some((e) => e.type === 'group'),
+      canPaste: canvasCommands.canPaste,
+      canPasteStyles: canvasCommands.canPasteStyles,
+    };
+  }
+
+  /**
+   * Opened after the event that asked for it has finished: opened during it,
+   * the same right-click reaches the menu's outside-interaction check and
+   * closes it at once.
+   */
+  function openContextMenu(anchor: { x: number; y: number }) {
+    const items = contextMenuFor(selectionInfo());
+    setTimeout(() => (contextMenu = { items, anchor }));
+  }
+
+  // The insert panel beside the rail.
+  let insertOpen = $state(false);
+  const insert = createInsert();
+
+  function openInsertPanel() {
+    insert.reset();
+    insertOpen = true;
+  }
+
+  /** Close the panel; the rail gives focus back to its + button. */
+  function closeInsertPanel() {
+    insertOpen = false;
+  }
   let aboutOpen = $state(false);
   let shortcutsOpen = $state(false);
   // A passing message for the status bar: a command or a setting that failed.
   let notice = $state.raw<string | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+
+  // The canvas is on screen only with a document open and a view that shows it.
+  // Hidden, it takes no keys: Backspace must not empty a canvas nobody can see.
+  const canvasShown = () => doc.isOpen && view.showsCanvas;
+
+  // The splash covers the window until settings and fonts have loaded.
+  const settingsLoad = settingsState.load();
+  const launch = createLaunch({
+    settings: settingsLoad,
+    // jsdom has no FontFaceSet.
+    fonts: document.fonts?.ready ?? Promise.resolve(),
+    capMs: LAUNCH_CAP_MS,
+  });
+
+  // The ways out of the no-file state, with the keys the menu binds.
+  const noFileHints = [
+    { keys: keysFor(menuSpec as MenuSpec, 'file.open', platform), label: t('empty.noFile.open') },
+    { keys: keysFor(menuSpec as MenuSpec, 'file.new', platform), label: t('empty.noFile.new') },
+  ];
 
   const errors = createErrorPolicy({ notify: () => notify(t('error.another')), translate: t });
 
@@ -117,18 +200,33 @@ web.api -> db: query
 
   // Selection is plain state inside the canvas; the menu's arrange items read
   // this copy of whether anything is selected.
+  // The selection's ids, published for the colour bar; selection itself is
+  // plain state inside the canvas.
+  let selectedIds = $state.raw<string[]>([]);
+  const toolbar = $derived(toolbarFor(published, selectedIds));
+
   function syncSelection() {
     hasSelection = canvasCommands.hasSelection;
+    selectedIds = selection.ids;
+    canvas.setSelection(selection.ids);
   }
 
   function commit() {
+    // A gesture or command that changed nothing (a click, a selection) is not
+    // an edit: it must not mark the document unsaved or wake autosave.
+    const changed = published !== history.current;
+    // Undo can remove a selected element; its id must not stay selected.
+    selection.retain(history.current.elements.map((e) => e.id));
     published = history.current;
     syncSelection();
+    if (!changed) return;
     doc.touch();
     autosave.changed();
   }
 
-  const currentScene = () => ({ version: 1, elements: history.current.elements as never });
+  // The opened scene's version and unknown top-level keys travel back with
+  // the elements, so a save keeps what a newer Bava wrote.
+  const currentScene = () => sceneToSave(doc.sceneExtra, history.current.elements);
 
   const autosave = createAutosave({
     settings: () => ({ mode: settingsState.autosave, delayMs: settingsState.autosaveDelayMs }),
@@ -216,12 +314,90 @@ web.api -> db: query
     await workspace.refresh();
   }
 
-  const save = async () => afterSave(await fileActions.save());
-  const saveAs = async () => afterSave(await fileActions.saveAs());
+  // With nothing open there is nothing to save.
+  const save = async () => {
+    if (doc.isOpen) await afterSave(await fileActions.save());
+  };
+  const saveAs = async () => {
+    if (doc.isOpen) await afterSave(await fileActions.saveAs());
+  };
 
-  function zoomTo(next: number) {
-    viewport.setZoom(next);
+  let canvasHostEl: HTMLDivElement | null = null;
+
+  let labelEditor: LabelEditor | null = null;
+
+  /** Measure text as the stage draws it: the body font, line by line. */
+  function measureText(text: string) {
+    const fontSize = parseFloat(readRootVariable('--text-body')) || 0;
+    const lineHeight = parseFloat(readRootVariable('--leading-tight')) || 0;
+    const font = `${readRootVariable('--text-body').trim()} ${readRootVariable('--font-ui').trim()}`;
+    return measureTextBlock(text, { fontSize, lineHeight }, canvasLineWidth(font));
+  }
+
+  /** Open the editor over a shape's label, a frame's label, or a text element. */
+  function editElement(element: SceneElement) {
+    if (!labelEditor) return;
+    const topLeft = viewport.sceneToScreen({ x: element.x, y: element.y });
+    const isText = element.type === 'text';
+    labelEditor.open({
+      value: isText ? (element as { text: string }).text : ((element as { label?: string }).label ?? ''),
+      rect: { x: topLeft.x, y: topLeft.y, width: element.w * viewport.zoom, height: element.h * viewport.zoom },
+      align: isText || element.type === 'frame' ? 'left' : 'center',
+      measure: isText ? measureOnScreen : undefined,
+      onCommit: (value) => {
+        if (isText) commitText(history, element.id, value, measureText);
+        else commitLabel(history, element.id, value);
+        commit();
+      },
+    });
+  }
+
+  /** Free text's size on screen: its scene measurement at the current zoom. */
+  function measureOnScreen(text: string) {
+    const size = measureText(text);
+    return { width: size.width * viewport.zoom, height: size.height * viewport.zoom };
+  }
+
+  /** Place new text: nothing enters history until something is typed. */
+  function placeText(point: { x: number; y: number }) {
+    if (!labelEditor) return;
+    const screen = viewport.sceneToScreen(point);
+    labelEditor.open({
+      value: '',
+      rect: { x: screen.x, y: screen.y, width: 0, height: 0 },
+      measure: measureOnScreen,
+      align: 'left',
+      onCommit: (value) => {
+        if (insertText(history, point, value, measureText)) commit();
+      },
+    });
+  }
+
+  function editSelection() {
+    const ids = selection.ids;
+    if (ids.length !== 1) return;
+    const element = history.current.elements.find((e) => e.id === ids[0]);
+    if (element && (editableAt({ elements: [element] }, { x: element.x, y: element.y }) || element.type === 'frame')) {
+      editElement(element);
+    }
+  }
+
+  /** Push the viewport to the stage and the zoom readout. */
+  function applyView() {
+    // The editor sits over an element's old place; finish it before the view moves.
+    labelEditor?.commit();
+    canvas.setViewport({ zoom: viewport.zoom, pan: viewport.pan });
     zoom = viewport.zoom;
+  }
+
+  /** Zoom about a screen point; the canvas centre when none is given. */
+  function zoomTo(next: number, around?: { x: number; y: number }) {
+    const centre = around ?? {
+      x: (canvasHostEl?.clientWidth ?? 0) / 2,
+      y: (canvasHostEl?.clientHeight ?? 0) / 2,
+    };
+    viewport.zoomAt(centre, next);
+    applyView();
   }
 
   /**
@@ -234,7 +410,7 @@ web.api -> db: query
     field: () => void | Promise<void>;
     canvas: () => void | Promise<void>;
   }) {
-    const target = editTarget(document.activeElement, { canvasVisible: view.showsCanvas });
+    const target = editTarget(document.activeElement, { canvasVisible: canvasShown() });
     if (target !== 'none') await actions[target]();
   }
 
@@ -276,7 +452,11 @@ web.api -> db: query
   // text field as if the key had been pressed.
   const fieldCommand = (name: string) => () => void document.execCommand(name);
 
+  // A canvas command edits only a canvas on screen. Canvas shortcuts reach the
+  // page whatever is showing, and committing marks the document changed: with
+  // nothing open, that asked "save changes?" about a document that did not exist.
   const canvasEdit = (run: () => void) => () => {
+    if (!canvasShown()) return;
     run();
     commit();
   };
@@ -344,11 +524,38 @@ web.api -> db: query
     'tool.pen': () => tools.activate('pen'),
     'tool.text': () => tools.activate('text'),
     'tool.frame': () => tools.activate('frame'),
+    'tool.eraser': () => tools.activate('eraser'),
+    'tool.diamond': () => tools.activate('diamond'),
+    'tool.cylinder': () => tools.activate('cylinder'),
+    'tool.hexagon': () => tools.activate('hexagon'),
+    'tool.parallelogram': () => tools.activate('parallelogram'),
+    'tool.document': () => tools.activate('document'),
+    'tool.person': () => tools.activate('person'),
+    'tool.cloud': () => tools.activate('cloud'),
 
     'canvas.group': canvasEdit(canvasCommands.group),
     'canvas.ungroup': canvasEdit(canvasCommands.ungroup),
     'canvas.bringToFront': canvasEdit(canvasCommands.bringToFront),
     'canvas.sendToBack': canvasEdit(canvasCommands.sendToBack),
+    'canvas.bringForward': canvasEdit(canvasCommands.bringForward),
+    'canvas.sendBackward': canvasEdit(canvasCommands.sendBackward),
+    'canvas.flipHorizontal': canvasEdit(canvasCommands.flipHorizontal),
+    'canvas.flipVertical': canvasEdit(canvasCommands.flipVertical),
+    'canvas.duplicate': canvasEdit(canvasCommands.duplicate),
+    'canvas.copyStyles': () => {
+      if (!canvasShown()) return;
+      canvasCommands.copyStyles();
+      canPasteStyles = canvasCommands.canPasteStyles;
+    },
+    'canvas.pasteStyles': canvasEdit(canvasCommands.pasteStyles),
+    'canvas.alignLeft': canvasEdit(() => canvasCommands.align('left')),
+    'canvas.alignCenter': canvasEdit(() => canvasCommands.align('center')),
+    'canvas.alignRight': canvasEdit(() => canvasCommands.align('right')),
+    'canvas.alignTop': canvasEdit(() => canvasCommands.align('top')),
+    'canvas.alignMiddle': canvasEdit(() => canvasCommands.align('middle')),
+    'canvas.alignBottom': canvasEdit(() => canvasCommands.align('bottom')),
+    'canvas.distributeHorizontal': canvasEdit(() => canvasCommands.distribute('horizontal')),
+    'canvas.distributeVertical': canvasEdit(() => canvasCommands.distribute('vertical')),
 
     'help.shortcuts': () => {
       shortcutsOpen = true;
@@ -380,9 +587,10 @@ web.api -> db: query
     // which happens before this cleanup runs.
     const editorHost = sourceHost;
     const diagramHost = canvasHost;
+    canvasHostEl = diagramHost;
 
     pane.mount(editorHost, {
-      doc: initialSource,
+      doc: '',
       onChange: (source) => client.request(source),
       isReserved: reservedByMenu(menuSpec as MenuSpec, platform),
     });
@@ -397,32 +605,148 @@ web.api -> db: query
       });
     };
 
-    const onDown = (event: PointerEvent) => {
-      diagramHost.setPointerCapture(event.pointerId);
-      pointer.down(scenePoint(event), { additive: event.shiftKey });
-    };
-    const onMove = (event: PointerEvent) => pointer.move(scenePoint(event));
-    const onUp = (event: PointerEvent) => {
-      pointer.up(scenePoint(event));
-      commit();
+    const screenPoint = (event: { clientX: number; clientY: number }) => {
+      const rect = diagramHost.getBoundingClientRect();
+      return { x: event.clientX - rect.left, y: event.clientY - rect.top };
     };
 
+    // Panning by dragging: with the middle button, or with Space held.
+    let spaceHeld = false;
+    let panningFrom: { x: number; y: number } | null = null;
+
+    const onDown = (event: PointerEvent) => {
+      // A press inside the label editor is typing, not a canvas gesture.
+      if (labelEditor?.contains(event.target)) return;
+      // The right button opens the context menu; it never draws, drags or selects.
+      if (event.button === 2) return;
+      diagramHost.setPointerCapture(event.pointerId);
+      if (event.button === 1 || spaceHeld) {
+        panningFrom = screenPoint(event);
+        return;
+      }
+      // Text is placed with a click and typed; it is not a drag.
+      if (tools.active === 'text') return;
+      pointer.down(scenePoint(event), { additive: event.shiftKey, keepAspect: event.shiftKey });
+      // A click selects; show it now rather than on release.
+      syncSelection();
+    };
+    const onMove = (event: PointerEvent) => {
+      if (panningFrom) {
+        const now = screenPoint(event);
+        viewport.panBy(now.x - panningFrom.x, now.y - panningFrom.y);
+        panningFrom = now;
+        applyView();
+        return;
+      }
+      const point = scenePoint(event);
+      pointer.move(point, { alt: event.altKey });
+      if (!pointer.dragging) return;
+      if (tools.active === 'eraser') {
+        canvas.setErasing(pointer.erasing, pointer.eraserTrail);
+        return;
+      }
+      // Live feedback: the drag's result drawn as it would be committed, or the
+      // scene as it is when the drag would change nothing.
+      canvas.render(pointer.preview(point) ?? history.current);
+      canvas.setMarquee(pointer.marquee);
+    };
+    const onUp = (event: PointerEvent) => {
+      if (labelEditor?.contains(event.target)) return;
+      // The right button belongs to the context menu, on release as on press.
+      if (event.button === 2) return;
+      if (panningFrom) {
+        panningFrom = null;
+        return;
+      }
+      if (tools.active === 'text') {
+        const point = scenePoint(event);
+        tools.escape();
+        // After the release, so the click's own focus change cannot close it.
+        queueMicrotask(() => placeText(point));
+        return;
+      }
+      pointer.up(scenePoint(event), { alt: event.altKey });
+      canvas.setMarquee(null);
+      canvas.setErasing(new Set(), []);
+      commit();
+    };
+    // Right-click: an unselected element under the pointer becomes the
+    // selection first, then the menu opens at the pointer for it.
+    const onContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+      if (!canvasShown() || labelEditor?.contains(event.target)) return;
+      const hit = topmostAt(history.current, scenePoint(event as PointerEvent));
+      const next = contextSelection(history.current, selection.ids, hit);
+      if (next.join(' ') !== selection.ids.join(' ')) {
+        selection.clear();
+        next.forEach((id, i) => selection.click(id, { additive: i > 0 }));
+        syncSelection();
+      }
+      openContextMenu({ x: event.clientX, y: event.clientY });
+    };
+    const onDoubleClick = (event: MouseEvent) => {
+      if (labelEditor?.contains(event.target)) return;
+      const element = editableAt(history.current, scenePoint(event as PointerEvent));
+      if (element) editElement(element);
+    };
+    const onWheel = (event: WheelEvent) => {
+      if (labelEditor?.contains(event.target)) return;
+      event.preventDefault();
+      const action = wheelAction(event);
+      if (action.kind === 'zoom') {
+        zoomTo(viewport.zoom * action.factor, screenPoint(event));
+      } else {
+        viewport.panBy(action.dx, action.dy);
+        applyView();
+      }
+    };
+    const onSpace = (event: KeyboardEvent) => {
+      if (event.key !== ' ') return;
+      // Always cleared on release, wherever focus went while it was held.
+      if (event.type === 'keyup') {
+        spaceHeld = false;
+        return;
+      }
+      if (canvasKeyStandsDown(event.target as Element | null, event.key, event.defaultPrevented)) return;
+      if (editTarget(event.target as Element | null, { canvasVisible: canvasShown() }) !== 'canvas') return;
+      spaceHeld = true;
+      event.preventDefault();
+    };
+    const releaseSpace = () => (spaceHeld = false);
     diagramHost.addEventListener('pointerdown', onDown);
     diagramHost.addEventListener('pointermove', onMove);
     diagramHost.addEventListener('pointerup', onUp);
+    diagramHost.addEventListener('wheel', onWheel, { passive: false });
+    diagramHost.addEventListener('dblclick', onDoubleClick);
+    diagramHost.addEventListener('contextmenu', onContextMenu);
+    labelEditor = new LabelEditor(diagramHost);
+    window.addEventListener('keydown', onSpace);
+    window.addEventListener('keyup', onSpace);
+    window.addEventListener('blur', releaseSpace);
 
-    client.request(initialSource);
+    // The stage is sized at mount; follow the pane as the window or the
+    // splitters change it.
+    const sizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(() => canvas.resize(diagramHost.clientWidth, diagramHost.clientHeight));
+    sizeObserver?.observe(diagramHost);
 
     // Tool shortcuts are global while the canvas has focus. Ignored while a
     // text field has it, or typing D2 would switch tools on every keystroke.
     const onKeyDown = (event: KeyboardEvent) => {
       // Canvas keys stand down while typing, inside a dialog, or with the
       // canvas hidden. Backspace must not empty a canvas nobody can see.
+      // A focused control keeps its own Enter, Space, Tab and arrows.
+      if (canvasKeyStandsDown(event.target as Element | null, event.key, event.defaultPrevented)) return;
       const typing =
-        editTarget(event.target as Element | null, { canvasVisible: view.showsCanvas }) !== 'canvas';
+        editTarget(event.target as Element | null, { canvasVisible: canvasShown() }) !== 'canvas';
 
       const handled = handleKey(event, {
         deleteSelection: canvasEdit(canvasCommands.deleteSelection),
+        openInsert: () => {
+          if (canvasShown()) openInsertPanel();
+        },
         selectNext: () => {
           selection.selectNext(history.current);
           syncSelection();
@@ -450,6 +774,7 @@ web.api -> db: query
           published = history.current;
         },
         activateTool: (tool) => tools.activate(tool),
+        editSelection,
       }, { typing });
 
       if (handled) event.preventDefault();
@@ -462,6 +787,11 @@ web.api -> db: query
     const onShortcut = (event: KeyboardEvent) => {
       const id = shortcutFor(event);
       if (!id) return;
+      // A canvas-scoped key belongs to whatever has focus when that is not
+      // the canvas: ⌘] indents in the editor, ⇧H types a capital H.
+      if (canvasOnly.has(id) && editTarget(event.target as Element | null, { canvasVisible: canvasShown() }) !== 'canvas') {
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
       void dispatcher.dispatch({ id });
@@ -475,7 +805,7 @@ web.api -> db: query
       void dispatcher.dispatch(event.data as Command);
     });
 
-    void settingsState.load().catch((error: unknown) => {
+    void settingsLoad.catch((error: unknown) => {
       void report(error, 'settings');
       notify(t('error.settingsLoad'));
     });
@@ -504,6 +834,15 @@ web.api -> db: query
       diagramHost.removeEventListener('pointerdown', onDown);
       diagramHost.removeEventListener('pointermove', onMove);
       diagramHost.removeEventListener('pointerup', onUp);
+      diagramHost.removeEventListener('wheel', onWheel);
+      diagramHost.removeEventListener('dblclick', onDoubleClick);
+      diagramHost.removeEventListener('contextmenu', onContextMenu);
+      labelEditor?.destroy();
+      labelEditor = null;
+      window.removeEventListener('keydown', onSpace);
+      window.removeEventListener('keyup', onSpace);
+      window.removeEventListener('blur', releaseSpace);
+      sizeObserver?.disconnect();
       window.removeEventListener('keydown', onKeyDown);
       client.destroy();
       canvas.destroy();
@@ -533,11 +872,20 @@ web.api -> db: query
       theme: theme.choice,
       tool: tools.active,
       hasSelection,
+      canPasteStyles,
       recents: recents.paths,
     };
     void MenuService.SetState(state).catch(() => {
       // Outside the app shell (a test, a plain browser) there is no menu.
     });
+  });
+
+  // Shape colours are theme tokens read into Konva, which cannot see CSS: a
+  // theme change re-reads them. The theme writes its attribute synchronously,
+  // so the new values are in place when this runs.
+  $effect(() => {
+    void theme.resolved;
+    canvas.restyle();
   });
 
   // Repaint when a new snapshot is published.
@@ -546,11 +894,15 @@ web.api -> db: query
   });
 </script>
 
+<!-- Inert while the splash covers it: no focus or reading behind the cover. -->
+<div class="app" inert={!launch.ready}>
 <Shell
+  open={doc.isOpen}
+  hints={noFileHints}
   title={doc.path ?? t('file.untitled')}
   dirty={doc.dirty}
-  engine="tala"
-  nodes={nodeCount}
+  engine={doc.isOpen ? 'tala' : undefined}
+  nodes={doc.isOpen ? nodeCount : undefined}
   errors={client.state.errors.length}
   status={notice ??
     (autosave.pauseReason === 'conflict'
@@ -595,18 +947,75 @@ web.api -> db: query
   {#snippet canvas()}
     <div class="canvas-region">
       <div class="fill" bind:this={canvasHost}></div>
-      <CanvasControls
+      {#if toolbar.visible}
+        <div class="selection-toolbar">
+          <SelectionToolbar
+            styles={{
+              fill: currentStyle(published, selectedIds, 'fill'),
+              stroke: currentStyle(published, selectedIds, 'stroke'),
+              color: currentStyle(published, selectedIds, 'color'),
+            }}
+            keysFor={(id) => keysFor(menuSpec as MenuSpec, id, platform)}
+            align={toolbar.align}
+            distribute={toolbar.distribute}
+            onApply={(key, swatch) => {
+              applyStyle(history, selectedIds, key, swatch);
+              commit();
+            }}
+            onCommand={(id) => void dispatcher.dispatch({ id })}
+            onMore={(anchor) => openContextMenu(anchor)}
+          />
+        </div>
+      {/if}
+      <ToolRail
         active={tools.active}
-        {zoom}
-        onSelect={(tool) => tools.activate(tool)}
-        onZoom={(direction) => {
-          viewport.setZoom(viewport.zoom * (direction === 1 ? 1.2 : 1 / 1.2));
-          zoom = viewport.zoom;
+        {insertOpen}
+        onSelect={(tool) => {
+          insertOpen = false;
+          tools.activate(tool);
         }}
+        onInsert={() => (insertOpen ? closeInsertPanel() : openInsertPanel())}
+      />
+      {#if insertOpen}
+        <div class="insert-panel">
+          <InsertPanel
+            {insert}
+            onOutcome={(outcome) => {
+              if (outcome.type === 'choose') tools.activate(outcome.tool);
+              closeInsertPanel();
+            }}
+          />
+        </div>
+      {/if}
+      <CanvasControls
+        {zoom}
+        onZoom={(direction) => zoomTo(viewport.zoom * (direction === 1 ? 1.2 : 1 / 1.2))}
       />
     </div>
   {/snippet}
 </Shell>
+</div>
+
+<!--
+  Always mounted, so closing never reads props from state already cleared:
+  that threw at a running window.
+-->
+<ContextMenu
+    items={contextMenu?.items ?? []}
+    open={contextMenu !== null}
+    anchor={contextMenu?.anchor ?? null}
+    onSelect={(id) => {
+      contextMenu = null;
+      void dispatcher.dispatch({ id });
+    }}
+    onOpenChange={(open) => {
+      if (!open) contextMenu = null;
+    }}
+  />
+
+{#if !launch.ready}
+  <Splash status={t('launch.starting')} />
+{/if}
 
 <ShortcutsDialog
   bind:open={shortcutsOpen}
@@ -665,6 +1074,26 @@ web.api -> db: query
 <style>
   .fill {
     height: 100%;
+  }
+
+  .selection-toolbar {
+    position: absolute;
+    left: 50%;
+    bottom: var(--space-4);
+    z-index: var(--z-floating);
+    transform: translateX(-50%);
+  }
+
+  .app {
+    height: 100%;
+  }
+
+  /* Beside the rail: the rail's inset, its button width and a gap. */
+  .insert-panel {
+    position: absolute;
+    top: var(--space-3);
+    left: calc(var(--space-3) + var(--size-rail-button) + var(--space-2) * 2 + var(--space-2));
+    z-index: var(--z-floating);
   }
 
   .canvas-region {

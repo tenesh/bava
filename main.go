@@ -59,30 +59,12 @@ func main() {
 	})
 
 	menus := app.NewMenuService()
-	wailsApp := application.New(application.Options{
-		// Wails builds the native role labels from this: "Hide Bava", "Quit Bava".
-		Name:        "Bava",
-		Description: "Local-only diagrams and docs",
-		// Not the session logger itself: Wails logs every bound call's
-		// arguments at debug level, which is document content. This one stays
-		// at warn and keeps attribute names without values.
-		Logger: session.WailsLogger(),
-		// Wails' default exits the process on a panic; Bava logs and carries on
-		// wherever that is safe (see PanicHandlerWithExit).
-		PanicHandler: app.PanicHandler(session.Logger, emit),
-		Services: []application.Service{
-			application.NewService(app.NewRenderService()),
-			application.NewService(app.NewFileService()),
-			application.NewService(menus),
-			application.NewService(logService),
-		},
-		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
-		},
-		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
-		},
-	})
+	wailsApp := application.New(appOptions(session, []application.Service{
+		application.NewService(app.NewRenderService()),
+		application.NewService(app.NewFileService()),
+		application.NewService(menus),
+		application.NewService(logService),
+	}, emit))
 	current.Store(wailsApp)
 
 	// After application.New: native role items need the application.
@@ -97,13 +79,45 @@ func main() {
 		app.ContentProcessDied(logService, window.Reload)
 	})
 
-	// Blocks until the application exits.
+	// Blocks until the application exits, where it returns at all. Required,
+	// not a backstop: on Windows, closing the last window posts WM_QUIT and
+	// skips Wails' cleanup, so PostShutdown never runs and this is the only
+	// close. Where PostShutdown already closed the session, it is a no-op.
 	if err := wailsApp.Run(); err != nil {
 		fail(session, "run", err)
 	}
-	// Closed after Run returns rather than in OnShutdown, which runs before
-	// services shut down: their last log lines would go to a closed file.
 	session.Close()
+}
+
+// appOptions is the application's configuration.
+//
+// The session closes in PostShutdown as well as after Run returns: on macOS
+// [NSApp terminate:] exits the process once Wails' cleanup finishes, so Run
+// never returns there. PostShutdown is the last step of that cleanup, after
+// services shut down, so their last log lines are kept. OnShutdown would be
+// too early: it runs before services stop. (beta.20: on Windows the
+// last-window close skips cleanup; see main.)
+func appOptions(session *logs.Session, services []application.Service, emit func(app.AppError)) application.Options {
+	return application.Options{
+		// Wails builds the native role labels from this: "Hide Bava", "Quit Bava".
+		Name:        "Bava",
+		Description: "Local-only diagrams and docs",
+		// Not the session logger itself: Wails logs every bound call's
+		// arguments at debug level, which is document content. This one stays
+		// at warn and keeps attribute names without values.
+		Logger: session.WailsLogger(),
+		// Wails' default exits the process on a panic; Bava logs and carries on
+		// wherever that is safe (see PanicHandlerWithExit).
+		PanicHandler: app.PanicHandler(session.Logger, emit),
+		Services:     services,
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
+		},
+		Mac: application.MacOptions{
+			ApplicationShouldTerminateAfterLastWindowClosed: true,
+		},
+		PostShutdown: func() { session.Close() },
+	}
 }
 
 // fail records a fatal startup error where the user can find it, then exits.

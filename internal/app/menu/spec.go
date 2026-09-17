@@ -45,7 +45,11 @@ type Item struct {
 	Shortcut string `json:"shortcut,omitempty"`
 	// NativeOn lists platforms where Shortcut is bound as a real accelerator
 	// instead: the menu handles and aligns it, and the frontend stands down.
-	NativeOn  []string `json:"nativeOn,omitempty"`
+	NativeOn []string `json:"nativeOn,omitempty"`
+	// Scope "canvas" limits Shortcut to when the canvas has the keyboard: the
+	// frontend ignores it while a text field or the source editor has focus,
+	// and the source editor keeps the key.
+	Scope     string   `json:"scope,omitempty"`
 	Role      string   `json:"role,omitempty"`
 	Group     string   `json:"group,omitempty"`
 	Platforms []string `json:"platforms,omitempty"`

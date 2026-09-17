@@ -23,17 +23,46 @@ type Base = {
   h: number;
 };
 
-export type RectElement = Base & { type: 'rect' };
-export type EllipseElement = Base & { type: 'ellipse' };
-export type LineElement = Base & { type: 'line'; points: number[] };
-export type ArrowElement = Base & { type: 'arrow'; points: number[] };
-export type FrameElement = Base & { type: 'frame'; label?: string };
+/**
+ * Colours are swatch names (`"blue"`), resolved per theme by `palette.ts`.
+ * An absent key means the theme's default; an unknown name draws as the
+ * default and is kept.
+ */
+type Styled = { label?: string; fill?: string; stroke?: string; color?: string };
+
+/** The closed shapes: rectangle and ellipse, and the seven with outlines. */
+export const SHAPE_TYPES = [
+  'rect',
+  'ellipse',
+  'diamond',
+  'cylinder',
+  'hexagon',
+  'parallelogram',
+  'document',
+  'person',
+  'cloud',
+] as const;
+
+export type ShapeType = (typeof SHAPE_TYPES)[number];
+
+export function isShapeType(type: string): type is ShapeType {
+  return (SHAPE_TYPES as readonly string[]).includes(type);
+}
+
+export type ShapeElement = Base & Styled & { type: ShapeType };
+export type RectElement = ShapeElement & { type: 'rect' };
+export type EllipseElement = ShapeElement & { type: 'ellipse' };
+/** `points` are relative to the element's `x` and `y`. */
+export type LineElement = Base & { type: 'line'; points: number[]; stroke?: string };
+export type ArrowElement = Base & { type: 'arrow'; points: number[]; stroke?: string };
+export type FrameElement = Base & { type: 'frame'; label?: string; stroke?: string; color?: string };
 export type GroupElement = Base & { type: 'group'; label?: string; children: ElementId[] };
-export type StrokeElement = Base & { type: 'stroke'; points: number[] };
+export type StrokeElement = Base & { type: 'stroke'; points: number[]; stroke?: string };
 
 export type TextElement = Base & {
   type: 'text';
   text: string;
+  color?: string;
   /**
    * Measured in the frontend and stored, never recomputed on open.
    * WebKitGTK and WebView2 disagree on glyph advances, so re-measuring
@@ -44,8 +73,7 @@ export type TextElement = Base & {
 };
 
 export type SceneElement =
-  | RectElement
-  | EllipseElement
+  | ShapeElement
   | LineElement
   | ArrowElement
   | FrameElement
@@ -87,7 +115,10 @@ export function createScene(initial: SceneData = { elements: [] }) {
   return {
     add(element: NewElement): SceneElement {
       nextZ += 1;
-      const created = { ...element, id: nextId(), z: nextZ } as SceneElement;
+      // Skip ids the scene already holds: an opened file has its own "e1".
+      let id = nextId();
+      while (byId.has(id)) id = nextId();
+      const created = { ...element, id, z: nextZ } as SceneElement;
       byId.set(created.id, created);
       return created;
     },

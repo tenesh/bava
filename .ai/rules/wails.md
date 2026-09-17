@@ -157,3 +157,17 @@ that records debug, or one that records attribute values.
 beta.20 exposes `mac:WebViewWebContentProcessDidTerminate` and no equivalent
 for WebView2 or WebKitGTK. On Windows and Linux a dead content process still
 leaves a blank window. Re-check at every Wails bump.
+
+## On macOS, `Run` never returns
+`[NSApp terminate:]` exits the process after `applicationShouldTerminate` runs
+Wails' `cleanup()`. Code after `wailsApp.Run()` in `main` does not run on a
+quit. Shutdown work belongs in `Options.PostShutdown` (after services stop) or
+`OnShutdown` (before). Found because every quit left the log session's marker
+and the next launch reported a crash; pinned by
+`TestPostShutdownClosesTheSession`.
+
+**But `cleanup` is not every platform's quit path.** On Windows, closing the
+last window calls `PostQuitMessage` directly (`unregisterWindow`), so `Run`
+returns and neither `OnShutdown` tasks nor `PostShutdown` run. Shutdown work
+must also happen after `Run` returns, idempotently. On Linux a SIGTERM
+(logout) reaches neither.

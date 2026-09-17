@@ -77,3 +77,44 @@ Every change (a drag, a tool, an AI edit later) is applied with
 `history.mutate`. A mutation that changes nothing records no step, so undo
 never appears to do nothing, which reads as a broken undo.
 
+## Each element is a group: a body and an optional label
+`CanvasStage` gives every element a Konva group at its `x, y`, holding its body
+drawn in local coordinates (`0..w`, `0..h`) and, for a shape, its label. An
+ellipse's body is centred at `w/2, h/2`; positioning it at the group's origin
+draws it a quarter off. `points` on lines, arrows and strokes are relative to
+the element, as the file format says.
+
+## Colours come from CSS variables, and a theme change restyles
+Konva cannot see CSS, so the stage reads tokens through an injected reader and
+`restyle()` re-reads them on a theme change without recreating nodes. A shape
+names swatches (`fill: "blue"`); `palette.ts` resolves them. A test that sets no
+reader gets jsdom's empty values: always inject one.
+
+## Test what Konva draws, not only the scene
+Milestones 4 to 5.5 shipped every shape with no stroke and no fill, and every
+test passed, because the tests checked scene data. Stage tests inspect the
+Konva nodes: stroke, fill, points, label text.
+
+## All pointer input has one path
+Pressing a selection handle, dragging, marquee and drawing all go through the
+pointer handler as DOM events in scene coordinates. The stage only draws the
+selection outline and handles, on a non-listening overlay layer. Konva's
+Transformer is not used: its anchors take Konva events, and a press would also
+reach the pointer handler and start a move.
+
+## A drag previews its result without touching history
+While the pointer moves, the canvas draws `pointer.preview(point)`: the scene
+the drag would commit if released there, computed by the same function the
+release commits. History changes only on release, one step. The element being
+drawn keeps one id for the whole drag, so the stage patches one node.
+
+## The eraser marks, then deletes on release
+The trail marks elements it crosses (drawn at `--opacity-erasing`); release
+deletes them and their outermost groups in one step. A group is hit only
+through its children, never its own box.
+
+## Canvas shortcuts are scoped to the canvas
+Arrange, align, distribute, flip, duplicate and copy/paste styles are
+`scope: "canvas"` in the menu spec: page shortcuts that act only when the
+canvas is the edit target. ⌘] indents in the source editor, ⇧H types a capital.
+

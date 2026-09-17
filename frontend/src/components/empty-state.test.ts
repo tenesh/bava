@@ -7,7 +7,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-function render(props: { title: string; body?: string; mark?: boolean }) {
+function render(props: { title: string; body?: string; mark?: boolean; hints?: { keys: string; label: string }[] }) {
   const target = document.createElement('div');
   document.body.append(target);
   const app = flushSync(() => mount(EmptyState, { target, props }));
@@ -28,5 +28,22 @@ describe('EmptyState', () => {
     expect(branded.target.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     expect(branded.target.querySelector('.faded')).not.toBeNull();
     unmount(branded.app);
+  });
+
+  it('lists key hints when given, each key beside its action', () => {
+    const { target, app } = render({
+      title: 'No file open',
+      mark: true,
+      hints: [
+        { keys: '⌘O', label: 'Open a file' },
+        { keys: '⌘N', label: 'New file' },
+      ],
+    });
+    const rows = [...target.querySelectorAll('li')];
+    expect(rows).toHaveLength(2);
+    expect(rows[0].querySelector('kbd')?.textContent).toBe('⌘O');
+    expect(rows[0].textContent).toContain('Open a file');
+    expect(rows[1].querySelector('kbd')?.textContent).toBe('⌘N');
+    unmount(app);
   });
 });

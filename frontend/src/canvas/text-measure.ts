@@ -31,3 +31,29 @@ function estimate(text: string): Measurement {
   const size = 13;
   return { width: text.length * size * 0.55, height: size * 1.45 };
 }
+
+/**
+ * The size of a block of text: the widest line, and one line height per line.
+ * Measuring a multi-line text as one line stored a single line's height, and
+ * Konva stops drawing lines that do not fit the box, so only the first line
+ * appeared. `widthOf` measures one line; the canvas one in the app.
+ */
+export function measureTextBlock(
+  text: string,
+  font: { fontSize: number; lineHeight: number },
+  widthOf: (line: string) => number,
+): Measurement {
+  const lines = text.split('\n');
+  return {
+    width: Math.max(0, ...lines.map(widthOf)),
+    height: lines.length * font.fontSize * font.lineHeight,
+  };
+}
+
+/** A line's width with the browser's canvas; an estimate where there is none. */
+export function canvasLineWidth(font: string): (line: string) => number {
+  const context = globalThis.document?.createElement('canvas').getContext('2d');
+  if (!context) return (line) => estimate(line).width;
+  context.font = font;
+  return (line) => context.measureText(line).width;
+}

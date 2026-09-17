@@ -19,6 +19,8 @@ type SpecItem = {
   shortcut?: string;
   /** Platforms where the menu binds `shortcut` natively and the page stands down. */
   nativeOn?: string[];
+  /** "canvas": the shortcut acts only when the canvas has the keyboard. */
+  scope?: string;
   hint?: string;
   platforms?: string[];
   items?: SpecItem[];
@@ -33,11 +35,13 @@ const MAC_ORDER = ['ctrl', 'optionoralt', 'shift', 'cmdorctrl'];
 const OTHER_NAMES: Record<string, string> = { cmdorctrl: 'Ctrl', ctrl: 'Ctrl', shift: 'Shift', optionoralt: 'Alt' };
 const OTHER_ORDER = ['cmdorctrl', 'ctrl', 'shift', 'optionoralt'];
 
+const ARROWS: Record<string, string> = { left: '←', right: '→', up: '↑', down: '↓' };
+
 export function formatAccelerator(accelerator: string, platform: Platform): string {
   const parts = accelerator.split('+');
   const key = parts.pop() ?? '';
   const modifiers = parts.map((p) => p.toLowerCase());
-  const upper = key.length === 1 ? key.toUpperCase() : key;
+  const upper = ARROWS[key.toLowerCase()] ?? (key.length === 1 ? key.toUpperCase() : key);
 
   if (platform === 'darwin') {
     const symbols = MAC_ORDER.filter((m) => modifiers.includes(m)).map((m) => MAC_SYMBOLS[m]);
@@ -95,6 +99,13 @@ function itemsOn(spec: MenuSpec, platform: Platform): SpecItem[] {
   return out;
 }
 
+/** The formatted keys the menu binds for a command on this platform, or "". */
+export function keysFor(spec: MenuSpec, id: string, platform: Platform): string {
+  const item = itemsOn(spec, platform).find((entry) => entry.id === id);
+  const combo = item?.accelerator ?? item?.shortcut;
+  return combo ? formatAccelerator(combo, platform) : '';
+}
+
 type Combo = { primary: boolean; ctrl: boolean; shift: boolean; alt: boolean; key: string };
 
 function sameCombo(a: Combo, b: Combo): boolean {
@@ -127,6 +138,8 @@ function keyOf(event: KeyboardEvent): string {
   if (CODE_KEYS[event.code]) return CODE_KEYS[event.code];
   if (/^Key[A-Z]$/.test(event.code)) return event.code.slice(3).toLowerCase();
   if (/^Digit\d$/.test(event.code)) return event.code.slice(5);
+  // Arrow keys are named as Wails names them: "Left", not "ArrowLeft".
+  if (event.key.startsWith('Arrow')) return event.key.slice(5).toLowerCase();
   return event.key.toLowerCase();
 }
 
@@ -181,6 +194,8 @@ function parseEditorKey(name: string, platform: Platform): Combo {
  */
 export function reservedByMenu(spec: MenuSpec, platform: Platform) {
   const claimed = itemsOn(spec, platform)
+    // A canvas-scoped key is the editor's while the editor has focus.
+    .filter((item) => item.scope !== 'canvas')
     .map((item) => item.accelerator ?? item.shortcut)
     .filter((combo): combo is string => Boolean(combo))
     .map((combo) => parseAccelerator(combo, platform));
@@ -193,3 +208,17 @@ export function reservedByMenu(spec: MenuSpec, platform: Platform) {
     return claimed.some((c) => sameCombo(c, combo));
   };
 }
+
+/** Ids of shortcuts that act only when the canvas has the keyboard. */
+export function canvasScoped(spec: MenuSpec): Set<string> {
+  const ids = new Set<string>();
+  const walk = (items: SpecItem[] = []) => {
+    for (const item of items) {
+      if (item.id && item.scope === 'canvas') ids.add(item.id);
+      walk(item.items);
+    }
+  };
+  spec.menus.forEach((menu) => walk(menu.items));
+  return ids;
+}
+

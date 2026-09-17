@@ -138,6 +138,21 @@ change how components and their tests are written:
 
 ## Component rules
 
+- **A pane fills its region.** `Pane` is `height: 100%`; the regions are blocks,
+  so without it a pane shrinks to its header and the canvas stage inside is
+  zero tall, which also clips the tool rail. jsdom does no layout, so no unit
+  test catches this: measure in a browser.
+- **An empty state's padding sits inside its height** (`box-sizing:
+  border-box`); otherwise a full-height empty state overflows and its pane
+  shows a scrollbar.
+- **A menu opened at a point reads the point through `positioning.getAnchorRect`**
+  (`atPoint`), not `anchorPoint`. A menu mounted once and opened later was
+  placed from the anchor it had at mount: off the bottom of the window. jsdom
+  computes no positions, so only a running window shows this.
+- **Popups unmount when closed** (`lazyMount unmountOnExit`). Ark closes
+  content with `hidden`, and any `display` rule on the content overrides it:
+  the shape menu sat open over the window controls that way.
+
 - **Presentational only.** No IPC calls, no file access, no D2 knowledge, no
   product logic inside `components/`. A component receives props and emits
   events.
@@ -175,14 +190,23 @@ check both before building either by hand.
 | `StatusBar` ✓ | Engine, node count, error count, and an optional message: autosave paused, a command that failed. |
 | `FileTree` ✓ | Workspace listing. Emits a path on activation; opens nothing itself. |
 | `ConfirmDialog` ✓ | A question with fixed answers. Dismissing it is a cancel, never an accident. |
-| `CanvasControls` ✓ | Tool rail with shortcut keys, and the zoom readout. |
+| `CanvasControls` ✓ | The zoom readout and its buttons. |
+| `ToolRail` ✓ | The canvas tool rail: grouped icon buttons, a key letter in each corner, a tooltip naming each. Layout in `canvas/rail.ts`. |
+| `InsertPanel` ✓ | Search, category rows (right chevron clear of the text), a category's tile grid, footer hint. State in `shell/insert.svelte.ts`. |
+| `SelectionToolbar` ✓ | Bottom-centre toolbar for a selection: `StyleBar` pickers, align and distribute, More. Model in `canvas/toolbar.ts`. |
+| `ContextMenu` ✓ | A menu opened at a point, wrapping Ark's Menu, with nested submenus. Used for right-click and More. Tree in `canvas/context-menu.ts`. |
+| `Tooltip` ✓ | A button that names itself (and its key) on hover and keyboard focus, wrapping Ark's Tooltip. |
+| `ToolIcon` ✓ | Interface icons by id: Lucide (ISC), plus the in-house parallelogram. |
 | `Toolbar` | Contextual: changes with the current selection. |
 | `LayoutEnginePicker` | Per `diagram` element, not per canvas. |
 | `ErrorList` | D2 compiler diagnostics, click-to-jump to source line. |
-| `EmptyState` ✓ | Repeated across file tree, canvas, search. `mark` adds the faded brand mark for "nothing open yet". |
+| `EmptyState` ✓ | Repeated across file tree, canvas, search, and the no-file window. `mark` adds the faded brand mark for "nothing open yet"; `hints` lists keys beside what they do. |
+| `Splash` ✓ | The launch cover: mark, wordmark, indeterminate `Progress`, a status line. The caller decides when startup is over. |
+| `Progress` ✓ | Wraps Ark's Progress. `value: null` is indeterminate: use it whenever nothing reports real progress. |
 | `Mark` ✓ | The brand mark, inlined from `src/brand/panda.svg` at one of four `--size-mark-*` sizes. |
 | `ErrorDialog` ✓ | An unexpected failure: one sentence, collapsed details, Copy details, Open logs folder. Never a stack. |
 | `PanelBoundary` ✓ | `<svelte:boundary>` around each shell region; a crash shows "This panel hit a problem" and Reload panel. |
+| `StyleBar` ✓ | Fill, border and text swatch pickers, wrapping Ark's Popover and RadioGroup. A group inside `SelectionToolbar`, which draws the surface. |
 | `Disclosure` ✓ | A collapsed-by-default section, wrapping Ark's Collapsible. |
 | `AboutDialog` ✓ | Mark, wordmark, tagline, licence. No version until Milestone 16. |
 | `Icon` ✓ | Single sprite wrapper so icon sizing is tokenised. No set is bundled until Milestone 9. |
@@ -191,7 +215,14 @@ check both before building either by hand.
 unused component is an unmaintained one.
 
 **Wrapped from Ark so far**: `Dialog`, `Splitter`, SegmentGroup inside
-`Segments`, and Collapsible inside `Disclosure`.
+`Segments`, Collapsible inside `Disclosure`, Menu inside `ContextMenu`, and
+Popover with RadioGroup inside `StyleBar`.
+
+**Shape swatches** are tokens in `styles/tokens/_swatches.scss`
+(`--swatch-<name>-fill`, `-stroke`, `-text`, in both themes), with
+`--color-shape-fill`, `--color-shape-stroke`, `--color-shape-text` as the
+unstyled default and `--color-selection-handle` for the selection. The names
+live once, in `canvas/palette.ts`.
 
 ## Brand
 

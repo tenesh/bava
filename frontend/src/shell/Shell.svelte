@@ -8,10 +8,14 @@
    *
    * View state and the settings dialog's open flag are handed in too: the
    * native menu changes both, and it reaches them through App's commands.
-   * File actions live in that menu, not in the title bar.
+   * File actions and Settings live in that menu, not in the title bar.
+   *
+   * With no file open the regions are hidden, never unmounted, and the main
+   * area shows how to open or start one.
    */
   import type { Snippet } from 'svelte';
   import Mark from '../components/Mark.svelte';
+  import ToolIcon from '../components/ToolIcon.svelte';
   import Pane from '../components/Pane.svelte';
   import PanelBoundary from '../components/PanelBoundary.svelte';
   import EmptyState from '../components/EmptyState.svelte';
@@ -23,11 +27,16 @@
   import type { ThemeChoice } from '../styles/theme.svelte';
 
   type Props = {
+    /** Whether a document is open. When not, the shell shows the no-file state. */
+    open: boolean;
+    /** Keys and actions for the no-file state. */
+    hints?: { keys: string; label: string }[];
     title: string;
     /** Shown beside the filename: saved, or unsaved changes. */
     dirty?: boolean;
-    engine: string;
-    nodes: number;
+    /** Engine and node count describe a document; omitted when none is open. */
+    engine?: string;
+    nodes?: number;
     errors: number;
     /** A message for the status bar, when something needs noticing. */
     status?: string;
@@ -46,6 +55,8 @@
   };
 
   let {
+    open,
+    hints = [],
     title,
     dirty = false,
     engine,
@@ -69,22 +80,32 @@
     <div class="identity">
       <Mark size="chrome" label={t('brand.name')} />
       <span class="filename">
-        {title}
-        <span class="state" class:dirty>{dirty ? t('file.dirty') : t('file.saved')}</span>
+        {#if open}
+          {title}
+          <span class="state" class:dirty>{dirty ? t('file.dirty') : t('file.saved')}</span>
+        {:else}
+          {t('empty.noFile.title')}
+        {/if}
       </span>
     </div>
-    <ViewSwitcher value={view.mode} onValueChange={(mode) => view.setMode(mode)} />
-    <div class="actions">
-      <button type="button" class="action" onclick={() => view.toggleAI()} aria-pressed={view.showsAI}>
-        {t('pane.ai')}
-      </button>
-      <button type="button" class="action" onclick={() => (settingsOpen = true)}>
-        {t('settings.title')}
-      </button>
-    </div>
+    {#if open}
+      <ViewSwitcher value={view.mode} onValueChange={(mode) => view.setMode(mode)} />
+      <div class="actions">
+        <button type="button" class="action bordered" onclick={() => view.toggleAI()} aria-pressed={view.showsAI}>
+          <ToolIcon id="ai" size="sm" />
+          {t('pane.ai')}
+        </button>
+      </div>
+    {/if}
   </header>
 
-  <div class="regions">
+  {#if !open}
+    <main class="no-file">
+      <EmptyState title={t('empty.noFile.title')} mark {hints} />
+    </main>
+  {/if}
+
+  <div class="regions" class:hidden={!open}>
     {#if view.showsFiles}
       <div class="region region-files">
         <Pane title={t('pane.files')}>
@@ -209,8 +230,16 @@
     color: var(--color-text-secondary);
   }
 
+  .action.bordered {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    border-color: var(--color-border-strong);
+  }
+
   .action[aria-pressed='true'] {
     background: var(--color-accent-subtle);
+    border-color: var(--color-accent);
     color: var(--color-accent);
   }
 
@@ -222,6 +251,11 @@
     flex: 1;
     min-height: 0;
     display: flex;
+  }
+
+  .no-file {
+    flex: 1;
+    min-height: 0;
   }
 
   .region {

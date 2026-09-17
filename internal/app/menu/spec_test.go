@@ -251,3 +251,25 @@ func TestNativeShortcutsAreSafeOnTheirPlatforms(t *testing.T) {
 		}
 	}
 }
+
+// A canvas-scoped shortcut acts only when the canvas has the keyboard. ⌘] indents
+// in the source editor and ⇧H types a capital H; a native accelerator would
+// take the key from both, so a scoped entry is always a page shortcut.
+func TestCanvasScopedShortcutsAreNeverNative(t *testing.T) {
+	scoped := 0
+	for _, item := range load(t).AllItems() {
+		if item.Scope == "" {
+			continue
+		}
+		scoped++
+		if item.Scope != "canvas" {
+			t.Errorf("%s: unknown scope %q", item.ID, item.Scope)
+		}
+		if item.Accelerator != "" || len(item.NativeOn) > 0 || item.Shortcut == "" {
+			t.Errorf("%s: a canvas-scoped item needs a shortcut and no native accelerator", item.ID)
+		}
+	}
+	if scoped == 0 {
+		t.Error("no canvas-scoped items: the check exercised nothing")
+	}
+}

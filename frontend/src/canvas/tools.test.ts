@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTools, TOOLS, toolForKey } from './tools.svelte';
+import { createTools, SHAPE_TOOLS, TOOLS, toolForKey } from './tools.svelte';
 
 describe('tools', () => {
   // A duplicate shortcut is silent and maddening: one tool simply never
@@ -45,7 +45,29 @@ describe('tools', () => {
 
   it('covers the tools the design shows', () => {
     expect(TOOLS.map((t) => t.id).sort()).toEqual(
-      ['arrow', 'ellipse', 'frame', 'line', 'pen', 'rect', 'select', 'text'].sort(),
+      // The eraser joined in 06.2 (canvas-toolbar.md).
+      ['arrow', 'ellipse', 'eraser', 'frame', 'line', 'pen', 'rect', 'select', 'text'].sort(),
     );
+  });
+
+  // The new shapes have no single-key shortcut: the letters stay free, and a
+  // key that means "cloud" would be unguessable.
+  it('offers the seven new shapes as tools without shortcuts', () => {
+    expect(SHAPE_TOOLS.map((tool) => tool.id)).toEqual([
+      'diamond',
+      'cylinder',
+      'hexagon',
+      'parallelogram',
+      'document',
+      'person',
+      'cloud',
+    ]);
+    for (const tool of SHAPE_TOOLS) {
+      expect(tool.labelKey.startsWith('tool.')).toBe(true);
+      expect(toolForKey(tool.id[0])).not.toBe(tool.id);
+    }
+    const tools = createTools();
+    tools.activate('cylinder');
+    expect(tools.active).toBe('cylinder');
   });
 });

@@ -73,6 +73,17 @@ func TestSelectionEnablesArrangeCommands(t *testing.T) {
 	if !built.Item("canvas.group").Enabled() {
 		t.Error("Group is disabled with a selection")
 	}
+
+	for _, id := range []string{"canvas.bringForward", "canvas.sendBackward", "canvas.duplicate", "canvas.flipHorizontal", "canvas.flipVertical", "canvas.alignLeft", "canvas.distributeVertical"} {
+		built.Apply(menu.State{HasSelection: false})
+		if built.Item(id).Enabled() {
+			t.Errorf("%s is enabled with nothing selected", id)
+		}
+		built.Apply(menu.State{HasSelection: true})
+		if !built.Item(id).Enabled() {
+			t.Errorf("%s is disabled with a selection", id)
+		}
+	}
 }
 
 func TestPaneTogglesReflectState(t *testing.T) {
@@ -139,5 +150,22 @@ func TestApplyReportsWhetherTheMenuMustBeRebuilt(t *testing.T) {
 	}
 	if !built.Apply(menu.State{Recents: []string{"/b.md", "/a.md"}}) {
 		t.Error("a changed recents list did not ask for a rebuild")
+	}
+}
+
+// Paste Styles with no copied style would be a dead item.
+func TestPasteStylesNeedsACopiedStyle(t *testing.T) {
+	built, _ := build(t, "darwin")
+	built.Apply(menu.State{HasSelection: true})
+	if built.Item("canvas.pasteStyles").Enabled() {
+		t.Error("Paste Styles is enabled with nothing copied")
+	}
+	built.Apply(menu.State{HasSelection: true, CanPasteStyles: true})
+	if !built.Item("canvas.pasteStyles").Enabled() {
+		t.Error("Paste Styles is disabled with a copied style and a selection")
+	}
+	built.Apply(menu.State{HasSelection: false, CanPasteStyles: true})
+	if built.Item("canvas.pasteStyles").Enabled() {
+		t.Error("Paste Styles is enabled with nothing selected")
 	}
 }

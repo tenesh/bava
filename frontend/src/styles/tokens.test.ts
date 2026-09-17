@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compile } from 'sass';
 import { fileURLToPath } from 'node:url';
+import { SWATCHES } from '../canvas/palette';
 
 // Compiled directly rather than read from dist/: the production build minifies
 // #ffffff to #fff, and a token test that depends on minifier behaviour tests
@@ -117,6 +118,25 @@ describe('token emission', () => {
   it('insets the title bar for the traffic lights on macOS only', () => {
     expect(block(':root')).toMatch(/--size-titlebar-inset-start: 0(px)?;/);
     expect(block(':root[data-platform=darwin]')).toMatch(/--size-titlebar-inset-start: [1-9]\d*px/);
+  });
+
+  // Shape colours are stored by swatch name; the values are tokens, so each
+  // swatch must resolve in both themes or a shape goes colourless on a switch.
+  it('every swatch defines fill, stroke and text in both themes', () => {
+    for (const swatch of SWATCHES) {
+      for (const part of ['fill', 'stroke', 'text']) {
+        const name = `--swatch-${swatch}-${part}`;
+        expect(light, `${name} missing in light`).toContain(name);
+        expect(dark, `${name} missing in dark`).toContain(name);
+      }
+    }
+  });
+
+  it('defines the default shape colours and the selection handle', () => {
+    for (const name of ['--color-shape-fill', '--color-shape-stroke', '--color-shape-text', '--color-selection-handle']) {
+      expect(light).toContain(name);
+      expect(dark).toContain(name);
+    }
   });
 
   it('carries the design palette values verbatim', () => {

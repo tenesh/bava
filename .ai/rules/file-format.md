@@ -42,3 +42,12 @@ file, and vice versa.
 A new frontmatter key, block type, or sidecar file goes into
 `docs/file-format.md` first, in the same change as the code that writes it,
 with the round-trip test. The build loop gates on this.
+
+## Preservation is tested through the frontend bridge
+Reading and writing in Go is not the whole path. The app opens a file, sends
+the scene to the frontend through encoding/json, and gets it back to save.
+Until Milestone 6, `format.Element` kept unknown keys in a `json:"-"` field,
+so every save from the app dropped a stroke's points, a text element's text
+and every unknown key, while every Go round-trip test passed.
+`TestSceneSurvivesTheFrontendBridge` marshals and unmarshals the scene between
+read and write; any new format test belongs on that path too.

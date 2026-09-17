@@ -12,8 +12,12 @@
 import type { History } from './history';
 import type { Selection, Box } from './selection';
 import type { ToolId } from './tools.svelte';
-import type { ElementId, SceneElement } from './scene';
+import { produce } from 'immer';
+import type { ElementId, SceneData, SceneElement } from './scene';
 import { simplify } from './stroke';
+import { erasableAlong, eraseSet } from './eraser';
+import { boundsOf } from './edit';
+import { handleAt, resizeBox, scaleInto, tidy, type Handle } from './resize';
 
 export type Point = { x: number; y: number };
 
@@ -28,6 +32,14 @@ export type PointerHandlerOptions = {
   tools: Tools;
   /** Measures text so the element can store its size. Injectable for tests. */
   measureText?: (text: string) => { width: number; height: number };
+  /**
+   * How near a handle, in scene units, counts as pressing it. The caller
+   * divides a screen-space size by the zoom, so handles stay the same size on
+   * screen at every zoom.
+   */
+  handleSize?: () => number;
+  /** How near the eraser trail must pass a line or outline, in scene units. */
+  eraserTolerance?: () => number;
 };
 
 type Drag = {
@@ -37,6 +49,10 @@ type Drag = {
   /** Geometry at press time, so a move is applied from the original position. */
   originals: Map<ElementId, { x: number; y: number }>;
   strokePoints: number[];
+  /** Set when the press landed on a selection handle. */
+  resize: { handle: Handle; bounds: Box; originals: Map<ElementId, SceneElement> } | null;
+  /** The id a drawn element gets, fixed for the drag so previews update one node. */
+  newId: string;
 };
 
 function boxBetween(a: Point, b: Point): Box {
@@ -56,7 +72,16 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   const { history, selection, tools } = options;
 
   let drag: Drag | null = null;
+  // Elements the eraser's trail has marked, and where the trail last was.
+  let erasing = new Set<ElementId>();
+  let trailEnd: Point | null = null;
+  let trail: number[] = [];
   let marquee: Box | null = null;
+  let keepAspect = false;
+  // Half a handle's side, in scene units: the caller divides the on-screen size
+  // by the zoom. The zone matches the drawn handle, no larger.
+  const handleSize = options.handleSize ?? (() => 4);
+  const eraserTolerance = options.eraserTolerance ?? (() => 3);
 
   function elementsAt(point: Point): SceneElement[] {
     return history.current.elements.filter(
@@ -65,12 +90,62 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   }
 
   return {
+    /**
+     * Elements the eraser will delete on release, for the stage to fade:
+     * what the trail marked, and the groups that go with them.
+     */
+    get erasing(): ReadonlySet<ElementId> {
+      return eraseSet(history.current, erasing);
+    },
+
+    /** The eraser trail so far, flat x,y pairs, for the stage to draw. */
+    get eraserTrail(): number[] {
+      return trail;
+    },
+
+    /** Whether a press is being dragged. */
+    get dragging(): boolean {
+      return drag !== null;
+    },
+
     /** The marquee rectangle while one is being dragged, for the stage to draw. */
     get marquee(): Box | null {
       return marquee;
     },
 
-    down(point: Point, options: { additive?: boolean } = {}): void {
+    down(point: Point, options: { additive?: boolean; keepAspect?: boolean } = {}): void {
+      if (tools.active === 'eraser') {
+        erasing = new Set();
+        trailEnd = point;
+        trail = [point.x, point.y];
+        drag = { origin: point, moving: [], originals: new Map(), strokePoints: [], resize: null, newId: '' };
+        return;
+      }
+
+      // A selection handle wins over whatever lies beneath it.
+      if (tools.active === 'select' && selection.ids.length > 0) {
+        const selected = history.current.elements.filter((e) => selection.has(e.id));
+        const bounds = boundsOf(selected);
+        const size = handleSize();
+        const handle = handleAt(point, bounds, size);
+        // A selection only a few handles across is covered by its handles;
+        // pressing inside it moves it, and the handles' outer halves resize.
+        const inside = point.x > bounds.x && point.x < bounds.x + bounds.w && point.y > bounds.y && point.y < bounds.y + bounds.h;
+        const small = bounds.w < size * 6 || bounds.h < size * 6;
+        if (handle && !(inside && small)) {
+          drag = {
+            origin: point,
+            moving: [],
+            originals: new Map(),
+            strokePoints: [],
+            resize: { handle, bounds, originals: new Map(selected.map((e) => [e.id, e])) },
+            newId: '',
+          };
+          keepAspect = Boolean(options.keepAspect);
+          return;
+        }
+      }
+
       const hits = elementsAt(point);
 
       if (tools.active === 'select' && hits.length > 0) {
@@ -87,11 +162,23 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         if (element) originals.set(id, { x: element.x, y: element.y });
       }
 
-      drag = { origin: point, moving, originals, strokePoints: [point.x, point.y] };
+      drag = {
+        origin: point,
+        moving,
+        originals,
+        strokePoints: [point.x, point.y],
+        resize: null,
+        newId: nextId(history.current.elements.length),
+      };
     },
 
-    move(point: Point): void {
+    move(point: Point, options: { alt?: boolean } = {}): void {
       if (!drag) return;
+
+      if (tools.active === 'eraser') {
+        extendTrail(point, Boolean(options.alt));
+        return;
+      }
 
       if (tools.active === 'pen') {
         drag.strokePoints.push(point.x, point.y);
@@ -103,69 +190,160 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       }
     },
 
-    up(point: Point): void {
+    /**
+     * The scene the drag would produce if released at `point`, for the canvas
+     * to draw while the pointer moves. History is untouched. Null when there is
+     * no drag or it would change nothing.
+     */
+    preview(point: Point): SceneData | null {
+      if (!drag) return null;
+      const recipe = changeFor(drag, point);
+      if (!recipe) return null;
+      const next = produce(history.current, recipe);
+      return next === history.current ? null : next;
+    },
+
+    up(point: Point, options: { alt?: boolean } = {}): void {
       if (!drag) return;
       const started = drag;
       drag = null;
       marquee = null;
 
-      if (tools.active === 'pen') {
-        const points = simplify([...started.strokePoints, point.x, point.y], 2);
-        const box = boundsOfPoints(points);
-        // A tap is not a stroke. Counting points is not enough: a tap still
-        // yields two identical ones, and a zero-size element cannot be
-        // selected or explained.
-        if (box.w < DRAG_THRESHOLD && box.h < DRAG_THRESHOLD) return;
-        history.mutate((scene) => {
-          scene.elements.push({
-            id: nextId(scene.elements.length),
-            z: scene.elements.length + 1,
-            type: 'stroke',
-            points,
-            ...box,
-          } as SceneElement);
-        });
+      if (tools.active === 'eraser') {
+        extendTrail(point, Boolean(options.alt));
+        // A click with nothing marked erases what it landed on.
+        if (erasing.size === 0 && !farEnough(started.origin, point)) {
+          erasableAlong(history.current, point, point, eraserTolerance()).forEach((id) => erasing.add(id));
+        }
+        const doomed = eraseSet(history.current, erasing);
+        erasing = new Set();
+        trailEnd = null;
+        trail = [];
+        if (doomed.size > 0) {
+          history.mutate((scene) => {
+            scene.elements = scene.elements.filter((e) => !doomed.has(e.id));
+          });
+        }
         return;
       }
 
-      if (tools.active === 'select') {
-        if (started.moving.length > 0) {
-          const dx = point.x - started.origin.x;
-          const dy = point.y - started.origin.y;
-          if (dx === 0 && dy === 0) return;
-          // One step for the whole drag, not one per move event.
-          history.mutate((scene) => {
-            for (const element of scene.elements) {
-              const from = started.originals.get(element.id);
-              if (!from) continue;
-              element.x = from.x + dx;
-              element.y = from.y + dy;
-            }
-          });
-          return;
-        }
-
+      if (tools.active === 'select' && !started.resize && started.moving.length === 0) {
         if (farEnough(started.origin, point)) {
           selection.marquee(boxBetween(started.origin, point), history.current);
         }
         return;
       }
 
-      // A shape tool. A click is not a shape.
-      if (!farEnough(started.origin, point)) return;
-
-      const box = boxBetween(started.origin, point);
-      const type = tools.active;
-      history.mutate((scene) => {
-        scene.elements.push({
-          id: nextId(scene.elements.length),
-          z: scene.elements.length + 1,
-          type,
-          ...box,
-        } as SceneElement);
-      });
+      // One step for the whole gesture, however many move events it had.
+      const recipe = changeFor(started, point);
+      if (recipe) history.mutate(recipe);
     },
   };
+
+  /** Mark (or, with Alt, unmark) what the trail's newest segment touches. */
+  function extendTrail(point: Point, alt: boolean): void {
+    if (!trailEnd) return;
+    if (trailEnd.x !== point.x || trailEnd.y !== point.y) {
+      for (const id of erasableAlong(history.current, trailEnd, point, eraserTolerance())) {
+        if (alt) erasing.delete(id);
+        else erasing.add(id);
+      }
+    }
+    trailEnd = point;
+    trail.push(point.x, point.y);
+  }
+
+  /**
+   * The change a drag makes if it ends at `point`, shared by the preview and
+   * the release so what the user saw while dragging is what they get.
+   */
+  function changeFor(started: Drag, point: Point): ((scene: SceneData) => void) | null {
+    if (started.resize) {
+      const { handle, bounds, originals } = started.resize;
+      const dx = point.x - started.origin.x;
+      const dy = point.y - started.origin.y;
+      if (dx === 0 && dy === 0) return null;
+      const next = resizeBox(bounds, handle, dx, dy, { keepAspect });
+      return (scene) => {
+        for (let i = 0; i < scene.elements.length; i += 1) {
+          const original = originals.get(scene.elements[i].id);
+          if (!original) continue;
+          scene.elements[i] = scaleInto(original as SceneElement & { points?: number[] }, bounds, next);
+        }
+      };
+    }
+
+    if (tools.active === 'eraser') return null;
+
+    if (tools.active === 'pen') {
+      const points = simplify([...started.strokePoints, point.x, point.y], 2);
+      const box = boundsOfPoints(points);
+      // A tap is not a stroke. Counting points is not enough: a tap still
+      // yields two identical ones, and a zero-size element cannot be
+      // selected or explained.
+      if (box.w < DRAG_THRESHOLD && box.h < DRAG_THRESHOLD) return null;
+      return (scene) => {
+        scene.elements.push({
+          id: started.newId,
+          z: topZ(scene.elements) + 1,
+          type: 'stroke',
+          // Relative to the stroke's own x and y, as the file format says.
+          points: points.map((value, i) => tidy(value - (i % 2 === 0 ? box.x : box.y))),
+          x: tidy(box.x),
+          y: tidy(box.y),
+          w: tidy(box.w),
+          h: tidy(box.h),
+        } as SceneElement);
+      };
+    }
+
+    if (tools.active === 'select') {
+      if (started.moving.length === 0) return null;
+      const dx = point.x - started.origin.x;
+      const dy = point.y - started.origin.y;
+      if (dx === 0 && dy === 0) return null;
+      return (scene) => {
+        for (const element of scene.elements) {
+          const from = started.originals.get(element.id);
+          if (!from) continue;
+          element.x = tidy(from.x + dx);
+          element.y = tidy(from.y + dy);
+        }
+      };
+    }
+
+    // A shape tool. A click is not a shape.
+    if (!farEnough(started.origin, point)) return null;
+
+    const raw = boxBetween(started.origin, point);
+    // Tidy: a zoom or fractional pan leaves 83.33333333333333, written into
+    // the user's file otherwise.
+    const box = { x: tidy(raw.x), y: tidy(raw.y), w: tidy(raw.w), h: tidy(raw.h) };
+    const type = tools.active;
+    // Text is typed, not dragged: its tool is handled with the label editor.
+    if (type === 'text') return null;
+    const extra =
+      type === 'line' || type === 'arrow'
+        ? {
+            // From where the drag started to where it ended, relative to the box.
+            points: [started.origin.x - box.x, started.origin.y - box.y, point.x - box.x, point.y - box.y].map(tidy),
+          }
+        : {};
+    return (scene) => {
+      scene.elements.push({
+        id: started.newId,
+        z: topZ(scene.elements) + 1,
+        type,
+        ...box,
+        ...extra,
+      } as SceneElement);
+    };
+  }
+}
+
+/** The highest z in use, so a new element is drawn above everything. */
+function topZ(elements: { z: number }[]): number {
+  return elements.reduce((max, e) => Math.max(max, e.z), 0);
 }
 
 function boundsOfPoints(points: number[]) {

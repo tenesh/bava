@@ -3,6 +3,7 @@
 // Only token partials belong here. Component styles live with their
 // components, and nothing in this tree may carry a literal value.
 @use 'tokens/color';
+@use 'tokens/swatches';
 @use 'tokens/space';
 @use 'tokens/type';
 @use 'tokens/radius';
@@ -12,3 +13,5 @@
 
 // Element defaults, after the tokens they consume.
 @use 'base';
+// DOM the canvas creates imperatively, which no component owns.
+@use 'canvas-overlays';

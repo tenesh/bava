@@ -28,3 +28,17 @@ export function fieldSelection(focused: Element | null): string {
   }
   return globalThis.getSelection?.()?.toString() ?? '';
 }
+
+const CONTROL = 'button, a[href], select, [role="button"], [role="menu"], [role="menuitem"], [role="radio"], [role="radiogroup"], [role="tab"], [role="toolbar"]';
+const CONTROL_KEYS = new Set(['Enter', ' ', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+
+/**
+ * Whether a canvas keyboard shortcut must leave this key alone. A focused
+ * control owns its activation and navigation keys (Enter and Space press a
+ * button, arrows move within a menu or radio group), and a key something else
+ * already handled is not the canvas's.
+ */
+export function canvasKeyStandsDown(target: Element | null, key: string, defaultPrevented: boolean): boolean {
+  if (defaultPrevented) return true;
+  return CONTROL_KEYS.has(key) && Boolean(target?.closest(CONTROL));
+}

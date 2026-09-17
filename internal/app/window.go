@@ -17,6 +17,10 @@ const (
 	WindowHeight = 800
 )
 
+// TitleBarHeight is the page's title bar height in CSS pixels
+// (--size-titlebar), which the macOS window's draggable strip matches.
+const TitleBarHeight = 36
+
 // MainWindowOptions are the options for Bava's one window.
 func MainWindowOptions() application.WebviewWindowOptions {
 	return application.WebviewWindowOptions{
@@ -24,9 +28,12 @@ func MainWindowOptions() application.WebviewWindowOptions {
 		Width:  WindowWidth,
 		Height: WindowHeight,
 		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
+			// The draggable strip is exactly the page's title bar.
+			InvisibleTitleBarHeight: TitleBarHeight,
 			Backdrop:                application.MacBackdropTranslucent,
-			TitleBar:                application.MacTitleBarHiddenInset,
+			// Not the inset variant: its toolbar places the traffic lights for a
+			// ~52pt bar, below the content of Bava's 36px one.
+			TitleBar: application.MacTitleBarHidden,
 		},
 		URL: "/",
 		// Windows shows the application menu only on a window that opts in.

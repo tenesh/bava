@@ -1,6 +1,8 @@
 package format_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -131,5 +133,64 @@ func TestAddingACanvasToProseKeepsTheProse(t *testing.T) {
 	}
 	if len(back.Scene.Elements) != 1 {
 		t.Errorf("scene did not survive: %+v", back.Scene)
+	}
+}
+
+// Every shape type Milestone 6 adds, with a label and all three colours, must
+// read and write back byte for byte, including an unknown swatch name.
+func TestRoundTripEveryShapeWithLabelAndColours(t *testing.T) {
+	var elements []string
+	for i, shape := range []string{"rect", "ellipse", "diamond", "cylinder", "hexagon", "parallelogram", "document", "person", "cloud"} {
+		elements = append(elements, fmt.Sprintf(`    {
+      "color": "blue",
+      "fill": "ultraviolet",
+      "h": 40,
+      "id": "e%d",
+      "label": "Café %s: A -> B & <C>",
+      "stroke": "red",
+      "type": "%s",
+      "w": 80,
+      "x": %d,
+      "y": 0,
+      "z": %d
+    }`, i, shape, shape, i*100, i+1))
+	}
+	elements = append(elements, `    {
+      "h": 10,
+      "id": "a1",
+      "points": [
+        0,
+        0,
+        50,
+        10
+      ],
+      "stroke": "green",
+      "type": "arrow",
+      "w": 50,
+      "x": 0,
+      "y": 60,
+      "z": 20
+    }`)
+	source := "# Shapes\n\n```bava-canvas\n{\n  \"elements\": [\n" + strings.Join(elements, ",\n") + "\n  ],\n  \"version\": 1\n}\n```\n"
+
+	file, err := format.Read(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Through the frontend bridge as well, since that is how the app saves.
+	bridged, err := json.Marshal(file.Scene)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var scene format.Scene
+	if err := json.Unmarshal(bridged, &scene); err != nil {
+		t.Fatal(err)
+	}
+	written, err := format.Write(format.File{Source: file.Source, Scene: scene})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written != source {
+		t.Errorf("shapes did not round-trip.\nwant:\n%s\ngot:\n%s", source, written)
 	}
 }
