@@ -94,7 +94,9 @@ the milestone.
 - document prose, D2 source, canvas content or labels
 - AI prompts, replies or transcripts
 - credentials or tokens, in any form
-- the user's home directory, which is written as `~`
+- file paths or file names — found while implementing: a name can be content.
+  The home directory is still redacted to `~` as a backstop for messages Bava
+  does not write, such as Wails' own
 
 Held by a test that performs an open, an edit, a render and a save on a fixture
 with distinctive content, then asserts none of that content appears in the log.
@@ -110,9 +112,13 @@ with distinctive content, then asserts none of that content appears in the log.
 
 ### Retention: the last 10 sessions, 50 MB total — 2026-09-17
 Asked and answered. At startup, sessions beyond the newest 10 are deleted, then
-the oldest are deleted until the folder is under 50 MB. The current session
-is never pruned. A single session that grows past the cap is truncated from
-its start rather than growing without bound.
+the oldest are deleted until the folder is under 50 MB. Pruning happens only at
+startup, and never touches a session whose process is still running, so while
+Bava runs the folder can briefly exceed the cap by the live session and its
+roll. The current session
+is never pruned. A single session that grows past the cap rolls to
+`<name>.1.log`, replacing any earlier roll, and starts afresh — refined while
+planning: the newest lines are always kept and a live file is never rewritten.
 
 ### Verbose logging is a setting, off by default — 2026-09-17
 Asked and answered. By default the log records warnings and errors, plus

@@ -34,6 +34,40 @@ export interface ListResult {
 }
 
 /**
+ * LogEntry is an error the frontend reports. It carries the error's kind and
+ * stack frames, never its message: JavaScript messages quote input — a JSON
+ * syntax error shows the text it choked on — and a thrown value can be anything.
+ */
+export interface LogEntry {
+    "level": string;
+
+    /**
+     * Kind is the error's constructor name ("TypeError"), or the thrown
+     * value's type.
+     */
+    "kind": string;
+    "stack": string;
+
+    /**
+     * Source says where it was caught: "window", "rejection", "boundary", or a
+     * module name.
+     */
+    "source": string;
+}
+
+/**
+ * Notice is something the user should be told once.
+ */
+export interface Notice {
+    "kind": string;
+
+    /**
+     * Session is the log file of the session concerned, when there is one.
+     */
+    "session": string;
+}
+
+/**
  * OpenResult is a file, parsed.
  * 
  * Problems the user can act on — a missing file, a permission denial, a

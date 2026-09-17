@@ -181,14 +181,17 @@ check both before building either by hand.
 | `ErrorList` | D2 compiler diagnostics, click-to-jump to source line. |
 | `EmptyState` ✓ | Repeated across file tree, canvas, search. `mark` adds the faded brand mark for "nothing open yet". |
 | `Mark` ✓ | The brand mark, inlined from `src/brand/panda.svg` at one of four `--size-mark-*` sizes. |
+| `ErrorDialog` ✓ | An unexpected failure: one sentence, collapsed details, Copy details, Open logs folder. Never a stack. |
+| `PanelBoundary` ✓ | `<svelte:boundary>` around each shell region; a crash shows "This panel hit a problem" and Reload panel. |
+| `Disclosure` ✓ | A collapsed-by-default section, wrapping Ark's Collapsible. |
 | `AboutDialog` ✓ | Mark, wordmark, tagline, licence. No version until Milestone 16. |
 | `Icon` ✓ | Single sprite wrapper so icon sizing is tokenised. No set is bundled until Milestone 9. |
 
 ✓ marks what exists. Build the rest as screens need them, not upfront — an
 unused component is an unmaintained one.
 
-**Wrapped from Ark so far**: `Dialog`, `Splitter`, and SegmentGroup inside
-`Segments`.
+**Wrapped from Ark so far**: `Dialog`, `Splitter`, SegmentGroup inside
+`Segments`, and Collapsible inside `Disclosure`.
 
 ## Brand
 

@@ -271,6 +271,15 @@ wrong facts. When a milestone closes, update this section in the same change.
   volume icon already uses `icons.icns`. Nothing ships a DMG before release.
 - Frontend `src/brand/panda.svg` is the vendored mark; `Mark.svelte` renders
   it. Icon masters live beside their outputs in `build/`.
+- **5.8 (errors and logs) passes its gates** (2026-09-17). Not complete until
+  a human forces a panic and a frontend exception in a release build and finds
+  both in the log folder. Logs: `internal/logs`, one file per session in the
+  platform log folder; `LogService` binding; `app.Go` for goroutines;
+  `app.PanicHandler`; `ErrorDialog`, `PanelBoundary`; Help ▸ Open Logs Folder
+  and Copy Diagnostics. Report Issue… built but hidden until Milestone 16.
+- **Milestone 6 is planned and approved** (`.claude/work/plans/06-shapes.md`),
+  not started; the roadmap was re-planned around diagrams as generated free
+  shapes (`.claude/work/specs/diagrams-as-shapes.md`).
 - **Native menu bar** from `internal/app/menu/spec.json`; clicks arrive as
   `menu:command` and dispatch through `frontend/src/shell/commands.ts`. The
   title-bar Open/Save buttons are gone. Edit commands, clipboard included,
@@ -510,8 +519,8 @@ deliberately at `5.24.2` or later.
   top-level keys. Emptiness means no elements *and* nothing preserved.
 - **Saves are atomic** — temp file in the same directory, fsync, rename.
 - **Conflict detection is size plus mtime**, not a content hash.
-- Go packages now: `app`, `app/menu`, `config`, `format`, `layout`, `render`,
-  `store`.
+- Go packages now: `app`, `app/menu`, `config`, `format`, `layout`, `logs`,
+  `render`, `store`.
 
 ### Milestone 5.5 findings — 2026-09-17
 
@@ -558,6 +567,21 @@ deliberately at `5.24.2` or later.
   and record the rules in `.claude/work/specs/`.
 - **A comment counts as a literal.** `no-literals.test.ts` rejected `16px` in
   a doc comment; name the token instead.
+
+### Milestone 5.8 findings — 2026-09-17
+
+- **A release build of Wails keeps no logs and exits on any panic** outside a
+  bound method. Both recorded in `.ai/rules/wails.md`.
+- **A file name is content.** The privacy test's sentinel in a missing file's
+  name would have been logged through the error message. Bava logs sizes,
+  counts and durations, never paths.
+- **A privacy test must prove it exercised something.** It also asserts the
+  expected debug lines are present; an empty log passes every "does not
+  contain" check.
+- **Ark's Collapsible marks an open section by removing `hidden`**, not with a
+  `data-state` on the content, in jsdom.
+- **`go build .` writes a 46MB `bava` binary into the repo root.** Deleted
+  after use; build into `bin/` or use `go vet`.
 
 ### Settled facts that still hold
 

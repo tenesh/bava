@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/tenesh/bava/internal/app"
@@ -23,5 +24,25 @@ func TestWindowFitsFourRegions(t *testing.T) {
 func TestWindowUsesTheApplicationMenu(t *testing.T) {
 	if !app.MainWindowOptions().UseApplicationMenu {
 		t.Error("UseApplicationMenu is false: Windows would show no menu bar")
+	}
+}
+
+// When the webview's content process dies the window goes blank. Bava logs it,
+// reloads, and tells the user once the page is back.
+func TestContentProcessDeathLogsQueuesAndReloads(t *testing.T) {
+	service, session, _ := logService(t)
+	reloaded := 0
+
+	app.ContentProcessDied(service, func() { reloaded++ })
+
+	if reloaded != 1 {
+		t.Errorf("reloaded %d times, want 1", reloaded)
+	}
+	if !strings.Contains(logText(t, session), "webview content process") {
+		t.Error("the termination was not logged")
+	}
+	notices := service.TakeNotices()
+	if len(notices) != 1 || notices[0].Kind != app.NoticeWebviewReloaded {
+		t.Errorf("notices = %+v, want one webview-reloaded notice", notices)
 	}
 }

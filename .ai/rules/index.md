@@ -22,6 +22,7 @@ wrong), and scoped (it belongs to some paths, not all).
 | `testing.md` | `**/*_test.go`, `testdata/**` |
 | `ai.md` | `internal/ai/**`, `frontend/src/ai/**` |
 | `updates.md` | `internal/update/**` |
+| `logging.md` | `internal/logs/**`, `internal/app/log*.go`, `internal/app/recover*.go`, `internal/app/privacy*_test.go`, `main.go`, `frontend/src/ipc/log*.ts`, `frontend/src/shell/errors*` |
 
 ## Writing a rule file
 

@@ -31,6 +31,9 @@ type Settings struct {
 	Autosave string `json:"autosave"`
 	// AutosaveDelayMS is the quiet period for AutosaveAfterDelay.
 	AutosaveDelayMS int `json:"autosaveDelayMs"`
+	// VerboseLogging adds debug detail to Bava's log while someone reproduces
+	// a problem. Off by default; the log never holds content at any level.
+	VerboseLogging bool `json:"verboseLogging"`
 }
 
 // Autosave modes.

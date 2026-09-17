@@ -2,10 +2,12 @@ package app
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -46,8 +48,12 @@ type SaveResult struct {
 
 // Open reads and parses a file.
 func (s *FileService) Open(path string) OpenResult {
+	started := time.Now()
 	file, err := store.Open(path)
 	if err != nil {
+		// Never the path or the error text: a file name can be content, and
+		// the message carries the path. The frontend shows the user both.
+		slog.Debug("file open failed", "duration", time.Since(started))
 		return OpenResult{Path: path, Error: err.Error()}
 	}
 
@@ -64,25 +70,36 @@ func (s *FileService) Open(path string) OpenResult {
 	if err != nil {
 		result.Error = err.Error()
 	}
+	slog.Debug("file opened",
+		"bytes", len(file.Content),
+		"elements", len(parsed.Scene.Elements),
+		"canvasReadable", err == nil,
+		"duration", time.Since(started),
+	)
 	return result
 }
 
 // Save writes a file, replacing only the canvas block within it.
 func (s *FileService) Save(path string, source string, scene format.Scene) SaveResult {
+	started := time.Now()
 	file := format.File{Source: source, Scene: scene}
 
 	rendered, err := format.Write(file)
 	if err != nil {
+		slog.Debug("file save failed", "stage", "encode", "duration", time.Since(started))
 		return SaveResult{Path: path, Error: fmt.Sprintf("render: %v", err)}
 	}
 	if err := store.Save(path, rendered); err != nil {
+		slog.Debug("file save failed", "stage", "write", "duration", time.Since(started))
 		return SaveResult{Path: path, Error: err.Error()}
 	}
 
 	saved, err := store.Open(path)
 	if err != nil {
+		slog.Debug("file save failed", "stage", "reread", "duration", time.Since(started))
 		return SaveResult{Path: path, Error: err.Error()}
 	}
+	slog.Debug("file saved", "bytes", len(rendered), "elements", len(scene.Elements), "duration", time.Since(started))
 	return SaveResult{Path: path, Stamp: saved.Stamp}
 }
 

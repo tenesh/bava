@@ -126,6 +126,9 @@
       "label": "Help",
       "items": [
         { "kind": "command", "id": "help.shortcuts", "label": "Keyboard Shortcuts", "shortcut": "CmdOrCtrl+/", "nativeOn": ["darwin"] },
+        { "kind": "separator" },
+        { "kind": "command", "id": "help.openLogs", "label": "Open Logs Folder" },
+        { "kind": "command", "id": "help.copyDiagnostics", "label": "Copy Diagnostics" },
         { "kind": "separator", "platforms": ["windows", "linux"] },
         { "kind": "command", "id": "help.about", "label": "About Bava", "platforms": ["windows", "linux"] }
       ]

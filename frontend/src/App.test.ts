@@ -14,6 +14,13 @@ vi.mock('../bindings/github.com/tenesh/bava/internal/app', () => ({
   MenuService: {
     SetState: vi.fn().mockResolvedValue(undefined),
   },
+  LogService: {
+    Report: vi.fn().mockResolvedValue(undefined),
+    TakeNotices: vi.fn().mockResolvedValue([]),
+    Diagnostics: vi.fn().mockResolvedValue(''),
+    OpenLogsFolder: vi.fn().mockResolvedValue(''),
+    SetVerbose: vi.fn().mockResolvedValue(''),
+  },
 }));
 
 import App from './App.svelte';
