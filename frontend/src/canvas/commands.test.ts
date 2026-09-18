@@ -392,3 +392,23 @@ describe('locking', () => {
     expect(history.current.elements.filter((e) => 'locked' in e)).toHaveLength(2);
   });
 });
+
+// Align lines up what the user sees: a rotated element's edge on screen, not
+// the edge of the box it is stored as.
+describe('aligning a rotated element', () => {
+  it('uses its drawn bounds', () => {
+    const { history, selection, commands } = setup();
+    history.mutate((scene) => {
+      scene.elements.push(
+        // Turned a quarter, this bar is drawn from x 40 to 60.
+        { id: 'bar', type: 'rect', x: 0, y: 40, w: 100, h: 20, z: 4, angle: 90 } as never,
+        { id: 'box', type: 'rect', x: 200, y: 0, w: 20, h: 20, z: 5 } as never,
+      );
+    });
+    selection.click('bar');
+    selection.click('box', { additive: true });
+    commands.align('left');
+    const moved = history.current.elements.find((e) => e.id === 'box')!;
+    expect(moved.x).toBe(40);
+  });
+});

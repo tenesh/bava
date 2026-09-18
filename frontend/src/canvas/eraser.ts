@@ -7,6 +7,7 @@
  * group, so a group is never left pointing at a missing child.
  */
 import { isLocked, type ElementId, type SceneData, type SceneElement } from './scene';
+import { angleOfElement, toLocal } from './rotate';
 
 type Point = { x: number; y: number };
 
@@ -71,7 +72,12 @@ function drawnPath(e: SceneElement): Point[] | null {
 }
 
 /** Whether the trail segment touches what the element draws. */
-function touches(e: SceneElement, from: Point, to: Point, tolerance: number): boolean {
+function touches(e: SceneElement, trailFrom: Point, trailTo: Point, tolerance: number): boolean {
+  // An element's stored geometry is its upright box, so a rotated one is
+  // tested by turning the trail into its frame rather than turning the shape.
+  const turned = angleOfElement(e) !== 0;
+  const from = turned ? toLocal(trailFrom, e) : trailFrom;
+  const to = turned ? toLocal(trailTo, e) : trailTo;
   const path = drawnPath(e);
   if (!path) return crosses(e, from, to);
   if (path.length === 1) return segmentToSegment(from, to, path[0], path[0]) <= tolerance;

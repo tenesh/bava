@@ -151,3 +151,23 @@ while the element's `w`/`h` still describe the straight span. The selection
 outline, the marquee and the eraser therefore test a box the curve leaves.
 Carried to Milestone 6.5 with the linear hit-testing note above: both are the
 same change, testing a linear element by its drawn path.
+
+## A rotated element is tested where it is drawn
+`angle` turns an element about its own centre; `x`, `y`, `w` and `h` stay the
+upright box. Anything that asks where the element actually is goes through
+`rotate.ts`: `containsPoint` for a click, `rotatedBounds` for the marquee,
+`toLocal` for the eraser's trail and for a resize. Testing the stored box
+directly is the bug this module exists to prevent.
+
+## Resizing and rotating work on the selection's frame
+`selectionFrame` gives one element its own box and angle, and several the
+upright box around them all. Handle presses are read in that frame
+(`pointInFrame`), a resize drag is turned into it (`deltaInFrame`) and the
+result put back with `placeResized`, which moves the centre so the untouched
+edge stays where it is drawn.
+
+## A group is one id standing for its children
+Selecting a group puts only the wrapper's id in the selection, and the wrapper
+draws nothing. Every geometric edit expands it through `withDescendants`:
+`dragTargets` in `pointer.ts` for drags, `moveUnits` and `flip` in the
+commands. An edit that skips this appears to do nothing at all.

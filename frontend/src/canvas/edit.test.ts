@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createScene } from './scene';
-import { boundsOf, group, paste, ungroup, PASTE_OFFSET } from './edit';
+import { boundsOf, flip, group, paste, ungroup, PASTE_OFFSET } from './edit';
 
 function threeRects() {
   const scene = createScene();
@@ -86,5 +86,31 @@ describe('paste', () => {
     expect(copies).toHaveLength(2);
     // Relative spacing survives the offset.
     expect(copies[1].x - copies[0].x).toBe(source[1].x - source[0].x);
+  });
+});
+
+// Mirroring a rotated element has to mirror the lean as well, or the flip is
+// only half done, and the axis is the one the elements are drawn on.
+describe('flipping a rotated element', () => {
+  it('mirrors its angle', () => {
+    const scene = createScene({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 20, h: 20, z: 1, angle: 30 } as never,
+        { id: 'b', type: 'rect', x: 80, y: 0, w: 20, h: 20, z: 2 } as never,
+      ],
+    });
+    flip(scene, [scene.get('a')!, scene.get('b')!], 'horizontal');
+    expect(scene.get('a')!.angle).toBe(330);
+    expect(scene.get('b')!.angle).toBeUndefined();
+  });
+
+  it('mirrors about where the elements are drawn', () => {
+    const scene = createScene({
+      // Turned a quarter, this bar runs from x 40 to 60, not 0 to 100.
+      elements: [{ id: 'a', type: 'rect', x: 0, y: 40, w: 100, h: 20, z: 1, angle: 90 } as never],
+    });
+    flip(scene, [scene.get('a')!], 'horizontal');
+    // Mirrored about its own drawn bounds, the bar does not move.
+    expect(scene.get('a')!.x).toBe(0);
   });
 });

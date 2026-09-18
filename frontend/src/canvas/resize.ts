@@ -118,3 +118,17 @@ export function scaleInto<T extends Box & { points?: number[]; type?: string }>(
 export function tidy(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
+
+/**
+ * Where the rotate handle sits: centred above the box, `gap` scene units clear
+ * of its top edge, so it is never mistaken for the top-middle resize handle.
+ */
+export function rotateHandleCentre(box: Box, gap: number): { x: number; y: number } {
+  return { x: box.x + box.w / 2, y: box.y - gap };
+}
+
+/** Whether a point presses the rotate handle. */
+export function isRotateHandle(point: { x: number; y: number }, box: Box, size: number, gap: number): boolean {
+  const centre = rotateHandleCentre(box, gap);
+  return Math.abs(point.x - centre.x) <= size && Math.abs(point.y - centre.y) <= size;
+}
