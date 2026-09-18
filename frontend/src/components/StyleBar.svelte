@@ -10,7 +10,7 @@
   import { Popover, Portal, RadioGroup } from '@ark-ui/svelte';
   import Tooltip from './Tooltip.svelte';
   import { portalRoot } from './portal-root';
-  import { SWATCHES, isSwatch } from '../canvas/palette';
+  import { SWATCHES, isLiteralColour, isSwatch } from '../canvas/palette';
   import type { StyleKey } from '../canvas/style';
   import { t } from '../i18n/t';
 
@@ -42,6 +42,8 @@
   /** The chip shown on a trigger: the current swatch, the default, or mixed. */
   function chip(current: Current, part: string): string {
     if (current === 'mixed' || current === 'unavailable') return 'transparent';
+    // A colour the user picked is shown as picked.
+    if (isLiteralColour(current)) return current;
     // An unknown name (from a newer Bava) draws as the default on the canvas;
     // the chip shows the same.
     return isSwatch(current) ? `var(--swatch-${current}-${part})` : `var(--color-shape-${part})`;
@@ -93,6 +95,23 @@
                 </RadioGroup.Item>
               {/each}
             </RadioGroup.Root>
+
+            <!-- A colour of the user's own, stored as picked. -->
+            <label class="bava-custom">
+              <span class="bava-custom-label">{t('style.custom')}</span>
+              <input
+                type="text"
+                value={isLiteralColour(picker.current) ? picker.current : ''}
+                placeholder={t('style.customHint')}
+                spellcheck="false"
+                autocomplete="off"
+                onchange={(event) => {
+                  const typed = event.currentTarget.value.trim();
+                  if (isLiteralColour(typed)) onApply(picker.key, typed);
+                  else event.currentTarget.value = isLiteralColour(picker.current) ? picker.current : '';
+                }}
+              />
+            </label>
           </Popover.Content>
         </Popover.Positioner>
       </Portal>
@@ -153,6 +172,33 @@
     display: grid;
     grid-template-columns: repeat(3, auto);
     gap: var(--space-1);
+  }
+
+  :global(.bava-custom) {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    padding-top: var(--space-2);
+    border-top: var(--border-width) solid var(--color-border-subtle);
+    font-size: var(--text-meta);
+    color: var(--color-text-secondary);
+  }
+
+  :global(.bava-custom input) {
+    width: var(--size-field-number);
+    height: var(--size-row);
+    padding: 0 var(--space-2);
+    border: var(--border-width) solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-chip);
+    color: var(--color-text-primary);
+  }
+
+  :global(.bava-custom input:focus-visible) {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
   }
 
   :global(.bava-swatch) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createHistory } from './history';
-import { applyStyle, copyStyle, currentStyle, pasteStyle, styleKeysFor } from './style';
+import { applyProperty, applyStyle, copyStyle, currentProperty, currentStyle, pasteStyle, propertyKeysFor, setProperty, styleKeysFor } from './style';
 import type { SceneData } from './scene';
 
 const scene = (): SceneData => ({
@@ -85,5 +85,81 @@ describe('copying and pasting a style', () => {
     history.undo();
     expect(history.current.elements[0]).toMatchObject({ stroke: 'green' });
     expect(history.canUndo).toBe(false);
+  });
+});
+
+// The style properties of Milestone 6.3, applied like colours: only to the
+// elements that take the key, in one step, with the toolbar showing what the
+// selection has.
+describe('style properties', () => {
+  const scene = (): SceneData => ({
+    elements: [
+      { id: 'r', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1 } as never,
+      { id: 'e', type: 'ellipse', x: 0, y: 0, w: 10, h: 10, z: 2 } as never,
+      { id: 'a', type: 'arrow', x: 0, y: 0, w: 10, h: 10, z: 3, points: [0, 0, 10, 10] } as never,
+      { id: 't', type: 'text', x: 0, y: 0, w: 10, h: 10, z: 4, text: 'x', measuredWidth: 10, measuredHeight: 10 } as never,
+    ],
+  });
+
+  it('names the keys each element type takes', () => {
+    expect(propertyKeysFor('rect')).toContain('edges');
+    // An ellipse has no corners, as in Excalidraw.
+    expect(propertyKeysFor('ellipse')).not.toContain('edges');
+    expect(propertyKeysFor('arrow')).toEqual(
+      expect.arrayContaining(['strokeWidth', 'strokeStyle', 'opacity', 'arrowType', 'startArrowhead', 'endArrowhead']),
+    );
+    expect(propertyKeysFor('arrow')).not.toContain('edges');
+    expect(propertyKeysFor('text')).toEqual(expect.arrayContaining(['fontSize', 'align', 'opacity']));
+    expect(propertyKeysFor('text')).not.toContain('strokeWidth');
+    expect(propertyKeysFor('group')).toEqual(['opacity']);
+  });
+
+  it('applies a property to every selected element that takes it, in one step', () => {
+    const history = createHistory(scene());
+    applyProperty(history, ['r', 'a', 't'], 'strokeWidth', 4);
+    const byId = Object.fromEntries(history.current.elements.map((el) => [el.id, el]));
+    expect(byId.r).toMatchObject({ strokeWidth: 4 });
+    expect(byId.a).toMatchObject({ strokeWidth: 4 });
+    expect('strokeWidth' in byId.t).toBe(false);
+    history.undo();
+    expect('strokeWidth' in history.current.elements[0]).toBe(false);
+    expect(history.canUndo).toBe(false);
+  });
+
+  it('clears a property when set back to the default', () => {
+    const history = createHistory(scene());
+    applyProperty(history, ['r'], 'opacity', 40);
+    applyProperty(history, ['r'], 'opacity', null);
+    expect('opacity' in history.current.elements[0]).toBe(false);
+  });
+
+  it('reports what the selection shows: shared, default or mixed', () => {
+    const history = createHistory(scene());
+    applyProperty(history, ['r'], 'strokeWidth', 4);
+    expect(currentProperty(history.current, ['r'], 'strokeWidth')).toBe(4);
+    expect(currentProperty(history.current, ['e'], 'strokeWidth')).toBeNull();
+    expect(currentProperty(history.current, ['r', 'e'], 'strokeWidth')).toBe('mixed');
+    expect(currentProperty(history.current, ['t'], 'strokeWidth')).toBe('unavailable');
+  });
+});
+
+// Absent means the default (docs/file-format.md), so choosing the default
+// removes the key rather than writing what the reader would assume anyway.
+// Without this the toolbar could never take an element back to unset.
+describe('setting a property from a control', () => {
+  const scene = (): SceneData => ({
+    elements: [{ id: 'r', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1, strokeWidth: 4 } as never],
+  });
+
+  it('clears the key when the chosen value is the default', () => {
+    const history = createHistory(scene());
+    setProperty(history, ['r'], 'strokeWidth', 2);
+    expect('strokeWidth' in history.current.elements[0]).toBe(false);
+  });
+
+  it('writes anything else', () => {
+    const history = createHistory(scene());
+    setProperty(history, ['r'], 'strokeWidth', 1);
+    expect(history.current.elements[0]).toMatchObject({ strokeWidth: 1 });
   });
 });

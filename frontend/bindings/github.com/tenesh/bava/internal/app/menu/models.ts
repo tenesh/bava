@@ -16,5 +16,10 @@ export interface State {
      * CanPasteStyles reports a style copied with Copy Styles.
      */
     "canPasteStyles": boolean;
+
+    /**
+     * HasLocked reports at least one locked element in the scene.
+     */
+    "hasLocked": boolean;
     "recents": string[] | null;
 }

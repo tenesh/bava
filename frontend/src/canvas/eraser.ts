@@ -6,7 +6,7 @@
  * space between them is empty canvas. Erasing an element takes its outermost
  * group, so a group is never left pointing at a missing child.
  */
-import type { ElementId, SceneData, SceneElement } from './scene';
+import { isLocked, type ElementId, type SceneData, type SceneElement } from './scene';
 
 type Point = { x: number; y: number };
 
@@ -87,7 +87,8 @@ function touches(e: SceneElement, from: Point, to: Point, tolerance: number): bo
  * draws. A click (the same point twice) touches only the topmost.
  */
 export function erasableAlong(scene: SceneData, from: Point, to: Point, tolerance = 3): ElementId[] {
-  const hit = scene.elements.filter((e) => e.type !== 'group' && touches(e, from, to, tolerance));
+  // A locked element is skipped: the eraser does not edit what cannot be moved.
+  const hit = scene.elements.filter((e) => e.type !== 'group' && !isLocked(e) && touches(e, from, to, tolerance));
   if (from.x === to.x && from.y === to.y) {
     const top = [...hit].sort((a, b) => b.z - a.z)[0];
     return top ? [top.id] : [];

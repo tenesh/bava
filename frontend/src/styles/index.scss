@@ -13,5 +13,7 @@
 
 // Element defaults, after the tokens they consume.
 @use 'base';
+// Classes shared by more than one control component.
+@use 'controls';
 // DOM the canvas creates imperatively, which no component owns.
 @use 'canvas-overlays';

@@ -255,3 +255,46 @@ describe('the scene around the elements', () => {
     expect(sceneToSave(doc.sceneExtra, [])).toEqual({ version: 1, elements: [] });
   });
 });
+
+// Milestone 6.3's keys ride on the element objects. The frontend models some
+// of them and must not drop the rest: a scene loaded and saved again is the
+// scene that came in, plus this document's edits.
+describe('style properties survive a load and a save', () => {
+  const styled = {
+    version: 1,
+    elements: [
+      {
+        id: 's1',
+        type: 'rect',
+        x: 0,
+        y: 0,
+        w: 10,
+        h: 10,
+        z: 1,
+        fill: '#e03131',
+        strokeWidth: 4,
+        strokeStyle: 'dashed',
+        edges: 'round',
+        opacity: 60,
+        angle: 45,
+        locked: true,
+        fontSize: 28,
+        align: 'right',
+        verticalAlign: 'top',
+        someFutureKey: { nested: [1, 2] },
+      },
+      { id: 'a1', type: 'arrow', x: 0, y: 0, w: 5, h: 5, z: 2, points: [0, 0, 5, 5], arrowType: 'elbow', endArrowhead: 'triangle-outline' },
+    ],
+    grid: { size: 8 },
+  };
+
+  it('writes back every key it was given', async () => {
+    const io = stubIO({
+      open: vi.fn().mockResolvedValue({ path: '/w/styled.md', source: '', diagrams: {}, scene: styled, stamp: { size: 1, modifiedUnixNano: 1 }, error: '' }),
+    });
+    const doc = createDocument(io);
+    const opened = await doc.open('/w/styled.md');
+    const saved = sceneToSave(doc.sceneExtra, opened.scene.elements as unknown[]);
+    expect(saved).toEqual(styled);
+  });
+});

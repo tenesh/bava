@@ -146,9 +146,9 @@ Optional keys on every shape:
 | Key | Value | Absent means |
 |---|---|---|
 | `label` | plain text, drawn centred and wrapped inside the shape's box | no label |
-| `fill` | a swatch name | the theme's default fill |
-| `stroke` | a swatch name | the theme's default border |
-| `color` | a swatch name, for the label | the theme's default text colour |
+| `fill` | a colour (see Colours) | the theme's default fill |
+| `stroke` | a colour | the theme's default border |
+| `color` | a colour, for the label | the theme's default text colour |
 
 ```json
 { "id": "e4", "type": "cylinder", "x": 40, "y": 24, "w": 120, "h": 90, "z": 2, "label": "Postgres", "fill": "blue", "stroke": "blue", "color": "blue" }
@@ -159,15 +159,53 @@ glyph's difference between WebKitGTK and WebView2 reflows it within the box
 without moving anything else. Free text elements are different: see "Text
 carries its measured size".
 
-### Swatches
-Colours are stored as swatch names, never as colour values. Each swatch has a
-light and a dark value, so a choice stays readable when the theme changes; the
-values live in the app, not the file.
+### Colours
+A colour is **a swatch name or a literal `#rrggbb`**. A value starting with
+`#` is a literal colour; anything else is a swatch name.
 
-`gray`, `blue`, `green`, `yellow`, `orange`, `red`, `purple`, `pink`.
+Swatches are the palette, and each has a light and a dark value, so a choice
+stays readable when the theme changes; the values live in the app, not the
+file: `gray`, `blue`, `green`, `yellow`, `orange`, `red`, `purple`, `pink`.
 
 **An unknown swatch name renders as the default and is written back
 unchanged**, like any unknown value: a newer Bava may add swatches.
+
+A **literal colour** is what the user picked. It is drawn as stored where it
+reads against that theme's canvas, and where it does not, its lightness is
+flipped and nudged until it does, keeping its hue. The rule works from the
+value alone, so the file never records which theme it was picked in and a file
+written in one theme reads in the other. A malformed `#` value draws as the
+default and is written back unchanged.
+
+### Style properties
+Optional on the element types listed, and absent means the default:
+
+| Key | Value | Absent | Elements |
+|---|---|---|---|
+| `strokeWidth` | 1, 2 or 4 | 2 | shapes, `line`, `arrow`, `stroke`, `frame` |
+| `strokeStyle` | `solid`, `dashed`, `dotted` | `solid` | as above |
+| `edges` | `sharp`, `round` | `sharp` | `rect`, `diamond`, `hexagon`, `parallelogram` and `line`; the curved outlines have no corners to round |
+| `opacity` | 0 to 100 | 100 | every element |
+| `fontSize` | 16, 20, 28 or 36 | 20 | `text`, and a shape's or frame's label |
+| `align` | `left`, `center`, `right` | `center` in a shape, `left` in free text | `text` and labels |
+| `verticalAlign` | `top`, `middle`, `bottom` | `middle` | labels |
+| `locked` | `true` | not locked | every element |
+| `arrowType` | `straight`, `elbow`, `arc` | `straight` | `arrow` |
+| `startArrowhead` | an arrowhead name | `none` | `arrow` |
+| `endArrowhead` | an arrowhead name | `arrow` | `arrow` |
+| `angle` | degrees, 0 to 359, clockwise about the element's centre | 0 | every element except an elbow arrow |
+
+Arrowhead names: `none`, `arrow`, `bar`, `triangle`, `triangle-outline`,
+`circle`, `circle-outline`, `diamond`, `diamond-outline`. The entity-relation
+heads arrive with connections.
+
+Numbers rather than names for `strokeWidth` and `fontSize`, so a custom value
+later needs no new vocabulary. Every value above follows the rule this format
+already has: **an unknown value draws as the default and is written back
+unchanged.**
+
+A locked element draws and exports normally; locking is about editing, not
+appearance.
 
 ### Lines, arrows and strokes
 `line`, `arrow` and `stroke` carry `points`: a flat list `[x1, y1, x2, y2,

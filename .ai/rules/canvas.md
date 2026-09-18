@@ -130,3 +130,24 @@ Arrange, align, distribute, flip, duplicate and copy/paste styles are
 `scope: "canvas"` in the menu spec: page shortcuts that act only when the
 canvas is the edit target. ⌘] indents in the source editor, ⇧H types a capital.
 
+
+## A locked element is skipped by everything that selects
+`locked: true` removes an element from `elementsAt`, the marquee, Select All
+and `erasableAlong`, so no edit can reach it: commands act on the selection,
+and it can never be in one. It still draws and still exports. The only way
+back is Unlock All (`⌥⇧⌘L`, or right-click on empty canvas), which clears the
+flag on every locked element in one step.
+
+## Sizes are tokens; shapes of curves are constants
+A length that appears on screen is a `--size-*` or `--radius-*` token, read
+through `number(read, …)`. A dimensionless ratio that describes a curve's shape
+(`ROUND_SHARE`, `LINE_TENSION`, `ARC_BOW`, `ARC_STEPS`) stays a named constant
+beside the drawing code: it does not scale with the theme and nothing outside
+that file can use it.
+
+## An arc arrow draws outside its box
+`arrowType: 'arc'` bows `ARC_BOW` of its length perpendicular to its ends,
+while the element's `w`/`h` still describe the straight span. The selection
+outline, the marquee and the eraser therefore test a box the curve leaves.
+Carried to Milestone 6.5 with the linear hit-testing note above: both are the
+same change, testing a linear element by its drawn path.

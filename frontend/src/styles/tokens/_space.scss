@@ -37,6 +37,9 @@
   --size-marquee-dash: 4px;
   // The eraser trail's width on screen, whatever the zoom.
   --size-eraser-trail: 6px;
+  // Dashes and dots for a dashed or dotted stroke, in scene units.
+  --size-dash: 6px;
+  --size-dot: 2px;
   // A tool rail button, square.
   --size-rail-button: 32px;
   // The insert panel beside the rail, and a tile in its grid.
@@ -64,6 +67,10 @@
   // The launch splash's progress bar: a short, thin rule.
   --size-progress-splash: 148px;
   --size-progress-thickness: 2px;
+
+  // A slider inside a popover: the opacity control.
+  --size-slider-track: 148px;
+  --size-slider-thumb: 10px;
 
   // A dialog scrolls rather than outgrowing the window.
   --size-dialog-body-max: 60vh;

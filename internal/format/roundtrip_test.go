@@ -194,3 +194,80 @@ func TestRoundTripEveryShapeWithLabelAndColours(t *testing.T) {
 		t.Errorf("shapes did not round-trip.\nwant:\n%s\ngot:\n%s", source, written)
 	}
 }
+
+// Milestone 6.3's keys: the writer models none of them, so they survive only
+// through the raw element. A regression here is silent data loss in a file
+// written by a newer Bava, or by this one after the frontend adds a key.
+func TestRoundTripStylePropertiesAndLiteralColours(t *testing.T) {
+	source := "# Styles\n\n```bava-canvas\n{\n  \"elements\": [\n" + strings.Join([]string{
+		`    {
+      "align": "right",
+      "angle": 45,
+      "edges": "round",
+      "fill": "#e03131",
+      "fontSize": 28,
+      "h": 40,
+      "id": "s1",
+      "label": "Styled",
+      "locked": true,
+      "opacity": 60,
+      "strokeStyle": "dashed",
+      "strokeWidth": 4,
+      "type": "rect",
+      "verticalAlign": "top",
+      "w": 80,
+      "x": 0,
+      "y": 0,
+      "z": 1
+    }`,
+		`    {
+      "arrowType": "elbow",
+      "endArrowhead": "triangle-outline",
+      "h": 10,
+      "id": "a1",
+      "points": [
+        0,
+        0,
+        50,
+        10
+      ],
+      "startArrowhead": "circle",
+      "stroke": "#0b7285",
+      "type": "arrow",
+      "w": 50,
+      "x": 0,
+      "y": 60,
+      "z": 2
+    }`,
+		`    {
+      "edges": "hexagonal",
+      "h": 10,
+      "id": "u1",
+      "opacity": "very",
+      "someFutureKey": {
+        "nested": [
+          1,
+          2
+        ]
+      },
+      "strokeWidth": 3,
+      "type": "rect",
+      "w": 10,
+      "x": 0,
+      "y": 100,
+      "z": 3
+    }`,
+	}, ",\n") + "\n  ],\n  \"version\": 1\n}\n```\n"
+
+	file, err := format.Read(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	written, err := format.Write(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written != source {
+		t.Errorf("round trip changed the file:\n--- want ---\n%s\n--- got ---\n%s", source, written)
+	}
+}

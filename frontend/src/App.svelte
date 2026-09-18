@@ -12,9 +12,9 @@
   import InsertPanel from './components/InsertPanel.svelte';
   import { createInsert } from './shell/insert.svelte';
   import ContextMenu from './components/ContextMenu.svelte';
-  import { contextMenuFor, contextSelection, type MenuNode } from './canvas/context-menu';
+  import { contextMenuFor, contextSelection, overflowMenu, parseOverflowId, type MenuNode } from './canvas/context-menu';
   import { topLevel } from './canvas/edit';
-  import { createScene } from './canvas/scene';
+  import { createScene, isLocked } from './canvas/scene';
   import { topmostAt } from './canvas/eraser';
   import { SourcePane } from './editor/source-pane';
   import { createRenderClient } from './ipc/render.svelte';
@@ -30,9 +30,9 @@
   import { wheelAction } from './canvas/navigation';
   import { LabelEditor, commitLabel, commitText, editableAt, insertText } from './canvas/label-editor';
   import { canvasLineWidth, measureTextBlock } from './canvas/text-measure';
-  import { applyStyle, currentStyle } from './canvas/style';
+  import { applyStyle, currentProperty, currentStyle, setProperty, type PropertyKey } from './canvas/style';
   import SelectionToolbar from './components/SelectionToolbar.svelte';
-  import { toolbarFor } from './canvas/toolbar';
+  import { toolbarFor, type ToolbarControl } from './canvas/toolbar';
   import { readRootVariable } from './canvas/palette';
   import type { SceneData, SceneElement } from './canvas/scene';
   import FileTree from './components/FileTree.svelte';
@@ -115,6 +115,7 @@
       canUngroup: selected.some((e) => e.type === 'group'),
       canPaste: canvasCommands.canPaste,
       canPasteStyles: canvasCommands.canPasteStyles,
+      hasLocked: canvasCommands.hasLocked,
     };
   }
 
@@ -123,8 +124,8 @@
    * the same right-click reaches the menu's outside-interaction check and
    * closes it at once.
    */
-  function openContextMenu(anchor: { x: number; y: number }) {
-    const items = contextMenuFor(selectionInfo());
+  function openContextMenu(anchor: { x: number; y: number }, overflow: ToolbarControl[] = []) {
+    const items = [...contextMenuFor(selectionInfo()), ...overflowMenu(overflow)];
     setTimeout(() => (contextMenu = { items, anchor }));
   }
 
@@ -204,6 +205,31 @@
   // plain state inside the canvas.
   let selectedIds = $state.raw<string[]>([]);
   const toolbar = $derived(toolbarFor(published, selectedIds));
+  /** What each property control shows for the selection. */
+  const toolbarProperties = $derived(
+    Object.fromEntries(
+      toolbar.controls
+        .filter((control) => control.kind !== 'colour')
+        .map((control) => [control.id, currentProperty(published, selectedIds, control.id as PropertyKey)]),
+    ),
+  );
+  /**
+   * How many controls the row has room for. A control is a square button plus
+   * its gap; the row keeps a margin either side of the canvas. Until the first
+   * measurement the row shows everything: measuring happens before paint, and
+   * a guessed number here would be a second copy of the tokens.
+   */
+  let toolbarCapacity = $state.raw(Number.POSITIVE_INFINITY);
+
+  function measureToolbar(width: number) {
+    // The tokens are the only source for these sizes; without a stylesheet
+    // (a test, a plain browser) nothing is measured and the row stays whole.
+    const button = parseFloat(readRootVariable('--size-row'));
+    const gap = parseFloat(readRootVariable('--space-1'));
+    const margin = parseFloat(readRootVariable('--space-6')) * 2;
+    if (!Number.isFinite(button + gap + margin)) return;
+    toolbarCapacity = Math.max(1, Math.floor((width - margin) / (button + gap)));
+  }
 
   function syncSelection() {
     hasSelection = canvasCommands.hasSelection;
@@ -542,6 +568,8 @@
     'canvas.flipHorizontal': canvasEdit(canvasCommands.flipHorizontal),
     'canvas.flipVertical': canvasEdit(canvasCommands.flipVertical),
     'canvas.duplicate': canvasEdit(canvasCommands.duplicate),
+    'canvas.lock': canvasEdit(canvasCommands.lock),
+    'canvas.unlockAll': canvasEdit(canvasCommands.unlockAll),
     'canvas.copyStyles': () => {
       if (!canvasShown()) return;
       canvasCommands.copyStyles();
@@ -743,7 +771,10 @@
     const sizeObserver =
       typeof ResizeObserver === 'undefined'
         ? null
-        : new ResizeObserver(() => canvas.resize(diagramHost.clientWidth, diagramHost.clientHeight));
+        : new ResizeObserver(() => {
+            canvas.resize(diagramHost.clientWidth, diagramHost.clientHeight);
+            measureToolbar(diagramHost.clientWidth);
+          });
     sizeObserver?.observe(diagramHost);
 
     // Tool shortcuts are global while the canvas has focus. Ignored while a
@@ -889,6 +920,7 @@
       tool: tools.active,
       hasSelection,
       canPasteStyles,
+      hasLocked: published.elements.some(isLocked),
       recents: recents.paths,
     };
     void MenuService.SetState(state).catch(() => {
@@ -971,6 +1003,13 @@
               stroke: currentStyle(published, selectedIds, 'stroke'),
               color: currentStyle(published, selectedIds, 'color'),
             }}
+            controls={toolbar.controls}
+            properties={toolbarProperties}
+            capacity={toolbarCapacity}
+            onProperty={(key, value) => {
+              setProperty(history, selectedIds, key, value);
+              commit();
+            }}
             keysFor={(id) => keysFor(menuSpec as MenuSpec, id, platform)}
             align={toolbar.align}
             distribute={toolbar.distribute}
@@ -979,7 +1018,7 @@
               commit();
             }}
             onCommand={(id) => void dispatcher.dispatch({ id })}
-            onMore={(anchor) => openContextMenu(anchor)}
+            onMore={(anchor, overflow) => openContextMenu(anchor, overflow)}
           />
         </div>
       {/if}
@@ -1022,7 +1061,16 @@
     anchor={contextMenu?.anchor ?? null}
     onSelect={(id) => {
       contextMenu = null;
-      void dispatcher.dispatch({ id });
+      // A control that did not fit the toolbar row acts from the menu; every
+      // other entry is a command the native menu has too.
+      const choice = parseOverflowId(id);
+      if (choice?.kind === 'property') setProperty(history, selectedIds, choice.key, choice.value);
+      else if (choice?.kind === 'style') applyStyle(history, selectedIds, choice.key, choice.swatch);
+      else {
+        void dispatcher.dispatch({ id });
+        return;
+      }
+      commit();
     }}
     onOpenChange={(open) => {
       if (!open) contextMenu = null;

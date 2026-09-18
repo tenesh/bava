@@ -19,6 +19,11 @@ function componentFiles(): string[] {
   return out;
 }
 
+// A control can also take its focus ring from a class shared by several
+// components (`styles/controls.scss`), which the last test holds to the same
+// rule.
+const SHARED_FOCUS = /bava-control-trigger/;
+
 /** Elements a keyboard can land on. */
 const INTERACTIVE = /<button|<input|<a\s|role="radio"|role="button"|SegmentGroup\.Item|Splitter\.ResizeTrigger/;
 
@@ -28,7 +33,7 @@ describe('focus treatment', () => {
     for (const file of componentFiles()) {
       const source = readFileSync(file, 'utf8');
       if (!INTERACTIVE.test(source)) continue;
-      if (!source.includes(':focus')) missing.push(file);
+      if (!source.includes(':focus') && !SHARED_FOCUS.test(source)) missing.push(file);
     }
     expect(missing).toEqual([]);
   });
@@ -45,5 +50,13 @@ describe('focus treatment', () => {
 
   it('checks a meaningful number of components', () => {
     expect(componentFiles().length).toBeGreaterThan(4);
+  });
+
+  // The shared class is a component's focus treatment by proxy, so it has to
+  // carry a ring built from the same tokens.
+  it('gives the shared control class a focus ring from the tokens', () => {
+    const shared = readFileSync('src/styles/controls.scss', 'utf8');
+    expect(shared).toContain('.bava-control-trigger:focus-visible');
+    expect(shared).toContain('--color-focus-ring');
   });
 });

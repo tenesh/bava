@@ -24,11 +24,32 @@ type Base = {
 };
 
 /**
- * Colours are swatch names (`"blue"`), resolved per theme by `palette.ts`.
- * An absent key means the theme's default; an unknown name draws as the
- * default and is kept.
+ * Colours are a swatch name (`"blue"`) or a literal `#rrggbb`, resolved per
+ * theme by `palette.ts`. An absent key means the theme's default; an unknown
+ * value draws as the default and is kept.
  */
 type Styled = { label?: string; fill?: string; stroke?: string; color?: string };
+
+/**
+ * The style properties of `docs/file-format.md`. Every one is optional, and an
+ * unknown value draws as the default and is written back unchanged, so these
+ * are typed loosely on purpose: the file is the contract, not this union.
+ */
+export type StyleProps = {
+  strokeWidth?: number;
+  strokeStyle?: string;
+  edges?: string;
+  opacity?: number;
+  fontSize?: number;
+  align?: string;
+  verticalAlign?: string;
+  locked?: boolean;
+  /** Degrees, clockwise about the element's centre. */
+  angle?: number;
+};
+
+/** An arrow's routing and its ends. */
+export type ArrowProps = { arrowType?: string; startArrowhead?: string; endArrowhead?: string };
 
 /** The closed shapes: rectangle and ellipse, and the seven with outlines. */
 export const SHAPE_TYPES = [
@@ -49,17 +70,17 @@ export function isShapeType(type: string): type is ShapeType {
   return (SHAPE_TYPES as readonly string[]).includes(type);
 }
 
-export type ShapeElement = Base & Styled & { type: ShapeType };
+export type ShapeElement = Base & Styled & StyleProps & { type: ShapeType };
 export type RectElement = ShapeElement & { type: 'rect' };
 export type EllipseElement = ShapeElement & { type: 'ellipse' };
 /** `points` are relative to the element's `x` and `y`. */
-export type LineElement = Base & { type: 'line'; points: number[]; stroke?: string };
-export type ArrowElement = Base & { type: 'arrow'; points: number[]; stroke?: string };
-export type FrameElement = Base & { type: 'frame'; label?: string; stroke?: string; color?: string };
-export type GroupElement = Base & { type: 'group'; label?: string; children: ElementId[] };
-export type StrokeElement = Base & { type: 'stroke'; points: number[]; stroke?: string };
+export type LineElement = Base & StyleProps & { type: 'line'; points: number[]; stroke?: string };
+export type ArrowElement = Base & StyleProps & ArrowProps & { type: 'arrow'; points: number[]; stroke?: string };
+export type FrameElement = Base & StyleProps & { type: 'frame'; label?: string; stroke?: string; color?: string };
+export type GroupElement = Base & StyleProps & { type: 'group'; label?: string; children: ElementId[] };
+export type StrokeElement = Base & StyleProps & { type: 'stroke'; points: number[]; stroke?: string };
 
-export type TextElement = Base & {
+export type TextElement = Base & StyleProps & {
   type: 'text';
   text: string;
   color?: string;
@@ -91,6 +112,11 @@ export type SceneElement =
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
 export type NewElement = DistributiveOmit<SceneElement, 'id' | 'z'>;
+
+/** Whether an element is locked: not selectable, not editable, still drawn. */
+export function isLocked(element: { locked?: boolean }): boolean {
+  return element.locked === true;
+}
 
 export type SceneData = {
   elements: SceneElement[];

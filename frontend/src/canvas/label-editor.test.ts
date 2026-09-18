@@ -58,6 +58,19 @@ describe('finding what to edit', () => {
     expect(editableAt(scene(), { x: 500, y: 500 })).toBeUndefined();
   });
 
+  // A locked element is inert: no edit reaches it, typing included
+  // (`.ai/rules/canvas.md`, "A locked element is skipped by everything that
+  // selects"). Without this, a double-click still opened its label editor.
+  it('passes through a locked element to what is beneath', () => {
+    const locked: SceneData = {
+      elements: [
+        { id: 'under', type: 'rect', x: 0, y: 0, w: 100, h: 50, z: 1 } as never,
+        { id: 'over', type: 'rect', x: 0, y: 0, w: 100, h: 50, z: 2, locked: true } as never,
+      ],
+    };
+    expect(editableAt(locked, { x: 10, y: 10 })?.id).toBe('under');
+  });
+
   // Placing text is one gesture and one undo step: nothing enters history
   // until there is text, so undo cannot leave an invisible empty element.
   it('inserts typed text with its measurement as one step, and nothing when empty', () => {

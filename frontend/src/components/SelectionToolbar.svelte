@@ -1,16 +1,21 @@
 <script lang="ts">
   /**
-   * The selection toolbar at the bottom of the canvas: the colour pickers the
-   * selection takes, align and distribute when there are enough units, and
-   * More, which opens the same actions as a right-click.
+   * The selection toolbar at the bottom of the canvas: the controls the
+   * selection takes, grouped, then align and distribute, then More.
    *
-   * Presentational: it reports a colour, a command id, or where More sits.
+   * One adaptive row (canvas-toolbar.md): what does not fit moves into More
+   * rather than the row wrapping or scrolling. Presentational: it reports a
+   * colour, a property, a command id, or where More sits.
    */
+  import OpacityPicker from './OpacityPicker.svelte';
+  import OptionPicker from './OptionPicker.svelte';
   import StyleBar from './StyleBar.svelte';
   import Tooltip from './Tooltip.svelte';
   import ToolIcon from './ToolIcon.svelte';
   import type { IconId } from './tool-icons';
-  import type { StyleKey } from '../canvas/style';
+  import { splitForWidth, type ToolbarControl } from '../canvas/toolbar';
+  import { PROPERTY_OPTIONS } from '../canvas/property-options';
+  import type { PropertyKey, PropertyValue, StyleKey } from '../canvas/style';
   import type { MessageKey } from '../i18n/messages';
   import { t } from '../i18n/t';
 
@@ -18,17 +23,35 @@
 
   type Props = {
     styles: Record<StyleKey, Current>;
-    /** The formatted key for a command, when it has one. */
-    keysFor?: (id: string) => string;
+    /** The controls this selection takes, in row order. */
+    controls?: ToolbarControl[];
+    /** What each property control should show. */
+    properties?: Partial<Record<PropertyKey, PropertyValue | null | 'mixed' | 'unavailable'>>;
     align: boolean;
     distribute: boolean;
+    /** How many controls the row has room for; the rest move into More. */
+    capacity?: number;
+    keysFor?: (id: string) => string;
     onApply: (key: StyleKey, swatch: string | null) => void;
+    onProperty: (key: PropertyKey, value: PropertyValue) => void;
     onCommand: (id: string) => void;
     /** Viewport point above the More button, where its menu opens. */
-    onMore: (anchor: { x: number; y: number }) => void;
+    onMore: (anchor: { x: number; y: number }, overflow: ToolbarControl[]) => void;
   };
 
-  let { styles, align, distribute, keysFor = () => '', onApply, onCommand, onMore }: Props = $props();
+  let {
+    styles,
+    controls = [],
+    properties = {},
+    align,
+    distribute,
+    capacity = Number.MAX_SAFE_INTEGER,
+    keysFor = () => '',
+    onApply,
+    onProperty,
+    onCommand,
+    onMore,
+  }: Props = $props();
 
   type Action = { id: string; icon: IconId; labelKey: MessageKey };
 
@@ -48,14 +71,50 @@
 
   const actions = $derived([...(align ? ALIGN : []), ...(distribute ? DISTRIBUTE : [])]);
 
+  // Colours are one control in the row (the chips), whatever their number.
+  const colours = $derived(
+    controls.some((control) => control.kind === 'colour') ||
+      Object.values(styles).some((value) => value !== 'unavailable'),
+  );
+  const rest = $derived(controls.filter((control) => control.kind !== 'colour'));
+  const split = $derived(splitForWidth(rest, Math.max(1, capacity - (colours ? 1 : 0))));
+
+  /** Where one property control's dividers fall: a new group starts a divider. */
+  function startsGroup(list: ToolbarControl[], index: number): boolean {
+    return index > 0 && list[index - 1].group !== list[index].group;
+  }
+
   function more(event: MouseEvent) {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    onMore({ x: rect.left, y: rect.top });
+    onMore({ x: rect.left, y: rect.top }, split.overflow);
   }
 </script>
 
 <div class="toolbar" role="toolbar" aria-label={t('toolbar.label')}>
-  <StyleBar fill={styles.fill} stroke={styles.stroke} color={styles.color} {onApply} />
+  {#if colours}
+    <StyleBar fill={styles.fill} stroke={styles.stroke} color={styles.color} {onApply} />
+  {/if}
+
+  {#each split.shown as control, index (control.id)}
+    {#if index === 0 || startsGroup(split.shown, index)}
+      <span class="divider" aria-hidden="true"></span>
+    {/if}
+    {#if control.kind === 'slider'}
+      <OpacityPicker
+        current={(properties.opacity ?? null) as number | null | 'mixed'}
+        onSelect={(value) => onProperty('opacity', value)}
+      />
+    {:else}
+      {@const option = PROPERTY_OPTIONS[control.id as PropertyKey]}
+      <OptionPicker
+        label={t(option.labelKey)}
+        icon={option.icon}
+        options={option.options}
+        current={(properties[control.id as PropertyKey] ?? null) as PropertyValue | null | 'mixed'}
+        onSelect={(value) => onProperty(control.id as PropertyKey, value)}
+      />
+    {/if}
+  {/each}
 
   {#if actions.length > 0}
     <span class="divider" aria-hidden="true"></span>

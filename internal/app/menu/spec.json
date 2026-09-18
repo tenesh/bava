@@ -156,6 +156,9 @@
         { "kind": "separator" },
         { "kind": "command", "id": "canvas.duplicate", "label": "Duplicate", "shortcut": "CmdOrCtrl+D", "scope": "canvas" },
         { "kind": "separator" },
+        { "kind": "command", "id": "canvas.lock", "label": "Lock", "shortcut": "Shift+CmdOrCtrl+L", "scope": "canvas" },
+        { "kind": "command", "id": "canvas.unlockAll", "label": "Unlock All", "scope": "canvas", "shortcut": "OptionOrAlt+Shift+CmdOrCtrl+L" },
+        { "kind": "separator" },
         { "kind": "command", "id": "canvas.copyStyles", "label": "Copy Styles", "shortcut": "OptionOrAlt+CmdOrCtrl+C", "scope": "canvas" },
         { "kind": "command", "id": "canvas.pasteStyles", "label": "Paste Styles", "shortcut": "OptionOrAlt+CmdOrCtrl+V", "scope": "canvas" }
       ]
