@@ -13,12 +13,28 @@ import type { History } from './history';
 import type { Selection, Box } from './selection';
 import type { ToolId } from './tools.svelte';
 import { produce } from 'immer';
-import { isLocked, type ElementId, type SceneData, type SceneElement } from './scene';
+import { createScene, isLocked, type ElementId, type SceneData, type SceneElement } from './scene';
+import { withDescendants } from './edit';
 import { simplify } from './stroke';
 import { snapAngle, squareBox } from './constrain';
 import { erasableAlong, eraseSet } from './eraser';
-import { boundsOf } from './edit';
-import { handleAt, resizeBox, scaleInto, tidy, type Handle } from './resize';
+import { handleAt, isRotateHandle, resizeBox, scaleInto, tidy, type Handle } from './resize';
+import {
+  angleOf,
+  canRotate,
+  angleOfElement,
+  centreOf,
+  containsPoint,
+  deltaInFrame,
+  normalise,
+  placeResized,
+  pointInFrame,
+  rotateElements,
+  scaleRotatedInto,
+  selectionFrame,
+  snapDegrees,
+  type Frame,
+} from './rotate';
 
 export type Point = { x: number; y: number };
 
@@ -41,6 +57,8 @@ export type PointerHandlerOptions = {
   handleSize?: () => number;
   /** How near the eraser trail must pass a line or outline, in scene units. */
   eraserTolerance?: () => number;
+  /** How far above the selection the rotate handle sits, in scene units. */
+  rotateGap?: () => number;
 };
 
 type Drag = {
@@ -51,7 +69,9 @@ type Drag = {
   originals: Map<ElementId, { x: number; y: number }>;
   strokePoints: number[];
   /** Set when the press landed on a selection handle. */
-  resize: { handle: Handle; bounds: Box; originals: Map<ElementId, SceneElement> } | null;
+  resize: { handle: Handle; bounds: Box; angle: number; originals: Map<ElementId, SceneElement> } | null;
+  /** Set when the press landed on the rotate handle. */
+  rotate: { centre: Point; startAngle: number; originals: Map<ElementId, SceneElement> } | null;
   /** The id a drawn element gets, fixed for the drag so previews update one node. */
   newId: string;
 };
@@ -85,12 +105,31 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   // by the zoom. The zone matches the drawn handle, no larger.
   const handleSize = options.handleSize ?? (() => 4);
   const eraserTolerance = options.eraserTolerance ?? (() => 3);
+  // The token's value at zoom 1, as the other defaults do: a test that presses
+  // at a gap the app never uses cannot catch a gap regression.
+  const rotateGap = options.rotateGap ?? (() => 16);
 
   function elementsAt(point: Point): SceneElement[] {
-    // A locked element is not there as far as a press is concerned.
-    return history.current.elements.filter(
-      (e) => !isLocked(e) && point.x >= e.x && point.x <= e.x + e.w && point.y >= e.y && point.y <= e.y + e.h,
-    );
+    // A locked element is not there as far as a press is concerned, and a
+    // rotated one is hit where it is drawn, not where its stored box is.
+    return history.current.elements.filter((e) => !isLocked(e) && containsPoint(e, point));
+  }
+
+  /**
+   * The elements a drag acts on. A group is selected as one id standing for
+   * its children, so every drag expands it: moving, resizing or rotating the
+   * wrapper alone moves nothing the user can see.
+   */
+  function dragTargets(): SceneElement[] {
+    const selected = history.current.elements.filter((e) => selection.has(e.id));
+    return withDescendants(createScene(history.current), selected);
+  }
+
+  /** The frame the handles are drawn on: the selection as it appears. */
+  function frameFor(): { frame: Frame; selected: SceneElement[] } {
+    const selected = history.current.elements.filter((e) => selection.has(e.id));
+    // The frame follows what is selected; the drag acts on the descendants.
+    return { frame: selectionFrame(selected), selected: dragTargets() };
   }
 
   return {
@@ -123,19 +162,37 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         erasing = new Set();
         trailEnd = point;
         trail = [point.x, point.y];
-        drag = { origin: point, moving: [], originals: new Map(), strokePoints: [], resize: null, newId: '' };
+        drag = { origin: point, moving: [], originals: new Map(), strokePoints: [], resize: null, rotate: null, newId: '' };
         return;
       }
 
       // A selection handle wins over whatever lies beneath it.
       if (tools.active === 'select' && selection.ids.length > 0) {
-        const selected = history.current.elements.filter((e) => selection.has(e.id));
-        const bounds = boundsOf(selected);
+        const { frame, selected } = frameFor();
+        const bounds = { x: frame.x, y: frame.y, w: frame.w, h: frame.h };
         const size = handleSize();
-        const handle = handleAt(point, bounds, size);
+        // Handles are drawn on the frame, so a press is read in its space.
+        const local = pointInFrame(point, frame);
+        // A gap of zero would put the rotate zone on the top handle and make
+        // that handle unreachable; no gap means no rotate handle.
+        const gap = rotateGap();
+        if (gap > 0 && isRotateHandle(local, bounds, size, gap) && selected.some(canRotate)) {
+          const centre = centreOf(bounds);
+          drag = {
+            origin: point,
+            moving: [],
+            originals: new Map(),
+            strokePoints: [],
+            resize: null,
+            rotate: { centre, startAngle: angleOf(centre, point), originals: new Map(selected.map((e) => [e.id, e])) },
+            newId: '',
+          };
+          return;
+        }
+        const handle = handleAt(local, bounds, size);
         // A selection only a few handles across is covered by its handles;
         // pressing inside it moves it, and the handles' outer halves resize.
-        const inside = point.x > bounds.x && point.x < bounds.x + bounds.w && point.y > bounds.y && point.y < bounds.y + bounds.h;
+        const inside = local.x > bounds.x && local.x < bounds.x + bounds.w && local.y > bounds.y && local.y < bounds.y + bounds.h;
         const small = bounds.w < size * 6 || bounds.h < size * 6;
         if (handle && !(inside && small)) {
           drag = {
@@ -143,7 +200,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
             moving: [],
             originals: new Map(),
             strokePoints: [],
-            resize: { handle, bounds, originals: new Map(selected.map((e) => [e.id, e])) },
+            resize: { handle, bounds, angle: frame.angle, originals: new Map(selected.map((e) => [e.id, e])) },
+            rotate: null,
             newId: '',
           };
           return;
@@ -159,11 +217,10 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         if (!options.additive) selection.clear();
       }
 
-      const moving = tools.active === 'select' && hits.length > 0 ? selection.ids : [];
+      const moving = tools.active === 'select' && hits.length > 0 ? dragTargets().map((e) => e.id) : [];
       const originals = new Map<ElementId, { x: number; y: number }>();
-      for (const id of moving) {
-        const element = history.current.elements.find((e) => e.id === id);
-        if (element) originals.set(id, { x: element.x, y: element.y });
+      for (const element of tools.active === 'select' && hits.length > 0 ? dragTargets() : []) {
+        originals.set(element.id, { x: element.x, y: element.y });
       }
 
       drag = {
@@ -172,6 +229,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         originals,
         strokePoints: [point.x, point.y],
         resize: null,
+        rotate: null,
         newId: nextId(history.current.elements.length),
       };
     },
@@ -192,7 +250,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
       // A resize is a select-tool drag that moves nothing; the marquee belongs
       // to dragging empty space, not to it.
-      if (tools.active === 'select' && !drag.resize && drag.moving.length === 0) {
+      if (tools.active === 'select' && !drag.resize && !drag.rotate && drag.moving.length === 0) {
         marquee = boxBetween(drag.origin, point);
       }
     },
@@ -238,7 +296,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         return;
       }
 
-      if (tools.active === 'select' && !started.resize && started.moving.length === 0) {
+      if (tools.active === 'select' && !started.resize && !started.rotate && started.moving.length === 0) {
         if (farEnough(started.origin, point)) {
           selection.marquee(boxBetween(started.origin, point), history.current);
         }
@@ -269,17 +327,48 @@ export function createPointerHandler(options: PointerHandlerOptions) {
    * the release so what the user saw while dragging is what they get.
    */
   function changeFor(started: Drag, point: Point): ((scene: SceneData) => void) | null {
+    if (started.rotate) {
+      const { centre, startAngle, originals } = started.rotate;
+      const turn = normalise(angleOf(centre, point) - startAngle);
+      if (turn === 0) return null;
+      const elements = [...originals.values()];
+      // Shift snaps: one element lands on a multiple of fifteen degrees, which
+      // is what the user is aiming at; several keep their relative angles, so
+      // the turn itself snaps instead.
+      const only = elements.length === 1 ? elements[0] : null;
+      const degrees = !shift
+        ? turn
+        : only
+          ? normalise(snapDegrees(angleOfElement(only) + turn) - angleOfElement(only))
+          : snapDegrees(turn);
+      const turned = new Map(rotateElements(elements, centre, degrees).map((e) => [e.id, e]));
+      return (scene) => {
+        for (let i = 0; i < scene.elements.length; i += 1) {
+          const replacement = turned.get(scene.elements[i].id);
+          if (replacement) scene.elements[i] = replacement;
+        }
+      };
+    }
+
     if (started.resize) {
-      const { handle, bounds, originals } = started.resize;
+      const { handle, bounds, angle, originals } = started.resize;
       const dx = point.x - started.origin.x;
       const dy = point.y - started.origin.y;
       if (dx === 0 && dy === 0) return null;
-      const next = resizeBox(bounds, handle, dx, dy, { keepAspect: shift });
+      // A rotated element resizes along its own axes: the drag is read in its
+      // frame, and the result is put back where that frame leaves it.
+      const local = deltaInFrame(dx, dy, angle);
+      const next = placeResized(bounds, resizeBox(bounds, handle, local.x, local.y, { keepAspect: shift }), angle);
       return (scene) => {
         for (let i = 0; i < scene.elements.length; i += 1) {
           const original = originals.get(scene.elements[i].id);
           if (!original) continue;
-          scene.elements[i] = scaleInto(original as SceneElement & { points?: number[] }, bounds, next);
+          // A frame with an angle is a single element's own frame, where the
+          // stored box is already the right space. An upright frame around
+          // several elements is the box around them as drawn, so a rotated
+          // member there scales through its drawn bounds instead.
+          const member = original as SceneElement & { points?: number[] };
+          scene.elements[i] = angle === 0 ? scaleRotatedInto(member, bounds, next) : scaleInto(member, bounds, next);
         }
       };
     }

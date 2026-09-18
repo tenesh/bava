@@ -192,3 +192,27 @@ describe('LabelEditor lifecycle', () => {
     editor.destroy();
   });
 });
+
+// A rotated shape is typed into where it is drawn, and the field sits on it
+// (.ai/rules/canvas.md, "A rotated element is tested where it is drawn").
+describe('editing a rotated element', () => {
+  const rotated: SceneData = {
+    elements: [{ id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 20, z: 1, angle: 90, label: 'Old' } as never],
+  };
+
+  it('is found where it is drawn, not where its box is', () => {
+    // Turned a quarter, the bar runs from y -40 to 60 at x 40 to 60.
+    expect(editableAt(rotated, { x: 50, y: 55 })?.id).toBe('r');
+    expect(editableAt(rotated, { x: 5, y: 10 })).toBeUndefined();
+  });
+
+  it('turns the field with the element', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const editor = new LabelEditor(host);
+    editor.open({ value: 'Old', rect: { x: 0, y: 0, width: 100, height: 20 }, angle: 90, onCommit: () => {} });
+    const field = host.querySelector('textarea')!;
+    expect(field.style.transform).toContain('rotate(90deg)');
+    editor.destroy();
+  });
+});

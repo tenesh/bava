@@ -25,6 +25,9 @@ func TestLogsNeverContainContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Closed after the test: the log is read while it is open, but Windows
+	// cannot delete an open file and t.TempDir's cleanup would fail.
+	t.Cleanup(func() { _ = session.Close() })
 	previous := slog.Default()
 	slog.SetDefault(session.Logger)
 	t.Cleanup(func() { slog.SetDefault(previous) })

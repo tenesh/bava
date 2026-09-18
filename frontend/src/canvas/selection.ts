@@ -11,6 +11,7 @@
  */
 import type { ElementId, SceneData } from './scene';
 import { isLocked } from './scene';
+import { rotatedBounds } from './rotate';
 
 export type Box = { x: number; y: number; w: number; h: number };
 
@@ -44,9 +45,10 @@ export function createSelection() {
       ids = ids.includes(id) ? ids.filter((existing) => existing !== id) : [...ids, id];
     },
 
-    // A locked element is not selectable, by marquee or by Select All.
+    // A locked element is not selectable, by marquee or by Select All. A
+    // rotated one is caught where it is drawn, not where its stored box is.
     marquee(box: Box, data: SceneData): void {
-      ids = data.elements.filter((e) => !isLocked(e) && intersects(box, e)).map((e) => e.id);
+      ids = data.elements.filter((e) => !isLocked(e) && intersects(box, rotatedBounds(e))).map((e) => e.id);
     },
 
     selectAll(data: SceneData): void {

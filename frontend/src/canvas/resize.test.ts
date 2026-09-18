@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { HANDLES, MIN_SIZE, handleAt, resizeBox, scaleInto } from './resize';
+import { HANDLES, MIN_SIZE, handleAt, resizeBox, scaleInto, isRotateHandle, rotateHandleCentre } from './resize';
 
 const box = { x: 100, y: 100, w: 200, h: 100 };
+
+const at = (x: number, y: number) => ({ x, y });
 
 describe('resizeBox', () => {
   it('grows from the bottom-right handle and keeps the top-left corner', () => {
@@ -123,5 +125,21 @@ describe('keeping proportions at the limits', () => {
     };
     expect(scaled.points).toEqual([0, 0, 200, 100]);
     expect(scaled).toMatchObject({ w: 200, h: 100 });
+  });
+});
+
+// The rotate handle sits above the selection, clear of the top edge, so it is
+// never confused with the top-middle resize handle (canvas-toolbar.md).
+describe('the rotate handle', () => {
+  const box = { x: 20, y: 40, w: 100, h: 60 };
+
+  it('sits centred above the box, by the gap it is given', () => {
+    expect(rotateHandleCentre(box, 12)).toEqual({ x: 70, y: 28 });
+  });
+
+  it('is pressed within its own size, and not from the top handle', () => {
+    expect(isRotateHandle(at(70, 28), box, 4, 12)).toBe(true);
+    expect(isRotateHandle(at(70, 40), box, 4, 12)).toBe(false);
+    expect(handleAt(at(70, 28), box, 4)).toBeNull();
   });
 });

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -31,8 +32,11 @@ func TestDirPerPlatform(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got != tc.want {
-				t.Errorf("Dir = %q, want %q", got, tc.want)
+			// Dir joins with the host's separator, and this table asks a host for
+			// another platform's folder: compare the shape of the path, not the
+			// slashes, or every case but the host's own fails on Windows.
+			if want := filepath.FromSlash(tc.want); got != want {
+				t.Errorf("Dir = %q, want %q", got, want)
 			}
 		})
 	}
@@ -56,6 +60,10 @@ func start(t *testing.T, dir string, at time.Time, opts ...func(*logs.Options)) 
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Closed after the test, even where the test is about a session that never
+	// closed: Windows refuses to delete a file that is still open, so t.TempDir's
+	// cleanup fails instead of the assertion. Close is idempotent.
+	t.Cleanup(func() { _ = session.Close() })
 	return session
 }
 
@@ -322,6 +330,13 @@ func TestADeadSessionsMarkerIsReportedOnce(t *testing.T) {
 }
 
 func TestLogFilesAreOnlyReadableByTheUser(t *testing.T) {
+	// Windows has no Unix mode bits: Go reports 0666/0777 whatever is asked for,
+	// and who may read the file is an ACL question. Logs live under
+	// %LOCALAPPDATA%, which is already the user's own, so there is nothing this
+	// test could assert there that would mean anything.
+	if runtime.GOOS == "windows" {
+		t.Skip("file modes are not how Windows says who may read a file")
+	}
 	dir := filepath.Join(t.TempDir(), "logs")
 	s := start(t, dir, base)
 	defer s.Close()

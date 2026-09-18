@@ -7,6 +7,7 @@
  */
 import type { ElementId, GroupElement, Scene, SceneElement } from './scene';
 import type { Box } from './selection';
+import { angleOfElement, normalise, rotatedBounds } from './rotate';
 
 /** How far a pasted copy lands from its original, so it is visibly a copy. */
 export const PASTE_OFFSET = 16;
@@ -20,6 +21,11 @@ export function boundsOf(elements: SceneElement[]): Box {
   const bottom = Math.max(...elements.map((e) => e.y + e.h));
 
   return { x: left, y: top, w: right - left, h: bottom - top };
+}
+
+/** The box around elements as they are drawn, rotation included. */
+export function drawnBoundsOf(elements: SceneElement[]): Box {
+  return boundsOf(elements.map((e) => ({ ...e, ...rotatedBounds(e), angle: 0 }) as SceneElement));
 }
 
 /** Wrap two or more elements in a group. Returns undefined for fewer. */
@@ -92,18 +98,26 @@ export function duplicate(scene: Scene, elements: SceneElement[]): SceneElement[
   return elements.map((e) => copies.get(e.id)).filter((e): e is SceneElement => Boolean(e));
 }
 
-/** Mirror elements across the bounds of `selection`, in place. */
+/**
+ * Mirror elements across the bounds of `selection`, in place. The axis is
+ * where the elements are drawn, so a rotated one mirrors about what is on
+ * screen, and its lean mirrors with it.
+ */
 export function flip(scene: Scene, selection: SceneElement[], axis: 'horizontal' | 'vertical'): void {
-  const bounds = boundsOf(selection);
+  const bounds = drawnBoundsOf(selection);
   for (const element of withDescendants(scene, selection)) {
+    // A mirrored element leans the other way; which axis it was mirrored
+    // across is already carried by the box.
+    const angle = angleOfElement(element);
+    const turned: Partial<SceneElement> = angle === 0 ? {} : ({ angle: normalise(360 - angle) } as Partial<SceneElement>);
     if (axis === 'horizontal') {
       const x = 2 * bounds.x + bounds.w - element.x - element.w;
       const points = 'points' in element ? element.points.map((v, i) => (i % 2 === 0 ? element.w - v : v)) : undefined;
-      scene.update(element.id, points ? ({ x, points } as Partial<SceneElement>) : { x });
+      scene.update(element.id, { ...turned, x, ...(points ? { points } : {}) } as Partial<SceneElement>);
     } else {
       const y = 2 * bounds.y + bounds.h - element.y - element.h;
       const points = 'points' in element ? element.points.map((v, i) => (i % 2 === 1 ? element.h - v : v)) : undefined;
-      scene.update(element.id, points ? ({ y, points } as Partial<SceneElement>) : { y });
+      scene.update(element.id, { ...turned, y, ...(points ? { points } : {}) } as Partial<SceneElement>);
     }
   }
 }

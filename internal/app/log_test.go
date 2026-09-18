@@ -96,10 +96,14 @@ func TestDiagnosticsNamesTheBuildAndRedacts(t *testing.T) {
 
 func TestNoticesAreTakenOnce(t *testing.T) {
 	dir := t.TempDir()
-	// Never closed, and its process is gone: a crash.
-	if _, err := logs.Start(logs.Options{Dir: dir, PID: 1 << 30}); err != nil {
+	// Never closed, and its process is gone: a crash. It is closed after the
+	// test all the same, because Windows cannot delete a file still open and
+	// t.TempDir's cleanup would fail instead.
+	crashed, err := logs.Start(logs.Options{Dir: dir, PID: 1 << 30})
+	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = crashed.Close() })
 	session, err := logs.Start(logs.Options{Dir: dir})
 	if err != nil {
 		t.Fatal(err)

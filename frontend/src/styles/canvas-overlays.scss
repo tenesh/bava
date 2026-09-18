@@ -5,6 +5,9 @@
 // is being typed (canvas/label-editor.ts).
 .bava-label-editor {
   position: absolute;
+  // A rotated element's field turns about its centre, as the stage turns the
+  // shape; the angle itself is set inline, per element.
+  transform-origin: center;
   z-index: var(--z-floating);
   box-sizing: border-box;
   min-width: var(--size-label-editor-min-width);

@@ -136,6 +136,7 @@ or the source editor has it.
 | Click with Text | Place text and start typing; nothing is added until you type |
 | Double-click a shape, frame or text | Type into its label or text |
 | Drag a selection handle | Resize; hold `⇧` to keep the proportions, from any handle |
+| Drag the handle above the selection | Rotate about its centre; hold `⇧` to snap to 15° steps |
 | Scroll | Pan |
 | `⌘` / `Ctrl` + scroll, or pinch | Zoom about the pointer |
 | Middle-button drag | Pan |

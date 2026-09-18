@@ -22,8 +22,8 @@ import { isShapeType } from './scene';
 import { drawOutline, isOutlineShape } from './shapes';
 import { drawHead, headAt, routePoints } from './arrows';
 import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
-import { boundsOf } from './edit';
-import { HANDLES, handleCentre } from './resize';
+import { HANDLES, handleCentre, rotateHandleCentre } from './resize';
+import { angleOfElement, canRotate, centreOf, selectionFrame } from './rotate';
 
 export type CanvasStageOptions = {
   /** Reads a CSS custom property. Injected so tests need no stylesheet. */
@@ -66,6 +66,7 @@ export class CanvasStage {
   #selected: ElementId[] = [];
   #outline: Konva.Rect | null = null;
   #handles: Konva.Rect[] = [];
+  #rotate: Konva.Circle | null = null;
   #marquee: Konva.Rect | null = null;
   #trail: Konva.Line | null = null;
   #markedForErase = new Set<ElementId>();
@@ -161,12 +162,19 @@ export class CanvasStage {
     return this.#handles.length;
   }
 
+  /** The rotate handle above the selection, or null when nothing is selected. */
+  rotateHandle(): Konva.Circle | null {
+    return this.#rotate;
+  }
+
   #drawSelection(read: ReadVariable): void {
     if (!this.#overlay) return;
     this.#outline?.destroy();
     this.#handles.forEach((handle) => handle.destroy());
+    this.#rotate?.destroy();
     this.#outline = null;
     this.#handles = [];
+    this.#rotate = null;
 
     const selected = this.#last.elements.filter((e) => this.#selected.includes(e.id));
     if (selected.length === 0) {
@@ -176,28 +184,64 @@ export class CanvasStage {
 
     const colour = read('--color-selection-handle').trim();
     const surface = read('--color-surface').trim();
-    const bounds = boundsOf(selected);
+    // One element's frame carries its angle, so the outline and the handles
+    // sit on the shape; several have no shared angle and stay upright.
+    const frame = selectionFrame(selected);
+    const bounds = { x: frame.x, y: frame.y, w: frame.w, h: frame.h };
+    const centre = centreOf(bounds);
+    // Everything in the overlay is drawn in the frame's own space and then
+    // turned about the selection's centre, so one rotation describes them all.
+    const turn = (node: Konva.Node) => {
+      if (frame.angle !== 0) {
+        node.rotation(frame.angle);
+        node.offset({ x: centre.x - node.x(), y: centre.y - node.y() });
+        node.position(centre);
+      }
+      return node;
+    };
     // Line widths and handle sizes are divided by the zoom, so they stay the
     // same on screen however far in or out the canvas is.
     const scale = 1 / this.#zoom;
-    this.#outline = new Konva.Rect({ ...boundsToRect(bounds), stroke: colour, strokeWidth: scale });
+    this.#outline = turn(
+      new Konva.Rect({ ...boundsToRect(bounds), stroke: colour, strokeWidth: scale }),
+    ) as Konva.Rect;
     this.#overlay.add(this.#outline);
 
     const size = number(read, '--size-selection-handle') * scale;
     for (const handle of HANDLES) {
-      const centre = handleCentre(bounds, handle);
+      const at = handleCentre(bounds, handle);
       const square = new Konva.Rect({
-        x: centre.x - size / 2,
-        y: centre.y - size / 2,
+        x: at.x - size / 2,
+        y: at.y - size / 2,
         width: size,
         height: size,
         fill: surface,
         stroke: colour,
         strokeWidth: scale,
       });
-      this.#handles.push(square);
+      this.#handles.push(turn(square) as Konva.Rect);
       this.#overlay.add(square);
     }
+
+    // The rotate handle: a disc above the frame, clear of the top edge. Not
+    // drawn when nothing in the selection can turn, so no handle is dead.
+    if (!selected.some(canRotate)) {
+      this.#overlay.batchDraw();
+      return;
+    }
+    const gap = number(read, '--size-rotate-gap') * scale;
+    const at = rotateHandleCentre(bounds, gap);
+    this.#rotate = turn(
+      new Konva.Circle({
+        x: at.x,
+        y: at.y,
+        radius: size / 2,
+        fill: surface,
+        stroke: colour,
+        strokeWidth: scale,
+      }),
+    ) as Konva.Circle;
+    this.#overlay.add(this.#rotate);
     this.#overlay.batchDraw();
   }
 
@@ -392,8 +436,21 @@ export class CanvasStage {
 
   #apply(entry: Entry, element: SceneElement, read: ReadVariable): void {
     const { group, body } = entry;
-    group.x(element.x);
-    group.y(element.y);
+    // A rotated group turns about the element's centre, so the stored box (and
+    // the file) stays the upright one. Offset moves the group's origin there.
+    const angle = angleOfElement(element);
+    if (angle === 0) {
+      group.rotation(0);
+      group.offset({ x: 0, y: 0 });
+      group.x(element.x);
+      group.y(element.y);
+    } else {
+      const centre = centreOf(element);
+      group.offset({ x: element.w / 2, y: element.h / 2 });
+      group.rotation(angle);
+      group.x(centre.x);
+      group.y(centre.y);
+    }
 
     if (body instanceof Konva.Ellipse) {
       body.x(element.w / 2);

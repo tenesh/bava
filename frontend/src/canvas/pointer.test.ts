@@ -541,3 +541,206 @@ describe('a locked element', () => {
     expect(history.current.elements.map((e) => e.id)).toEqual(['locked']);
   });
 });
+
+// Dragging the handle above the selection turns it (canvas-toolbar.md,
+// "Rotation"). The angle is where the pointer is, read from the centre, so the
+// element follows the pointer rather than a remembered offset.
+describe('rotating with the handle', () => {
+  function rotatable(zoom = 1) {
+    const kit = harness('select', zoom);
+    kit.history.mutate((scene) => {
+      scene.elements.push({ id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 } as never);
+    });
+    kit.selection.click('r');
+    return kit;
+  }
+
+  // The handle sits 16 scene units above the top edge: (50, -16) for this box.
+  const handle = at(50, -16);
+
+  it('turns the element to where the pointer is', () => {
+    const { history, handler } = rotatable();
+    handler.down(handle);
+    // To the right of the centre, level with it: a quarter turn.
+    handler.up(at(150, 50));
+    expect(history.current.elements[0]).toMatchObject({ angle: 90, x: 0, y: 0 });
+  });
+
+  it('snaps to fifteen degrees while Shift is held', () => {
+    const { history, handler } = rotatable();
+    handler.down(handle);
+    handler.up(at(150, 60), { shift: true });
+    expect(history.current.elements[0].angle).toBe(90);
+  });
+
+  it('previews the turn without recording it', () => {
+    const { history, handler } = rotatable();
+    handler.down(handle);
+    const preview = handler.preview(at(150, 50));
+    expect(preview?.elements[0]).toMatchObject({ angle: 90 });
+    expect(history.current.elements[0].angle).toBeUndefined();
+    // The only step in history is the one that placed the element.
+    history.undo();
+    expect(history.current.elements).toHaveLength(0);
+  });
+
+  it('is one undo step for the whole drag', () => {
+    const { history, handler } = rotatable();
+    handler.down(handle);
+    handler.move(at(100, 0));
+    handler.move(at(150, 50));
+    handler.up(at(150, 50));
+    history.undo();
+    expect(history.current.elements[0].angle).toBeUndefined();
+  });
+
+  it('draws no marquee while it turns', () => {
+    const { handler } = rotatable();
+    handler.down(handle);
+    handler.move(at(150, 50));
+    expect(handler.marquee).toBeNull();
+  });
+
+  it('turns a multi-selection about its shared centre', () => {
+    const { history, selection, handler } = rotatable();
+    history.mutate((scene) => {
+      scene.elements.push({ id: 's', type: 'rect', x: 200, y: 0, w: 100, h: 100, z: 2 } as never);
+    });
+    selection.click('s', { additive: true });
+    // The pair spans x 0 to 300, y 0 to 100: centre (150, 50), handle above it.
+    handler.down(at(150, -16));
+    handler.up(at(150, 150));
+    const [first, second] = history.current.elements;
+    expect(first.angle).toBe(180);
+    expect(second.angle).toBe(180);
+    // Half a turn about the shared centre swaps the two boxes.
+    expect(first.x).toBe(200);
+    expect(second.x).toBe(0);
+  });
+});
+
+// A rotated element resizes along its own axes, not the screen's: dragging the
+// handle that is drawn on its right edge widens it, whichever way that edge
+// happens to point.
+describe('resizing a rotated element', () => {
+  it('reads the drag in the element frame and keeps the opposite edge', () => {
+    const { history, selection, handler } = harness('select');
+    history.mutate((scene) => {
+      scene.elements.push({ id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1, angle: 90 } as never);
+    });
+    selection.click('r');
+    // A quarter turn puts the right-edge handle at the bottom of the screen.
+    handler.down(at(50, 100));
+    handler.up(at(50, 140));
+    expect(history.current.elements[0]).toMatchObject({ w: 140, h: 100, x: -20, y: 20 });
+  });
+});
+
+// The marquee and the eraser test what is drawn: a shape turned off its stored
+// box is caught where it is, and not where it was.
+describe('a rotated element under the marquee and the eraser', () => {
+  function turned(tool: 'select' | 'eraser') {
+    const kit = harness(tool);
+    kit.history.mutate((scene) => {
+      scene.elements.push({ id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 20, z: 1, angle: 90 } as never);
+    });
+    return kit;
+  }
+
+  it('is caught by a marquee over where it is drawn', () => {
+    const { selection, handler } = turned('select');
+    // The bar is vertical after the turn: x 40 to 60, y -40 to 60.
+    handler.down(at(30, 40));
+    handler.move(at(70, 70));
+    handler.up(at(70, 70));
+    expect(selection.ids).toEqual(['r']);
+  });
+
+  it('is left alone by a marquee over its stored box only', () => {
+    const { selection, handler } = turned('select');
+    handler.down(at(0, 0));
+    handler.move(at(30, 15));
+    handler.up(at(30, 15));
+    expect(selection.ids).toEqual([]);
+  });
+
+  it('is erased by a trail crossing where it is drawn', () => {
+    const { history, handler } = turned('eraser');
+    handler.down(at(30, 50));
+    handler.move(at(70, 50));
+    handler.up(at(70, 50));
+    expect(history.current.elements).toHaveLength(0);
+  });
+});
+
+// A group is selected as one id standing for its children, so every drag has
+// to expand it: rotating or moving the wrapper alone moves nothing a user can
+// see (canvas-toolbar.md, "A multi-selection or group rotates about its
+// shared centre").
+describe('dragging a group', () => {
+  function grouped() {
+    const kit = harness('select');
+    kit.history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 20, h: 20, z: 1 } as never,
+        { id: 'b', type: 'rect', x: 80, y: 0, w: 20, h: 20, z: 2 } as never,
+        { id: 'g', type: 'group', x: 0, y: 0, w: 100, h: 20, z: 3, children: ['a', 'b'] } as never,
+      );
+    });
+    kit.selection.click('g');
+    const byId = (id: string) => kit.history.current.elements.find((e) => e.id === id)!;
+    return { ...kit, byId };
+  }
+
+  it('moves its children with it', () => {
+    const { handler, byId } = grouped();
+    handler.down(at(50, 10));
+    handler.up(at(60, 10));
+    expect(byId('a').x).toBe(10);
+    expect(byId('b').x).toBe(90);
+    expect(byId('g').x).toBe(10);
+  });
+
+  it('rotates its children about the shared centre', () => {
+    const { handler, byId } = grouped();
+    // The group spans x 0 to 100, y 0 to 20: centre (50, 10), handle above it.
+    handler.down(at(50, -16));
+    handler.up(at(50, 150));
+    expect(byId('a')).toMatchObject({ x: 80, angle: 180 });
+    expect(byId('b')).toMatchObject({ x: 0, angle: 180 });
+  });
+
+  it('resizes its children with it', () => {
+    const { handler, byId } = grouped();
+    handler.down(at(100, 20));
+    handler.up(at(200, 20));
+    // The group's 100-wide box doubles, so b's offset and width double too.
+    expect(byId('b').x).toBe(160);
+    expect(byId('b').w).toBe(40);
+  });
+});
+
+// A rotated member of a multi-selection is scaled through its drawn bounds,
+// so it stays inside the frame the user dragged rather than stretching along
+// an axis that is no longer on screen.
+describe('resizing a selection that holds a rotated element', () => {
+  it('keeps the rotated member inside the new frame', () => {
+    const { history, selection, handler } = harness('select');
+    history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'a', type: 'rect', x: 0, y: 40, w: 100, h: 20, z: 1, angle: 90 } as never,
+        { id: 'b', type: 'rect', x: 60, y: 0, w: 40, h: 100, z: 2 } as never,
+      );
+    });
+    selection.click('a');
+    selection.click('b', { additive: true });
+    // Drawn, the pair spans x 40 to 100, y 0 to 100. Widen it by 60.
+    handler.down(at(100, 100));
+    handler.up(at(160, 100));
+    const turned = history.current.elements[0];
+    // Its width runs down the screen, so a horizontal stretch grows its height.
+    expect(turned.w).toBe(100);
+    expect(turned.h).toBe(40);
+    expect(turned.angle).toBe(90);
+  });
+});

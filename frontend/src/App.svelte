@@ -15,6 +15,7 @@
   import { contextMenuFor, contextSelection, overflowMenu, parseOverflowId, type MenuNode } from './canvas/context-menu';
   import { topLevel } from './canvas/edit';
   import { createScene, isLocked } from './canvas/scene';
+  import { angleOfElement } from './canvas/rotate';
   import { topmostAt } from './canvas/eraser';
   import { SourcePane } from './editor/source-pane';
   import { createRenderClient } from './ipc/render.svelte';
@@ -89,6 +90,8 @@
     handleSize: () => (parseFloat(readRootVariable('--size-selection-handle')) || 0) / 2 / viewport.zoom,
     // Half the trail's on-screen width, in scene units: what the trail visibly covers.
     eraserTolerance: () => (parseFloat(readRootVariable('--size-eraser-trail')) || 0) / 2 / viewport.zoom,
+    // The rotate handle's distance above the selection, as the stage draws it.
+    rotateGap: () => (parseFloat(readRootVariable('--size-rotate-gap')) || 0) / viewport.zoom,
   });
   const canvasCommands = createCanvasCommands({ history, selection });
   const view = createViewState();
@@ -368,6 +371,7 @@
     labelEditor.open({
       value: isText ? (element as { text: string }).text : ((element as { label?: string }).label ?? ''),
       rect: { x: topLeft.x, y: topLeft.y, width: element.w * viewport.zoom, height: element.h * viewport.zoom },
+      angle: angleOfElement(element),
       align: isText || element.type === 'frame' ? 'left' : 'center',
       measure: isText ? measureOnScreen : undefined,
       onCommit: (value) => {

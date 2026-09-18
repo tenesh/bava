@@ -31,3 +31,19 @@ the outcome with a contract test.
 One behavior per test, named for the behavior. Before writing a test, name the
 production change that would make it fail. If you cannot, the test asserts
 nothing. Assert on real behavior, never on mock behavior.
+## A test that opens a file must close it, even when it is about not closing
+Windows cannot delete a file another handle still has open, so `t.TempDir`'s
+cleanup fails the test after every assertion has passed. A test that
+deliberately leaves a session unclosed (a simulated crash) still closes it in
+`t.Cleanup`; `logs.Session.Close` is idempotent for exactly this. This cost
+four green-on-macOS tests a red Windows CI run.
+
+## A path assertion compares shape, not separators
+`filepath.Join` uses the host's separator, so a table that asks one machine for
+another platform's folder (`logs.Dir("darwin", …)` on Windows) must compare
+against `filepath.FromSlash(want)`.
+
+## Unix mode bits mean nothing on Windows
+Go reports 0666 or 0777 there whatever was asked for, and who may read a file
+is an ACL question. A permissions test skips on Windows with the reason, rather
+than weakening what it asserts on macOS and Linux.

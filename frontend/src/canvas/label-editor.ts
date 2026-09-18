@@ -10,6 +10,7 @@
 import type { History } from './history';
 import type { ElementId, SceneData, SceneElement } from './scene';
 import { isLocked, isShapeType } from './scene';
+import { containsPoint } from './rotate';
 import type { Point } from './viewport';
 
 /** Set or clear a shape's label, as one undo step. */
@@ -61,10 +62,9 @@ export function editableAt(scene: SceneData, point: Point): SceneElement | undef
     (e) =>
       !isLocked(e) &&
       (isShapeType(e.type) || e.type === 'text' || e.type === 'frame') &&
-      point.x >= e.x &&
-      point.x <= e.x + e.w &&
-      point.y >= e.y &&
-      point.y <= e.y + e.h,
+      // Where the element is drawn, rotation included: the field opens on the
+      // shape the user double-clicked, not on the box it is stored as.
+      containsPoint(e, point),
   );
   return hits[hits.length - 1];
 }
@@ -107,6 +107,8 @@ export type EditorRequest = {
   align?: 'left' | 'center';
   /** Where the element is on screen, relative to the host. */
   rect: { x: number; y: number; width: number; height: number };
+  /** The element's angle, so the field sits on a rotated shape. */
+  angle?: number;
   /**
    * The on-screen size of a value, for free text: the field grows to it as the
    * user types. Omitted for a label, which keeps its shape's box.
@@ -148,6 +150,9 @@ export class LabelEditor {
       top: `${request.rect.y}px`,
       width: `${request.rect.width}px`,
       height: `${request.rect.height}px`,
+      // The field turns with the element, about the same centre the stage
+      // turns the shape about, so typing happens on the shape.
+      transform: request.angle ? `rotate(${request.angle}deg)` : '',
     });
 
     let done = false;

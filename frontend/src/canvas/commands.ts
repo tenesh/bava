@@ -11,6 +11,7 @@ import { duplicate, flip, group, paste, steppedOrder, topLevel, ungroup, withDes
 import { tidy } from './resize';
 import { copyStyle, pasteStyle, type CopiedStyle } from './style';
 import { createScene, isLocked, type Scene, type SceneElement } from './scene';
+import { rotatedBounds } from './rotate';
 import type { History } from './history';
 import type { Selection } from './selection';
 
@@ -80,7 +81,9 @@ export function createCanvasCommands(options: { history: History; selection: Sel
    */
   function moveUnits(plan: (units: { id: string; box: { x: number; y: number; w: number; h: number } }[]) => Map<string, Move>): void {
     const scene = createScene({ elements: [...history.current.elements] });
-    const units = topLevel(scene, selected()).map((e) => ({ id: e.id, box: { x: e.x, y: e.y, w: e.w, h: e.h } }));
+    // Align and distribute line up what is on screen, so a rotated element's
+    // unit is the box around it as drawn.
+    const units = topLevel(scene, selected()).map((e) => ({ id: e.id, box: rotatedBounds(e) }));
     const moves = plan(units);
     if (moves.size === 0) return;
     edit((scene) => {

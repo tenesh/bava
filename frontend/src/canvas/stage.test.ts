@@ -445,3 +445,109 @@ describe('style properties on the stage', () => {
     stage.destroy();
   });
 });
+
+// An element stores its upright box and an angle; Konva turns the group about
+// the box's centre, so the stored geometry stays readable in the file.
+describe('drawing a rotated element', () => {
+  it('turns the group about the element centre', () => {
+    const stage = mounted();
+    stage.render(one({ type: 'rect', x: 10, y: 20, w: 100, h: 50, angle: 45 }));
+    const node = stage.nodeFor('e1')!;
+    expect(node.rotation()).toBe(45);
+    // Offset to the centre, positioned at it: the box does not move.
+    expect(node.offsetX()).toBe(50);
+    expect(node.offsetY()).toBe(25);
+    expect(node.x()).toBe(60);
+    expect(node.y()).toBe(45);
+    stage.destroy();
+  });
+
+  it('leaves an upright element at its corner', () => {
+    const stage = mounted();
+    stage.render(one({ type: 'rect', x: 10, y: 20, w: 100, h: 50 }));
+    const node = stage.nodeFor('e1')!;
+    expect(node.rotation()).toBe(0);
+    expect(node.x()).toBe(10);
+    expect(node.y()).toBe(20);
+    stage.destroy();
+  });
+
+  it('takes the rotation off again when the element is turned back', () => {
+    const stage = mounted();
+    stage.render(one({ type: 'rect', x: 10, y: 20, w: 100, h: 50, angle: 45 }));
+    stage.render(one({ type: 'rect', x: 10, y: 20, w: 100, h: 50 }));
+    const node = stage.nodeFor('e1')!;
+    expect(node.rotation()).toBe(0);
+    expect(node.x()).toBe(10);
+    stage.destroy();
+  });
+});
+
+describe('the selection of a rotated element', () => {
+  const selectionRead = reader({
+    '--color-selection-handle': 'dodgerblue',
+    '--size-selection-handle': '8px',
+    '--size-rotate-gap': '16px',
+  });
+
+  it('turns the outline with the element', () => {
+    const stage = new CanvasStage({ read: selectionRead });
+    stage.mount(host());
+    stage.render(one({ type: 'rect', x: 10, y: 20, w: 100, h: 50, angle: 30 }));
+    stage.setSelection(['e1']);
+    const outline = stage.selectionOutline()!;
+    expect(outline.rotation()).toBe(30);
+    expect(outline.width()).toBe(100);
+    stage.destroy();
+  });
+
+  it('gives the selection a rotate handle above it, and none with nothing selected', () => {
+    const stage = new CanvasStage({ read: selectionRead });
+    stage.mount(host());
+    stage.render(one({ type: 'rect', x: 10, y: 20, w: 100, h: 50 }));
+    stage.setSelection(['e1']);
+    const rotate = stage.rotateHandle()!;
+    expect(rotate.x()).toBe(60);
+    // 16 above the box's top edge at y 20, so a gap of zero fails here.
+    expect(rotate.y()).toBe(4);
+    stage.setSelection([]);
+    expect(stage.rotateHandle()).toBeNull();
+    stage.destroy();
+  });
+
+  // Several elements have no shared angle, so their outline stays upright and
+  // holds everything as drawn.
+  it('keeps a multi-selection outline upright, around the turned boxes', () => {
+    const stage = new CanvasStage({ read: selectionRead });
+    stage.mount(host());
+    stage.render({
+      elements: [
+        { id: 'a', z: 1, type: 'rect', x: 0, y: 0, w: 100, h: 20, angle: 90 },
+        { id: 'b', z: 2, type: 'rect', x: 200, y: 0, w: 20, h: 20 },
+      ] as SceneElement[],
+    });
+    stage.setSelection(['a', 'b']);
+    const outline = stage.selectionOutline()!;
+    expect(outline.rotation()).toBe(0);
+    // The turned bar runs from y -40 to 60; the pair spans x 40 to 220.
+    expect(outline.y()).toBe(-40);
+    expect(outline.height()).toBe(100);
+    stage.destroy();
+  });
+});
+
+// A handle that cannot do anything is a bug report waiting to happen: an
+// elbow arrow is the one element rotation passes over.
+describe('the rotate handle and what cannot rotate', () => {
+  it('is not drawn for a selection of elbow arrows only', () => {
+    const stage = new CanvasStage({
+      read: reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px', '--size-rotate-gap': '16px' }),
+    });
+    stage.mount(host());
+    stage.render(one({ type: 'arrow', x: 0, y: 0, w: 40, h: 20, points: [0, 0, 40, 20], arrowType: 'elbow' }));
+    stage.setSelection(['e1']);
+    expect(stage.rotateHandle()).toBeNull();
+    expect(stage.selectionHandleCount()).toBe(8);
+    stage.destroy();
+  });
+});

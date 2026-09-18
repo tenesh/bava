@@ -33,6 +33,8 @@
   --size-label-inset: 6px;
   // A selection handle's side on screen, whatever the zoom.
   --size-selection-handle: 8px;
+  // How far the rotate handle sits above the selection, clear of the top one.
+  --size-rotate-gap: 16px;
   // The marquee's dash and gap on screen, whatever the zoom.
   --size-marquee-dash: 4px;
   // The eraser trail's width on screen, whatever the zoom.
