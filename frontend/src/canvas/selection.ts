@@ -10,6 +10,7 @@
  * node *inside* a diagram waits for Milestone 6, when diagram elements exist.
  */
 import type { ElementId, SceneData } from './scene';
+import { isLocked } from './scene';
 
 export type Box = { x: number; y: number; w: number; h: number };
 
@@ -43,12 +44,13 @@ export function createSelection() {
       ids = ids.includes(id) ? ids.filter((existing) => existing !== id) : [...ids, id];
     },
 
+    // A locked element is not selectable, by marquee or by Select All.
     marquee(box: Box, data: SceneData): void {
-      ids = data.elements.filter((e) => intersects(box, e)).map((e) => e.id);
+      ids = data.elements.filter((e) => !isLocked(e) && intersects(box, e)).map((e) => e.id);
     },
 
     selectAll(data: SceneData): void {
-      ids = data.elements.map((e) => e.id);
+      ids = data.elements.filter((e) => !isLocked(e)).map((e) => e.id);
     },
 
     clear(): void {

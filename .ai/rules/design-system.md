@@ -206,7 +206,9 @@ check both before building either by hand.
 | `Mark` ✓ | The brand mark, inlined from `src/brand/panda.svg` at one of four `--size-mark-*` sizes. |
 | `ErrorDialog` ✓ | An unexpected failure: one sentence, collapsed details, Copy details, Open logs folder. Never a stack. |
 | `PanelBoundary` ✓ | `<svelte:boundary>` around each shell region; a crash shows "This panel hit a problem" and Reload panel. |
-| `StyleBar` ✓ | Fill, border and text pickers as swatch chips, named by their tooltip, wrapping Ark's Popover and RadioGroup. A group inside `SelectionToolbar`, which draws the surface. |
+| `StyleBar` ✓ | Fill, border and text pickers as swatch chips, named by their tooltip, wrapping Ark's Popover and RadioGroup. Each popover holds the swatches and a `#rrggbb` field for any other colour. A group inside `SelectionToolbar`, which draws the surface. |
+| `OptionPicker` ✓ | One property from a few icon choices (stroke width, line style, edges, text size, alignment, arrow type, arrowheads): a chip opening a popover of radio options. Generic over its value; options in `canvas/property-options.ts`. |
+| `OpacityPicker` ✓ | Opacity on a slider in steps of ten, in a popover, wrapping Ark's Slider. |
 | `Disclosure` ✓ | A collapsed-by-default section, wrapping Ark's Collapsible. |
 | `AboutDialog` ✓ | Mark, wordmark, tagline, licence. No version until Milestone 16. |
 | `Icon` ✓ | Single sprite wrapper so icon sizing is tokenised. No set is bundled until Milestone 9. |
@@ -216,7 +218,8 @@ unused component is an unmaintained one.
 
 **Wrapped from Ark so far**: `Dialog`, `Splitter`, SegmentGroup inside
 `Segments`, Collapsible inside `Disclosure`, Menu inside `ContextMenu`, and
-Popover with RadioGroup inside `StyleBar`.
+Popover with RadioGroup inside `StyleBar` and `OptionPicker`, and Slider
+inside `OpacityPicker`.
 
 **Shape swatches** are tokens in `styles/tokens/_swatches.scss`
 (`--swatch-<name>-fill`, `-stroke`, `-text`, in both themes), with

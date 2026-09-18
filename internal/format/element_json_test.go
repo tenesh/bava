@@ -82,6 +82,44 @@ func TestSceneSurvivesTheFrontendBridge(t *testing.T) {
       "z": 2
     },
     {
+      "angle": 45,
+      "arrowType": "elbow",
+      "endArrowhead": "triangle-outline",
+      "h": 10,
+      "id": "a1",
+      "points": [
+        0,
+        0,
+        40,
+        10
+      ],
+      "startArrowhead": "none",
+      "strokeStyle": "dashed",
+      "strokeWidth": 4,
+      "type": "arrow",
+      "w": 40,
+      "x": 0,
+      "y": 40,
+      "z": 3
+    },
+    {
+      "align": "left",
+      "edges": "round",
+      "fill": "#3366cc",
+      "fontSize": 28,
+      "futureStyle": "whatever-comes-next",
+      "h": 20,
+      "id": "r1",
+      "locked": true,
+      "opacity": 40,
+      "type": "rect",
+      "verticalAlign": "top",
+      "w": 30,
+      "x": 60,
+      "y": 0,
+      "z": 4
+    },
+    {
       "children": [
         "s1",
         "t1"
@@ -93,7 +131,7 @@ func TestSceneSurvivesTheFrontendBridge(t *testing.T) {
       "w": 50,
       "x": 0,
       "y": 0,
-      "z": 3
+      "z": 5
     }
   ],
   "grid": {

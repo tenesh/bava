@@ -318,3 +318,130 @@ describe('CanvasStage', () => {
     stage.destroy();
   });
 });
+
+// Milestone 6.3's style properties, drawn. Konva nodes are inspected, never
+// only the scene: Milestone 6 shipped every shape unstyled with green tests.
+describe('style properties on the stage', () => {
+  const theme = reader({
+    '--color-shape-fill': 'ivory',
+    '--color-shape-stroke': 'slategray',
+    '--color-shape-text': 'black',
+    '--size-shape-stroke': '1.5px',
+    '--size-dash': '6px',
+    '--radius-shape-round': '32px',
+    '--size-dot': '2px',
+    '--text-body': '13px',
+    '--leading-tight': '1.2',
+    '--font-ui': 'Geist',
+    '--size-label-inset': '6px',
+  });
+
+  it('draws a shape at its stroke width, style, corner radius and opacity', () => {
+    const stage = mounted(theme);
+    stage.render(one({ type: 'rect', x: 0, y: 0, w: 100, h: 60, strokeWidth: 4, strokeStyle: 'dashed', edges: 'round', opacity: 40 }));
+    const body = stage.bodyFor('e1') as Konva.Rect;
+    expect(body.strokeWidth()).toBe(4);
+    expect(body.dash().length).toBeGreaterThan(0);
+    expect(body.cornerRadius()).toBeGreaterThan(0);
+    expect(stage.nodeFor('e1')!.opacity()).toBeCloseTo(0.4, 5);
+    stage.destroy();
+  });
+
+  it('leaves the defaults alone when the keys are absent', () => {
+    const stage = mounted(theme);
+    stage.render(one({ type: 'rect', x: 0, y: 0, w: 10, h: 10 }));
+    const body = stage.bodyFor('e1') as Konva.Rect;
+    expect(body.strokeWidth()).toBe(1.5);
+    expect(body.dash()).toEqual([]);
+    expect(body.cornerRadius()).toBe(0);
+    expect(stage.nodeFor('e1')!.opacity()).toBe(1);
+    stage.destroy();
+  });
+
+  it('draws a dotted line differently from a dashed one', () => {
+    const stage = mounted(theme);
+    stage.render(one({ type: 'line', x: 0, y: 0, w: 50, h: 0, points: [0, 0, 50, 0], strokeStyle: 'dotted' }));
+    const dotted = (stage.bodyFor('e1') as Konva.Line).dash();
+    stage.render(one({ type: 'line', x: 0, y: 0, w: 50, h: 0, points: [0, 0, 50, 0], strokeStyle: 'dashed' }));
+    const dashed = (stage.bodyFor('e1') as Konva.Line).dash();
+    expect(dotted.length).toBeGreaterThan(0);
+    expect(dashed).not.toEqual(dotted);
+    stage.destroy();
+  });
+
+  it('draws text at its size and alignment', () => {
+    const stage = mounted(theme);
+    stage.render(one({ type: 'text', x: 0, y: 0, w: 80, h: 20, text: 'hi', measuredWidth: 80, measuredHeight: 20, fontSize: 28, align: 'right' }));
+    const body = stage.bodyFor('e1') as Konva.Text;
+    expect(body.fontSize()).toBe(28);
+    expect(body.align()).toBe('right');
+    stage.destroy();
+  });
+
+  it('draws a label at its size and both alignments', () => {
+    const stage = mounted(theme);
+    stage.render(one({ type: 'rect', x: 0, y: 0, w: 100, h: 60, label: 'L', fontSize: 16, align: 'left', verticalAlign: 'top' }));
+    const label = stage.labelFor('e1')!;
+    expect(label.fontSize()).toBe(16);
+    expect(label.align()).toBe('left');
+    expect(label.verticalAlign()).toBe('top');
+    stage.destroy();
+  });
+
+  it('rounds a polygon shape proportionally, as Excalidraw does', () => {
+    const stage = mounted(theme);
+    const drawn = (element: Record<string, unknown>) => {
+      stage.render(one({ type: 'diamond', x: 0, y: 0, w: 100, h: 60, ...element }));
+      const calls: string[] = [];
+      const context = {
+        beginPath: () => {},
+        fillStrokeShape: () => {},
+        moveTo: () => calls.push('moveTo'),
+        lineTo: () => calls.push('lineTo'),
+        bezierCurveTo: () => calls.push('curve'),
+        closePath: () => calls.push('close'),
+      };
+      (stage.bodyFor('e1') as Konva.Shape).sceneFunc()!.call(
+        stage.bodyFor('e1') as Konva.Shape,
+        context as never,
+        stage.bodyFor('e1') as never,
+      );
+      return calls;
+    };
+    expect(drawn({}).includes('curve')).toBe(false);
+    expect(drawn({ edges: 'round' }).includes('curve')).toBe(true);
+    stage.destroy();
+  });
+
+  it('draws an elbow arrow as orthogonal segments', () => {
+    const stage = mounted(theme);
+    stage.render(one({ type: 'arrow', x: 0, y: 0, w: 100, h: 60, points: [0, 0, 100, 60], arrowType: 'elbow' }));
+    const points = (stage.bodyFor('e1') as Konva.Arrow).points();
+    expect(points.length).toBeGreaterThan(4);
+    for (let i = 0; i + 3 < points.length; i += 2) {
+      expect(points[i + 1] === points[i + 3] || points[i] === points[i + 2]).toBe(true);
+    }
+    stage.destroy();
+  });
+
+  it('draws the head shape each end names, and none where there is none', () => {
+    const stage = mounted(theme);
+    stage.render(one({ type: 'arrow', x: 0, y: 0, w: 50, h: 0, points: [0, 0, 50, 0], startArrowhead: 'circle', endArrowhead: 'diamond' }));
+    expect(stage.arrowHeads('e1').map((head) => head.name())).toEqual(['circle', 'diamond']);
+
+    stage.render(one({ type: 'arrow', x: 0, y: 0, w: 50, h: 0, points: [0, 0, 50, 0], endArrowhead: 'none' }));
+    expect(stage.arrowHeads('e1')).toHaveLength(0);
+    stage.destroy();
+  });
+
+  it('draws a head only where the arrow names one', () => {
+    const stage = mounted(theme);
+    stage.render(one({ type: 'arrow', x: 0, y: 0, w: 50, h: 0, points: [0, 0, 50, 0], startArrowhead: 'circle', endArrowhead: 'none' }));
+    expect(stage.arrowHeads('e1').map((head) => head.name())).toEqual(['circle']);
+    // Konva's own pointer is off: it draws triangles and nothing else.
+    const body = stage.bodyFor('e1') as Konva.Arrow;
+    expect(body.pointerAtBeginning()).toBe(false);
+    expect(body.pointerAtEnding()).toBe(false);
+    stage.destroy();
+  });
+});

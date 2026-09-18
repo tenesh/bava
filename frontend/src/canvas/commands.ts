@@ -10,7 +10,7 @@ import { alignMoves, distributeMoves, type Alignment, type Move } from './align'
 import { duplicate, flip, group, paste, steppedOrder, topLevel, ungroup, withDescendants } from './edit';
 import { tidy } from './resize';
 import { copyStyle, pasteStyle, type CopiedStyle } from './style';
-import { createScene, type Scene, type SceneElement } from './scene';
+import { createScene, isLocked, type Scene, type SceneElement } from './scene';
 import type { History } from './history';
 import type { Selection } from './selection';
 
@@ -152,6 +152,33 @@ export function createCanvasCommands(options: { history: History; selection: Sel
 
     sendBackward(): void {
       reorder(-1);
+    },
+
+    /** Whether anything in the scene is locked, for Unlock All. */
+    get hasLocked(): boolean {
+      return history.current.elements.some(isLocked);
+    },
+
+    /** Lock the selection: it is no longer selectable, so the selection clears. */
+    lock(): void {
+      const ids = new Set(selection.ids);
+      if (ids.size === 0) return;
+      history.mutate((draft) => {
+        for (const element of draft.elements) {
+          if (ids.has(element.id)) (element as SceneElement & { locked?: boolean }).locked = true;
+        }
+      });
+      selection.clear();
+    },
+
+    /** Free every locked element in the scene, in one step. */
+    unlockAll(): void {
+      if (!history.current.elements.some(isLocked)) return;
+      history.mutate((draft) => {
+        for (const element of draft.elements) {
+          delete (element as SceneElement & { locked?: boolean }).locked;
+        }
+      });
     },
 
     copyStyles(): void {

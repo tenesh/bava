@@ -80,6 +80,8 @@ Shortcuts) lists the rest.
 | Canvas | Flip Horizontal | `⇧H` | `Shift+H` |
 | Canvas | Flip Vertical | `⇧V` | `Shift+V` |
 | Canvas | Duplicate | `⌘D` | `Ctrl+D` |
+| Canvas | Lock | `⇧⌘L` | `Ctrl+Shift+L` |
+| Canvas | Unlock All | `⌥⇧⌘L` | `Ctrl+Shift+Alt+L` |
 | Canvas | Copy Styles | `⌥⌘C` | `Ctrl+Alt+C` |
 | Canvas | Paste Styles | `⌥⌘V` | `Ctrl+Alt+V` |
 | Help | Keyboard Shortcuts | `⌘/` | `Ctrl+/` |

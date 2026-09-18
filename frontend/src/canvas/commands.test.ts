@@ -346,3 +346,49 @@ describe('what can be pasted', () => {
     expect(commands.canPasteStyles).toBe(true);
   });
 });
+
+// An edit rewrites an element; keys this Bava does not model must ride along.
+describe('editing an element with keys we do not model', () => {
+  it('keeps them through a move, an align and a duplicate', () => {
+    const history = createHistory({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1, glow: true, strokeWidth: 4 },
+        { id: 'b', type: 'rect', x: 40, y: 20, w: 10, h: 10, z: 2, glow: false },
+      ] as never,
+    });
+    const selection = createSelection();
+    const commands = createCanvasCommands({ history, selection });
+    commands.selectAll();
+    commands.align('left');
+    commands.duplicate();
+    for (const element of history.current.elements) {
+      expect(element, JSON.stringify(element)).toHaveProperty('glow');
+    }
+    expect(history.current.elements.find((e) => e.id === 'a')).toMatchObject({ strokeWidth: 4 });
+  });
+});
+
+describe('locking', () => {
+  it('locks the selection, and unlock all frees every locked element', () => {
+    const history = createHistory({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1 },
+        { id: 'b', type: 'rect', x: 20, y: 0, w: 10, h: 10, z: 2, locked: true },
+      ] as never,
+    });
+    const selection = createSelection();
+    const commands = createCanvasCommands({ history, selection });
+    selection.click('a');
+    commands.lock();
+    expect(history.current.elements[0]).toMatchObject({ locked: true });
+    // Locking clears the selection: a locked element cannot be selected.
+    expect(selection.ids).toEqual([]);
+    expect(commands.hasLocked).toBe(true);
+
+    commands.unlockAll();
+    expect(history.current.elements.every((e) => !('locked' in e))).toBe(true);
+    expect(commands.hasLocked).toBe(false);
+    commands.undo();
+    expect(history.current.elements.filter((e) => 'locked' in e)).toHaveLength(2);
+  });
+});

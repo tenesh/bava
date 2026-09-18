@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { atPoint, contextMenuFor, contextSelection, type MenuNode } from './context-menu';
+import { atPoint, contextMenuFor, contextSelection, overflowMenu, parseOverflowId, type MenuNode } from './context-menu';
 
 const ids = (nodes: MenuNode[]): string[] =>
   nodes.flatMap((n) => (n.kind === 'separator' ? ['—'] : n.kind === 'submenu' ? [`${n.id}▸`, ...ids(n.items).map((i) => `  ${i}`)] : [n.id]));
 
-const base = { units: 1, canGroup: false, canUngroup: false, canPaste: true, canPasteStyles: true };
+const base = { units: 1, canGroup: false, canUngroup: false, canPaste: true, canPasteStyles: true, hasLocked: false };
 
 describe('the right-click menu', () => {
   it('lists the groups for one element, with no align, in order', () => {
@@ -17,7 +17,7 @@ describe('the right-click menu', () => {
       '  canvas.bringToFront', '  canvas.bringForward', '  canvas.sendBackward', '  canvas.sendToBack',
       'canvas.flip▸', '  canvas.flipHorizontal', '  canvas.flipVertical',
       '—',
-      'canvas.duplicate',
+      'canvas.duplicate', 'canvas.lock',
       '—',
       'edit.delete',
     ]);
@@ -42,10 +42,18 @@ describe('the right-click menu', () => {
     expect(ids(contextMenuFor({ ...base, units: 0 }))).toEqual(['edit.paste', 'edit.selectAll']);
   });
 
-  // No dead items: lock, copy as PNG/SVG and export arrive with 06.3 and 6.4.
+  // No dead items: copy as PNG/SVG and export arrive with Milestone 6.4.
   it('has no item that does not work yet', () => {
     const all = ids(contextMenuFor({ ...base, units: 3, canGroup: true, canUngroup: true })).join(' ');
-    expect(all).not.toMatch(/lock|png|svg|export/i);
+    expect(all).not.toMatch(/png|svg|export/i);
+  });
+
+  it('offers Lock on a selection, and Unlock All only when something is locked', () => {
+    expect(ids(contextMenuFor(base))).toContain('canvas.lock');
+    expect(ids(contextMenuFor(base))).not.toContain('canvas.unlockAll');
+    expect(ids(contextMenuFor({ ...base, units: 0 }))).not.toContain('canvas.lock');
+    expect(ids(contextMenuFor({ ...base, units: 0, hasLocked: true }))).toContain('canvas.unlockAll');
+    expect(ids(contextMenuFor({ ...base, hasLocked: true }))).toContain('canvas.unlockAll');
   });
 
   it('labels items and shows their keys', () => {
@@ -106,5 +114,53 @@ describe('what a right-click acts on', () => {
   it('selects the outermost group of an unselected hit, as a left click does', () => {
     expect(contextSelection(scene, ['c'], 'b')).toEqual(['g']);
     expect(contextSelection(scene, [], 'c')).toEqual(['c']);
+  });
+});
+
+// A control pushed out of the toolbar row has to stay reachable: More is
+// where it goes (canvas-toolbar.md, "the controls that do not fit move into
+// the More menu"). Without this, a narrow window hid them entirely.
+describe('controls that overflow the toolbar row', () => {
+  it('offers each one as a submenu of its choices', () => {
+    const nodes = overflowMenu([
+      { id: 'edges', group: 'stroke', kind: 'options' },
+      { id: 'opacity', group: 'stroke', kind: 'slider' },
+      { id: 'fill', group: 'colour', kind: 'colour' },
+    ]);
+    expect(ids(nodes)).toEqual([
+      '—',
+      'property:edges▸', '  property:edges:sharp', '  property:edges:round',
+      'property:opacity▸', '  property:opacity:100', '  property:opacity:75', '  property:opacity:50', '  property:opacity:25',
+      'style:fill▸', '  style:fill:', '  style:fill:gray', '  style:fill:blue', '  style:fill:green',
+      '  style:fill:yellow', '  style:fill:orange', '  style:fill:red', '  style:fill:purple', '  style:fill:pink',
+    ]);
+  });
+
+  it('is nothing at all when everything fits', () => {
+    expect(overflowMenu([])).toEqual([]);
+  });
+
+  it('names each choice as the toolbar names it', () => {
+    const [, edges] = overflowMenu([{ id: 'edges', group: 'stroke', kind: 'options' }]);
+    expect(edges.kind === 'submenu' && edges.label).toBe('Edges');
+    expect(edges.kind === 'submenu' && edges.items.map((i) => i.kind === 'item' && i.label)).toEqual(['Sharp', 'Round']);
+  });
+});
+
+describe('what an overflow menu id means', () => {
+  it('reads a property back as the typed value the option carries', () => {
+    expect(parseOverflowId('property:strokeWidth:4')).toEqual({ kind: 'property', key: 'strokeWidth', value: 4 });
+    expect(parseOverflowId('property:edges:round')).toEqual({ kind: 'property', key: 'edges', value: 'round' });
+    expect(parseOverflowId('property:opacity:50')).toEqual({ kind: 'property', key: 'opacity', value: 50 });
+  });
+
+  it('reads a colour back, with the default as null', () => {
+    expect(parseOverflowId('style:fill:blue')).toEqual({ kind: 'style', key: 'fill', swatch: 'blue' });
+    expect(parseOverflowId('style:fill:')).toEqual({ kind: 'style', key: 'fill', swatch: null });
+  });
+
+  it('is null for a command id, so a command still dispatches', () => {
+    expect(parseOverflowId('canvas.duplicate')).toBeNull();
+    expect(parseOverflowId('property:edges:oblong')).toBeNull();
   });
 });

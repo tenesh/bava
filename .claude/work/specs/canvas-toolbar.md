@@ -162,7 +162,7 @@ On an element or selection, groups separated, submenus marked ▸:
 5. Align ▸ six aligns, distribute horizontal and vertical (2+ units; distribute 3+)
 6. Flip ▸ Horizontal, Vertical
 7. Group, Ungroup
-8. Duplicate, Lock / Unlock
+8. Duplicate, Lock
 9. Delete
 
 On empty canvas: Paste, Select All, Unlock All (when something is locked).
@@ -248,4 +248,69 @@ pressing or releasing it changes the preview at once:
 
 A resize never draws the marquee: the dashed rectangle belongs to dragging
 empty space.
+
+## Milestone 6.3 storage: decided 2026-09-18
+
+Specified here, then in `docs/file-format.md` before any code writes it.
+
+### New optional keys
+
+| Key | Values | Absent | Elements |
+|---|---|---|---|
+| `strokeWidth` | 1, 2, 4 | 2 | shapes, line, arrow, stroke, frame |
+| `strokeStyle` | solid, dashed, dotted | solid | as above |
+| `edges` | sharp, round | sharp | shapes except ellipse; line |
+| `opacity` | 0 to 100 | 100 | every element |
+| `fontSize` | 16, 20, 28, 36 | 20 | text, and a shape's or frame's label |
+| `align` | left, center, right | center in a shape, left in free text | text and labels |
+| `verticalAlign` | top, middle, bottom | middle | labels |
+| `locked` | true | not locked | every element |
+| `arrowType` | straight, elbow, arc | straight | arrow |
+| `startArrowhead`, `endArrowhead` | none, arrow, bar, triangle, triangle-outline, circle, circle-outline, diamond, diamond-outline | none at the start, arrow at the end | arrow |
+| `angle` | degrees, 0 to 359, clockwise about the element's centre | 0 | every element except an elbow arrow |
+
+Numbers rather than names for width and size, as Excalidraw stores them: a
+later custom value needs no new vocabulary. Unknown values follow the existing
+rule: drawn as the default, written back unchanged.
+
+The ER arrowheads (one, many, one or many, zero or one, zero or many, exactly
+one) arrive with connections in Milestone 6.5, where an arrow attaches to a
+shape. Decided 2026-09-18.
+
+### Colours: swatch name or literal
+
+`fill`, `stroke` and `color` take **a swatch name or a literal `#rrggbb`**. A
+value starting with `#` is literal; anything else is a swatch name, and an
+unknown name still draws as the default and is written back unchanged.
+
+**Adapting a literal colour**: it is drawn as stored where it reads well
+against that theme's canvas; where it does not, its lightness is flipped and
+nudged until it does, keeping its hue. The rule works from the value alone, so
+the file never records which theme it was picked in, and a file opened by
+another user in the other theme still reads.
+
+### Locking: decided 2026-09-18
+
+Excalidraw's behaviour: a locked element cannot be selected by click or
+marquee, moved, resized, restyled or erased. It draws and exports normally.
+Unlock All is the way back, from right-click on empty canvas or `⌥⇧⌘L`. Bava
+does not offer Unlock on the element itself: hit-testing skips a locked
+element, so a right-click on one is a right-click on empty canvas, and a menu
+that cannot know what is under the pointer cannot single it out.
+
+## The selection toolbar's layout: decided 2026-09-18
+
+One adaptive row at the bottom of the canvas, showing only the controls the
+selection takes, grouped with dividers: colours, then stroke (width, style,
+edges, opacity), then text (size, align, vertical align), then arrows (type,
+start head, end head), then align and distribute, then More.
+
+A shape, an arrow and a text element each get a different, short set. When the
+row does not fit the canvas, the controls that do not fit move into the More
+menu rather than the bar growing, wrapping or scrolling.
+
+Round edges follow Excalidraw: a fixed 32px radius on a rectangle, a quarter
+of the shorter side on a polygon (diamond, hexagon, parallelogram) and on a
+line; an ellipse has no Edges control, and neither do the already-curved
+outlines (cylinder, document, person, cloud).
 

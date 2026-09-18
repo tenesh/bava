@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createSelection, intersects } from './selection';
-import { createScene } from './scene';
+import { createScene, type SceneData } from './scene';
 
 function sceneWithThree() {
   const scene = createScene();
@@ -122,5 +122,28 @@ describe('intersects', () => {
     selection.click('b', { additive: true });
     selection.retain(['b', 'c']);
     expect(selection.ids).toEqual(['b']);
+  });
+});
+
+// A locked element is not selectable: a click passes through it, a marquee
+// skips it, Select All leaves it (canvas-toolbar.md, "Locking").
+describe('locked elements', () => {
+  const scene: SceneData = {
+    elements: [
+      { id: 'free', type: 'rect', x: 0, y: 0, w: 20, h: 20, z: 1 },
+      { id: 'locked', type: 'rect', x: 30, y: 0, w: 20, h: 20, z: 2, locked: true },
+    ] as never,
+  };
+
+  it('are skipped by a marquee', () => {
+    const selection = createSelection();
+    selection.marquee({ x: -5, y: -5, w: 100, h: 100 }, scene);
+    expect(selection.ids).toEqual(['free']);
+  });
+
+  it('are skipped by Select All', () => {
+    const selection = createSelection();
+    selection.selectAll(scene);
+    expect(selection.ids).toEqual(['free']);
   });
 });

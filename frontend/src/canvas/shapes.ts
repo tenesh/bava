@@ -37,13 +37,62 @@ function ellipse(p: PathSink, cx: number, cy: number, rx: number, ry: number) {
   p.closePath();
 }
 
-const outlines: Record<OutlineShape, (p: PathSink, w: number, h: number) => void> = {
-  diamond(p, w, h) {
-    p.moveTo(w / 2, 0);
-    p.lineTo(w, h / 2);
-    p.lineTo(w / 2, h);
-    p.lineTo(0, h / 2);
+/**
+ * A closed polygon, with corners rounded to `radius` when one is given.
+ *
+ * Each corner becomes a curve that starts and ends on the sides meeting there,
+ * so the path stays inside the box. The radius is capped at half the shorter
+ * side meeting the corner, as Excalidraw caps its proportional radius.
+ */
+function polygon(p: PathSink, points: [number, number][], radius = 0): void {
+  if (radius <= 0) {
+    points.forEach(([x, y], i) => (i === 0 ? p.moveTo(x, y) : p.lineTo(x, y)));
     p.closePath();
+    return;
+  }
+
+  const count = points.length;
+  const towards = (from: [number, number], to: [number, number], distance: number): [number, number] => {
+    const dx = to[0] - from[0];
+    const dy = to[1] - from[1];
+    const length = Math.hypot(dx, dy) || 1;
+    const step = Math.min(distance, length / 2);
+    return [from[0] + (dx / length) * step, from[1] + (dy / length) * step];
+  };
+
+  for (let i = 0; i < count; i += 1) {
+    const previous = points[(i - 1 + count) % count];
+    const corner = points[i];
+    const next = points[(i + 1) % count];
+    const start = towards(corner, previous, radius);
+    const end = towards(corner, next, radius);
+    if (i === 0) p.moveTo(start[0], start[1]);
+    else p.lineTo(start[0], start[1]);
+    // A quadratic through the corner, written as the cubic the sink takes.
+    p.bezierCurveTo(
+      start[0] + (2 / 3) * (corner[0] - start[0]),
+      start[1] + (2 / 3) * (corner[1] - start[1]),
+      end[0] + (2 / 3) * (corner[0] - end[0]),
+      end[1] + (2 / 3) * (corner[1] - end[1]),
+      end[0],
+      end[1],
+    );
+  }
+  p.closePath();
+}
+
+const outlines: Record<OutlineShape, (p: PathSink, w: number, h: number, radius?: number) => void> = {
+  diamond(p, w, h, radius) {
+    polygon(
+      p,
+      [
+        [w / 2, 0],
+        [w, h / 2],
+        [w / 2, h],
+        [0, h / 2],
+      ],
+      radius,
+    );
   },
 
   cylinder(p, w, h) {
@@ -61,24 +110,34 @@ const outlines: Record<OutlineShape, (p: PathSink, w: number, h: number) => void
     ellipse(p, w / 2, ry, w / 2, ry);
   },
 
-  hexagon(p, w, h) {
+  hexagon(p, w, h, radius) {
     const inset = Math.min(w * 0.25, h * 0.5);
-    p.moveTo(inset, 0);
-    p.lineTo(w - inset, 0);
-    p.lineTo(w, h / 2);
-    p.lineTo(w - inset, h);
-    p.lineTo(inset, h);
-    p.lineTo(0, h / 2);
-    p.closePath();
+    polygon(
+      p,
+      [
+        [inset, 0],
+        [w - inset, 0],
+        [w, h / 2],
+        [w - inset, h],
+        [inset, h],
+        [0, h / 2],
+      ],
+      radius,
+    );
   },
 
-  parallelogram(p, w, h) {
+  parallelogram(p, w, h, radius) {
     const slant = Math.min(w * 0.2, h * 0.5);
-    p.moveTo(slant, 0);
-    p.lineTo(w, 0);
-    p.lineTo(w - slant, h);
-    p.lineTo(0, h);
-    p.closePath();
+    polygon(
+      p,
+      [
+        [slant, 0],
+        [w, 0],
+        [w - slant, h],
+        [0, h],
+      ],
+      radius,
+    );
   },
 
   document(p, w, h) {
@@ -112,6 +171,11 @@ const outlines: Record<OutlineShape, (p: PathSink, w: number, h: number) => void
   },
 };
 
-export function drawOutline(shape: OutlineShape, sink: PathSink, w: number, h: number): void {
-  outlines[shape](sink, w, h);
+/**
+ * Draw a shape's outline into a sink. `radius` rounds the corners of the
+ * polygon shapes (diamond, hexagon, parallelogram); the curved outlines have
+ * no corners and ignore it.
+ */
+export function drawOutline(shape: OutlineShape, sink: PathSink, w: number, h: number, radius = 0): void {
+  outlines[shape](sink, w, h, radius);
 }

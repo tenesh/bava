@@ -25,8 +25,10 @@ type State struct {
 	Tool         string `json:"tool"`
 	HasSelection bool   `json:"hasSelection"`
 	// CanPasteStyles reports a style copied with Copy Styles.
-	CanPasteStyles bool     `json:"canPasteStyles"`
-	Recents        []string `json:"recents"`
+	CanPasteStyles bool `json:"canPasteStyles"`
+	// HasLocked reports at least one locked element in the scene.
+	HasLocked bool     `json:"hasLocked"`
+	Recents   []string `json:"recents"`
 }
 
 // Built is a constructed menu bar and handles to the items state changes.
@@ -210,6 +212,8 @@ func (b *Built) Apply(state State) bool {
 		enable(id, state.HasSelection)
 	}
 	enable("canvas.pasteStyles", state.HasSelection && state.CanPasteStyles)
+	enable("canvas.lock", state.HasSelection)
+	enable("canvas.unlockAll", state.HasLocked)
 
 	if b.recents == nil || (b.shown != nil && slices.Equal(b.shown, state.Recents)) {
 		return false

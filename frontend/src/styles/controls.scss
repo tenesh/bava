@@ -1,0 +1,33 @@
+// Classes shared by more than one control component, so neither owns them and
+// neither breaks when the other is renamed or removed. A class used by exactly
+// one component belongs in that component, not here.
+
+// A control that opens a popover: the option pickers and the opacity slider.
+// Icon-sized, transparent, named by its tooltip.
+.bava-control-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-row);
+  height: var(--size-row);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.bava-control-trigger:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(var(--focus-halo-width) * -1);
+}
+
+// The surface those popovers open on.
+.bava-control-popover {
+  z-index: var(--z-portal);
+  padding: var(--space-1);
+  background: var(--color-surface-overlay);
+  border: var(--border-width) solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-floating);
+}

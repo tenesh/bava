@@ -75,3 +75,42 @@ describe('shape outlines', () => {
     }
   });
 });
+
+// Round edges, as Excalidraw rounds them: a fixed radius on a rectangle and a
+// proportional one on a polygon. Curved outlines have no corners to round.
+describe('rounded outlines', () => {
+  const curves = (calls: Call[]) => calls.filter((c) => c.op === 'bezierCurveTo').length;
+  const inBox = (calls: Call[], w: number, h: number) =>
+    allPoints(calls).every(([x, y]) => x >= -eps && x <= w + eps && y >= -eps && y <= h + eps);
+
+  it('rounds a polygon: the corners become curves, the path stays in the box', () => {
+    const sharp = record();
+    drawOutline('diamond', sharp, 100, 60);
+    const round = record();
+    drawOutline('diamond', round, 100, 60, 12);
+    expect(curves(sharp.calls)).toBe(0);
+    expect(curves(round.calls)).toBeGreaterThan(0);
+    expect(inBox(round.calls, 100, 60)).toBe(true);
+  });
+
+  it('rounds the polygon shapes and leaves the curved ones alone', () => {
+    for (const shape of ['diamond', 'hexagon', 'parallelogram'] as const) {
+      const round = record();
+      drawOutline(shape, round, 100, 60, 12);
+      expect(curves(round.calls), shape).toBeGreaterThan(0);
+    }
+    for (const shape of ['cloud', 'person', 'cylinder', 'document'] as const) {
+      const plain = record();
+      drawOutline(shape, plain, 100, 60);
+      const asked = record();
+      drawOutline(shape, asked, 100, 60, 12);
+      expect(asked.calls, shape).toEqual(plain.calls);
+    }
+  });
+
+  it('never rounds more than the shape can take', () => {
+    const round = record();
+    drawOutline('hexagon', round, 20, 10, 999);
+    expect(inBox(round.calls, 20, 10)).toBe(true);
+  });
+});

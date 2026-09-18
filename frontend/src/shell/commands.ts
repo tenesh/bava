@@ -68,6 +68,8 @@ export const COMMAND_IDS = [
   'canvas.distributeVertical',
   'canvas.copyStyles',
   'canvas.pasteStyles',
+  'canvas.lock',
+  'canvas.unlockAll',
   'help.shortcuts',
   'help.openLogs',
   'help.copyDiagnostics',

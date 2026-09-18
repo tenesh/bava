@@ -9,7 +9,7 @@
  */
 import type { History } from './history';
 import type { ElementId, SceneData, SceneElement } from './scene';
-import { isShapeType } from './scene';
+import { isLocked, isShapeType } from './scene';
 import type { Point } from './viewport';
 
 /** Set or clear a shape's label, as one undo step. */
@@ -59,6 +59,7 @@ export function commitText(
 export function editableAt(scene: SceneData, point: Point): SceneElement | undefined {
   const hits = scene.elements.filter(
     (e) =>
+      !isLocked(e) &&
       (isShapeType(e.type) || e.type === 'text' || e.type === 'frame') &&
       point.x >= e.x &&
       point.x <= e.x + e.w &&

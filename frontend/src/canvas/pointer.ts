@@ -13,7 +13,7 @@ import type { History } from './history';
 import type { Selection, Box } from './selection';
 import type { ToolId } from './tools.svelte';
 import { produce } from 'immer';
-import type { ElementId, SceneData, SceneElement } from './scene';
+import { isLocked, type ElementId, type SceneData, type SceneElement } from './scene';
 import { simplify } from './stroke';
 import { snapAngle, squareBox } from './constrain';
 import { erasableAlong, eraseSet } from './eraser';
@@ -87,8 +87,9 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   const eraserTolerance = options.eraserTolerance ?? (() => 3);
 
   function elementsAt(point: Point): SceneElement[] {
+    // A locked element is not there as far as a press is concerned.
     return history.current.elements.filter(
-      (e) => point.x >= e.x && point.x <= e.x + e.w && point.y >= e.y && point.y <= e.y + e.h,
+      (e) => !isLocked(e) && point.x >= e.x && point.x <= e.x + e.w && point.y >= e.y && point.y <= e.y + e.h,
     );
   }
 

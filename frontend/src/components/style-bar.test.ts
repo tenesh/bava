@@ -96,3 +96,38 @@ describe('StyleBar chip wiring', () => {
     unmount(app);
   });
 });
+
+// A colour of the user's own, beside the swatches: stored as picked and
+// adapted per theme (canvas-toolbar.md, "Colour").
+describe('the colour picker', () => {
+  it('offers a hex field beside the swatches and reports a literal colour', async () => {
+    const { target, app, onApply } = render({});
+    flushSync(() => (target.querySelector('button[aria-label="Fill colour"]') as HTMLElement).click());
+    await vi.waitFor(() => expect(document.querySelector('.bava-custom input')).not.toBeNull());
+
+    const field = document.querySelector('.bava-custom input') as HTMLInputElement;
+    field.value = '#e03131';
+    flushSync(() => field.dispatchEvent(new Event('change', { bubbles: true })));
+    await vi.waitFor(() => expect(onApply).toHaveBeenCalledWith('fill', '#e03131'));
+    unmount(app);
+  });
+
+  it('ignores a malformed colour', async () => {
+    const { target, app, onApply } = render({});
+    flushSync(() => (target.querySelector('button[aria-label="Fill colour"]') as HTMLElement).click());
+    await vi.waitFor(() => expect(document.querySelector('.bava-custom input')).not.toBeNull());
+
+    const field = document.querySelector('.bava-custom input') as HTMLInputElement;
+    field.value = 'not a colour';
+    flushSync(() => field.dispatchEvent(new Event('change', { bubbles: true })));
+    expect(onApply).not.toHaveBeenCalled();
+    unmount(app);
+  });
+
+  it('shows a picked colour as the chip', () => {
+    const { target, app } = render({ fill: '#e03131' });
+    const chip = target.querySelector('button[aria-label="Fill colour"] .chip') as HTMLElement;
+    expect(chip.style.background).toContain('rgb(224, 49, 49)');
+    unmount(app);
+  });
+});

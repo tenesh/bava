@@ -17,8 +17,10 @@
  */
 import Konva from 'konva';
 import type { SceneData, SceneElement, ElementId } from './scene';
+import type { ArrowProps, StyleProps } from './scene';
 import { isShapeType } from './scene';
 import { drawOutline, isOutlineShape } from './shapes';
+import { drawHead, headAt, routePoints } from './arrows';
 import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
 import { boundsOf } from './edit';
 import { HANDLES, handleCentre } from './resize';
@@ -47,7 +49,14 @@ function cached(read: ReadVariable): ReadVariable {
 
 const number = (read: ReadVariable, name: string) => parseFloat(read(name)) || 0;
 
-type Entry = { group: Konva.Group; body: Konva.Shape; label: Konva.Text | null; type: string };
+type Entry = {
+  group: Konva.Group;
+  body: Konva.Shape;
+  label: Konva.Text | null;
+  type: string;
+  /** An arrow's heads, drawn as their own nodes: Konva draws only triangles. */
+  heads: Konva.Shape[];
+};
 
 export class CanvasStage {
   #stage: Konva.Stage | null = null;
@@ -260,6 +269,11 @@ export class CanvasStage {
     return this.#trail;
   }
 
+  /** An arrow's head nodes, for tests: what was drawn, not what was asked for. */
+  arrowHeads(id: ElementId): Konva.Shape[] {
+    return this.#entries.get(id)?.heads ?? [];
+  }
+
   /** The marquee being drawn, or null. */
   marquee(): Konva.Rect | null {
     return this.#marquee;
@@ -341,8 +355,9 @@ export class CanvasStage {
   #create(element: SceneElement): Entry {
     const group = new Konva.Group();
     const body = this.#createBody(element);
+    const heads: Konva.Shape[] = [];
     group.add(body);
-    return { group, body, label: null, type: element.type };
+    return { group, body, heads, label: null, type: element.type };
   }
 
   #createBody(element: SceneElement): Konva.Shape {
@@ -362,7 +377,11 @@ export class CanvasStage {
           return new Konva.Shape({
             sceneFunc: (context, shape) => {
               context.beginPath();
-              drawOutline(type, context, shape.width(), shape.height());
+              // Excalidraw's proportional radius: a quarter of the shorter side.
+              const radius = shape.getAttr('bavaRound')
+                ? Math.min(shape.width(), shape.height()) * ROUND_SHARE
+                : 0;
+              drawOutline(type, context, shape.width(), shape.height(), radius);
               context.fillStrokeShape(shape);
             },
           });
@@ -382,7 +401,10 @@ export class CanvasStage {
       body.radiusX(element.w / 2);
       body.radiusY(element.h / 2);
     } else if (body instanceof Konva.Line) {
-      body.points('points' in element ? element.points : []);
+      const points = 'points' in element ? element.points : [];
+      body.points(
+        element.type === 'arrow' ? routePoints(points, (element as SceneElement & ArrowProps).arrowType) : points,
+      );
     } else {
       body.width(element.w);
       body.height(element.h);
@@ -401,9 +423,10 @@ export class CanvasStage {
       }
       const inset = number(read, '--size-label-inset');
       const isFrame = element.type === 'frame';
+      const props = element as SceneElement & StyleProps;
       entry.label.text(label);
-      entry.label.align(isFrame ? 'left' : 'center');
-      entry.label.verticalAlign(isFrame ? 'top' : 'middle');
+      entry.label.align(props.align ?? (isFrame ? 'left' : 'center'));
+      entry.label.verticalAlign(props.verticalAlign ?? (isFrame ? 'top' : 'middle'));
       entry.label.x(inset);
       entry.label.y(isFrame ? inset : 0);
       entry.label.width(Math.max(0, element.w - inset * 2));
@@ -414,15 +437,72 @@ export class CanvasStage {
     }
 
     this.#style(entry, element, read);
+    this.#drawHeads(entry, element, read);
+  }
+
+  /**
+   * An arrow's heads, one node each, placed and turned at the routed path's
+   * ends. Konva's own pointer draws a triangle and nothing else.
+   */
+  #drawHeads(entry: Entry, element: SceneElement, read: ReadVariable): void {
+    for (const head of entry.heads) head.destroy();
+    entry.heads = [];
+    if (element.type !== 'arrow') return;
+
+    const props = element as SceneElement & ArrowProps;
+    const points = (entry.body as Konva.Line).points();
+    const size = number(read, '--size-arrowhead');
+    const colour = resolveStyle(element as { stroke?: string }, read).stroke;
+    const width = (element as SceneElement & StyleProps).strokeWidth ?? number(read, '--size-shape-stroke');
+
+    for (const end of ['start', 'end'] as const) {
+      const kind = end === 'start' ? (props.startArrowhead ?? 'none') : (props.endArrowhead ?? 'arrow');
+      if (kind === 'none') continue;
+      const at = headAt(points, end);
+      const node = new Konva.Shape({
+        x: at.x,
+        y: at.y,
+        rotation: at.angle,
+        name: kind,
+        listening: false,
+        sceneFunc: (context, shape) => {
+          context.beginPath();
+          drawHead(context, kind, size);
+          context.fillStrokeShape(shape);
+        },
+      });
+      // Whether this head is filled or stroked, asked without drawing.
+      const filled = drawHead(NO_SINK, kind, size);
+      node.fill(filled ? colour : '');
+      node.stroke(colour);
+      node.strokeWidth(width);
+      entry.heads.push(node);
+      entry.group.add(node);
+    }
   }
 
   #style(entry: Entry, element: SceneElement, read: ReadVariable): void {
     const style = resolveStyle(element as { fill?: string; stroke?: string; color?: string }, read);
-    const strokeWidth = number(read, '--size-shape-stroke');
+    const props = element as SceneElement & StyleProps & ArrowProps;
+    const strokeWidth = props.strokeWidth ?? number(read, '--size-shape-stroke');
     const fontFamily = read('--font-ui').trim();
-    const fontSize = number(read, '--text-body');
+    const fontSize = props.fontSize ?? number(read, '--text-body');
     const lineHeight = number(read, '--leading-tight');
     const { body } = entry;
+
+    // The element's own opacity, on the group so a label fades with its shape.
+    entry.group.opacity(props.opacity === undefined ? 1 : Math.min(100, Math.max(0, props.opacity)) / 100);
+    body.dash(dashFor(props.strokeStyle, read));
+    if (body instanceof Konva.Rect) {
+      body.cornerRadius(props.edges === 'round' ? number(read, '--radius-shape-round') : 0);
+    }
+    // A polygon outline rounds itself when it draws; the flag rides on the node.
+    if (isOutlineShape(element.type)) body.setAttr('bavaRound', props.edges === 'round');
+    if (body instanceof Konva.Line && props.edges === 'round') {
+      body.tension(LINE_TENSION);
+    } else if (body instanceof Konva.Line) {
+      body.tension(0);
+    }
 
     switch (element.type) {
       case 'text':
@@ -430,20 +510,29 @@ export class CanvasStage {
         (body as Konva.Text).fontFamily(fontFamily);
         (body as Konva.Text).fontSize(fontSize);
         (body as Konva.Text).lineHeight(lineHeight);
+        (body as Konva.Text).align(props.align ?? 'left');
         break;
       case 'line':
       case 'stroke':
         body.stroke(style.stroke);
-        body.strokeWidth(element.type === 'stroke' ? number(read, '--size-pen-stroke') : strokeWidth);
+        body.strokeWidth(
+          props.strokeWidth ?? (element.type === 'stroke' ? number(read, '--size-pen-stroke') : strokeWidth),
+        );
         break;
-      case 'arrow':
+      case 'arrow': {
         body.stroke(style.stroke);
         // The arrowhead is filled in the line's colour.
         body.fill(style.stroke);
         body.strokeWidth(strokeWidth);
-        (body as Konva.Arrow).pointerLength(number(read, '--size-arrowhead'));
-        (body as Konva.Arrow).pointerWidth(number(read, '--size-arrowhead'));
+        const arrow = body as Konva.Arrow;
+        arrow.pointerLength(number(read, '--size-arrowhead'));
+        arrow.pointerWidth(number(read, '--size-arrowhead'));
+        // Which ends carry a head. Their shapes arrive with the routing.
+        // The heads are their own nodes; Konva's pointer draws triangles only.
+        arrow.pointerAtBeginning(false);
+        arrow.pointerAtEnding(false);
         break;
+      }
       case 'group':
         // A group draws nothing of its own; its children are the drawing.
         body.stroke('');
@@ -467,6 +556,33 @@ export class CanvasStage {
       entry.label.lineHeight(lineHeight);
     }
   }
+}
+
+/** Excalidraw's proportional radius: a quarter of the shorter side. */
+const ROUND_SHARE = 0.25;
+
+/**
+ * How much a rounded line is smoothed. A polyline has no corners to cut, so
+ * Round bends it through its points instead, which Konva calls tension. The
+ * value is a shape of a curve, not a length, so it is a constant here rather
+ * than a token (`.ai/rules/canvas.md`).
+ */
+const LINE_TENSION = 0.4;
+
+/** A sink that draws nothing: for asking a head whether it is filled. */
+const NO_SINK = { moveTo: () => {}, lineTo: () => {}, bezierCurveTo: () => {}, closePath: () => {} };
+
+/** The dash pattern for a stroke style, in scene units, or none. */
+function dashFor(style: string | undefined, read: ReadVariable): number[] {
+  if (style === 'dashed') {
+    const dash = number(read, '--size-dash');
+    return [dash, dash];
+  }
+  if (style === 'dotted') {
+    const dot = number(read, '--size-dot');
+    return [dot, dot * 2];
+  }
+  return [];
 }
 
 function boundsToRect(box: { x: number; y: number; w: number; h: number }) {

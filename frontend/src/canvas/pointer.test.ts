@@ -510,3 +510,34 @@ describe('Shift during a drag', () => {
     expect(held).toMatchObject({ w: 140, h: 70 });
   });
 });
+
+describe('a locked element', () => {
+  function withLocked() {
+    const history = createHistory({
+      elements: [
+        { id: 'under', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 },
+        { id: 'locked', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 2, locked: true },
+      ] as never,
+    });
+    const selection = createSelection();
+    const tools = createTools();
+    tools.activate('select');
+    return { history, selection, tools, handler: createPointerHandler({ history, selection, tools }) };
+  }
+
+  it('is not selected by a click: what is under it is', () => {
+    const { selection, handler } = withLocked();
+    handler.down(at(30, 30));
+    handler.up(at(30, 30));
+    expect(selection.ids).toEqual(['under']);
+  });
+
+  it('is skipped by the eraser', () => {
+    const { history, tools, handler } = withLocked();
+    tools.activate('eraser');
+    handler.down(at(-5, 30));
+    handler.move(at(70, 30));
+    handler.up(at(70, 30));
+    expect(history.current.elements.map((e) => e.id)).toEqual(['locked']);
+  });
+});

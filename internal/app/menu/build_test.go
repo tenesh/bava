@@ -154,6 +154,23 @@ func TestApplyReportsWhetherTheMenuMustBeRebuilt(t *testing.T) {
 }
 
 // Paste Styles with no copied style would be a dead item.
+// Unlock All is offered only when something is locked.
+func TestUnlockAllNeedsSomethingLocked(t *testing.T) {
+	built, _ := build(t, "darwin")
+	built.Apply(menu.State{})
+	if built.Item("canvas.unlockAll").Enabled() {
+		t.Error("Unlock All is enabled with nothing locked")
+	}
+	built.Apply(menu.State{HasLocked: true})
+	if !built.Item("canvas.unlockAll").Enabled() {
+		t.Error("Unlock All is disabled with something locked")
+	}
+	built.Apply(menu.State{HasSelection: true})
+	if !built.Item("canvas.lock").Enabled() {
+		t.Error("Lock is disabled with a selection")
+	}
+}
+
 func TestPasteStylesNeedsACopiedStyle(t *testing.T) {
 	built, _ := build(t, "darwin")
 	built.Apply(menu.State{HasSelection: true})

@@ -8,6 +8,11 @@
  */
 import menuSpec from '../../../internal/app/menu/spec.json';
 import { currentPlatform, formatAccelerator, type MenuSpec, type Platform } from '../shell/shortcuts';
+import { isSwatch, SWATCHES } from './palette';
+import { PROPERTY_OPTIONS } from './property-options';
+import { t } from '../i18n/t';
+import type { ToolbarControl } from './toolbar';
+import type { PropertyKey, PropertyValue, StyleKey } from './style';
 
 export type MenuNode =
   | { kind: 'item'; id: string; label: string; keys: string }
@@ -22,6 +27,8 @@ export type SelectionInfo = {
   /** Whether Paste has elements to paste, and Paste Styles a style. */
   canPaste: boolean;
   canPasteStyles: boolean;
+  /** Whether anything in the scene is locked, for Unlock All. */
+  hasLocked: boolean;
 };
 
 type SpecEntry = { id?: string; label?: string; accelerator?: string; shortcut?: string; hint?: string; items?: SpecEntry[] };
@@ -62,7 +69,8 @@ export function contextMenuFor(info: SelectionInfo, platform: Platform = current
   const separator: MenuNode = { kind: 'separator' };
 
   const paste = info.canPaste ? [item('edit.paste')] : [];
-  if (info.units === 0) return [...paste, item('edit.selectAll')];
+  const unlockAll = info.hasLocked ? [item('canvas.unlockAll')] : [];
+  if (info.units === 0) return [...paste, item('edit.selectAll'), ...unlockAll];
 
   const groups: MenuNode[][] = [
     [item('edit.cut'), item('edit.copy'), ...paste],
@@ -85,11 +93,89 @@ export function contextMenuFor(info: SelectionInfo, platform: Platform = current
       submenu('canvas.flip', ['canvas.flipHorizontal', 'canvas.flipVertical']),
     ],
     [...(info.canGroup ? [item('canvas.group')] : []), ...(info.canUngroup ? [item('canvas.ungroup')] : [])],
-    [item('canvas.duplicate')],
+    [item('canvas.duplicate'), item('canvas.lock'), ...unlockAll],
     [item('edit.delete')],
   ];
 
   return groups.filter((group) => group.length > 0).flatMap((group, i) => (i === 0 ? group : [separator, ...group]));
+}
+
+/** The colour keys an overflow entry may name, as `StyleKey` lists them. */
+const COLOUR_KEYS: StyleKey[] = ['fill', 'stroke', 'color'];
+
+/** The opacity steps More offers, where the row would show a slider. */
+const OPACITY_STEPS = [100, 75, 50, 25];
+
+/**
+ * The controls that did not fit the toolbar row, as submenus of choices, after
+ * a separator. Selecting one reports `property:<key>:<value>` for a style
+ * property, or `style:<key>:<swatch>` for a colour, with an empty swatch
+ * meaning the theme default. Empty when everything fits.
+ */
+export function overflowMenu(controls: ToolbarControl[]): MenuNode[] {
+  if (controls.length === 0) return [];
+  const nodes = controls.map((control): MenuNode => {
+    if (control.kind === 'colour') {
+      return {
+        kind: 'submenu',
+        id: `style:${control.id}`,
+        label: t(`style.${control.id}` as Parameters<typeof t>[0]),
+        items: ['', ...SWATCHES].map((swatch) => ({
+          kind: 'item',
+          id: `style:${control.id}:${swatch}`,
+          label: t(swatch ? (`swatch.${swatch}` as Parameters<typeof t>[0]) : 'swatch.default'),
+          keys: '',
+        })),
+      };
+    }
+    const property = PROPERTY_OPTIONS[control.id as keyof typeof PROPERTY_OPTIONS];
+    const options =
+      control.kind === 'slider'
+        ? OPACITY_STEPS.map((step) => ({ value: step, label: `${step}%` }))
+        : property.options.map((option) => ({ value: option.value, label: t(option.labelKey) }));
+    return {
+      kind: 'submenu',
+      id: `property:${control.id}`,
+      label: t(property.labelKey),
+      items: options.map((option) => ({
+        kind: 'item',
+        id: `property:${control.id}:${option.value}`,
+        label: option.label,
+        keys: '',
+      })),
+    };
+  });
+  return [{ kind: 'separator' }, ...nodes];
+}
+
+/** What an overflow menu entry asks for, once its id is read back. */
+export type OverflowChoice =
+  | { kind: 'property'; key: PropertyKey; value: PropertyValue }
+  | { kind: 'style'; key: StyleKey; swatch: string | null };
+
+/**
+ * Read an overflow entry's id back into the change it asks for, or null when
+ * the id is an ordinary command (which dispatches as it always did) or names a
+ * value this build does not offer.
+ */
+export function parseOverflowId(id: string): OverflowChoice | null {
+  const [prefix, key, ...rest] = id.split(':');
+  if (rest.length !== 1) return null;
+  const raw = rest[0];
+  if (prefix === 'style') {
+    if (!COLOUR_KEYS.includes(key as StyleKey)) return null;
+    if (raw !== '' && !isSwatch(raw)) return null;
+    return { kind: 'style', key: key as StyleKey, swatch: raw === '' ? null : raw };
+  }
+  if (prefix !== 'property') return null;
+  const control = PROPERTY_OPTIONS[key as PropertyKey];
+  if (!control) return null;
+  if (key === 'opacity') {
+    const value = Number(raw);
+    return OPACITY_STEPS.includes(value) ? { kind: 'property', key, value } : null;
+  }
+  const option = control.options.find((candidate) => String(candidate.value) === raw);
+  return option ? { kind: 'property', key: key as PropertyKey, value: option.value } : null;
 }
 
 /**
