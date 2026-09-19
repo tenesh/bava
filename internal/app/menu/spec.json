@@ -27,6 +27,8 @@
         { "kind": "separator" },
         { "kind": "command", "id": "file.save", "label": "Save", "accelerator": "CmdOrCtrl+S" },
         { "kind": "command", "id": "file.saveAs", "label": "Save As…", "accelerator": "Shift+CmdOrCtrl+S" },
+        { "kind": "separator" },
+        { "kind": "command", "id": "file.export", "label": "Export…", "accelerator": "Shift+CmdOrCtrl+E" },
         { "kind": "separator", "platforms": ["windows", "linux"] },
         {
           "kind": "submenu",
@@ -158,6 +160,17 @@
         { "kind": "separator" },
         { "kind": "command", "id": "canvas.lock", "label": "Lock", "shortcut": "Shift+CmdOrCtrl+L", "scope": "canvas" },
         { "kind": "command", "id": "canvas.unlockAll", "label": "Unlock All", "scope": "canvas", "shortcut": "OptionOrAlt+Shift+CmdOrCtrl+L" },
+        { "kind": "separator" },
+        {
+          "kind": "submenu",
+          "id": "canvas.copyAs",
+          "label": "Copy as",
+          "items": [
+            { "kind": "command", "id": "canvas.copyPng", "label": "PNG", "shortcut": "Shift+OptionOrAlt+C", "scope": "canvas" },
+            { "kind": "command", "id": "canvas.copySvg", "label": "SVG" }
+          ]
+        },
+        { "kind": "command", "id": "canvas.exportSelection", "label": "Export Selection…" },
         { "kind": "separator" },
         { "kind": "command", "id": "canvas.copyStyles", "label": "Copy Styles", "shortcut": "OptionOrAlt+CmdOrCtrl+C", "scope": "canvas" },
         { "kind": "command", "id": "canvas.pasteStyles", "label": "Paste Styles", "shortcut": "OptionOrAlt+CmdOrCtrl+V", "scope": "canvas" }

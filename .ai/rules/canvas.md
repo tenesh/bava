@@ -171,3 +171,18 @@ Selecting a group puts only the wrapper's id in the selection, and the wrapper
 draws nothing. Every geometric edit expands it through `withDescendants`:
 `dragTargets` in `pointer.ts` for drags, `moveUnits` and `flip` in the
 commands. An edit that skips this appears to do nothing at all.
+
+## The export draws through the same code as the canvas
+`paint.ts` decides how an element looks and `shapes.ts` and `arrows.ts` decide
+its geometry, both through sinks. The stage turns that into Konva nodes; the
+exporter turns it into SVG, and its PNG is drawn by an offscreen `CanvasStage`.
+A second set of drawing or paint rules anywhere is the bug this arrangement
+exists to prevent: it would drift from the canvas the first time a shape
+changed, and the user would find out in a file they had already sent someone.
+
+## Text is broken into lines once, not by each renderer
+Konva wraps text itself and the exporter cannot see inside it, so a label
+wrapped on the canvas and overflowed in an exported SVG. `text-layout.ts`
+breaks lines; the stage hands Konva text already broken with `wrap: 'none'`,
+and the exporter breaks the same way. The same holds for smoothing: `curves.ts`
+returns the samples, and Konva's own `tension` stays at zero.

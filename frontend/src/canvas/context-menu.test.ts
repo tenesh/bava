@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { COMMAND_IDS } from '../shell/commands';
 import { atPoint, contextMenuFor, contextSelection, overflowMenu, parseOverflowId, type MenuNode } from './context-menu';
 
 const ids = (nodes: MenuNode[]): string[] =>
@@ -10,6 +11,9 @@ describe('the right-click menu', () => {
   it('lists the groups for one element, with no align, in order', () => {
     expect(ids(contextMenuFor(base))).toEqual([
       'edit.cut', 'edit.copy', 'edit.paste',
+      '—',
+      'canvas.copyAs▸', '  canvas.copyPng', '  canvas.copySvg',
+      'canvas.exportSelection',
       '—',
       'canvas.copyStyles', 'canvas.pasteStyles',
       '—',
@@ -42,10 +46,17 @@ describe('the right-click menu', () => {
     expect(ids(contextMenuFor({ ...base, units: 0 }))).toEqual(['edit.paste', 'edit.selectAll']);
   });
 
-  // No dead items: copy as PNG/SVG and export arrive with Milestone 6.4.
-  it('has no item that does not work yet', () => {
-    const all = ids(contextMenuFor({ ...base, units: 3, canGroup: true, canUngroup: true })).join(' ');
-    expect(all).not.toMatch(/png|svg|export/i);
+  // No dead items. Until Milestone 6.4 that meant listing no export entry at
+  // all; now the rule is the enduring one: everything offered is a command the
+  // app actually handles.
+  it('offers only commands the app handles', () => {
+    const offered = ids(contextMenuFor({ ...base, units: 3, canGroup: true, canUngroup: true, hasLocked: true }))
+      .map((id) => id.replace(/^\s+/, '').replace(/▸$/, ''))
+      .filter((id) => id !== '—');
+    const known = new Set<string>(COMMAND_IDS);
+    // A submenu is a container, not a command, so it is not in the list.
+    const containers = new Set(['canvas.arrange', 'canvas.align', 'canvas.flip', 'canvas.copyAs']);
+    expect(offered.filter((id) => !known.has(id) && !containers.has(id))).toEqual([]);
   });
 
   it('offers Lock on a selection, and Unlock All only when something is locked', () => {

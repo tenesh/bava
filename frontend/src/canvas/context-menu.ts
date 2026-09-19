@@ -74,6 +74,7 @@ export function contextMenuFor(info: SelectionInfo, platform: Platform = current
 
   const groups: MenuNode[][] = [
     [item('edit.cut'), item('edit.copy'), ...paste],
+    [submenu('canvas.copyAs', ['canvas.copyPng', 'canvas.copySvg']), item('canvas.exportSelection')],
     [item('canvas.copyStyles'), ...(info.canPasteStyles ? [item('canvas.pasteStyles')] : [])],
     [
       submenu('canvas.arrange', ['canvas.bringToFront', 'canvas.bringForward', 'canvas.sendBackward', 'canvas.sendToBack']),

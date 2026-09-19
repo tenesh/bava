@@ -186,3 +186,29 @@ func TestPasteStylesNeedsACopiedStyle(t *testing.T) {
 		t.Error("Paste Styles is enabled with nothing selected")
 	}
 }
+
+// Export writes what is on the canvas, so it needs a document open; the two
+// selection exports need something selected (canvas-toolbar.md).
+func TestExportEntriesFollowTheState(t *testing.T) {
+	built, _ := build(t, "darwin")
+
+	built.Apply(menu.State{})
+	if built.Item("file.export").Enabled() {
+		t.Error("Export is enabled with no document open")
+	}
+	for _, id := range []string{"canvas.copyPng", "canvas.copySvg", "canvas.exportSelection"} {
+		if built.Item(id).Enabled() {
+			t.Errorf("%s is enabled with nothing selected", id)
+		}
+	}
+
+	built.Apply(menu.State{HasDocument: true, HasSelection: true})
+	if !built.Item("file.export").Enabled() {
+		t.Error("Export is disabled with a document open")
+	}
+	for _, id := range []string{"canvas.copyPng", "canvas.copySvg", "canvas.exportSelection"} {
+		if !built.Item(id).Enabled() {
+			t.Errorf("%s is disabled with a selection", id)
+		}
+	}
+}
