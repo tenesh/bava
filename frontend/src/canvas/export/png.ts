@@ -9,6 +9,7 @@
 import { CanvasStage } from '../stage';
 import type { ReadVariable } from '../palette';
 import type { ExportArea } from './area';
+import type { Run } from '../code/highlight';
 import { withTheme } from './theme';
 
 export type PngOptions = {
@@ -23,6 +24,8 @@ export type PngOptions = {
   scale: number;
   /** Paint the canvas colour behind the drawing. */
   background?: boolean;
+  /** The tokenised code of every block, which the stage cannot compute itself. */
+  codeRuns?: Record<string, Run[][]>;
   /** Encodes the drawn canvas. Injected, so a test needs no browser encoder. */
   encode?: (canvas: HTMLCanvasElement) => Promise<Blob>;
   /** Called while the drawing happens, for tests that watch the swap. */
@@ -71,6 +74,9 @@ export async function toPng(area: ExportArea, options: PngOptions): Promise<Blob
       // The area's top-left corner sits at the stage's origin.
       stage.setViewport({ zoom: 1, pan: { x: -box.x, y: -box.y } });
       stage.render({ elements: area.elements });
+      // The stage is handed its runs, here as on screen: highlighting is
+      // asynchronous and a draw is not.
+      for (const [id, runs] of Object.entries(options.codeRuns ?? {})) stage.setCodeRuns(id, runs);
       options.onDraw?.();
       const drawn = stage.toCanvas(options.scale);
       return options.background ? withBackground(drawn, read('--color-canvas-bg').trim()) : drawn;

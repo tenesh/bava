@@ -215,3 +215,10 @@ because from the moment it lands it is not: the same move, resize, bind and
 delete paths own it. `import/ordinary.test.ts` is the test that says so, and
 a failure there means the conversion made something the rest of the canvas
 does not understand.
+
+## A code block's colours come from CodeMirror, once
+`canvas/code/highlight.ts` walks the language's own Lezer parse and folds the
+tags into the nine kinds the theme colours. The stage and the exporter both
+draw those runs; nothing else parses code. Highlighting is asynchronous
+because a language loads on first use, so the runs are handed to the stage
+rather than computed in it, and a block draws its panel until they arrive.

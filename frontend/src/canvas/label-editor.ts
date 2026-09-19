@@ -71,7 +71,7 @@ export function editableAt(scene: SceneData, point: Point): SceneElement | undef
     // An arrow carries a label too, and is typed on where it is drawn: its
     // box is mostly empty space.
     if (e.type === 'arrow') return nearElement(e, point, LINE_TOLERANCE);
-    if (!(isShapeType(e.type) || e.type === 'text' || e.type === 'frame')) return false;
+    if (!(isShapeType(e.type) || e.type === 'text' || e.type === 'frame' || e.type === 'code')) return false;
     // Where the element is drawn, rotation included: the field opens on the
     // shape the user double-clicked, not on the box it is stored as.
     return containsPoint(e, point);

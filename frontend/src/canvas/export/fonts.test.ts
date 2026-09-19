@@ -67,3 +67,29 @@ describe('the family the face is named after', () => {
     expect(css).not.toContain('system-ui');
   });
 });
+
+// A code block is drawn at absolute x by mono advance: without the mono face,
+// every column is out of line in a viewer that does not have it.
+describe('the mono font a code block needs', () => {
+  const code = { id: 'c', type: 'code', x: 0, y: 0, w: 10, h: 10, z: 1, code: 'x' } as unknown as SceneElement;
+
+  it('is embedded when the export holds code', async () => {
+    const css = await fontCss([code], {
+      family: "'Geist', sans-serif",
+      monoFamily: "'Geist Mono', monospace",
+      read: reader,
+      readMono: reader,
+    });
+    expect(css).toContain("font-family: 'Geist Mono'");
+  });
+
+  it('is left out when there is no code to draw', async () => {
+    const css = await fontCss([el({ label: 'A' })], {
+      family: "'Geist', sans-serif",
+      monoFamily: "'Geist Mono', monospace",
+      read: reader,
+      readMono: reader,
+    });
+    expect(css).not.toContain('Geist Mono');
+  });
+});

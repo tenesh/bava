@@ -197,6 +197,7 @@ Optional on the element types listed, and absent means the default:
 | `startBinding` | the `id` of the element this end is attached to | not attached | `arrow` |
 | `endBinding` | as above, for the other end | not attached | `arrow` |
 | `frame` | the `id` of the `frame` that owns this element | not in a frame | every element |
+| `language` | the language a code block is highlighted as | plain text | `code` |
 
 Arrowhead names: `none`, `arrow`, `bar`, `triangle`, `triangle-outline`,
 `circle`, `circle-outline`, `diamond`, `diamond-outline`. The entity-relation
@@ -236,6 +237,21 @@ the rule of `canvas-architecture.md`: never silently remove something the user
 drew.
 
 An `arrow` may also carry a `label`, drawn at the middle of the path it takes.
+
+### Code blocks
+A `code` element carries `code` (the text as typed, with its own line breaks),
+`language` (the name of the language it is highlighted as, absent for plain
+text) and the `measuredWidth`/`measuredHeight` every text-bearing element
+stores.
+
+**Its size comes from its code.** The block is as wide as its longest line and
+as tall as its line count, so nothing it holds is ever hidden; it is the one
+element with no resize handles.
+
+**An unknown `language` is kept and drawn as plain text.** A file written by a
+later Bava, or by hand, names a language this build may not bundle: losing the
+name would silently change what the file says. The same applies to a language
+that was removed.
 
 ### Text, frames and groups
 - `text` carries `text`, `measuredWidth` and `measuredHeight`, and may take

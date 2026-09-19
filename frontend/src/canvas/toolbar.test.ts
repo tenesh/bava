@@ -99,3 +99,16 @@ describe('overflowing into More', () => {
     expect(splitForWidth(controls, 0).shown).toHaveLength(1);
   });
 });
+
+// The spec's controls table: a code block offers Language and opacity, and
+// none of the shape controls, which would mean nothing on it.
+describe('the toolbar for a code block', () => {
+  it('offers language and opacity only', () => {
+    const scene: SceneData = {
+      elements: [
+        { id: 'c', type: 'code', x: 0, y: 0, w: 10, h: 10, z: 1, code: '', measuredWidth: 10, measuredHeight: 10 },
+      ] as never[],
+    };
+    expect(toolbarFor(scene, ['c']).controls.map((control) => control.id)).toEqual(['language', 'opacity']);
+  });
+});

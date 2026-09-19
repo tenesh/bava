@@ -18,6 +18,10 @@
   import { carriedWith } from './canvas/containment';
   import { angleOfElement } from './canvas/rotate';
   import { createExporter, exportIO } from './canvas/export/exporter.svelte';
+  import { CodeEditor, commitCode } from './canvas/code/editor';
+  import { createCodeRuns } from './canvas/code/runs';
+  import { invalidateAdvanceOnFontLoad } from './canvas/code/advance';
+  import { monoAdvance } from './canvas/code/advance';
   import ExportDialog from './components/ExportDialog.svelte';
   import { topmostAt } from './canvas/eraser';
   import { SourcePane } from './editor/source-pane';
@@ -99,8 +103,56 @@
     hitTolerance: () => (parseFloat(readRootVariable('--size-hit-tolerance')) || 0) / viewport.zoom,
     // The rotate handle's distance above the selection, as the stage draws it.
     rotateGap: () => (parseFloat(readRootVariable('--size-rotate-gap')) || 0) / viewport.zoom,
+    // A placed code block is sized the way a committed one is.
+    codeMetrics,
   });
   const canvasCommands = createCanvasCommands({ history, selection });
+
+  /** The editor that opens over a code block, and the block it is on. */
+  let codeEditor: CodeEditor | null = null;
+
+  /** The metrics a code block is measured and drawn with, from the tokens. */
+  function codeMetrics() {
+    const size = parseFloat(readRootVariable('--text-code')) || 0;
+    return {
+      advance: monoAdvance(size, readRootVariable('--font-mono').trim()),
+      lineHeight: size * (parseFloat(readRootVariable('--leading-code')) || 0),
+      padding: parseFloat(readRootVariable('--size-code-padding')) || 0,
+    };
+  }
+
+  /**
+   * The tokenised code every drawing path reads: the stage as it arrives, and
+   * an export from the same map, so a file cannot be coloured differently
+   * from the canvas it came from.
+   */
+  const codeRuns = createCodeRuns({ onRuns: (id, runs) => canvas.setCodeRuns(id, runs) });
+
+  const highlightBlocks = (scene: SceneData) => codeRuns.update(scene);
+
+  /** Open the editor over a code block, sized and placed as it is drawn. */
+  function editCode(element: SceneElement) {
+    if (!codeEditor) return;
+    const block = element as SceneElement & { code: string; language?: string };
+    const topLeft = viewport.sceneToScreen({ x: element.x, y: element.y });
+    void codeEditor.open({
+      code: block.code,
+      language: block.language,
+      rect: {
+        x: topLeft.x,
+        y: topLeft.y,
+        width: Math.max(element.w, 1) * viewport.zoom,
+        height: Math.max(element.h, 1) * viewport.zoom,
+      },
+      angle: angleOfElement(element),
+      zoom: viewport.zoom,
+      onCommit: (code) => {
+        commitCode(history, element.id, code, codeMetrics());
+        commit();
+        void highlightBlocks(history.current);
+      },
+    });
+  }
 
   // Diagram from code: its own render client, so previewing a diagram being
   // written never disturbs the document's own render, and the debounce and
@@ -137,6 +189,9 @@
     selection: () => selection.ids,
     documentName: () => doc.path?.replace(/^.*[\\/]/, '') || t('file.untitled'),
     notify,
+    codeRuns: () => codeRuns.all(),
+    // The columns an export draws on are the ones the canvas measured.
+    monoAdvance: () => codeMetrics().advance,
     io: exportIO({
       choosePath: async (suggested) => (await FileService.ChooseFileToSave(suggested)).path || null,
       save: (path, contents) => ExportService.Save(path, contents),
@@ -492,9 +547,15 @@
     source: () => void | Promise<void>;
     field: () => void | Promise<void>;
     canvas: () => void | Promise<void>;
+    /** The editor over a code block, which keeps its own history. */
+    code?: () => void | Promise<void>;
   }) {
     const target = editTarget(document.activeElement, { canvasVisible: canvasShown() });
-    if (target !== 'none') await actions[target]();
+    if (target === 'none') return;
+    // A code block's editor owns its keys; where a command has nothing
+    // sensible to do there, it does nothing rather than reaching past it.
+    const action = target === 'code' ? actions.code : actions[target];
+    await action?.();
   }
 
   // The system clipboard goes through Wails rather than the browser: webview
@@ -504,6 +565,7 @@
     copy: () =>
       routeEdit({
         source: () => Clipboard.SetText(pane.selectedText()).then(() => {}),
+        code: () => Clipboard.SetText(codeEditor?.selectedText() ?? '').then(() => {}),
         field: () => Clipboard.SetText(fieldSelection(document.activeElement)).then(() => {}),
         canvas: () => void canvasCommands.copy(),
       }),
@@ -512,6 +574,10 @@
         source: async () => {
           await Clipboard.SetText(pane.selectedText());
           pane.replaceSelection('');
+        },
+        code: async () => {
+          await Clipboard.SetText(codeEditor?.selectedText() ?? '');
+          codeEditor?.replaceSelection('');
         },
         field: async () => {
           await Clipboard.SetText(fieldSelection(document.activeElement));
@@ -524,6 +590,7 @@
     paste: () =>
       routeEdit({
         source: async () => pane.replaceSelection(await Clipboard.Text()),
+        code: async () => codeEditor?.replaceSelection(await Clipboard.Text()),
         field: async () => void document.execCommand('insertText', false, await Clipboard.Text()),
         canvas: () => {
           if (canvasCommands.paste()) commit();
@@ -567,15 +634,26 @@
     'insert.diagram': openDiagramDialog,
 
     'edit.undo': () =>
-      routeEdit({ source: () => pane.undo(), field: fieldCommand('undo'), canvas: canvasEdit(canvasCommands.undo) }),
+      routeEdit({
+        source: () => pane.undo(),
+        code: () => codeEditor?.undo(),
+        field: fieldCommand('undo'),
+        canvas: canvasEdit(canvasCommands.undo),
+      }),
     'edit.redo': () =>
-      routeEdit({ source: () => pane.redo(), field: fieldCommand('redo'), canvas: canvasEdit(canvasCommands.redo) }),
+      routeEdit({
+        source: () => pane.redo(),
+        code: () => codeEditor?.redo(),
+        field: fieldCommand('redo'),
+        canvas: canvasEdit(canvasCommands.redo),
+      }),
     'edit.cut': clipboardHandlers.cut,
     'edit.copy': clipboardHandlers.copy,
     'edit.paste': clipboardHandlers.paste,
     'edit.selectAll': () =>
       routeEdit({
         source: () => pane.selectAll(),
+        code: () => codeEditor?.selectAll(),
         field: fieldCommand('selectAll'),
         canvas: () => {
           canvasCommands.selectAll();
@@ -609,6 +687,7 @@
     'tool.pen': () => tools.activate('pen'),
     'tool.text': () => tools.activate('text'),
     'tool.frame': () => tools.activate('frame'),
+    'tool.code': () => tools.activate('code'),
     'tool.eraser': () => tools.activate('eraser'),
     'tool.diamond': () => tools.activate('diamond'),
     'tool.cylinder': () => tools.activate('cylinder'),
@@ -690,8 +769,12 @@
       onChange: (source) => client.request(source),
       isReserved: reservedByMenu(menuSpec as MenuSpec, platform),
     });
+    // A mono advance measured before Geist Mono resolves would be stored in
+    // the user's file; the first measurement after it loads replaces it.
+    invalidateAdvanceOnFontLoad();
     canvas.mount(diagramHost);
     canvas.render(history.current);
+    void highlightBlocks(history.current);
 
     const scenePoint = (event: PointerEvent) => {
       const rect = diagramHost.getBoundingClientRect();
@@ -768,7 +851,13 @@
         queueMicrotask(() => placeText(point));
         return;
       }
-      pointer.up(scenePoint(event), { alt: event.altKey, shift: event.shiftKey });
+      const placed = pointer.up(scenePoint(event), { alt: event.altKey, shift: event.shiftKey });
+      if (placed) {
+        tools.escape();
+        const element = history.current.elements.find((e) => e.id === placed);
+        // After the release, so the click's own focus change cannot close it.
+        if (element) queueMicrotask(() => editCode(element));
+      }
       canvas.setMarquee(null);
       canvas.setErasing(new Set(), []);
       canvas.setBindingCandidates([]);
@@ -791,7 +880,8 @@
     const onDoubleClick = (event: MouseEvent) => {
       if (labelEditor?.contains(event.target)) return;
       const element = editableAt(history.current, scenePoint(event as PointerEvent));
-      if (element) editElement(element);
+      if (element?.type === 'code') editCode(element);
+      else if (element) editElement(element);
     };
     const onWheel = (event: WheelEvent) => {
       if (labelEditor?.contains(event.target)) return;
@@ -831,6 +921,7 @@
     diagramHost.addEventListener('dblclick', onDoubleClick);
     diagramHost.addEventListener('contextmenu', onContextMenu);
     labelEditor = new LabelEditor(diagramHost);
+    codeEditor = new CodeEditor(diagramHost);
     window.addEventListener('keydown', onSpace);
     window.addEventListener('keyup', onSpace);
     window.addEventListener('keydown', onShift);
@@ -956,6 +1047,8 @@
       diagramHost.removeEventListener('dblclick', onDoubleClick);
       diagramHost.removeEventListener('contextmenu', onContextMenu);
       labelEditor?.destroy();
+      codeEditor?.destroy();
+      codeEditor = null;
       labelEditor = null;
       window.removeEventListener('keydown', onSpace);
       window.removeEventListener('keyup', onSpace);
@@ -1014,6 +1107,7 @@
   // Repaint when a new snapshot is published.
   $effect(() => {
     canvas.render(published);
+    void highlightBlocks(published);
   });
 </script>
 
@@ -1084,6 +1178,9 @@
             onProperty={(key, value) => {
               setProperty(history, selectedIds, key, value);
               commit();
+              // A new language means new colours, and the language may not be
+              // loaded yet.
+              if (key === 'language') void highlightBlocks(history.current);
             }}
             keysFor={(id) => keysFor(menuSpec as MenuSpec, id, platform)}
             align={toolbar.align}

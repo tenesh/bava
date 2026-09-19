@@ -28,7 +28,8 @@ describe('ToolRail', () => {
   it('renders a named, keyed icon button per tool, in a vertical toolbar', () => {
     const { app, target, buttons, named } = render();
     expect(target.querySelector('[role="toolbar"]')?.getAttribute('aria-orientation')).toBe('vertical');
-    expect(buttons).toHaveLength(10);
+    // Insert, seven common tools, frame, code and the eraser.
+    expect(buttons).toHaveLength(11);
     expect(named('Rectangle').querySelector('.key')?.textContent).toBe('R');
     expect(named('Rectangle').querySelector('svg')).not.toBeNull();
     unmount(app);

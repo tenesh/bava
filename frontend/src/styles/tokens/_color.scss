@@ -84,6 +84,20 @@ $brand-ink: #131416;
 // diagram are passed to Render as options and mapped onto D2's theme system.
 // A theme change must update both paths.
 $l-diagram-bg: #ffffff;
+
+// Syntax colours for a code block, light. Chosen for contrast on the panel
+// rather than borrowed from an editor theme: the panel is the app's surface,
+// not an editor's, and these have to read at canvas zoom levels.
+$l-code-surface: #f7f7f5;
+$l-syntax-keyword: #8250df;
+$l-syntax-string: #0a7a4a;
+$l-syntax-number: #b3541e;
+$l-syntax-comment: #6b7280;
+$l-syntax-name: #1f2933;
+$l-syntax-type: #1264a3;
+$l-syntax-operator: #4b5563;
+$l-syntax-punctuation: #6b7280;
+$l-syntax-plain: #1f2933;
 $l-diagram-container-fill: #f4f4f1;
 $l-diagram-node-fill: #ffffff;
 $l-diagram-node-stroke: #a8a8a0;
@@ -92,6 +106,18 @@ $l-diagram-edge: #8b8b83;
 $l-diagram-edge-label: #7d7d76;
 
 $d-diagram-bg: #1b1c1f;
+
+// Syntax colours for a code block, dark.
+$d-code-surface: #17181b;
+$d-syntax-keyword: #c792ea;
+$d-syntax-string: #7ee2b8;
+$d-syntax-number: #f3a26b;
+$d-syntax-comment: #8b93a1;
+$d-syntax-name: #e6e8ec;
+$d-syntax-type: #79b8ff;
+$d-syntax-operator: #b6bdc9;
+$d-syntax-punctuation: #8b93a1;
+$d-syntax-plain: #e6e8ec;
 $d-diagram-container-fill: #1e2023;
 $d-diagram-node-fill: #262a2f;
 $d-diagram-node-stroke: #4a5058;
@@ -138,6 +164,17 @@ $d-diagram-edge-label: #8b8f8a;
   // A control that is present but cannot act: Insert with a broken diagram.
   --opacity-disabled: 0.5;
   --color-diagram-bg: #{$l-diagram-bg};
+  // A code block: its panel, and the colours `canvas/code/highlight.ts` names.
+  --color-code-surface: #{$l-code-surface};
+  --syntax-keyword: #{$l-syntax-keyword};
+  --syntax-string: #{$l-syntax-string};
+  --syntax-number: #{$l-syntax-number};
+  --syntax-comment: #{$l-syntax-comment};
+  --syntax-name: #{$l-syntax-name};
+  --syntax-type: #{$l-syntax-type};
+  --syntax-operator: #{$l-syntax-operator};
+  --syntax-punctuation: #{$l-syntax-punctuation};
+  --syntax-plain: #{$l-syntax-plain};
   --color-diagram-container-fill: #{$l-diagram-container-fill};
   --color-diagram-node-fill: #{$l-diagram-node-fill};
   --color-diagram-node-stroke: #{$l-diagram-node-stroke};
@@ -178,6 +215,16 @@ $d-diagram-edge-label: #8b8f8a;
   --color-mark-tile: transparent;
   --opacity-mark-faded: 0.32;
   --color-diagram-bg: #{$d-diagram-bg};
+  --color-code-surface: #{$d-code-surface};
+  --syntax-keyword: #{$d-syntax-keyword};
+  --syntax-string: #{$d-syntax-string};
+  --syntax-number: #{$d-syntax-number};
+  --syntax-comment: #{$d-syntax-comment};
+  --syntax-name: #{$d-syntax-name};
+  --syntax-type: #{$d-syntax-type};
+  --syntax-operator: #{$d-syntax-operator};
+  --syntax-punctuation: #{$d-syntax-punctuation};
+  --syntax-plain: #{$d-syntax-plain};
   --color-diagram-container-fill: #{$d-diagram-container-fill};
   --color-diagram-node-fill: #{$d-diagram-node-fill};
   --color-diagram-node-stroke: #{$d-diagram-node-stroke};

@@ -1048,3 +1048,91 @@ describe('guards on the endpoint drag', () => {
     expect(arrow().w).toBeGreaterThan(0);
   });
 });
+
+// A code block is placed with a click, like text: its size comes from its
+// code, so there is nothing to drag out.
+describe('placing a code block', () => {
+  it('places an empty block where it was clicked, and reports it for editing', () => {
+    const { history, handler } = harness('code');
+    handler.down(at(40, 60));
+    const placed = handler.up(at(40, 60));
+
+    const block = history.current.elements[0] as Record<string, unknown>;
+    expect(block).toMatchObject({ type: 'code', x: 40, y: 60, code: '' });
+    expect(placed).toBe(block.id);
+  });
+
+  it('is one undo step', () => {
+    const { history, handler } = harness('code');
+    handler.down(at(40, 60));
+    handler.up(at(40, 60));
+    history.undo();
+    expect(history.current.elements).toHaveLength(0);
+  });
+
+  it('places one block at the press, however far the pointer moved', () => {
+    const { history, handler } = harness('code');
+    handler.down(at(40, 60));
+    handler.move(at(200, 200));
+    handler.up(at(200, 200));
+    // A drag with the code tool still places one block, at the press: there
+    // is no size to drag out.
+    expect(history.current.elements).toHaveLength(1);
+    expect(history.current.elements[0]).toMatchObject({ x: 40, y: 60 });
+  });
+});
+
+// A code block's size comes from its code, so there is nothing to drag: it is
+// the one element with no resize handles (docs/file-format.md).
+describe('a code block is not resized by hand', () => {
+  function placed() {
+    const kit = harness('select');
+    kit.history.mutate((scene) => {
+      scene.elements.push({
+        id: 'c',
+        type: 'code',
+        x: 0,
+        y: 0,
+        w: 100,
+        h: 40,
+        z: 1,
+        code: 'x',
+        measuredWidth: 100,
+        measuredHeight: 40,
+      } as never);
+    });
+    kit.selection.click('c');
+    const block = () => kit.history.current.elements[0] as unknown as Record<string, number>;
+    return { ...kit, block };
+  }
+
+  it('ignores a drag on what would be a corner handle', () => {
+    const { handler, block } = placed();
+    handler.down(at(100, 40));
+    handler.move(at(300, 300));
+    handler.up(at(300, 300));
+    expect(block().w).toBe(100);
+    expect(block().h).toBe(40);
+  });
+
+  it('still moves when it is dragged by its middle', () => {
+    const { handler, block } = placed();
+    handler.down(at(50, 20));
+    handler.up(at(90, 20));
+    expect(block().x).toBe(40);
+  });
+});
+
+// A block placed and then left alone must not become an invisible 0x0 ghost
+// in the user's file: it arrives at the size an empty block has.
+describe('a freshly placed code block', () => {
+  it('has the size of an empty block, not nothing', () => {
+    const kit = harness('code');
+    kit.handler.down(at(10, 10));
+    kit.handler.up(at(10, 10));
+    const block = kit.history.current.elements[0];
+    expect(block.w).toBeGreaterThan(0);
+    expect(block.h).toBeGreaterThan(0);
+    expect(block).toMatchObject({ measuredWidth: block.w, measuredHeight: block.h });
+  });
+});

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { compile } from 'sass';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -69,5 +70,15 @@ describe('no literal values outside the token layer', () => {
   // The guard is only worth anything if it is actually looking at files.
   it('scans a meaningful number of files', () => {
     expect(sourceFiles(SRC).length).toBeGreaterThan(5);
+  });
+});
+
+// `:global()` is a Svelte compiler construct. In a plain stylesheet it reaches
+// the browser verbatim, which drops the whole rule: four code-editor rules
+// were silently dead that way.
+describe('global stylesheets', () => {
+  it('has no Svelte :global() in the compiled CSS', () => {
+    const compiled = compile('src/styles/index.scss', { style: 'expanded' }).css;
+    expect(compiled).not.toContain(':global');
   });
 });

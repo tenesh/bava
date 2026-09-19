@@ -102,6 +102,23 @@ export function paintFor(element: SceneElement, read: ReadVariable): Paint {
     },
   };
 
+  if (element.type === 'code') {
+    // A code block is a panel: the theme's code surface, a subtle border, and
+    // its text in the mono face at the code size.
+    paint.fill = read('--color-code-surface').trim();
+    paint.stroke = read('--color-border-subtle').trim();
+    paint.cornerRadius = number(read, '--radius-md');
+    paint.font = {
+      ...paint.font,
+      family: read('--font-mono').trim(),
+      size: props.fontSize ?? number(read, '--text-code'),
+      lineHeight: number(read, '--leading-code'),
+      align: 'left',
+      verticalAlign: 'top',
+      colour: read('--syntax-plain').trim(),
+    };
+  }
+
   if (props.edges === 'round') {
     if (isOutlineShape(element.type)) paint.cornerRadius = Math.min(element.w, element.h) * ROUND_SHARE;
     else if (element.type === 'line') paint.tension = LINE_TENSION;

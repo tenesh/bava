@@ -105,6 +105,7 @@
             { "kind": "radio", "id": "tool.pen", "group": "canvas.tool", "label": "Draw", "hint": "D" },
             { "kind": "radio", "id": "tool.text", "group": "canvas.tool", "label": "Text", "hint": "T" },
             { "kind": "radio", "id": "tool.frame", "group": "canvas.tool", "label": "Frame", "hint": "F" },
+            { "kind": "radio", "id": "tool.code", "group": "canvas.tool", "label": "Code", "hint": "C" },
             { "kind": "radio", "id": "tool.eraser", "group": "canvas.tool", "label": "Eraser", "hint": "E" },
             { "kind": "separator" },
             { "kind": "radio", "id": "tool.diamond", "group": "canvas.tool", "label": "Diamond" },

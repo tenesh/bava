@@ -66,6 +66,7 @@ Shortcuts) lists the rest.
 | Canvas | Draw | `D` | `D` |
 | Canvas | Text | `T` | `T` |
 | Canvas | Frame | `F` | `F` |
+| Canvas | Code | `C` | `C` |
 | Canvas | Eraser | `E` | `E` |
 | Canvas | Group | `⌘G` | `Ctrl+G` |
 | Canvas | Ungroup | `⇧⌘G` | `Ctrl+Shift+G` |

@@ -71,3 +71,16 @@ describe('canvasKeyStandsDown', () => {
     expect(canvasKeyStandsDown(document.body, 'Enter', false)).toBe(false);
   });
 });
+
+// Two CodeMirrors exist now: the D2 source pane, and the editor that opens
+// over a code block. Undo in one must not reach the other.
+describe('a code block editor', () => {
+  it('is its own target, not the source pane', () => {
+    document.body.innerHTML = `
+      <div class="cm-editor" id="pane"><div class="cm-content" id="paneContent"></div></div>
+      <div class="bava-code-editor"><div class="cm-editor"><div class="cm-content" id="codeContent"></div></div></div>
+    `;
+    expect(editTarget(document.getElementById('paneContent'))).toBe('source');
+    expect(editTarget(document.getElementById('codeContent'))).toBe('code');
+  });
+});

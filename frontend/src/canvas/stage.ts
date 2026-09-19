@@ -24,6 +24,9 @@ import { paintFor, ROUND_SHARE } from './paint';
 import { wrapLines } from './text-layout';
 import { smoothPoints } from './curves';
 import { bindingsOf, isDetached } from './binding';
+import type { Run } from './code/highlight';
+import { monoAdvance } from './code/advance';
+import { columnsIn } from './code/measure';
 import { canvasLineWidth } from './text-measure';
 import { drawHead, headAt, labelPoint, pathLength, routePoints } from './arrows';
 import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
@@ -63,6 +66,11 @@ type Entry = {
   heads: Konva.Shape[];
   /** Markers on ends whose binding cannot be resolved. */
   detached: Konva.Circle[];
+  /** One text node per coloured run, for a code block. */
+  runs: Konva.Text[];
+  /** What those nodes were built from, so a redraw can skip unchanged runs. */
+  drawnRuns: Run[][] | null;
+  drawnPaint: string;
 };
 
 export class CanvasStage {
@@ -79,6 +87,8 @@ export class CanvasStage {
   /** Outlines on the shapes an arrow being drawn would attach to. */
   #candidates: Konva.Rect[] = [];
   #candidateIds: ElementId[] = [];
+  /** Tokenised code per block, handed in by the caller. */
+  #codeRuns = new Map<ElementId, Run[][]>();
   #marquee: Konva.Rect | null = null;
   #trail: Konva.Line | null = null;
   #markedForErase = new Set<ElementId>();
@@ -147,6 +157,8 @@ export class CanvasStage {
       if (seen.has(id)) continue;
       entry.group.destroy();
       this.#entries.delete(id);
+      // The runs go with the element, or the map grows for the session.
+      this.#codeRuns.delete(id);
     }
 
     // Konva paints in child order, so z is applied rather than assumed.
@@ -206,6 +218,70 @@ export class CanvasStage {
       this.#overlay.add(outline);
     }
     this.#overlay.batchDraw();
+  }
+
+  /**
+   * The coloured runs of a code block, as the caller tokenised them.
+   *
+   * Parsing is asynchronous (a language loads on first use) and the stage is
+   * synchronous, so the runs arrive here rather than being computed here. A
+   * block with no runs yet draws its panel and waits.
+   */
+  setCodeRuns(id: ElementId, runs: Run[][]): void {
+    this.#codeRuns.set(id, runs);
+    const entry = this.#entries.get(id);
+    const element = this.#last.elements.find((e) => e.id === id);
+    if (entry && element) this.#drawCode(entry, element, cached(this.#read));
+  }
+
+  /** The text nodes drawing a code block's runs, in order. */
+  codeRuns(id: ElementId): Konva.Text[] {
+    return this.#entries.get(id)?.runs ?? [];
+  }
+
+  #drawCode(entry: Entry, element: SceneElement, read: ReadVariable): void {
+    if (element.type !== 'code') {
+      for (const node of entry.runs) node.destroy();
+      entry.runs = [];
+      entry.drawnRuns = null;
+      return;
+    }
+
+    const paint = paintFor(element, read);
+    const runsNow = this.#codeRuns.get(element.id) ?? [];
+    // `#apply` runs for every element on every render, including each preview
+    // frame of a drag. Rebuilding a few hundred text nodes per frame is the
+    // performance trap this class exists to avoid, so nodes are rebuilt only
+    // when the runs or the way they paint actually changed.
+    const paintKey = `${paint.font.family} ${paint.font.size} ${paint.font.lineHeight} ${this.#zoom}`;
+    if (entry.drawnRuns === runsNow && entry.drawnPaint === paintKey) return;
+    entry.drawnRuns = runsNow;
+    entry.drawnPaint = paintKey;
+
+    for (const node of entry.runs) node.destroy();
+    entry.runs = [];
+    const padding = number(read, '--size-code-padding');
+    const lineHeight = paint.font.size * paint.font.lineHeight;
+    const advance = monoAdvance(paint.font.size, paint.font.family);
+    runsNow.forEach((line, row) => {
+      let column = 0;
+      for (const run of line) {
+        const node = new Konva.Text({
+          x: padding + column * advance,
+          y: padding + row * lineHeight,
+          text: run.text,
+          fontFamily: paint.font.family,
+          fontSize: paint.font.size,
+          lineHeight: paint.font.lineHeight,
+          fill: read(`--syntax-${run.kind}`).trim(),
+          listening: false,
+          wrap: 'none',
+        });
+        entry.runs.push(node);
+        entry.group.add(node);
+        column += columnsIn(run.text);
+      }
+    });
   }
 
   /** The markers drawn on ends whose bindings cannot be resolved. */
@@ -495,8 +571,10 @@ export class CanvasStage {
     const body = this.#createBody(element);
     const heads: Konva.Shape[] = [];
     const detached: Konva.Circle[] = [];
+    const runs: Konva.Text[] = [];
+    const drawnRuns: Run[][] | null = null;
     group.add(body);
-    return { group, body, heads, detached, label: null, type: element.type };
+    return { group, body, heads, detached, runs, drawnRuns, drawnPaint: '', label: null, type: element.type };
   }
 
   #createBody(element: SceneElement): Konva.Shape {
@@ -619,6 +697,7 @@ export class CanvasStage {
     this.#style(entry, element, read);
     this.#drawHeads(entry, element, read);
     this.#drawDetached(entry, element, read);
+    this.#drawCode(entry, element, read);
   }
 
   /**

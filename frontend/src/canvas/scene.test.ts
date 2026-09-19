@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { CodeElement } from './scene';
 import { createScene, type RectElement, type TextElement } from './scene';
 
 const rect = (over: Partial<RectElement> = {}): Omit<RectElement, 'id' | 'z'> => ({
@@ -96,5 +97,50 @@ describe('adding to a scene that already has ids', () => {
     const added = scene.add({ type: 'rect', x: 5, y: 5, w: 1, h: 1 });
     expect(scene.data().elements).toHaveLength(51);
     expect(Array.from({ length: 50 }, (_, i) => `e${i + 1}`)).not.toContain(added.id);
+  });
+});
+
+// A code block is an element like any other: the scene carries its code, its
+// language and the measurement that describes its size.
+describe('code blocks in a scene', () => {
+  it('keeps the code, the language and the measurement', () => {
+    const scene = createScene();
+    // Typed, not cast: the point is that the element union has this shape, and
+    // `npm run check` is where that is proved.
+    const block: Omit<CodeElement, 'id' | 'z'> = {
+      type: 'code',
+      x: 0,
+      y: 0,
+      w: 200,
+      h: 40,
+      code: 'const x = 1\n',
+      language: 'javascript',
+      measuredWidth: 200,
+      measuredHeight: 40,
+    };
+    const added = scene.add(block);
+    expect(scene.get(added.id)).toMatchObject({
+      type: 'code',
+      code: 'const x = 1\n',
+      language: 'javascript',
+      measuredWidth: 200,
+    });
+  });
+
+  // A language this build does not bundle is still what the file says.
+  it('keeps a language it does not know', () => {
+    const scene = createScene();
+    const added = scene.add({
+      type: 'code',
+      x: 0,
+      y: 0,
+      w: 10,
+      h: 10,
+      code: '',
+      language: 'from-later',
+      measuredWidth: 10,
+      measuredHeight: 10,
+    } satisfies Omit<CodeElement, 'id' | 'z'>);
+    expect((scene.get(added.id) as { language?: string }).language).toBe('from-later');
   });
 });

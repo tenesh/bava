@@ -130,8 +130,15 @@ describe('the exported picture of every element type', () => {
   it('matches the fixture', async () => {
     const { readFileSync } = await import('node:fs');
     const expected = readFileSync(new URL('./__fixtures__/scene.svg', import.meta.url), 'utf8');
-    const { fixtureScene, fixtureRead } = await import('./__fixtures__/generate');
-    expect(toSvg(exportArea(fixtureScene, []), { read: fixtureRead, background: true }) + '\n').toBe(expected);
+    const { fixtureScene, fixtureRead, fixtureCodeRuns, MONO_ADVANCE } = await import('./__fixtures__/generate');
+    expect(
+      toSvg(exportArea(fixtureScene, []), {
+        read: fixtureRead,
+        background: true,
+        codeRuns: fixtureCodeRuns,
+        monoAdvance: MONO_ADVANCE,
+      }) + '\n',
+    ).toBe(expected);
   });
 });
 
@@ -155,5 +162,63 @@ describe('a long arrow label', () => {
       { id: 'a', type: 'arrow', x: 0, y: 0, w: 40, h: 0, z: 1, points: [0, 0, 40, 0], label: 'a label far longer than this arrow' },
     ]);
     expect((svg.match(/<tspan/g) ?? []).length).toBeGreaterThan(1);
+  });
+});
+
+// A code block exports as its panel and its coloured runs, as real text: an
+// exported diagram holds code you can select, not a picture of code.
+describe('exporting a code block', () => {
+  const codeRead = (name: string) =>
+    (({
+      '--color-code-surface': 'whitesmoke',
+      '--color-border-subtle': 'gainsboro',
+      '--syntax-keyword': 'purple',
+      '--syntax-plain': 'black',
+      '--font-mono': 'Geist Mono',
+      '--text-code': '13px',
+      '--leading-code': '1.5',
+      '--size-code-padding': '8px',
+      '--radius-md': '6px',
+    }) as Record<string, string>)[name] ?? '';
+
+  const block = {
+    id: 'c',
+    type: 'code',
+    x: 0,
+    y: 0,
+    w: 200,
+    h: 40,
+    z: 1,
+    code: 'const a',
+    measuredWidth: 200,
+    measuredHeight: 40,
+  };
+
+  const runs = {
+    c: [
+      [
+        { text: 'const', kind: 'keyword' as const },
+        { text: ' a', kind: 'plain' as const },
+      ],
+    ],
+  };
+
+  it('draws the panel and every run, in the run colours', () => {
+    const svg = toSvg(exportArea({ elements: [block] as never[] }, []), { read: codeRead, codeRuns: runs });
+    expect(svg).toContain('fill="whitesmoke"');
+    expect(svg).toContain('>const<');
+    expect(svg).toContain('fill="purple"');
+    expect(svg).toContain('fill="black"');
+  });
+
+  it('keeps the mono font, so the columns line up', () => {
+    const svg = toSvg(exportArea({ elements: [block] as never[] }, []), { read: codeRead, codeRuns: runs });
+    expect(svg).toContain('font-family="Geist Mono"');
+  });
+
+  it('draws just the panel when it has no runs to draw', () => {
+    const svg = toSvg(exportArea({ elements: [block] as never[] }, []), { read: codeRead });
+    expect(svg).toContain('fill="whitesmoke"');
+    expect(svg).not.toContain('>const<');
   });
 });

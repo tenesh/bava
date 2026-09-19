@@ -7,8 +7,19 @@
 import type { IconId } from '../components/tool-icons';
 import type { MessageKey } from '../i18n/messages';
 import type { PropertyKey, PropertyValue } from './style';
+import { LANGUAGES } from './code/languages';
 
-export type PropertyOption = { value: PropertyValue; labelKey: MessageKey; icon: IconId };
+/**
+ * One choice a property offers.
+ *
+ * Its name is a message key, except where the name is a proper noun that no
+ * locale translates: a language is called JavaScript everywhere, and putting
+ * twelve of those in `messages.ts` would invite someone to translate them.
+ */
+export type PropertyOption = { value: PropertyValue; icon: IconId } & (
+  | { labelKey: MessageKey; label?: never }
+  | { label: string; labelKey?: never }
+);
 
 export type PropertyControl = {
   labelKey: MessageKey;
@@ -30,6 +41,13 @@ const HEADS: PropertyOption[] = [
 ];
 
 export const PROPERTY_OPTIONS: Record<PropertyKey, PropertyControl> = {
+  language: {
+    labelKey: 'style.language',
+    icon: 'code',
+    // The languages themselves are proper nouns, so they are not message
+    // keys; `LANGUAGES` is the one list, in `canvas/code/languages.ts`.
+    options: LANGUAGES.map((language) => ({ value: language.name, label: language.label, icon: 'code' as const })),
+  },
   strokeWidth: {
     labelKey: 'style.strokeWidth',
     icon: 'strokeWidth',

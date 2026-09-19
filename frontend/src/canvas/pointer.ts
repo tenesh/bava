@@ -16,6 +16,7 @@ import { produce } from 'immer';
 import { isLocked, type ElementId, type SceneData, type SceneElement } from './scene';
 import { reroute, targetAt } from './binding';
 import { carriedWith, releaseFrames } from './containment';
+import { measureCode, type CodeMetrics } from './code/measure';
 import { isLinear, nearElement } from './hit';
 import { simplify } from './stroke';
 import { snapAngle, squareBox } from './constrain';
@@ -63,6 +64,8 @@ export type PointerHandlerOptions = {
   hitTolerance?: () => number;
   /** How far above the selection the rotate handle sits, in scene units. */
   rotateGap?: () => number;
+  /** How a code block is measured: the mono advance, line height and padding. */
+  codeMetrics?: () => CodeMetrics;
 };
 
 type Drag = {
@@ -120,6 +123,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   // The token's value at zoom 1, as the other defaults do: a test that presses
   // at a gap the app never uses cannot catch a gap regression.
   const rotateGap = options.rotateGap ?? (() => 16);
+  // The defaults match the tokens at their default sizes, as the others do.
+  const codeMetrics = options.codeMetrics ?? (() => ({ advance: 8, lineHeight: 19.5, padding: 8 }));
 
   function elementsAt(point: Point): SceneElement[] {
     // A locked element is not there as far as a press is concerned, and a
@@ -242,7 +247,9 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           };
           return;
         }
-        const handle = handleAt(local, bounds, size);
+        // A code block's size comes from its code, so it has no handles: a
+        // selection made only of them is dragged, never resized.
+        const handle = selected.every((element) => element.type === 'code') ? null : handleAt(local, bounds, size);
         // A selection only a few handles across is covered by its handles;
         // pressing inside it moves it, and the handles' outer halves resize.
         const inside = local.x > bounds.x && local.x < bounds.x + bounds.w && local.y > bounds.y && local.y < bounds.y + bounds.h;
@@ -333,8 +340,12 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       return next === history.current ? null : next;
     },
 
-    up(point: Point, options: { alt?: boolean; shift?: boolean } = {}): void {
-      if (!drag) return;
+    /**
+     * Finish a drag. Returns the id of an element that wants an editor opened
+     * on it (a code block, which arrives empty), or null.
+     */
+    up(point: Point, options: { alt?: boolean; shift?: boolean } = {}): ElementId | null {
+      if (!drag) return null;
       shift = Boolean(options.shift);
       alt = Boolean(options.alt);
       const started = drag;
@@ -358,19 +369,46 @@ export function createPointerHandler(options: PointerHandlerOptions) {
             releaseFrames(scene, doomed);
           });
         }
-        return;
+        return null;
       }
 
       if (tools.active === 'select' && !started.resize && !started.rotate && !started.endpoint && started.moving.length === 0) {
         if (farEnough(started.origin, point)) {
           selection.marquee(boxBetween(started.origin, point), history.current);
         }
-        return;
+        return null;
+      }
+
+      // A code block is placed by a click and typed into at once: it arrives
+      // empty, and its size comes from what is typed, so there is nothing to
+      // drag out. The caller opens its editor on the id returned here.
+      if (tools.active === 'code') {
+        const id = started.newId;
+        // At the size an empty block has, not nothing: a 0x0 element cannot be
+        // seen, selected or deleted, and would sit in the user's file for ever
+        // if they placed one and changed their mind.
+        const size = measureCode('', codeMetrics());
+        history.mutate((scene) => {
+          scene.elements.push({
+            id,
+            type: 'code',
+            x: tidy(started.origin.x),
+            y: tidy(started.origin.y),
+            w: size.width,
+            h: size.height,
+            z: topZ(scene.elements) + 1,
+            code: '',
+            measuredWidth: size.width,
+            measuredHeight: size.height,
+          } as SceneElement);
+        });
+        return id;
       }
 
       // One step for the whole gesture, however many move events it had.
       const recipe = changeFor(started, point);
       if (recipe) history.mutate(recipe);
+      return null;
     },
   };
 

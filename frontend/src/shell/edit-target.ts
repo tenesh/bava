@@ -3,10 +3,12 @@
  *
  * Undo, Redo, Select All and Delete come from the native menu as commands,
  * so the focused element, not the key event, decides who receives them.
- * The source editor keeps its own history; a text field keeps the browser's;
- * everything else is the canvas.
+ * The source editor keeps its own history; so does the editor that opens over
+ * a code block, which is a different CodeMirror and must not receive the
+ * source pane's undo; a text field keeps the browser's; everything else is
+ * the canvas.
  */
-export type EditTarget = 'source' | 'field' | 'canvas' | 'none';
+export type EditTarget = 'source' | 'code' | 'field' | 'canvas' | 'none';
 
 /**
  * `canvasVisible` guards the fallback: with the canvas hidden, Select All
@@ -14,6 +16,8 @@ export type EditTarget = 'source' | 'field' | 'canvas' | 'none';
  * dialog never reaches the canvas behind it either.
  */
 export function editTarget(focused: Element | null, context: { canvasVisible: boolean }): EditTarget {
+  // Checked before `.cm-editor`, because a code block's editor is one too.
+  if (focused?.closest('.bava-code-editor')) return 'code';
   if (focused?.closest('.cm-editor')) return 'source';
   if (focused?.closest('input, textarea, [contenteditable]')) return 'field';
   if (focused?.closest('[role="dialog"], [role="alertdialog"]')) return 'none';

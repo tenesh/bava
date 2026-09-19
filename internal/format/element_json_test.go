@@ -82,6 +82,19 @@ func TestSceneSurvivesTheFrontendBridge(t *testing.T) {
       "z": 2
     },
     {
+      "code": "const x = 1 // a comment",
+      "h": 24,
+      "id": "code1",
+      "language": "javascript",
+      "measuredHeight": 24,
+      "measuredWidth": 180,
+      "type": "code",
+      "w": 180,
+      "x": 0,
+      "y": 120,
+      "z": 8
+    },
+    {
       "endBinding": "r1",
       "frame": "f1",
       "h": 10,

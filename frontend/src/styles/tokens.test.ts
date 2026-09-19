@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { compile } from 'sass';
 import { fileURLToPath } from 'node:url';
 import { SWATCHES } from '../canvas/palette';
+import { RUN_KINDS } from '../canvas/code/highlight';
 
 // Compiled directly rather than read from dist/: the production build minifies
 // #ffffff to #fff, and a token test that depends on minifier behaviour tests
@@ -200,5 +201,20 @@ describe('type tokens', () => {
   it('exposes both family stacks as tokens', () => {
     expect(light).toContain('--font-ui');
     expect(light).toContain('--font-mono');
+  });
+});
+
+// Every kind the tokeniser can produce has a colour, in both themes: a kind
+// without one draws as nothing, which reads as missing code.
+describe('syntax colours', () => {
+  it('has one for every run kind, light and dark', () => {
+    const light = propsIn(':root');
+    const dark = propsIn(':root[data-theme=dark]');
+    for (const kind of RUN_KINDS) {
+      expect(light, `light is missing --syntax-${kind}`).toContain(`--syntax-${kind}`);
+      expect(dark, `dark is missing --syntax-${kind}`).toContain(`--syntax-${kind}`);
+    }
+    expect(light).toContain('--color-code-surface');
+    expect(dark).toContain('--color-code-surface');
   });
 });

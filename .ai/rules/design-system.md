@@ -224,6 +224,11 @@ unused component is an unmaintained one.
 Popover with RadioGroup inside `StyleBar` and `OptionPicker`, Slider inside
 `OpacityPicker`, and Switch inside `Toggle`.
 
+**Syntax colours** are `--syntax-*` in `tokens/_color.scss`, one per run kind
+in `canvas/code/highlight.ts`, plus `--color-code-surface` for the panel. A
+kind without a colour draws as nothing, so `tokens.test.ts` checks the set in
+both themes.
+
 **Shape swatches** are tokens in `styles/tokens/_swatches.scss`
 (`--swatch-<name>-fill`, `-stroke`, `-text`, in both themes), with
 `--color-shape-fill`, `--color-shape-stroke`, `--color-shape-text` as the
@@ -279,3 +284,8 @@ is the symptom of the two paths being updated in the wrong order.
 5. Keyboard and focus states before visual polish.
 6. Check both themes.
 7. Add it to the inventory table above in the same change.
+## `:global()` belongs to Svelte, not to stylesheets
+In a `.svelte` component it scopes a rule outward. In a plain stylesheet under
+`styles/`, sass emits it verbatim and the browser drops the whole rule: four
+code-editor rules were dead that way. Use plain descendant selectors there;
+`no-literals.test.ts` compiles the stylesheet and fails on `:global`.

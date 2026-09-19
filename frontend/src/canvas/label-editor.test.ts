@@ -235,3 +235,21 @@ describe('typing on an arrow', () => {
     expect(history.current.elements[0]).toMatchObject({ label: 'depends on' });
   });
 });
+
+// A code block is typed into like anything else that holds text: the app's
+// double-click handler asks this, so a block missing here cannot be opened.
+describe('finding a code block to edit', () => {
+  const withCode: SceneData = {
+    elements: [
+      { id: 'c', type: 'code', x: 0, y: 0, w: 120, h: 40, z: 1, code: 'x', measuredWidth: 120, measuredHeight: 40 } as never,
+    ],
+  };
+
+  it('is returned for a point inside it', () => {
+    expect(editableAt(withCode, { x: 60, y: 20 })?.id).toBe('c');
+  });
+
+  it('is not returned for a point outside it', () => {
+    expect(editableAt(withCode, { x: 300, y: 300 })).toBeUndefined();
+  });
+});

@@ -20,5 +20,5 @@ function tool(id: ToolId): RailItem {
 export const RAIL_GROUPS: RailItem[][] = [
   [{ id: 'insert', key: '/', labelKey: 'rail.insert' }],
   (['select', 'rect', 'ellipse', 'arrow', 'line', 'pen', 'text'] as ToolId[]).map(tool),
-  (['frame', 'eraser'] as ToolId[]).map(tool),
+  (['frame', 'code', 'eraser'] as ToolId[]).map(tool),
 ];
