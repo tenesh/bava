@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createScene } from './scene';
-import { boundsOf, flip, group, paste, ungroup, PASTE_OFFSET } from './edit';
+import { boundsOf, duplicate, flip, group, paste, ungroup, PASTE_OFFSET } from './edit';
 
 function threeRects() {
   const scene = createScene();
@@ -112,5 +112,54 @@ describe('flipping a rotated element', () => {
     flip(scene, [scene.get('a')!], 'horizontal');
     // Mirrored about its own drawn bounds, the bar does not move.
     expect(scene.get('a')!.x).toBe(0);
+  });
+});
+
+// A copy is a copy of the whole arrangement: its arrows attach to the copied
+// shapes and its shapes join the copied frame, not the originals.
+describe('copying keeps bindings and containment inside the copy', () => {
+  const arranged = () => {
+    const scene = createScene({
+      elements: [
+        { id: 'f', type: 'frame', x: 0, y: 0, w: 300, h: 200, z: 1 },
+        { id: 'a', type: 'rect', x: 20, y: 20, w: 60, h: 60, z: 2, frame: 'f' },
+        { id: 'b', type: 'rect', x: 200, y: 20, w: 60, h: 60, z: 3, frame: 'f' },
+        { id: 'arrow', type: 'arrow', x: 80, y: 50, w: 120, h: 0, z: 4, points: [0, 0, 120, 0], startBinding: 'a', endBinding: 'b' },
+      ] as never[],
+    });
+    return scene;
+  };
+
+  it('remaps a duplicated arrow onto the duplicated shapes', () => {
+    const scene = arranged();
+    const originals = ['a', 'b', 'arrow'].map((id) => scene.get(id)!);
+    const copies = duplicate(scene, originals);
+    const arrow = copies.find((e) => e.type === 'arrow') as Record<string, unknown>;
+    const shapes = copies.filter((e) => e.type === 'rect');
+    expect(shapes.map((s) => s.id)).toContain(arrow.startBinding);
+    expect(shapes.map((s) => s.id)).toContain(arrow.endBinding);
+  });
+
+  it('remaps a duplicated child onto the duplicated frame', () => {
+    const scene = arranged();
+    const copies = duplicate(scene, [scene.get('f')!, scene.get('a')!]);
+    const frame = copies.find((e) => e.type === 'frame')!;
+    const child = copies.find((e) => e.type === 'rect') as Record<string, unknown>;
+    expect(child.frame).toBe(frame.id);
+  });
+
+  // Copying only the arrow leaves it pointing at the shapes it was drawn
+  // between: they are still there, and the copy sits on them.
+  it('keeps a binding whose target was not copied', () => {
+    const scene = arranged();
+    const [copy] = duplicate(scene, [scene.get('arrow')!]) as unknown as Record<string, unknown>[];
+    expect(copy.startBinding).toBe('a');
+  });
+
+  it('remaps through paste as well', () => {
+    const scene = arranged();
+    const pasted = paste(scene, [scene.get('a')!, scene.get('b')!, scene.get('arrow')!]);
+    const arrow = pasted.find((e) => e.type === 'arrow') as Record<string, unknown>;
+    expect(pasted.map((e) => e.id)).toContain(arrow.startBinding);
   });
 });

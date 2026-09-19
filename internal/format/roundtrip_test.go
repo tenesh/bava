@@ -271,3 +271,66 @@ func TestRoundTripStylePropertiesAndLiteralColours(t *testing.T) {
 		t.Errorf("round trip changed the file:\n--- want ---\n%s\n--- got ---\n%s", source, written)
 	}
 }
+
+// Bindings and containment are ids, and a file keeps them exactly as written:
+// an arrow attached to a shape that no longer exists still names it, because
+// the endpoint freezes rather than the binding being dropped
+// (docs/file-format.md, "Attachment and containment").
+func TestRoundTripBindingsAndContainment(t *testing.T) {
+	source := "# Plan\n\n```bava-canvas\n" + `{
+  "elements": [
+    {
+      "frame": "f1",
+      "h": 20,
+      "id": "a",
+      "type": "rect",
+      "w": 20,
+      "x": 0,
+      "y": 0,
+      "z": 1
+    },
+    {
+      "endBinding": "gone-long-ago",
+      "h": 10,
+      "id": "arrow1",
+      "label": "carries a label",
+      "points": [
+        0,
+        0,
+        40,
+        10
+      ],
+      "startBinding": "a",
+      "type": "arrow",
+      "w": 40,
+      "x": 20,
+      "y": 0,
+      "z": 2
+    },
+    {
+      "framingStyle": "something-later",
+      "h": 80,
+      "id": "f1",
+      "type": "frame",
+      "w": 120,
+      "x": 0,
+      "y": 0,
+      "z": 3
+    }
+  ],
+  "version": 1
+}
+` + "```\n"
+
+	file, err := format.Read(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	written, err := format.Write(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written != source {
+		t.Errorf("bindings or containment changed on the way through.\nwant:\n%s\ngot:\n%s", source, written)
+	}
+}

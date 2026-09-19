@@ -15,6 +15,7 @@
   import { contextMenuFor, contextSelection, overflowMenu, parseOverflowId, type MenuNode } from './canvas/context-menu';
   import { topLevel } from './canvas/edit';
   import { createScene, isLocked } from './canvas/scene';
+  import { carriedWith } from './canvas/containment';
   import { angleOfElement } from './canvas/rotate';
   import { createExporter, exportIO } from './canvas/export/exporter.svelte';
   import ExportDialog from './components/ExportDialog.svelte';
@@ -92,6 +93,8 @@
     handleSize: () => (parseFloat(readRootVariable('--size-selection-handle')) || 0) / 2 / viewport.zoom,
     // Half the trail's on-screen width, in scene units: what the trail visibly covers.
     eraserTolerance: () => (parseFloat(readRootVariable('--size-eraser-trail')) || 0) / 2 / viewport.zoom,
+    // How near a click counts as hitting a line, in scene units at this zoom.
+    hitTolerance: () => (parseFloat(readRootVariable('--size-hit-tolerance')) || 0) / viewport.zoom,
     // The rotate handle's distance above the selection, as the stage draws it.
     rotateGap: () => (parseFloat(readRootVariable('--size-rotate-gap')) || 0) / viewport.zoom,
   });
@@ -714,6 +717,8 @@
       // scene as it is when the drag would change nothing.
       canvas.render(pointer.preview(point, { shift: event.shiftKey }) ?? history.current);
       canvas.setMarquee(pointer.marquee);
+      // The shapes this arrow would attach to, shown while it is drawn.
+      canvas.setBindingCandidates(pointer.bindingCandidates);
     };
     const onUp = (event: PointerEvent) => {
       if (labelEditor?.contains(event.target)) return;
@@ -734,6 +739,7 @@
       pointer.up(scenePoint(event), { alt: event.altKey, shift: event.shiftKey });
       canvas.setMarquee(null);
       canvas.setErasing(new Set(), []);
+      canvas.setBindingCandidates([]);
       commit();
     };
     // Right-click: an unselected element under the pointer becomes the
@@ -834,7 +840,9 @@
           syncSelection();
         },
         nudge: (dx, dy) => {
-          const ids = new Set(selection.ids);
+          // A frame carries its contents and a group its children, by keyboard
+          // exactly as by mouse.
+          const ids = new Set(carriedWith(history.current, selection.ids).map((element) => element.id));
           if (ids.size === 0) return;
           history.mutate((draft) => {
             for (const element of draft.elements) {

@@ -8,6 +8,7 @@
  */
 import { isLocked, type ElementId, type SceneData, type SceneElement } from './scene';
 import { angleOfElement, toLocal } from './rotate';
+import { drawnPathOf } from './hit';
 
 type Point = { x: number; y: number };
 
@@ -49,37 +50,27 @@ function segmentToSegment(a: Point, b: Point, c: Point, d: Point): number {
   return Math.min(pointToSegment(a, c, d), pointToSegment(b, c, d), pointToSegment(c, a, b), pointToSegment(d, a, b));
 }
 
-/**
- * What an element draws as lines, in scene coordinates: a frame's outline, a
- * line's, arrow's or stroke's path. Null for elements drawn as an area.
- */
-function drawnPath(e: SceneElement): Point[] | null {
-  if (e.type === 'frame') {
-    return [
-      { x: e.x, y: e.y },
-      { x: e.x + e.w, y: e.y },
-      { x: e.x + e.w, y: e.y + e.h },
-      { x: e.x, y: e.y + e.h },
-      { x: e.x, y: e.y },
-    ];
-  }
-  if ('points' in e && Array.isArray(e.points)) {
-    const path: Point[] = [];
-    for (let i = 0; i + 1 < e.points.length; i += 2) path.push({ x: e.x + e.points[i], y: e.y + e.points[i + 1] });
-    return path;
-  }
-  return null;
-}
 
-/** Whether the trail segment touches what the element draws. */
+/**
+ * Whether the trail segment touches what the element draws.
+ *
+ * The path comes from `hit.ts`, the same one selection and the label editor
+ * test, so an elbow's dog-leg and an arc's bow are erased where the user sees
+ * them. An element drawn as an area has no path, and is tested by its box,
+ * with the trail turned into the element's own frame when it is rotated.
+ */
 function touches(e: SceneElement, trailFrom: Point, trailTo: Point, tolerance: number): boolean {
-  // An element's stored geometry is its upright box, so a rotated one is
-  // tested by turning the trail into its frame rather than turning the shape.
-  const turned = angleOfElement(e) !== 0;
-  const from = turned ? toLocal(trailFrom, e) : trailFrom;
-  const to = turned ? toLocal(trailTo, e) : trailTo;
-  const path = drawnPath(e);
-  if (!path) return crosses(e, from, to);
+  const path = drawnPathOf(e);
+  if (path.length === 0) {
+    // An element's stored geometry is its upright box, so a rotated one is
+    // tested by turning the trail into its frame rather than turning the shape.
+    const turned = angleOfElement(e) !== 0;
+    const from = turned ? toLocal(trailFrom, e) : trailFrom;
+    const to = turned ? toLocal(trailTo, e) : trailTo;
+    return crosses(e, from, to);
+  }
+  const from = trailFrom;
+  const to = trailTo;
   if (path.length === 1) return segmentToSegment(from, to, path[0], path[0]) <= tolerance;
   for (let i = 0; i + 1 < path.length; i += 1) {
     if (segmentToSegment(from, to, path[i], path[i + 1]) <= tolerance) return true;

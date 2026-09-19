@@ -82,6 +82,25 @@ func TestSceneSurvivesTheFrontendBridge(t *testing.T) {
       "z": 2
     },
     {
+      "endBinding": "r1",
+      "frame": "f1",
+      "h": 10,
+      "id": "bound",
+      "label": "an arrow label",
+      "points": [
+        0,
+        0,
+        20,
+        10
+      ],
+      "startBinding": "missing-on-purpose",
+      "type": "arrow",
+      "w": 20,
+      "x": 0,
+      "y": 80,
+      "z": 6
+    },
+    {
       "angle": 45,
       "arrowType": "elbow",
       "endArrowhead": "triangle-outline",
@@ -131,7 +150,7 @@ func TestSceneSurvivesTheFrontendBridge(t *testing.T) {
       "w": 50,
       "x": 0,
       "y": 0,
-      "z": 5
+      "z": 7
     }
   ],
   "grid": {

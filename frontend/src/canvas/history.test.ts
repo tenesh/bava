@@ -98,3 +98,127 @@ describe('history', () => {
     expect(history.canRedo).toBe(false);
   });
 });
+
+// Attached arrows re-aim as part of the change that moved their targets, so
+// every edit path gets it: no caller can forget, and it is one undo step.
+describe('bindings follow a change through history', () => {
+  const scene = (): SceneData => ({
+    elements: [
+      { id: 'a', type: 'rect', x: 0, y: 0, w: 100, h: 60, z: 1 },
+      { id: 'b', type: 'rect', x: 300, y: 0, w: 100, h: 60, z: 2 },
+      { id: 'arrow', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 3, points: [100, 30, 300, 30], startBinding: 'a', endBinding: 'b' },
+    ] as never[],
+  });
+
+  const endOf = (data: SceneData) => {
+    const arrow = data.elements.find((e) => e.id === 'arrow') as { x: number; y: number; points: number[] };
+    return { x: arrow.x + arrow.points[2], y: arrow.y + arrow.points[3] };
+  };
+
+  it('re-aims the arrow in the same step that moved the shape', () => {
+    const history = createHistory(scene());
+    const before = endOf(history.current);
+    history.mutate((draft) => {
+      const b = draft.elements.find((e) => e.id === 'b')!;
+      b.y = 400;
+    });
+    expect(endOf(history.current).y).toBeGreaterThan(before.y);
+  });
+
+  it('puts both back with one undo', () => {
+    const history = createHistory(scene());
+    const before = endOf(history.current);
+    history.mutate((draft) => {
+      const b = draft.elements.find((e) => e.id === 'b')!;
+      b.y = 400;
+    });
+    history.undo();
+    expect(endOf(history.current)).toEqual(before);
+    expect(history.canUndo).toBe(false);
+  });
+});
+
+// Membership follows the geometry through every path, not only a drag: a
+// resize or a nudge that takes a shape out of its frame lets it go.
+describe('containment follows a change through history', () => {
+  const framed = (): SceneData => ({
+    elements: [
+      { id: 'f', type: 'frame', x: 0, y: 0, w: 200, h: 200, z: 1 },
+      { id: 'in', type: 'rect', x: 20, y: 20, w: 40, h: 40, z: 2, frame: 'f' },
+      { id: 'out', type: 'rect', x: 400, y: 0, w: 40, h: 40, z: 3 },
+    ] as never[],
+  });
+
+  const frameOf = (data: SceneData, id: string) =>
+    (data.elements.find((e) => e.id === id) as { frame?: string }).frame;
+
+  it('lets go of a shape resized out of its frame', () => {
+    const history = createHistory(framed());
+    history.mutate((draft) => {
+      const inside = draft.elements.find((e) => e.id === 'in')!;
+      inside.w = 400;
+    });
+    expect(frameOf(history.current, 'in')).toBeUndefined();
+  });
+
+  it('takes in a shape nudged into a frame', () => {
+    const history = createHistory(framed());
+    history.mutate((draft) => {
+      const outside = draft.elements.find((e) => e.id === 'out')!;
+      outside.x = 100;
+      outside.y = 100;
+    });
+    expect(frameOf(history.current, 'out')).toBe('f');
+  });
+
+  it('puts membership back with the change that caused it', () => {
+    const history = createHistory(framed());
+    history.mutate((draft) => {
+      const inside = draft.elements.find((e) => e.id === 'in')!;
+      inside.x = 400;
+    });
+    history.undo();
+    expect(frameOf(history.current, 'in')).toBe('f');
+  });
+});
+
+// A file is opened with its arrows already on their shapes: the stored points
+// may have been written by another hand, or by an older Bava.
+describe('opening a file', () => {
+  it('aims attached arrows as part of the load', () => {
+    const history = createHistory({ elements: [] });
+    history.reset({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 },
+        // Stored running nowhere near the shape it names.
+        { id: 'arrow', type: 'arrow', x: 500, y: 500, w: 10, h: 10, z: 2, points: [0, 0, 10, 10], startBinding: 'a' },
+      ] as never[],
+    });
+    const arrow = history.current.elements[1] as { x: number; points: number[] };
+    expect(arrow.x + arrow.points[0]).toBeLessThan(200);
+    expect(history.canUndo).toBe(false);
+  });
+});
+
+// A change that leaves the scene exactly as it was must not consume a step,
+// or undo appears to do nothing, which reads as a broken undo.
+describe('a step that changes nothing', () => {
+  it('is not recorded even when the recipe rewrote objects', () => {
+    const history = createHistory({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 },
+        { id: 'arrow', type: 'arrow', x: 60, y: 30, w: 100, h: 0, z: 2, points: [0, 0, 100, 0], startBinding: 'a' },
+      ] as never[],
+    });
+    // Settle the arrow onto its shape first: that move is a real change.
+    history.mutate(() => {});
+    const settled = history.canUndo;
+    history.mutate((draft) => {
+      // Replace an element with an identical copy, as a drag that is snapped
+      // straight back by re-routing does.
+      draft.elements[1] = { ...draft.elements[1] };
+    });
+    // Whatever the first step did, the second added nothing to undo.
+    expect(history.canUndo).toBe(settled);
+  });
+});

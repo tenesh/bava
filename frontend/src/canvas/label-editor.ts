@@ -11,6 +11,14 @@ import type { History } from './history';
 import type { ElementId, SceneData, SceneElement } from './scene';
 import { isLocked, isShapeType } from './scene';
 import { containsPoint } from './rotate';
+import { nearElement } from './hit';
+
+/**
+ * How near a line counts as a hit, in scene units, matching
+ * `--size-hit-tolerance`. The editor is opened from a double-click, which has
+ * no zoom to divide by; the pointer handler passes its own scaled value.
+ */
+const LINE_TOLERANCE = 4;
 import type { Point } from './viewport';
 
 /** Set or clear a shape's label, as one undo step. */
@@ -58,14 +66,16 @@ export function commitText(
 
 /** The topmost shape, frame or text element under a point, which can be typed into. */
 export function editableAt(scene: SceneData, point: Point): SceneElement | undefined {
-  const hits = scene.elements.filter(
-    (e) =>
-      !isLocked(e) &&
-      (isShapeType(e.type) || e.type === 'text' || e.type === 'frame') &&
-      // Where the element is drawn, rotation included: the field opens on the
-      // shape the user double-clicked, not on the box it is stored as.
-      containsPoint(e, point),
-  );
+  const hits = scene.elements.filter((e) => {
+    if (isLocked(e)) return false;
+    // An arrow carries a label too, and is typed on where it is drawn: its
+    // box is mostly empty space.
+    if (e.type === 'arrow') return nearElement(e, point, LINE_TOLERANCE);
+    if (!(isShapeType(e.type) || e.type === 'text' || e.type === 'frame')) return false;
+    // Where the element is drawn, rotation included: the field opens on the
+    // shape the user double-clicked, not on the box it is stored as.
+    return containsPoint(e, point);
+  });
   return hits[hits.length - 1];
 }
 

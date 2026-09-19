@@ -13,8 +13,10 @@ import type { History } from './history';
 import type { Selection, Box } from './selection';
 import type { ToolId } from './tools.svelte';
 import { produce } from 'immer';
-import { createScene, isLocked, type ElementId, type SceneData, type SceneElement } from './scene';
-import { withDescendants } from './edit';
+import { isLocked, type ElementId, type SceneData, type SceneElement } from './scene';
+import { reroute, targetAt } from './binding';
+import { carriedWith, releaseFrames } from './containment';
+import { isLinear, nearElement } from './hit';
 import { simplify } from './stroke';
 import { snapAngle, squareBox } from './constrain';
 import { erasableAlong, eraseSet } from './eraser';
@@ -57,6 +59,8 @@ export type PointerHandlerOptions = {
   handleSize?: () => number;
   /** How near the eraser trail must pass a line or outline, in scene units. */
   eraserTolerance?: () => number;
+  /** How near a click counts as hitting a line, in scene units. */
+  hitTolerance?: () => number;
   /** How far above the selection the rotate handle sits, in scene units. */
   rotateGap?: () => number;
 };
@@ -72,6 +76,8 @@ type Drag = {
   resize: { handle: Handle; bounds: Box; angle: number; originals: Map<ElementId, SceneElement> } | null;
   /** Set when the press landed on the rotate handle. */
   rotate: { centre: Point; startAngle: number; originals: Map<ElementId, SceneElement> } | null;
+  /** Set when the press landed on one end of a selected arrow. */
+  endpoint: { id: ElementId; index: number; original: SceneElement } | null;
   /** The id a drawn element gets, fixed for the drag so previews update one node. */
   newId: string;
 };
@@ -101,10 +107,16 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   // Shift, as it was on the last event: constraints follow the key during the
   // drag rather than being decided when the pointer went down.
   let shift = false;
+  // Alt, likewise: held while drawing an arrow, it leaves the ends unattached.
+  let alt = false;
+  // Where the pointer last was, for what the stage draws mid-drag.
+  let lastPoint: Point = { x: 0, y: 0 };
   // Half a handle's side, in scene units: the caller divides the on-screen size
   // by the zoom. The zone matches the drawn handle, no larger.
   const handleSize = options.handleSize ?? (() => 4);
   const eraserTolerance = options.eraserTolerance ?? (() => 3);
+  // The eraser's brush width and the slop on a click are different decisions.
+  const hitTolerance = options.hitTolerance ?? (() => 4);
   // The token's value at zoom 1, as the other defaults do: a test that presses
   // at a gap the app never uses cannot catch a gap regression.
   const rotateGap = options.rotateGap ?? (() => 16);
@@ -112,7 +124,13 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   function elementsAt(point: Point): SceneElement[] {
     // A locked element is not there as far as a press is concerned, and a
     // rotated one is hit where it is drawn, not where its stored box is.
-    return history.current.elements.filter((e) => !isLocked(e) && containsPoint(e, point));
+    // A line, arrow or stroke is hit by its path: its box is mostly empty
+    // space, and an axis-aligned one has no height at all.
+    const tolerance = hitTolerance();
+    return history.current.elements.filter((e) => {
+      if (isLocked(e)) return false;
+      return isLinear(e.type) ? nearElement(e, point, tolerance) : containsPoint(e, point);
+    });
   }
 
   /**
@@ -121,8 +139,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
    * wrapper alone moves nothing the user can see.
    */
   function dragTargets(): SceneElement[] {
-    const selected = history.current.elements.filter((e) => selection.has(e.id));
-    return withDescendants(createScene(history.current), selected);
+    return carriedWith(history.current, selection.ids);
   }
 
   /** The frame the handles are drawn on: the selection as it appears. */
@@ -156,14 +173,49 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       return marquee;
     },
 
+    /**
+     * The shapes the arrow being drawn would attach to, for the stage to
+     * highlight. Empty when nothing is being drawn, when Alt is held, or when
+     * neither end is over a shape.
+     */
+    get bindingCandidates(): ElementId[] {
+      if (!drag || tools.active !== 'arrow' || alt) return [];
+      // The same endpoint the release would bind, Shift snapping included, so
+      // the highlight cannot name a shape the drop would miss.
+      const ends = [drag.origin, shift ? snapAngle(drag.origin, lastPoint) : lastPoint];
+      const ids = ends.map((end) => targetAt(history.current, end, drag!.newId)?.id);
+      return ids.filter((id, i) => id !== undefined && ids.indexOf(id) === i) as ElementId[];
+    },
+
     down(point: Point, options: { additive?: boolean; shift?: boolean } = {}): void {
       shift = Boolean(options.shift);
+      alt = false;
+      lastPoint = point;
       if (tools.active === 'eraser') {
         erasing = new Set();
         trailEnd = point;
         trail = [point.x, point.y];
-        drag = { origin: point, moving: [], originals: new Map(), strokePoints: [], resize: null, rotate: null, newId: '' };
+        drag = { origin: point, moving: [], originals: new Map(), strokePoints: [], resize: null, rotate: null, endpoint: null, newId: '' };
         return;
+      }
+
+      // One selected arrow: its ends are handles of their own, and they win
+      // over the box handles, which sit on the same corners for a thin box.
+      if (tools.active === 'select' && selection.ids.length === 1) {
+        const end = endpointAt(point);
+        if (end) {
+          drag = {
+            origin: point,
+            moving: [],
+            originals: new Map(),
+            strokePoints: [],
+            resize: null,
+            rotate: null,
+            endpoint: end,
+            newId: '',
+          };
+          return;
+        }
       }
 
       // A selection handle wins over whatever lies beneath it.
@@ -185,6 +237,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
             strokePoints: [],
             resize: null,
             rotate: { centre, startAngle: angleOf(centre, point), originals: new Map(selected.map((e) => [e.id, e])) },
+            endpoint: null,
             newId: '',
           };
           return;
@@ -202,6 +255,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
             strokePoints: [],
             resize: { handle, bounds, angle: frame.angle, originals: new Map(selected.map((e) => [e.id, e])) },
             rotate: null,
+            endpoint: null,
             newId: '',
           };
           return;
@@ -230,6 +284,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         strokePoints: [point.x, point.y],
         resize: null,
         rotate: null,
+        endpoint: null,
         newId: nextId(history.current.elements.length),
       };
     },
@@ -237,6 +292,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     move(point: Point, options: { alt?: boolean; shift?: boolean } = {}): void {
       if (!drag) return;
       shift = Boolean(options.shift);
+      alt = Boolean(options.alt);
+      lastPoint = point;
 
       if (tools.active === 'eraser') {
         extendTrail(point, Boolean(options.alt));
@@ -250,7 +307,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
       // A resize is a select-tool drag that moves nothing; the marquee belongs
       // to dragging empty space, not to it.
-      if (tools.active === 'select' && !drag.resize && !drag.rotate && drag.moving.length === 0) {
+      if (tools.active === 'select' && !drag.resize && !drag.rotate && !drag.endpoint && drag.moving.length === 0) {
         marquee = boxBetween(drag.origin, point);
       }
     },
@@ -267,13 +324,19 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       shift = Boolean(options.shift);
       const recipe = changeFor(drag, point);
       if (!recipe) return null;
-      const next = produce(history.current, recipe);
+      // The preview re-aims attached arrows too, the same way `history.mutate`
+      // does, so what is drawn mid-drag is what the release commits.
+      const next = produce(history.current, (draft: SceneData) => {
+        recipe(draft);
+        reroute(draft);
+      });
       return next === history.current ? null : next;
     },
 
     up(point: Point, options: { alt?: boolean; shift?: boolean } = {}): void {
       if (!drag) return;
       shift = Boolean(options.shift);
+      alt = Boolean(options.alt);
       const started = drag;
       drag = null;
       marquee = null;
@@ -291,12 +354,14 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         if (doomed.size > 0) {
           history.mutate((scene) => {
             scene.elements = scene.elements.filter((e) => !doomed.has(e.id));
+            // An erased frame keeps its contents, as a deleted one does.
+            releaseFrames(scene, doomed);
           });
         }
         return;
       }
 
-      if (tools.active === 'select' && !started.resize && !started.rotate && started.moving.length === 0) {
+      if (tools.active === 'select' && !started.resize && !started.rotate && !started.endpoint && started.moving.length === 0) {
         if (farEnough(started.origin, point)) {
           selection.marquee(boxBetween(started.origin, point), history.current);
         }
@@ -347,6 +412,36 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           const replacement = turned.get(scene.elements[i].id);
           if (replacement) scene.elements[i] = replacement;
         }
+      };
+    }
+
+    if (started.endpoint) {
+      const { id, index, original } = started.endpoint;
+      const points = [...(('points' in original ? original.points : []) as number[])];
+      if (points.length < 4) return null;
+      // A click is not a drag. A bound end sits a gap clear of its shape, so a
+      // click on its handle finds nothing under it: without this, clicking an
+      // end silently let the arrow go.
+      if (!farEnough(started.origin, point)) return null;
+      const key = index === 0 ? 'startBinding' : 'endBinding';
+      const otherKey = index === 0 ? 'endBinding' : 'startBinding';
+      const other = (original as SceneElement & Record<string, string | undefined>)[otherKey];
+      // Dropped on a shape it attaches, on empty canvas it lets go, and Alt
+      // holds it free either way. Both ends on one shape would leave the arrow
+      // with nowhere to run, so that target is refused.
+      const candidate = alt ? undefined : targetAt(history.current, point, id);
+      const target = candidate && candidate.id === other ? undefined : candidate;
+      const last = points.length - 2;
+      const at = index === 0 ? 0 : last;
+      points[at] = point.x - original.x;
+      points[at + 1] = point.y - original.y;
+      return (scene) => {
+        const element = scene.elements.find((e) => e.id === id) as (SceneElement & { points?: number[] }) | undefined;
+        if (!element) return;
+        element.points = points;
+        const bound = element as SceneElement & Record<string, string | undefined>;
+        if (target) bound[key] = target.id;
+        else delete bound[key];
       };
     }
 
@@ -429,6 +524,9 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         ? {
             // From where the drag started to where it ended, relative to the box.
             points: [started.origin.x - box.x, started.origin.y - box.y, end.x - box.x, end.y - box.y].map(tidy),
+            // An arrow is a connector: it attaches to what its ends land on,
+            // unless Alt says otherwise. A line is geometry, and never binds.
+            ...(type === 'arrow' && !alt ? bindingsFor(started.origin, end, started.newId) : {}),
           }
         : {};
     return (scene) => {
@@ -439,6 +537,37 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         ...box,
         ...extra,
       } as SceneElement);
+    };
+  }
+
+  /**
+   * The end of the selected arrow under a point, if any. Ends are handles the
+   * same size as the box handles, drawn where the arrow is drawn.
+   */
+  function endpointAt(point: Point): { id: ElementId; index: number; original: SceneElement } | null {
+    const [id] = selection.ids;
+    const element = history.current.elements.find((e) => e.id === id);
+    if (!element || element.type !== 'arrow' || isLocked(element)) return null;
+    const points = ('points' in element ? element.points : []) as number[];
+    if (points.length < 4) return null;
+    const size = handleSize();
+    for (const index of [0, points.length - 2]) {
+      const x = element.x + points[index];
+      const y = element.y + points[index + 1];
+      if (Math.abs(point.x - x) <= size && Math.abs(point.y - y) <= size) {
+        return { id, index: index === 0 ? 0 : 1, original: element };
+      }
+    }
+    return null;
+  }
+
+  /** What each end of a drawn arrow lands on, as keys for the element. */
+  function bindingsFor(from: Point, to: Point, id: string): Record<string, string> {
+    const start = targetAt(history.current, from, id)?.id;
+    const end = targetAt(history.current, to, id)?.id;
+    return {
+      ...(start ? { startBinding: start } : {}),
+      ...(end && end !== start ? { endBinding: end } : {}),
     };
   }
 }

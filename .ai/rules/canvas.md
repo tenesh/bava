@@ -114,11 +114,12 @@ release, so pressing or releasing a key mid-drag changes the preview at once.
 A modifier captured in `down()` cannot do that, which is how Shift silently
 did nothing for new shapes.
 
-## A linear element's box is not its shape
-A line, arrow or stroke is hit-tested by its box outside the eraser, so an
-axis-aligned one (a Shift-drawn horizontal line) has a zero-height box and is
-clickable only on an exact coordinate. `eraser.ts` already tests the drawn
-path with a tolerance; selection has yet to. Carried to Milestone 6.3.
+## A linear element is hit by its path, not its box
+A line, arrow or stroke is tested against what it draws, with a tolerance, by
+`hit.ts`: its box is mostly empty space, and an axis-aligned one has no height
+at all. Selection, the eraser and the label editor all go through
+`nearElement`. An arrow's stored box is settled around its drawn path, so an
+elbow's corners and an arc's bow are inside it.
 
 ## The eraser marks, then deletes on release
 The trail marks elements it crosses (drawn at `--opacity-erasing`); release
@@ -145,12 +146,6 @@ through `number(read, …)`. A dimensionless ratio that describes a curve's shap
 beside the drawing code: it does not scale with the theme and nothing outside
 that file can use it.
 
-## An arc arrow draws outside its box
-`arrowType: 'arc'` bows `ARC_BOW` of its length perpendicular to its ends,
-while the element's `w`/`h` still describe the straight span. The selection
-outline, the marquee and the eraser therefore test a box the curve leaves.
-Carried to Milestone 6.5 with the linear hit-testing note above: both are the
-same change, testing a linear element by its drawn path.
 
 ## A rotated element is tested where it is drawn
 `angle` turns an element about its own centre; `x`, `y`, `w` and `h` stay the
@@ -186,3 +181,24 @@ wrapped on the canvas and overflowed in an exported SVG. `text-layout.ts`
 breaks lines; the stage hands Konva text already broken with `wrap: 'none'`,
 and the exporter breaks the same way. The same holds for smoothing: `curves.ts`
 returns the samples, and Konva's own `tension` stays at zero.
+
+## Attached arrows re-aim inside the change that moved them
+A binding is an element id. `history.mutate` runs `reroute` inside the same
+immer recipe, so every edit path (a drag, a resize, a rotation, an align, a
+nudge, an undo) re-aims attached arrows without remembering to ask, and one
+undo puts a shape and its arrows back together. The preview does the same, so
+what is drawn mid-drag is what the release commits.
+
+## Containment lives on the child
+An element records the `frame` that owns it. Dropping it wholly inside sets
+the key, dragging it out clears it, and a frame drag expands to what records
+it, the way a group drag expands to its children. Half inside is not inside: a
+frame would otherwise carry off whatever overlapped its edge, and a frame
+dragged across the canvas would adopt what it passed over.
+
+## Membership is per element, and a group is not a unit
+`frame` lives on each element, so a group inside a frame is carried by its
+children rather than as a whole: the group wrapper holds no `frame` of its
+own. Moving the frame moves the children correctly, but the wrapper's stored
+box is not recomputed. Deciding whether a group or its children own membership
+is its own change; until then, do not assume a group has a frame.

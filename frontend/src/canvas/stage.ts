@@ -23,11 +23,12 @@ import { drawOutline, isOutlineShape } from './shapes';
 import { paintFor, ROUND_SHARE } from './paint';
 import { wrapLines } from './text-layout';
 import { smoothPoints } from './curves';
+import { bindingsOf, isDetached } from './binding';
 import { canvasLineWidth } from './text-measure';
-import { drawHead, headAt, routePoints } from './arrows';
+import { drawHead, headAt, labelPoint, pathLength, routePoints } from './arrows';
 import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
 import { HANDLES, handleCentre, rotateHandleCentre } from './resize';
-import { angleOfElement, canRotate, centreOf, selectionFrame } from './rotate';
+import { angleOfElement, canRotate, centreOf, rotatedBounds, selectionFrame } from './rotate';
 
 export type CanvasStageOptions = {
   /** Reads a CSS custom property. Injected so tests need no stylesheet. */
@@ -60,6 +61,8 @@ type Entry = {
   type: string;
   /** An arrow's heads, drawn as their own nodes: Konva draws only triangles. */
   heads: Konva.Shape[];
+  /** Markers on ends whose binding cannot be resolved. */
+  detached: Konva.Circle[];
 };
 
 export class CanvasStage {
@@ -71,6 +74,11 @@ export class CanvasStage {
   #outline: Konva.Rect | null = null;
   #handles: Konva.Rect[] = [];
   #rotate: Konva.Circle | null = null;
+  /** Handles at the ends of a single selected arrow. */
+  #endpoints: Konva.Circle[] = [];
+  /** Outlines on the shapes an arrow being drawn would attach to. */
+  #candidates: Konva.Rect[] = [];
+  #candidateIds: ElementId[] = [];
   #marquee: Konva.Rect | null = null;
   #trail: Konva.Line | null = null;
   #markedForErase = new Set<ElementId>();
@@ -166,9 +174,53 @@ export class CanvasStage {
     return this.#handles.length;
   }
 
+  /**
+   * Outline the shapes the arrow being drawn would attach to, so the user can
+   * see the attachment before letting go.
+   */
+  setBindingCandidates(ids: ElementId[]): void {
+    this.#candidateIds = [...ids];
+    this.#drawCandidates(cached(this.#read));
+  }
+
+  bindingHighlights(): Konva.Rect[] {
+    return this.#candidates;
+  }
+
+  #drawCandidates(read: ReadVariable): void {
+    if (!this.#overlay) return;
+    this.#candidates.forEach((node) => node.destroy());
+    this.#candidates = [];
+    const colour = read('--color-selection-handle').trim();
+    const scale = 1 / this.#zoom;
+    for (const id of this.#candidateIds) {
+      const element = this.#last.elements.find((e) => e.id === id);
+      if (!element) continue;
+      const outline = new Konva.Rect({
+        ...boundsToRect(rotatedBounds(element)),
+        stroke: colour,
+        strokeWidth: scale * 2,
+        listening: false,
+      });
+      this.#candidates.push(outline);
+      this.#overlay.add(outline);
+    }
+    this.#overlay.batchDraw();
+  }
+
+  /** The markers drawn on ends whose bindings cannot be resolved. */
+  detachedMarkers(): Konva.Circle[] {
+    return [...this.#entries.values()].flatMap((entry) => entry.detached);
+  }
+
   /** The rotate handle above the selection, or null when nothing is selected. */
   rotateHandle(): Konva.Circle | null {
     return this.#rotate;
+  }
+
+  /** The handles at the ends of a selected arrow. */
+  endpointHandles(): Konva.Circle[] {
+    return this.#endpoints;
   }
 
   #drawSelection(read: ReadVariable): void {
@@ -176,9 +228,11 @@ export class CanvasStage {
     this.#outline?.destroy();
     this.#handles.forEach((handle) => handle.destroy());
     this.#rotate?.destroy();
+    this.#endpoints.forEach((end) => end.destroy());
     this.#outline = null;
     this.#handles = [];
     this.#rotate = null;
+    this.#endpoints = [];
 
     const selected = this.#last.elements.filter((e) => this.#selected.includes(e.id));
     if (selected.length === 0) {
@@ -225,6 +279,27 @@ export class CanvasStage {
       });
       this.#handles.push(turn(square) as Konva.Rect);
       this.#overlay.add(square);
+    }
+
+    // One selected arrow: a handle at each end, where the press zone is. For
+    // an elbow or an arc the box corners are nowhere near the ends, so the
+    // resize handles do not stand in for these.
+    if (selected.length === 1 && selected[0].type === 'arrow') {
+      const arrow = selected[0];
+      const points = ('points' in arrow ? arrow.points : []) as number[];
+      for (const index of [0, points.length - 2]) {
+        if (points.length < 4) break;
+        const end = new Konva.Circle({
+          x: arrow.x + points[index],
+          y: arrow.y + points[index + 1],
+          radius: size / 2,
+          fill: surface,
+          stroke: colour,
+          strokeWidth: scale,
+        });
+        this.#endpoints.push(end);
+        this.#overlay.add(end);
+      }
     }
 
     // The rotate handle: a disc above the frame, clear of the top edge. Not
@@ -419,8 +494,9 @@ export class CanvasStage {
     const group = new Konva.Group();
     const body = this.#createBody(element);
     const heads: Konva.Shape[] = [];
+    const detached: Konva.Circle[] = [];
     group.add(body);
-    return { group, body, heads, label: null, type: element.type };
+    return { group, body, heads, detached, label: null, type: element.type };
   }
 
   #createBody(element: SceneElement): Konva.Shape {
@@ -493,8 +569,9 @@ export class CanvasStage {
       body.text(wrapLines(element.text, element.w, this.#lineWidth(element, read)).join('\n'));
     }
 
-    // A shape's label is centred in it; a frame's sits at its top-left corner.
-    const labelled = isShapeType(element.type) || element.type === 'frame';
+    // A shape's label is centred in it; a frame's sits at its top-left corner;
+    // an arrow's sits on the middle of the path it takes.
+    const labelled = isShapeType(element.type) || element.type === 'frame' || element.type === 'arrow';
     const label = labelled && 'label' in element ? element.label : undefined;
     if (label) {
       if (!entry.label) {
@@ -503,16 +580,37 @@ export class CanvasStage {
       }
       const inset = number(read, '--size-label-inset');
       const isFrame = element.type === 'frame';
+      const isArrow = element.type === 'arrow';
       const props = element as SceneElement & StyleProps;
       entry.label.text(
         wrapLines(label, Math.max(0, element.w - inset * 2), this.#lineWidth(element, read)).join('\n'),
       );
       entry.label.align(props.align ?? (isFrame ? 'left' : 'center'));
       entry.label.verticalAlign(props.verticalAlign ?? (isFrame ? 'top' : 'middle'));
-      entry.label.x(inset);
-      entry.label.y(isFrame ? inset : 0);
-      entry.label.width(Math.max(0, element.w - inset * 2));
-      entry.label.height(isFrame ? Math.max(0, element.h - inset * 2) : element.h);
+      if (isArrow) {
+        // Centred on the middle of the drawn path, in the group's own space,
+        // and wrapped to the path's length: the exporter wraps to the same
+        // width, so a long label breaks identically in both.
+        const routed = (body as Konva.Line).points();
+        const at = labelPoint(routed);
+        const paint = paintFor(element, read);
+        const measure = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
+        const lines = wrapLines(label, pathLength(routed), measure);
+        entry.label.text(lines.join('\n'));
+        const width = Math.max(...lines.map(measure));
+        const height = paint.font.size * paint.font.lineHeight * lines.length;
+        entry.label.align('center');
+        entry.label.verticalAlign('middle');
+        entry.label.width(width);
+        entry.label.height(height);
+        entry.label.x(at.x - width / 2);
+        entry.label.y(at.y - height / 2);
+      } else {
+        entry.label.x(inset);
+        entry.label.y(isFrame ? inset : 0);
+        entry.label.width(Math.max(0, element.w - inset * 2));
+        entry.label.height(isFrame ? Math.max(0, element.h - inset * 2) : element.h);
+      }
     } else if (entry.label) {
       entry.label.destroy();
       entry.label = null;
@@ -520,6 +618,43 @@ export class CanvasStage {
 
     this.#style(entry, element, read);
     this.#drawHeads(entry, element, read);
+    this.#drawDetached(entry, element, read);
+  }
+
+  /**
+   * A marker on an end whose binding names an element that is not there.
+   *
+   * The endpoint has frozen where it last was, and the file still holds the
+   * id: the user drew this arrow, so nothing is removed on their behalf
+   * (`canvas-architecture.md`). The marker is how they can see it.
+   */
+  #drawDetached(entry: Entry, element: SceneElement, read: ReadVariable): void {
+    for (const marker of entry.detached) marker.destroy();
+    entry.detached = [];
+    if (element.type !== 'arrow' || !isDetached(element, this.#last)) return;
+
+    const { start, end } = bindingsOf(element);
+    const points = ('points' in element ? element.points : []) as number[];
+    if (points.length < 4) return;
+    const missing = (id?: string) => id !== undefined && !this.#last.elements.some((e) => e.id === id);
+    const size = number(read, '--size-selection-handle') / this.#zoom;
+
+    for (const [id, index] of [
+      [start, 0],
+      [end, points.length - 2],
+    ] as [string | undefined, number][]) {
+      if (!missing(id)) continue;
+      const marker = new Konva.Circle({
+        x: points[index],
+        y: points[index + 1],
+        radius: size / 2,
+        stroke: read('--color-danger').trim(),
+        strokeWidth: 1 / this.#zoom,
+        listening: false,
+      });
+      entry.detached.push(marker);
+      entry.group.add(marker);
+    }
   }
 
   /**

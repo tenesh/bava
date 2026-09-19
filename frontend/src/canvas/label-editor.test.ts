@@ -216,3 +216,22 @@ describe('editing a rotated element', () => {
     editor.destroy();
   });
 });
+
+// An arrow carries a label too, typed by double-clicking it.
+describe('typing on an arrow', () => {
+  const withArrow: SceneData = {
+    elements: [
+      { id: 'a', type: 'arrow', x: 0, y: 0, w: 100, h: 0, z: 1, points: [0, 0, 100, 0], label: 'sends to' } as never,
+    ],
+  };
+
+  it('finds the arrow under a point on its line', () => {
+    expect(editableAt(withArrow, { x: 50, y: 0 })?.id).toBe('a');
+  });
+
+  it('commits a label on it like any other', () => {
+    const history = createHistory(withArrow);
+    commitLabel(history, 'a', 'depends on');
+    expect(history.current.elements[0]).toMatchObject({ label: 'depends on' });
+  });
+});

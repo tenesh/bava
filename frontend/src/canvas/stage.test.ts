@@ -551,3 +551,126 @@ describe('the rotate handle and what cannot rotate', () => {
     stage.destroy();
   });
 });
+
+// A binding whose target is gone freezes the endpoint and says so, rather
+// than the arrow moving or vanishing (canvas-architecture.md).
+describe('an arrow whose target has gone', () => {
+  const read = reader({
+    '--color-shape-stroke': 'slategray',
+    '--color-selection-handle': 'dodgerblue',
+    '--color-danger': 'crimson',
+    '--size-selection-handle': '8px',
+    '--size-shape-stroke': '1.5px',
+  });
+
+  const bound = (targetPresent: boolean): SceneData => ({
+    elements: [
+      ...(targetPresent ? [{ id: 'b', type: 'rect', x: 200, y: 0, w: 60, h: 60, z: 1 } as SceneElement] : []),
+      {
+        id: 'arrow',
+        type: 'arrow',
+        x: 0,
+        y: 30,
+        w: 200,
+        h: 0,
+        z: 2,
+        points: [0, 0, 200, 0],
+        endBinding: 'b',
+      } as SceneElement,
+    ],
+  });
+
+  it('marks the loose end, and does not while the target is there', () => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+
+    stage.render(bound(true));
+    expect(stage.detachedMarkers()).toHaveLength(0);
+
+    stage.render(bound(false));
+    const markers = stage.detachedMarkers();
+    expect(markers).toHaveLength(1);
+    // At the frozen end, where the arrow was last drawn. The marker lives in
+    // the arrow's group, so its place on the canvas is the absolute one.
+    expect(markers[0].getAbsolutePosition()).toEqual({ x: 200, y: 30 });
+    stage.destroy();
+  });
+
+  it('takes the mark away when the target comes back', () => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.render(bound(false));
+    stage.render(bound(true));
+    expect(stage.detachedMarkers()).toHaveLength(0);
+    stage.destroy();
+  });
+});
+
+// An arrow may carry a label, drawn where the path passes its middle.
+describe('an arrow with a label', () => {
+  it('draws it at the middle of the routed path', () => {
+    const stage = mounted();
+    stage.render(one({ type: 'arrow', x: 10, y: 20, w: 100, h: 0, points: [0, 0, 100, 0], label: 'sends to' }));
+    const label = stage.labelFor('e1')!;
+    expect(label.text()).toBe('sends to');
+    // Centred on the midpoint, which is (60, 20) on the canvas.
+    expect(label.getAbsolutePosition().x + label.width() / 2).toBe(60);
+    stage.destroy();
+  });
+
+  it('takes the label away when it is cleared', () => {
+    const stage = mounted();
+    stage.render(one({ type: 'arrow', x: 0, y: 0, w: 10, h: 0, points: [0, 0, 10, 0], label: 'x' }));
+    stage.render(one({ type: 'arrow', x: 0, y: 0, w: 10, h: 0, points: [0, 0, 10, 0] }));
+    expect(stage.labelFor('e1')).toBeUndefined();
+    stage.destroy();
+  });
+});
+
+// While an arrow is being drawn onto a shape, that shape is highlighted, so
+// the user can see the attachment before letting go.
+describe('the attachment highlight', () => {
+  const read = reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px' });
+
+  it('outlines the candidates it is given, and clears them', () => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.render({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 },
+        { id: 'b', type: 'rect', x: 200, y: 0, w: 60, h: 60, z: 2 },
+      ] as SceneElement[],
+    });
+
+    stage.setBindingCandidates(['a']);
+    const outlines = stage.bindingHighlights();
+    expect(outlines).toHaveLength(1);
+    expect(outlines[0].getAbsolutePosition()).toEqual({ x: 0, y: 0 });
+    expect(outlines[0].width()).toBe(60);
+
+    stage.setBindingCandidates([]);
+    expect(stage.bindingHighlights()).toHaveLength(0);
+    stage.destroy();
+  });
+});
+
+// A selected arrow shows a handle at each end, where the hit zone is: for an
+// elbow or an arc the box corners are nowhere near the ends.
+describe('the ends of a selected arrow', () => {
+  it('draws a handle at each end, and clears them with the selection', () => {
+    const stage = new CanvasStage({
+      read: reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px', '--size-rotate-gap': '16px' }),
+    });
+    stage.mount(host());
+    stage.render(one({ type: 'arrow', x: 10, y: 20, w: 100, h: 0, points: [0, 0, 100, 0] }));
+
+    stage.setSelection(['e1']);
+    const ends = stage.endpointHandles();
+    expect(ends).toHaveLength(2);
+    expect(ends.map((e) => e.getAbsolutePosition().x).sort((a, b) => a - b)).toEqual([10, 110]);
+
+    stage.setSelection([]);
+    expect(stage.endpointHandles()).toHaveLength(0);
+    stage.destroy();
+  });
+});

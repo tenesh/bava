@@ -122,3 +122,46 @@ function circle(sink: PathSink, cx: number, cy: number, r: number): void {
   sink.bezierCurveTo(cx - o, cy + r, cx - r, cy + o, cx - r, cy);
   sink.closePath();
 }
+
+/** How long a routed path is, which is the width an arrow's label wraps to. */
+export function pathLength(points: number[]): number {
+  let total = 0;
+  for (let i = 0; i + 3 < points.length; i += 2) {
+    total += Math.hypot(points[i + 2] - points[i], points[i + 3] - points[i + 1]);
+  }
+  return total;
+}
+
+/**
+ * The point halfway along a routed path, where an arrow's label sits.
+ *
+ * Measured along the path rather than between the ends, so an elbow's label
+ * lands on the line rather than floating in the corner it turns around.
+ */
+export function labelPoint(points: number[]): { x: number; y: number } {
+  if (points.length < 4) return { x: points[0] ?? 0, y: points[1] ?? 0 };
+
+  const lengths: number[] = [];
+  let total = 0;
+  for (let i = 0; i + 3 < points.length; i += 2) {
+    const length = Math.hypot(points[i + 2] - points[i], points[i + 3] - points[i + 1]);
+    lengths.push(length);
+    total += length;
+  }
+  if (total === 0) return { x: points[0], y: points[1] };
+
+  let travelled = 0;
+  for (let segment = 0; segment < lengths.length; segment += 1) {
+    if (travelled + lengths[segment] < total / 2) {
+      travelled += lengths[segment];
+      continue;
+    }
+    const along = lengths[segment] === 0 ? 0 : (total / 2 - travelled) / lengths[segment];
+    const i = segment * 2;
+    return {
+      x: points[i] + (points[i + 2] - points[i]) * along,
+      y: points[i + 1] + (points[i + 3] - points[i + 1]) * along,
+    };
+  }
+  return { x: points[points.length - 2], y: points[points.length - 1] };
+}

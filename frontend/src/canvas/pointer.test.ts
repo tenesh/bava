@@ -744,3 +744,307 @@ describe('resizing a selection that holds a rotated element', () => {
     expect(turned.angle).toBe(90);
   });
 });
+
+// Drawing an arrow that starts or ends on a shape attaches it, as Excalidraw
+// does, and Alt held during the drag leaves it free. The modifier is read on
+// every move, never at the press (.ai/rules/canvas.md).
+describe('attaching an arrow while drawing it', () => {
+  function withShapes(tool: 'arrow' | 'line' = 'arrow') {
+    const kit = harness(tool);
+    kit.history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 } as never,
+        { id: 'b', type: 'rect', x: 200, y: 0, w: 60, h: 60, z: 2 } as never,
+        { id: 'locked', type: 'rect', x: 0, y: 200, w: 60, h: 60, z: 3, locked: true } as never,
+      );
+    });
+    const drawn = () => kit.history.current.elements.find((e) => e.type === 'arrow' || e.type === 'line');
+    return { ...kit, drawn };
+  }
+
+  it('binds both ends when the drag starts and finishes on a shape', () => {
+    const { handler, drawn } = withShapes();
+    handler.down(at(30, 30));
+    handler.move(at(230, 30));
+    handler.up(at(230, 30));
+    expect(drawn()).toMatchObject({ startBinding: 'a', endBinding: 'b' });
+  });
+
+  it('binds nothing when Alt is held', () => {
+    const { handler, drawn } = withShapes();
+    handler.down(at(30, 30));
+    handler.move(at(230, 30), { alt: true });
+    handler.up(at(230, 30), { alt: true });
+    expect(drawn()!).not.toHaveProperty('startBinding');
+    expect(drawn()!).not.toHaveProperty('endBinding');
+  });
+
+  it('binds again when Alt is released before the end of the drag', () => {
+    const { handler, drawn } = withShapes();
+    handler.down(at(30, 30));
+    handler.move(at(230, 30), { alt: true });
+    handler.up(at(230, 30));
+    expect(drawn()).toMatchObject({ startBinding: 'a', endBinding: 'b' });
+  });
+
+  it('offers the shape under each end as the candidate, for the stage to show', () => {
+    const { handler } = withShapes();
+    handler.down(at(30, 30));
+    handler.move(at(230, 30));
+    expect(handler.bindingCandidates).toEqual(['a', 'b']);
+    handler.move(at(230, 30), { alt: true });
+    expect(handler.bindingCandidates).toEqual([]);
+  });
+
+  it('never attaches to a locked shape', () => {
+    const { handler, drawn } = withShapes();
+    handler.down(at(30, 30));
+    handler.move(at(30, 230));
+    handler.up(at(30, 230));
+    expect(drawn()).toMatchObject({ startBinding: 'a' });
+    expect(drawn()!).not.toHaveProperty('endBinding');
+  });
+
+  // A line is not a connector: it is geometry, and carries no bindings.
+  it('leaves a line unattached', () => {
+    const { handler, drawn } = withShapes('line');
+    handler.down(at(30, 30));
+    handler.move(at(230, 30));
+    handler.up(at(230, 30));
+    expect(drawn()!).not.toHaveProperty('startBinding');
+  });
+});
+
+// What the preview shows is what the release commits, bindings included.
+describe('previewing a drag that moves an attached shape', () => {
+  it('re-aims the arrow in the preview, not only on release', () => {
+    const kit = harness('select');
+    kit.history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 } as never,
+        { id: 'b', type: 'rect', x: 200, y: 0, w: 60, h: 60, z: 2 } as never,
+        { id: 'arrow', type: 'arrow', x: 60, y: 30, w: 140, h: 0, z: 3, points: [0, 0, 140, 0], startBinding: 'a', endBinding: 'b' } as never,
+      );
+    });
+    kit.selection.click('b');
+    kit.handler.down(at(230, 30));
+    const preview = kit.handler.preview(at(230, 300))!;
+    const arrow = preview.elements.find((e) => e.id === 'arrow') as { y: number; points: number[] };
+    expect(arrow.y + arrow.points[3]).toBeGreaterThan(30);
+  });
+});
+
+// A selected arrow has a handle at each end: dragging one onto a shape
+// attaches it, dragging it to empty canvas lets it go.
+describe('dragging an arrow endpoint', () => {
+  function withArrow(bindings: Record<string, string> = {}) {
+    const kit = harness('select');
+    kit.history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 } as never,
+        { id: 'b', type: 'rect', x: 200, y: 0, w: 60, h: 60, z: 2 } as never,
+        {
+          id: 'arrow',
+          type: 'arrow',
+          x: 100,
+          y: 30,
+          w: 60,
+          h: 0,
+          z: 3,
+          points: [0, 0, 60, 0],
+          ...bindings,
+        } as never,
+      );
+    });
+    kit.selection.click('arrow');
+    const arrow = () => kit.history.current.elements.find((e) => e.id === 'arrow') as Record<string, unknown>;
+    return { ...kit, arrow };
+  }
+
+  it('binds the end to the shape it is dropped on', () => {
+    const { handler, arrow } = withArrow();
+    // The far end sits at (160, 30); drag it into b.
+    handler.down(at(160, 30));
+    handler.move(at(230, 30));
+    handler.up(at(230, 30));
+    expect(arrow().endBinding).toBe('b');
+  });
+
+  it('lets an end go when it is dropped on empty canvas', () => {
+    const { handler, arrow } = withArrow({ endBinding: 'b' });
+    handler.down(at(196, 30));
+    handler.move(at(400, 300));
+    handler.up(at(400, 300));
+    expect(arrow().endBinding).toBeUndefined();
+    const points = arrow().points as number[];
+    expect((arrow().x as number) + points[2]).toBe(400);
+  });
+
+  it('leaves the other end alone', () => {
+    const { handler, arrow } = withArrow({ startBinding: 'a' });
+    handler.down(at(160, 30));
+    handler.move(at(230, 30));
+    handler.up(at(230, 30));
+    expect(arrow().startBinding).toBe('a');
+  });
+
+  it('does not bind while Alt is held', () => {
+    const { handler, arrow } = withArrow();
+    handler.down(at(160, 30));
+    handler.move(at(230, 30), { alt: true });
+    handler.up(at(230, 30), { alt: true });
+    expect(arrow().endBinding).toBeUndefined();
+  });
+});
+
+// A frame owns what is dropped into it, and carries it when the frame moves
+// (diagrams-as-shapes.md, "Containers own their contents").
+describe('frames and their contents', () => {
+  function withFrame() {
+    const kit = harness('select');
+    kit.history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'f', type: 'frame', x: 0, y: 0, w: 200, h: 200, z: 1 } as never,
+        { id: 'in', type: 'rect', x: 20, y: 20, w: 40, h: 40, z: 2, frame: 'f' } as never,
+        { id: 'out', type: 'rect', x: 400, y: 0, w: 40, h: 40, z: 3 } as never,
+      );
+    });
+    const byId = (id: string) => kit.history.current.elements.find((e) => e.id === id) as Record<string, unknown>;
+    return { ...kit, byId };
+  }
+
+  it('takes in an element dropped inside it', () => {
+    const { handler, selection, byId } = withFrame();
+    selection.click('out');
+    handler.down(at(420, 20));
+    handler.move(at(120, 120));
+    handler.up(at(120, 120));
+    expect(byId('out').frame).toBe('f');
+  });
+
+  it('lets go of one dragged out', () => {
+    const { handler, selection, byId } = withFrame();
+    selection.click('in');
+    handler.down(at(40, 40));
+    handler.move(at(440, 440));
+    handler.up(at(440, 440));
+    expect(byId('in').frame).toBeUndefined();
+  });
+
+  it('carries its contents when the frame moves, in one step', () => {
+    const { handler, selection, history, byId } = withFrame();
+    selection.click('f');
+    handler.down(at(100, 190));
+    handler.move(at(150, 190));
+    handler.up(at(150, 190));
+    expect(byId('f').x).toBe(50);
+    expect(byId('in').x).toBe(70);
+    history.undo();
+    expect(byId('in').x).toBe(20);
+    expect(byId('f').x).toBe(0);
+  });
+
+  // The frame passes over the outside shape on its way; it must not adopt it.
+  it('does not adopt what it passes over', () => {
+    const { handler, selection, byId } = withFrame();
+    selection.click('f');
+    handler.down(at(100, 190));
+    handler.move(at(400, 190));
+    handler.up(at(400, 190));
+    expect(byId('out').frame).toBeUndefined();
+  });
+});
+
+// Carried from 06.2.1: a diagonal line's box is mostly empty space, and an
+// axis-aligned one has none at all.
+describe('selecting a line by its path', () => {
+  function withLine(points: number[], box: Record<string, number>) {
+    const kit = harness('select');
+    kit.history.mutate((scene) => {
+      scene.elements.push({ id: 'l', type: 'line', z: 1, points, ...box } as never);
+    });
+    return kit;
+  }
+
+  it('selects a diagonal line near the line, not in the corner of its box', () => {
+    const { handler, selection } = withLine([0, 0, 100, 100], { x: 0, y: 0, w: 100, h: 100 });
+    handler.down(at(50, 51));
+    handler.up(at(50, 51));
+    expect(selection.ids).toEqual(['l']);
+
+    selection.clear();
+    handler.down(at(5, 95));
+    handler.up(at(5, 95));
+    expect(selection.ids).toEqual([]);
+  });
+
+  it('selects a horizontal line, which has no height to click', () => {
+    const { handler, selection } = withLine([0, 0, 100, 0], { x: 0, y: 40, w: 100, h: 0 });
+    handler.down(at(50, 41));
+    handler.up(at(50, 41));
+    expect(selection.ids).toEqual(['l']);
+  });
+});
+
+// Carried from 06.3: an arc bows away from the straight line between its
+// ends, and the stored box has to hold what is drawn, or selection, the
+// marquee, the eraser and the export bounds all cut the curve off.
+describe('an arc arrow box', () => {
+  it('covers the bow it draws', () => {
+    const kit = harness('arrow');
+    kit.history.mutate((scene) => {
+      scene.elements.push({ id: 'a', type: 'arrow', x: 0, y: 0, w: 100, h: 0, z: 1, points: [0, 0, 100, 0], arrowType: 'arc' } as never);
+    });
+    // Re-routing happens on every change; the box is settled with it.
+    kit.history.mutate((scene) => {
+      const arrow = scene.elements[0] as { arrowType: string };
+      arrow.arrowType = 'arc';
+    });
+    const arrow = kit.history.current.elements[0];
+    expect(arrow.h).toBeGreaterThan(0);
+  });
+});
+
+// The endpoint drag writes bindings, so it needs the guards the draw path has.
+describe('guards on the endpoint drag', () => {
+  function bound() {
+    const kit = harness('select');
+    kit.history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 } as never,
+        { id: 'b', type: 'rect', x: 200, y: 0, w: 60, h: 60, z: 2 } as never,
+        { id: 'arrow', type: 'arrow', x: 60, y: 30, w: 140, h: 0, z: 3, points: [0, 0, 140, 0], startBinding: 'a', endBinding: 'b' } as never,
+      );
+    });
+    kit.selection.click('arrow');
+    const arrow = () => kit.history.current.elements.find((e) => e.id === 'arrow') as Record<string, unknown>;
+    return { ...kit, arrow };
+  }
+
+  // A bound end sits a gap clear of its shape, so a click on the handle finds
+  // no shape under it: without a guard, clicking silently let the arrow go.
+  it('a click on an end handle changes nothing', () => {
+    const { handler, arrow, history } = bound();
+    const before = JSON.stringify(arrow());
+    const points = arrow().points as number[];
+    const end = { x: (arrow().x as number) + points[2], y: (arrow().y as number) + points[3] };
+    handler.down(end);
+    handler.up(end);
+    expect(JSON.stringify(arrow())).toBe(before);
+    history.undo();
+    // The only step in history is the one that built the scene.
+    expect(history.current.elements).toHaveLength(0);
+  });
+
+  // Both ends on one shape leaves the arrow with nowhere to go: it collapsed
+  // to a zero-size point at the shape's centre.
+  it('refuses to bind both ends to the same shape', () => {
+    const { handler, arrow } = bound();
+    const points = arrow().points as number[];
+    handler.down({ x: (arrow().x as number) + points[2], y: (arrow().y as number) + points[3] });
+    handler.move(at(30, 30));
+    handler.up(at(30, 30));
+    expect(arrow().endBinding).toBeUndefined();
+    expect(arrow().w).toBeGreaterThan(0);
+  });
+});

@@ -412,3 +412,24 @@ describe('aligning a rotated element', () => {
     expect(moved.x).toBe(40);
   });
 });
+
+// Deleting a container must not delete work the user did not select: the
+// contents stay, and stop claiming a frame that is gone.
+describe('deleting a frame', () => {
+  it('keeps its contents and clears their frame', () => {
+    const { history, selection, commands } = setup();
+    history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'f', type: 'frame', x: 0, y: 0, w: 200, h: 200, z: 4 } as never,
+        { id: 'in', type: 'rect', x: 20, y: 20, w: 40, h: 40, z: 5, frame: 'f' } as never,
+      );
+    });
+    selection.click('f');
+    commands.deleteSelection();
+
+    const ids = history.current.elements.map((e) => e.id);
+    expect(ids).not.toContain('f');
+    expect(ids).toContain('in');
+    expect(history.current.elements.find((e) => e.id === 'in')).not.toHaveProperty('frame');
+  });
+});

@@ -33,6 +33,10 @@
   --size-label-inset: 6px;
   // A selection handle's side on screen, whatever the zoom.
   --size-selection-handle: 8px;
+  // How far clear of a shape an attached arrow stops.
+  --size-binding-gap: 4px;
+  // How near a line counts as a click on it.
+  --size-hit-tolerance: 4px;
   // How far the rotate handle sits above the selection, clear of the top one.
   --size-rotate-gap: 16px;
   // The marquee's dash and gap on screen, whatever the zoom.

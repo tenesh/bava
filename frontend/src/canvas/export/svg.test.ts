@@ -134,3 +134,26 @@ describe('the exported picture of every element type', () => {
     expect(toSvg(exportArea(fixtureScene, []), { read: fixtureRead, background: true }) + '\n').toBe(expected);
   });
 });
+
+// An arrow's label travels with it into an exported file, at the same place
+// the canvas draws it.
+describe('exporting an arrow label', () => {
+  it('writes it at the middle of the path', () => {
+    const svg = svgOf([
+      { id: 'a', type: 'arrow', x: 0, y: 0, w: 100, h: 0, z: 1, points: [0, 0, 100, 0], label: 'sends to' },
+    ]);
+    expect(svg).toContain('sends to');
+    expect(svg).toMatch(/<text[^>]*x="50"/);
+  });
+});
+
+// An arrow label wraps the same way in both renderers: the canvas wraps it to
+// the length of the path, and so does the export.
+describe('a long arrow label', () => {
+  it('wraps in the export as it wraps on the canvas', () => {
+    const svg = svgOf([
+      { id: 'a', type: 'arrow', x: 0, y: 0, w: 40, h: 0, z: 1, points: [0, 0, 40, 0], label: 'a label far longer than this arrow' },
+    ]);
+    expect((svg.match(/<tspan/g) ?? []).length).toBeGreaterThan(1);
+  });
+});
