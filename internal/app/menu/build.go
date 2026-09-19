@@ -29,7 +29,9 @@ type State struct {
 	// HasLocked reports at least one locked element in the scene.
 	HasLocked bool `json:"hasLocked"`
 	// HasDocument reports a file open, which is what Export needs.
-	HasDocument bool     `json:"hasDocument"`
+	HasDocument bool `json:"hasDocument"`
+	// ShowsCanvas reports the canvas visible, which is where a diagram goes.
+	ShowsCanvas bool     `json:"showsCanvas"`
 	Recents     []string `json:"recents"`
 }
 
@@ -215,6 +217,8 @@ func (b *Built) Apply(state State) bool {
 		enable(id, state.HasSelection)
 	}
 	enable("file.export", state.HasDocument)
+	// A diagram needs a canvas to land on, not merely a document open.
+	enable("insert.diagram", state.HasDocument && state.ShowsCanvas)
 	enable("canvas.pasteStyles", state.HasSelection && state.CanPasteStyles)
 	enable("canvas.lock", state.HasSelection)
 	enable("canvas.unlockAll", state.HasLocked)

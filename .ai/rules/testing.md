@@ -47,3 +47,12 @@ against `filepath.FromSlash(want)`.
 Go reports 0666 or 0777 there whatever was asked for, and who may read a file
 is an ACL question. A permissions test skips on Windows with the reason, rather
 than weakening what it asserts on macOS and Linux.
+
+## A seam at the transport does not test the transport
+Injecting `send` into the render client is how its debounce and staleness are
+tested, and it means those tests never execute `normalise`, the one place a
+binding's response becomes what the UI reads. A field left out there is simply
+absent at a running window while the suite stays green: Milestone 6.6 shipped
+an Insert button that did nothing, for exactly this reason. Anything that
+translates a response needs one test that drives the real path with the
+binding stubbed.

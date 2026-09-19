@@ -10,11 +10,37 @@ import { alignMoves, distributeMoves, type Alignment, type Move } from './align'
 import { duplicate, flip, group, paste, steppedOrder, topLevel, ungroup, withDescendants } from './edit';
 import { tidy } from './resize';
 import { copyStyle, pasteStyle, type CopiedStyle } from './style';
-import { createScene, isLocked, type Scene, type SceneElement } from './scene';
+import { createScene, isLocked, type ElementId, type Scene, type SceneElement } from './scene';
 import { rotatedBounds } from './rotate';
 import { releaseFrames } from './containment';
+import { remapReferences } from './references';
 import type { History } from './history';
 import type { Selection } from './selection';
+
+/**
+ * Elements whose ids do not collide with `taken`, with every reference to a
+ * renamed element rewritten.
+ *
+ * An id has to be unique within the file (`docs/file-format.md`), and
+ * bindings and frame membership are ids: a collision would attach an arrow to
+ * whatever already held that id, silently.
+ */
+function withFreshIds(elements: SceneElement[], taken: Set<ElementId>): SceneElement[] {
+  const renamed = new Map<ElementId, ElementId>();
+  for (const element of elements) {
+    if (!taken.has(element.id)) continue;
+    let candidate = `${element.id}-${Math.random().toString(36).slice(2, 8)}`;
+    while (taken.has(candidate)) candidate = `${element.id}-${Math.random().toString(36).slice(2, 8)}`;
+    taken.add(candidate);
+    renamed.set(element.id, candidate);
+  }
+  if (renamed.size === 0) return elements;
+
+  return remapReferences(elements, renamed).map((element) => ({
+    ...element,
+    id: renamed.get(element.id) ?? element.id,
+  })) as SceneElement[];
+}
 
 export function createCanvasCommands(options: { history: History; selection: Selection }) {
   const { history, selection } = options;
@@ -127,6 +153,24 @@ export function createCanvasCommands(options: { history: History; selection: Sel
       if (!copy()) return false;
       deleteSelection();
       return true;
+    },
+
+    /**
+     * Put a diagram converted from code on the canvas.
+     *
+     * One step, so one undo removes the whole thing, and selected on arrival
+     * so it can be dragged somewhere else straight away. The elements are
+     * ordinary from here on: nothing records that they were generated.
+     */
+    insertDiagram(elements: SceneElement[]): void {
+      if (elements.length === 0) return;
+      const arriving = withFreshIds(elements, new Set(history.current.elements.map((element) => element.id)));
+      const top = history.current.elements.reduce((max, element) => Math.max(max, element.z), 0);
+      history.mutate((draft) => {
+        // Above whatever is already there, keeping the order they arrived in.
+        draft.elements.push(...arriving.map((element, i) => ({ ...element, z: top + 1 + i })));
+      });
+      select(arriving.map((element) => element.id));
     },
 
     /** Resolves true when something was pasted. */

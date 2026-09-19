@@ -14,6 +14,11 @@ import type { ToolId } from '../canvas/tools.svelte';
 export const GRID_COLUMNS = 5;
 
 export type InsertItem = { kind: 'item'; id: ToolId; labelKey: MessageKey; icon: IconId };
+/**
+ * An insert that is not a tool: it opens something rather than arming the
+ * pointer. A diagram is written as code and arrives whole.
+ */
+export type InsertCommand = { kind: 'command'; id: 'diagram'; labelKey: MessageKey; icon: IconId };
 export type InsertCategory = {
   kind: 'category';
   id: string;
@@ -22,9 +27,14 @@ export type InsertCategory = {
   icon: IconId;
   items: InsertItem[];
 };
-export type InsertEntry = InsertItem | InsertCategory;
+export type InsertEntry = InsertItem | InsertCategory | InsertCommand;
 
 const shape = (id: ToolId & IconId, labelKey: MessageKey): InsertItem => ({ kind: 'item', id, labelKey, icon: id });
+
+/** Entries that are not a category and not a tool. */
+export const COMMANDS: InsertCommand[] = [
+  { kind: 'command', id: 'diagram', labelKey: 'insert.diagram', icon: 'code' },
+];
 
 export const CATEGORIES: InsertCategory[] = [
   {
@@ -47,7 +57,11 @@ export const CATEGORIES: InsertCategory[] = [
   },
 ];
 
-export type InsertOutcome = { type: 'none' } | { type: 'close' } | { type: 'choose'; tool: ToolId };
+export type InsertOutcome =
+  | { type: 'none' }
+  | { type: 'close' }
+  | { type: 'choose'; tool: ToolId }
+  | { type: 'command'; id: InsertCommand['id'] };
 
 const NONE: InsertOutcome = { type: 'none' };
 
@@ -59,9 +73,11 @@ export function createInsert() {
   const entries = $derived.by((): InsertEntry[] => {
     const needle = query.trim().toLowerCase();
     if (needle) {
-      return CATEGORIES.flatMap((c) => c.items).filter((item) => t(item.labelKey).toLowerCase().includes(needle));
+      return [...CATEGORIES.flatMap((c) => c.items), ...COMMANDS].filter((item) =>
+        t(item.labelKey).toLowerCase().includes(needle),
+      );
     }
-    return category ? category.items : CATEGORIES;
+    return category ? category.items : [...CATEGORIES, ...COMMANDS];
   });
 
   /** Whether the entries show as a grid of tiles rather than rows. */
@@ -81,6 +97,7 @@ export function createInsert() {
       highlighted = 0;
       return NONE;
     }
+    if (entry.kind === 'command') return { type: 'command', id: entry.id };
     return { type: 'choose', tool: entry.id };
   }
 

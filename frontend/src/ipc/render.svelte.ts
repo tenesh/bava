@@ -7,7 +7,16 @@
  * the diagram flickers between states, which looks like a layout bug and is not.
  */
 import { RenderService } from '../../bindings/github.com/tenesh/bava/internal/app';
-import type { Diagnostic, Result, Span } from '../../bindings/github.com/tenesh/bava/internal/render/models';
+import type {
+  Diagnostic,
+  Layout as WireLayout,
+  Result,
+  Span,
+} from '../../bindings/github.com/tenesh/bava/internal/render/models';
+
+/** The layout with its lists present, which is what every reader wants. */
+export type Layout = { shapes: NonNullable<WireLayout['shapes']>; connections: NonNullable<WireLayout['connections']> };
+
 
 /**
  * Milliseconds of quiet before a render is issued.
@@ -22,16 +31,29 @@ export type RenderResult = {
   svg: string;
   errors: Diagnostic[];
   nodeMap: Record<string, Span>;
+  /** The geometry a diagram is built from. Absent in older responses. */
+  layout?: Layout;
 };
 
 export type SendFn = (source: string, engine: string) => Promise<RenderResult>;
 
-/** Normalises the binding's nullable fields into the shape the UI wants. */
+/**
+ * Normalises the binding's nullable fields into the shape the UI wants.
+ *
+ * Every field the UI reads has to be carried here: this is the only place the
+ * real response is translated, and a field left out is simply absent at a
+ * running window however green the suite is.
+ */
 function normalise(result: Result): RenderResult {
+  const layout = result.layout as WireLayout | null | undefined;
   return {
     svg: result.svg ?? '',
     errors: result.errors ?? [],
     nodeMap: (result.nodeMap ?? {}) as Record<string, Span>,
+    layout: {
+      shapes: layout?.shapes ?? [],
+      connections: layout?.connections ?? [],
+    },
   };
 }
 
@@ -57,6 +79,9 @@ export function createRenderClient(options: RenderClientOptions = {}) {
   let svg = $state.raw('');
   let errors = $state.raw<Diagnostic[]>([]);
   let nodeMap = $state.raw<Record<string, Span>>({});
+  // The geometry the canvas builds shapes from, kept beside the SVG it
+  // previews: Insert converts the last good one.
+  let layout = $state.raw<Layout>({ shapes: [], connections: [] });
   let pending = $state.raw(false);
   let failure = $state.raw<string | null>(null);
 
@@ -77,6 +102,7 @@ export function createRenderClient(options: RenderClientOptions = {}) {
         // invalid states constantly; blanking the canvas would be unusable.
         svg = result.svg;
         nodeMap = result.nodeMap;
+        if (result.layout) layout = result.layout;
       }
     } catch (cause) {
       // A rejection here is a malformed request or a transport failure, not a
@@ -102,6 +128,9 @@ export function createRenderClient(options: RenderClientOptions = {}) {
       },
       get nodeMap() {
         return nodeMap;
+      },
+      get layout() {
+        return layout;
       },
       get pending() {
         return pending;

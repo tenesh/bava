@@ -21,5 +21,10 @@ export interface State {
      * HasLocked reports at least one locked element in the scene.
      */
     "hasLocked": boolean;
+
+    /**
+     * HasDocument reports a file open, which is what Export needs.
+     */
+    "hasDocument": boolean;
     "recents": string[] | null;
 }

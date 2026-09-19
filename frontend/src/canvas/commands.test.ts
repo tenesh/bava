@@ -433,3 +433,75 @@ describe('deleting a frame', () => {
     expect(history.current.elements.find((e) => e.id === 'in')).not.toHaveProperty('frame');
   });
 });
+
+// A diagram inserted from code is one step, selected on arrival, and made of
+// ordinary elements from then on.
+describe('inserting a diagram', () => {
+  const pair = () => [
+    { id: 'x1', type: 'rect', x: 0, y: 0, w: 40, h: 40, z: 1, label: 'A' },
+    { id: 'x2', type: 'rect', x: 100, y: 0, w: 40, h: 40, z: 2, label: 'B' },
+    { id: 'x3', type: 'arrow', x: 40, y: 20, w: 60, h: 0, z: 3, points: [0, 0, 60, 0], startBinding: 'x1', endBinding: 'x2' },
+  ] as never[];
+
+  it('adds every element in one undoable step', () => {
+    const { history, commands } = setup();
+    const before = history.current.elements.length;
+    commands.insertDiagram(pair());
+    expect(history.current.elements).toHaveLength(before + 3);
+    history.undo();
+    expect(history.current.elements).toHaveLength(before);
+  });
+
+  it('selects what it inserted, so it can be moved straight away', () => {
+    const { selection, commands } = setup();
+    commands.insertDiagram(pair());
+    expect(selection.ids.sort()).toEqual(['x1', 'x2', 'x3']);
+  });
+
+  it('gives the arrivals ids that do not collide with the scene', () => {
+    const { history, commands } = setup();
+    commands.insertDiagram([{ id: 'a', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1 }] as never[]);
+    const ids = history.current.elements.map((e) => e.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('paints them above what is already there', () => {
+    const { history, commands } = setup();
+    const top = Math.max(...history.current.elements.map((e) => e.z));
+    commands.insertDiagram(pair());
+    const arrived = history.current.elements.filter((e) => e.id.startsWith('x'));
+    for (const element of arrived) expect(element.z).toBeGreaterThan(top);
+  });
+
+  // The arrows arrive attached, so the re-route in `mutate` aims them at once.
+  it('aims the arrows as they land', () => {
+    const { history, commands } = setup();
+    commands.insertDiagram(pair());
+    const arrow = history.current.elements.find((e) => e.id === 'x3') as { x: number; points: number[] };
+    // The gap means it starts clear of A's right edge, not on it.
+    expect(arrow.x + arrow.points[0]).toBeGreaterThan(40);
+  });
+
+  it('does nothing at all for an empty diagram', () => {
+    const { history, commands } = setup();
+    const before = history.current.elements.length;
+    commands.insertDiagram([]);
+    expect(history.current.elements).toHaveLength(before);
+    expect(history.canUndo).toBe(false);
+  });
+
+  it('keeps a diagram group pointing at its own children when an id collides', () => {
+    const { history, commands } = setup();
+    // 'a' already exists in the scene, so the arrival is renamed.
+    commands.insertDiagram([
+      { id: 'a', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1 },
+      { id: 'gg', type: 'group', x: 0, y: 0, w: 10, h: 10, z: 2, children: ['a'] },
+    ] as never[]);
+
+    const group = history.current.elements.find((e) => e.type === 'group') as { children: string[] };
+    const present = new Set(history.current.elements.map((e) => e.id));
+    for (const child of group.children) expect(present.has(child)).toBe(true);
+    // Not the scene's own 'a', which was there before the insert.
+    expect(group.children).not.toContain('a');
+  });
+});

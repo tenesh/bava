@@ -7,6 +7,7 @@
  */
 import type { Component } from 'svelte';
 import ALargeSmall from '@lucide/svelte/icons/a-large-small';
+import Code from '@lucide/svelte/icons/code-2';
 import AlignCenterHorizontal from '@lucide/svelte/icons/align-center-horizontal';
 import AlignCenterVertical from '@lucide/svelte/icons/align-center-vertical';
 import AlignEndHorizontal from '@lucide/svelte/icons/align-end-horizontal';
@@ -75,6 +76,8 @@ export const LUCIDE_ICONS = {
   more: Ellipsis,
   ai: Sparkles,
   shapes: Shapes,
+  // Insert ▸ Diagram from code.
+  code: Code,
   diamond: Diamond,
   cylinder: Cylinder,
   hexagon: Hexagon,

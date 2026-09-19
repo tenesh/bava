@@ -3,6 +3,10 @@
 
 export type {
     Diagnostic,
+    Layout,
+    LayoutConnection,
+    LayoutPoint,
+    LayoutShape,
     Options,
     Result,
     Span,

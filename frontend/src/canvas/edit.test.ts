@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createScene } from './scene';
+import { createScene, type SceneElement } from './scene';
 import { boundsOf, duplicate, flip, group, paste, ungroup, PASTE_OFFSET } from './edit';
 
 function threeRects() {
@@ -161,5 +161,40 @@ describe('copying keeps bindings and containment inside the copy', () => {
     const pasted = paste(scene, [scene.get('a')!, scene.get('b')!, scene.get('arrow')!]);
     const arrow = pasted.find((e) => e.type === 'arrow') as Record<string, unknown>;
     expect(pasted.map((e) => e.id)).toContain(arrow.startBinding);
+  });
+});
+
+// A duplicated group has to hold the copies, not the originals: otherwise
+// selecting the copy selects and moves what it was copied from.
+describe('copying a group', () => {
+  it('points the copy children at the copies', () => {
+    const scene = createScene({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1 },
+        { id: 'b', type: 'rect', x: 20, y: 0, w: 10, h: 10, z: 2 },
+        { id: 'g', type: 'group', x: 0, y: 0, w: 30, h: 10, z: 3, children: ['a', 'b'] },
+      ] as never[],
+    });
+    const [copy] = duplicate(scene, [scene.get('g')!]) as (SceneElement & { children: string[] })[];
+    expect(copy.children).not.toContain('a');
+    expect(copy.children).not.toContain('b');
+    for (const child of copy.children) expect(scene.get(child)).toBeDefined();
+  });
+});
+
+describe('pasting a group', () => {
+  it('points the pasted children at the pasted copies', () => {
+    const scene = createScene({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1 },
+        { id: 'b', type: 'rect', x: 20, y: 0, w: 10, h: 10, z: 2 },
+        { id: 'g', type: 'group', x: 0, y: 0, w: 30, h: 10, z: 3, children: ['a', 'b'] },
+      ] as never[],
+    });
+    const originals = ['a', 'b', 'g'].map((id) => scene.get(id)!);
+    const pasted = paste(scene, originals) as (SceneElement & { children?: string[] })[];
+    const group = pasted.find((e) => e.type === 'group')!;
+    const copies = pasted.filter((e) => e.type === 'rect').map((e) => e.id);
+    expect(group.children!.sort()).toEqual(copies.sort());
   });
 });

@@ -12,6 +12,67 @@ export interface Diagnostic {
 }
 
 /**
+ * Layout is the geometry the canvas builds shapes from.
+ * 
+ * It is what the diagram *is*, not how D2 painted it: position, size, label,
+ * nesting and the route of each connection. Colours, opacity, dashes, icons,
+ * tooltips and links are deliberately absent. A diagram inserted on the canvas
+ * arrives in Bava's own style (decided 2026-09-19), and leaving D2's palette
+ * out of this contract is what keeps that true: nothing downstream can come to
+ * depend on it.
+ * 
+ * The SVG in the same result is for previewing. These two never disagree,
+ * because both come from the one compile.
+ */
+export interface Layout {
+    "shapes": LayoutShape[] | null;
+    "connections": LayoutConnection[] | null;
+}
+
+/**
+ * LayoutConnection is one edge, with the route the engine chose.
+ */
+export interface LayoutConnection {
+    "id": string;
+    "src": string;
+    "dst": string;
+    "srcArrow"?: string;
+    "dstArrow"?: string;
+    "label"?: string;
+    "route": LayoutPoint[] | null;
+}
+
+export interface LayoutPoint {
+    "x": number;
+    "y": number;
+}
+
+/**
+ * LayoutShape is one node, in diagram coordinates.
+ */
+export interface LayoutShape {
+    /**
+     * ID is D2's absolute id, dotted for a nested shape ("backend.compile").
+     */
+    "id": string;
+
+    /**
+     * Type is D2's shape name; the frontend maps it to Bava's shape set.
+     */
+    "type": string;
+
+    /**
+     * Parent is the container this shape sits in, or "" at the top level.
+     */
+    "parent"?: string;
+    "x": number;
+    "y": number;
+    "w": number;
+    "h": number;
+    "label"?: string;
+}
+
+/**
  * Options selects how a diagram is rendered. It is an options struct rather
  * than a widening parameter list because every field here crosses the IPC
  * boundary, and adding one must not change the binding's signature.
@@ -51,6 +112,12 @@ export interface Result {
      * NodeMap maps SVG element id to the source that produced it.
      */
     "nodeMap": { [_ in string]?: Span } | null;
+
+    /**
+     * Layout is the geometry the canvas builds shapes from. Empty when the
+     * source did not compile.
+     */
+    "layout": Layout;
 }
 
 /**

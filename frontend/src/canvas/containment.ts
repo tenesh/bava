@@ -119,10 +119,18 @@ export function releaseFrames(scene: SceneData, removed: Set<ElementId>): void {
 export function carriedWith(scene: SceneData, ids: ElementId[]): SceneElement[] {
   const chosen = scene.elements.filter((element) => ids.includes(element.id));
   const carried = new Map(withDescendants(createScene(scene), chosen).map((element) => [element.id, element]));
-  for (const element of [...carried.values()]) {
+
+  // A queue, not one pass: a frame inside a frame carries its own contents,
+  // and a converted diagram nests as deeply as the D2 it came from. The map
+  // de-duplicates, so a frame that somehow records itself cannot loop.
+  const queue = [...carried.values()];
+  while (queue.length > 0) {
+    const element = queue.shift()!;
     if (element.type !== 'frame') continue;
     for (const member of framedBy(scene, element.id)) {
-      if (!carried.has(member.id)) carried.set(member.id, member);
+      if (carried.has(member.id)) continue;
+      carried.set(member.id, member);
+      queue.push(member);
     }
   }
   return [...carried.values()];

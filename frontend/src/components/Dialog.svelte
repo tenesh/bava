@@ -16,15 +16,26 @@
   type Props = {
     open: boolean;
     title: string;
+    /**
+     * Take the content out of the DOM while closed.
+     *
+     * Ark keeps it mounted by default, which suits a dialog whose contents are
+     * cheap and stateless. A dialog that owns something imperative (an editor)
+     * wants this: otherwise the thing it created outlives the close and the
+     * next open shows what was there before.
+     */
+    unmountWhenClosed?: boolean;
     onOpenChange?: (open: boolean) => void;
     children: Snippet;
   };
 
-  let { open = $bindable(), title, onOpenChange, children }: Props = $props();
+  let { open = $bindable(), title, unmountWhenClosed = false, onOpenChange, children }: Props = $props();
 </script>
 
 <Dialog.Root
   bind:open
+  lazyMount={unmountWhenClosed}
+  unmountOnExit={unmountWhenClosed}
   onOpenChange={(details) => onOpenChange?.(details.open)}
 >
   <Portal container={portalRoot()}>

@@ -95,6 +95,23 @@ Owned by the frontend client in `frontend/src/ipc/render.svelte.ts`:
 - `Salt` is unset. It changes generated ids deterministically and is reserved
   for giving each embedded diagram its own id namespace in Milestone 5.
 
+### Layout
+
+Added in Milestone 6.6. `Result.layout` is the geometry the canvas builds
+shapes from: each shape's `id`, `type`, `parent`, position, size and label,
+and each connection's `src`, `dst`, arrowheads, label and `route`.
+
+**It carries no colours**, and no opacity, dashes, icons, tooltips or links.
+A diagram inserted on the canvas arrives in Bava's own style (decided
+2026-09-19), and leaving D2's palette out of the contract is what keeps that
+true: nothing downstream can come to depend on it.
+
+**`parent` comes from the dotted absolute id**, resolved against the ids that
+exist, so a label containing a dot cannot invent a container.
+
+**The SVG and the layout never disagree**, because both come from the one
+compile. The SVG is for previewing; the layout is for building.
+
 ## FileService
 
 Added in Milestone 5. Reads and writes files; knows nothing about what is in

@@ -135,6 +135,8 @@ $d-diagram-edge-label: #8b8f8a;
   --opacity-mark-faded: 1;
   // Elements the eraser will delete on release.
   --opacity-erasing: 0.2;
+  // A control that is present but cannot act: Insert with a broken diagram.
+  --opacity-disabled: 0.5;
   --color-diagram-bg: #{$l-diagram-bg};
   --color-diagram-container-fill: #{$l-diagram-container-fill};
   --color-diagram-node-fill: #{$l-diagram-node-fill};

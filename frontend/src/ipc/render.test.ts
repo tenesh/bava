@@ -174,3 +174,81 @@ describe('configurable debounce', () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 });
+
+// The dialog converts the layout of the last good compile, so the client has
+// to keep it beside the SVG it previews, under the same staleness rules.
+describe('the layout of the last good render', () => {
+  it('is kept when a compile succeeds', async () => {
+    const send = vi.fn().mockResolvedValue({
+      svg: '<svg/>',
+      errors: [],
+      nodeMap: {},
+      layout: { shapes: [{ id: 'a', type: 'rectangle', x: 0, y: 0, w: 10, h: 10 }], connections: [] },
+    });
+    const client = createRenderClient({ send, debounceMs: 0 });
+    client.request('a');
+    await vi.waitFor(() => expect(client.state.layout.shapes).toHaveLength(1));
+  });
+
+  // Users type through broken states constantly: the last good diagram stays
+  // on screen, and so does the layout that Insert would use.
+  it('survives a compile that fails', async () => {
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce({
+        svg: '<svg/>',
+        errors: [],
+        nodeMap: {},
+        layout: { shapes: [{ id: 'a', type: 'rectangle', x: 0, y: 0, w: 10, h: 10 }], connections: [] },
+      })
+      .mockResolvedValueOnce({ svg: '', errors: [{ message: 'broken', line: 1, from: 0, to: 1 }], nodeMap: {}, layout: { shapes: [], connections: [] } });
+    const client = createRenderClient({ send, debounceMs: 0 });
+    client.request('a');
+    await vi.waitFor(() => expect(client.state.layout.shapes).toHaveLength(1));
+    client.request('a ->');
+    await vi.waitFor(() => expect(client.state.errors).toHaveLength(1));
+    expect(client.state.layout.shapes).toHaveLength(1);
+  });
+});
+
+// The transport itself, not an injected stand-in. Every test above hands the
+// client its own `send`, so none of them touches the one line that turns a
+// binding's response into what the UI reads: the layout was dropped there and
+// Insert did nothing at a running window while the suite stayed green.
+describe('the real transport', () => {
+  it('carries every part of the response through, layout included', async () => {
+    vi.resetModules();
+    vi.doMock('../../bindings/github.com/tenesh/bava/internal/app', () => ({
+      RenderService: {
+        Render: async () => ({
+          svg: '<svg/>',
+          errors: [],
+          nodeMap: {},
+          layout: { shapes: [{ id: 'a', type: 'rectangle', x: 0, y: 0, w: 10, h: 10 }], connections: [] },
+        }),
+      },
+    }));
+    const { createRenderClient: fresh } = await import('./render.svelte');
+    const client = fresh({ debounceMs: 0 });
+    client.request('a');
+    await vi.waitFor(() => expect(client.state.layout.shapes).toHaveLength(1));
+    vi.doUnmock('../../bindings/github.com/tenesh/bava/internal/app');
+  });
+
+  it('turns the binding nulls into the empty shapes the UI expects', async () => {
+    vi.resetModules();
+    vi.doMock('../../bindings/github.com/tenesh/bava/internal/app', () => ({
+      RenderService: {
+        Render: async () => ({ svg: null, errors: null, nodeMap: null, layout: null }),
+      },
+    }));
+    const { createRenderClient: fresh } = await import('./render.svelte');
+    const client = fresh({ debounceMs: 0 });
+    client.request('a');
+    await vi.waitFor(() => expect(client.state.pending).toBe(false));
+    expect(client.state.svg).toBe('');
+    expect(client.state.errors).toEqual([]);
+    expect(client.state.layout).toEqual({ shapes: [], connections: [] });
+    vi.doUnmock('../../bindings/github.com/tenesh/bava/internal/app');
+  });
+});

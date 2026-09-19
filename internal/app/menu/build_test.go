@@ -212,3 +212,24 @@ func TestExportEntriesFollowTheState(t *testing.T) {
 		}
 	}
 }
+
+// Inserting a diagram needs somewhere to put it.
+func TestInsertDiagramNeedsADocument(t *testing.T) {
+	built, _ := build(t, "darwin")
+
+	built.Apply(menu.State{})
+	if built.Item("insert.diagram").Enabled() {
+		t.Error("Diagram from Code is enabled with no document open")
+	}
+	// A document open but the canvas hidden: there is nowhere to put it, and
+	// an item that is enabled and does nothing is worse than a disabled one.
+	built.Apply(menu.State{HasDocument: true})
+	if built.Item("insert.diagram").Enabled() {
+		t.Error("Diagram from Code is enabled with the canvas hidden")
+	}
+
+	built.Apply(menu.State{HasDocument: true, ShowsCanvas: true})
+	if !built.Item("insert.diagram").Enabled() {
+		t.Error("Diagram from Code is disabled with a document open and the canvas shown")
+	}
+}

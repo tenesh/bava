@@ -29,6 +29,8 @@
         { "kind": "command", "id": "file.saveAs", "label": "Save As…", "accelerator": "Shift+CmdOrCtrl+S" },
         { "kind": "separator" },
         { "kind": "command", "id": "file.export", "label": "Export…", "accelerator": "Shift+CmdOrCtrl+E" },
+        { "kind": "separator" },
+        { "kind": "command", "id": "insert.diagram", "label": "Diagram from Code…", "accelerator": "Shift+CmdOrCtrl+D" },
         { "kind": "separator", "platforms": ["windows", "linux"] },
         {
           "kind": "submenu",
