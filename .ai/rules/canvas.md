@@ -196,9 +196,13 @@ it, the way a group drag expands to its children. Half inside is not inside: a
 frame would otherwise carry off whatever overlapped its edge, and a frame
 dragged across the canvas would adopt what it passed over.
 
-## Membership is per element, and a group is not a unit
-`frame` lives on each element, so a group inside a frame is carried by its
-children rather than as a whole: the group wrapper holds no `frame` of its
-own. Moving the frame moves the children correctly, but the wrapper's stored
-box is not recomputed. Deciding whether a group or its children own membership
-is its own change; until then, do not assume a group has a frame.
+## Membership is recorded at every level, including a group wrapper
+`frame` lives on each element. A group inside a frame therefore records it
+twice over: the wrapper carries `frame`, and so does each child. That is
+consistent rather than redundant, because a move is computed from each
+element's position at the press, so every one of them shifts by the delta
+exactly once however the selection was expanded.
+
+The trap it leaves: any future edit that walks members and *then* expands
+groups would apply a delta twice. `carriedWith` is the one expansion, and it
+de-duplicates by id; add a second one and this is what breaks.
