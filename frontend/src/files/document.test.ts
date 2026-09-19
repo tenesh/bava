@@ -284,6 +284,10 @@ describe('style properties survive a load and a save', () => {
         someFutureKey: { nested: [1, 2] },
       },
       { id: 'a1', type: 'arrow', x: 0, y: 0, w: 5, h: 5, z: 2, points: [0, 0, 5, 5], arrowType: 'elbow', endArrowhead: 'triangle-outline' },
+      // Attachment and containment: ids, kept even when the target is gone.
+      { id: 'a2', type: 'arrow', x: 0, y: 0, w: 5, h: 5, z: 3, points: [0, 0, 5, 5], startBinding: 'r1', endBinding: 'went-away', label: 'edge label' },
+      { id: 'f1', type: 'frame', x: 0, y: 0, w: 50, h: 50, z: 4, label: 'Frame' },
+      { id: 'inside', type: 'rect', x: 5, y: 5, w: 10, h: 10, z: 5, frame: 'f1' },
     ],
     grid: { size: 8 },
   };

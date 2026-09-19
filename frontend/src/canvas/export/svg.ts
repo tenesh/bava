@@ -7,7 +7,7 @@
  * something looks: that would be a second drawing implementation, and it would
  * drift from the canvas the first time a shape changed.
  */
-import { drawHead, headAt, routePoints } from '../arrows';
+import { drawHead, headAt, labelPoint, pathLength, routePoints } from '../arrows';
 import { paintFor, type Paint } from '../paint';
 import { angleOfElement, centreOf } from '../rotate';
 import { isShapeType, type SceneElement } from '../scene';
@@ -127,6 +127,28 @@ function body(element: SceneElement, paint: Paint, headSize: number): string {
   );
 }
 
+/**
+ * An arrow's label, centred on the middle of the path it takes, as the stage
+ * centres it: measured the same way, positioned the same way.
+ */
+function arrowLabel(element: SceneElement, paint: Paint, label: string): string {
+  const points = routePoints(('points' in element ? element.points : []) as number[], (element as { arrowType?: string }).arrowType);
+  const at = labelPoint(points);
+  const measure = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
+  // The same width the stage wraps to: the length of the path it sits on.
+  const lines = wrapLines(label, pathLength(points), measure);
+  const width = Math.max(...lines.map(measure));
+  const height = paint.font.size * paint.font.lineHeight * lines.length;
+  const box = {
+    ...element,
+    x: element.x + at.x - width / 2,
+    y: element.y + at.y - height / 2,
+    w: width,
+    h: height,
+  } as SceneElement;
+  return textElement(box, { ...paint, font: { ...paint.font, align: 'center', verticalAlign: 'middle' } }, label, 0);
+}
+
 /** An arrow's heads, drawn and turned exactly as the stage draws them. */
 function heads(element: SceneElement, paint: Paint, routed: number[], size: number): string {
   const props = element as SceneElement & { startArrowhead?: string; endArrowhead?: string };
@@ -154,9 +176,11 @@ function draw(element: SceneElement, options: SvgOptions, labelInset: number): s
     body(element, paint, parseFloat(options.read('--size-arrowhead')) || 0) +
     (element.type === 'text'
       ? textElement(element, paint, (element as { text: string }).text, 0)
-      : label && (isShapeType(element.type) || element.type === 'frame')
-        ? textElement(element, paint, label, labelInset)
-        : '');
+      : label && element.type === 'arrow'
+        ? arrowLabel(element, paint, label)
+        : label && (isShapeType(element.type) || element.type === 'frame')
+          ? textElement(element, paint, label, labelInset)
+          : '');
   if (inner === '') return '';
 
   const angle = angleOfElement(element);

@@ -135,6 +135,8 @@ or the source editor has it.
 |---|---|
 | Drag with a shape tool | Create that shape; hold `⇧` for a square (a circle, a square box) |
 | Drag with Line or Arrow | Draw it; hold `⇧` to snap to 15° steps |
+| Drag with Arrow onto a shape | Attach the arrow to it; hold `⌥` to leave it free |
+| Drag an end of a selected arrow | Attach it to a shape, or drop it on empty canvas to let go |
 | Click with Text | Place text and start typing; nothing is added until you type |
 | Double-click a shape, frame or text | Type into its label or text |
 | Drag a selection handle | Resize; hold `⇧` to keep the proportions, from any handle |

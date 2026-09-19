@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { drawHead, headAt, routePoints } from './arrows';
+import { drawHead, headAt, routePoints, labelPoint } from './arrows';
 
 const from = [0, 0, 100, 60];
 
@@ -89,5 +89,26 @@ describe('where a head points', () => {
     expect(headAt([0, 0, 0, 10], 'end')).toMatchObject({ x: 0, y: 10, angle: 90 });
     // The start head points back along the first segment.
     expect(headAt([0, 0, 10, 0], 'start')).toMatchObject({ x: 0, y: 0, angle: 180 });
+  });
+});
+
+// A label sits at the middle of the path the arrow actually takes, so it
+// stays on the line when the arrow is an elbow or an arc.
+describe('where an arrow label sits', () => {
+  it('is the midpoint of a straight run', () => {
+    expect(labelPoint([0, 0, 100, 0])).toEqual({ x: 50, y: 0 });
+  });
+
+  it('follows the path, not the straight line between the ends', () => {
+    // An elbow out, across and in: its middle is on the crossing segment.
+    const elbow = routePoints([0, 0, 100, 60], 'elbow');
+    const at = labelPoint(elbow);
+    expect(at.x).toBe(50);
+    expect(at.y).toBeGreaterThan(0);
+    expect(at.y).toBeLessThan(60);
+  });
+
+  it('is the single point of a degenerate arrow', () => {
+    expect(labelPoint([7, 9])).toEqual({ x: 7, y: 9 });
   });
 });

@@ -194,6 +194,9 @@ Optional on the element types listed, and absent means the default:
 | `startArrowhead` | an arrowhead name | `none` | `arrow` |
 | `endArrowhead` | an arrowhead name | `arrow` | `arrow` |
 | `angle` | degrees, 0 to 359, clockwise about the element's centre | 0 | every element except an elbow arrow |
+| `startBinding` | the `id` of the element this end is attached to | not attached | `arrow` |
+| `endBinding` | as above, for the other end | not attached | `arrow` |
+| `frame` | the `id` of the `frame` that owns this element | not in a frame | every element |
 
 Arrowhead names: `none`, `arrow`, `bar`, `triangle`, `triangle-outline`,
 `circle`, `circle-outline`, `diamond`, `diamond-outline`. The entity-relation
@@ -212,6 +215,27 @@ appearance.
 ...]` relative to the element's `x, y`. `line` and `arrow` have two points
 when drawn; `stroke` has as many as the pen recorded. They take `stroke`, and
 never `fill`.
+
+### Attachment and containment
+An `arrow` may carry `startBinding` and `endBinding`: the `id` of the element
+that end is attached to. A bound end is drawn on the target's outline, on the
+line towards its centre, a fixed gap clear of it, so moving either end re-aims
+the arrow. The stored `points` are still written: they are what the arrow
+falls back to when a binding cannot be resolved.
+
+Any element may carry `frame`: the `id` of the `frame` element that owns it.
+Membership lives on the child, so an element can only ever be in one frame and
+there is one place to look. Moving a frame moves everything that records it;
+deleting a frame keeps its contents and clears their `frame`, because deleting
+a container must not delete work the user did not select.
+
+**A binding whose target is gone is kept, never deleted.** The key stays, with
+the id it had, the endpoint stays where it last was, and Bava marks that end
+detached. Reopening a file whose target has since returned re-aims it. This is
+the rule of `canvas-architecture.md`: never silently remove something the user
+drew.
+
+An `arrow` may also carry a `label`, drawn at the middle of the path it takes.
 
 ### Text, frames and groups
 - `text` carries `text`, `measuredWidth` and `measuredHeight`, and may take

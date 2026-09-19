@@ -81,3 +81,23 @@ describe('hitting what is drawn', () => {
     expect(erasableAlong(drawn, { x: 450, y: 19 }, { x: 450, y: 19 }, 3)).toEqual([]);
   });
 });
+
+// The eraser and selection test the same drawn path: an elbow's dog-leg and
+// an arc's bow are where the user sees them, not where the stored points run.
+describe('erasing follows the routed path', () => {
+  const elbow: SceneData = {
+    elements: [
+      { id: 'a', type: 'arrow', x: 0, y: 0, w: 100, h: 100, z: 1, points: [0, 0, 100, 100], arrowType: 'elbow' } as never,
+    ],
+  };
+
+  it('erases where the elbow actually runs', () => {
+    // The dog-leg goes out to x 50 and down: (50, 60) is on it, the straight
+    // diagonal between the ends is not.
+    expect(erasableAlong(elbow, { x: 50, y: 60 }, { x: 50, y: 60 }, 3)).toEqual(['a']);
+  });
+
+  it('does not erase where only the straight line between the ends would be', () => {
+    expect(erasableAlong(elbow, { x: 20, y: 20 }, { x: 20, y: 20 }, 3)).toEqual([]);
+  });
+});

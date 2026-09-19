@@ -55,11 +55,41 @@ export function ungroup(scene: Scene, id: ElementId): void {
 
 /** Copy elements into the scene, offset so the copy is visible. */
 export function paste(scene: Scene, elements: SceneElement[]): SceneElement[] {
-  return elements.map((element) => {
+  const copies = new Map<ElementId, SceneElement>();
+  const pasted = elements.map((element) => {
     const copy = { ...element, x: element.x + PASTE_OFFSET, y: element.y + PASTE_OFFSET };
     // add() assigns a fresh id and z; the ones carried over are ignored.
-    return scene.add(copy);
+    const added = scene.add(copy);
+    copies.set(element.id, added);
+    return added;
   });
+  remapReferences(scene, pasted, copies);
+  return refreshed(scene, pasted);
+}
+
+/**
+ * Point a copy's references at the other copies rather than the originals.
+ *
+ * A copied arrow attaches to the copied shapes, and a copied child joins the
+ * copied frame; a reference to something that was *not* copied is kept, since
+ * that element is still there and the copy sits on it.
+ */
+function remapReferences(scene: Scene, copies: SceneElement[], byOriginal: Map<ElementId, SceneElement>): void {
+  for (const copy of copies) {
+    const referring = copy as SceneElement & { startBinding?: string; endBinding?: string; frame?: string };
+    const update: Record<string, string> = {};
+    for (const key of ['startBinding', 'endBinding', 'frame'] as const) {
+      const original = referring[key];
+      const replacement = original === undefined ? undefined : byOriginal.get(original);
+      if (replacement) update[key] = replacement.id;
+    }
+    if (Object.keys(update).length > 0) scene.update(copy.id, update as Partial<SceneElement>);
+  }
+}
+
+/** The scene's current version of each element, after an update replaced it. */
+function refreshed(scene: Scene, elements: SceneElement[]): SceneElement[] {
+  return elements.map((element) => scene.get(element.id) ?? element);
 }
 
 /**
@@ -95,7 +125,12 @@ export function duplicate(scene: Scene, elements: SceneElement[]): SceneElement[
     }
     copies.set(element.id, scene.add(moved));
   }
-  return elements.map((e) => copies.get(e.id)).filter((e): e is SceneElement => Boolean(e));
+  // The copies refer to each other, never back to what they were copied from.
+  remapReferences(scene, [...copies.values()], copies);
+  return refreshed(
+    scene,
+    elements.map((e) => copies.get(e.id)).filter((e): e is SceneElement => Boolean(e)),
+  );
 }
 
 /**

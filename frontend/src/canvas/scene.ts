@@ -46,10 +46,22 @@ export type StyleProps = {
   locked?: boolean;
   /** Degrees, clockwise about the element's centre. */
   angle?: number;
+  /** The id of the frame that owns this element, if any. */
+  frame?: string;
 };
 
-/** An arrow's routing and its ends. */
-export type ArrowProps = { arrowType?: string; startArrowhead?: string; endArrowhead?: string };
+/**
+ * An arrow's routing, its ends, and what those ends are attached to. A binding
+ * is the target's id: ids survive a move, coordinates do not. A binding whose
+ * target is gone is kept and the endpoint freezes (`docs/file-format.md`).
+ */
+export type ArrowProps = {
+  arrowType?: string;
+  startArrowhead?: string;
+  endArrowhead?: string;
+  startBinding?: string;
+  endBinding?: string;
+};
 
 /** The closed shapes: rectangle and ellipse, and the seven with outlines. */
 export const SHAPE_TYPES = [

@@ -12,6 +12,7 @@ import { tidy } from './resize';
 import { copyStyle, pasteStyle, type CopiedStyle } from './style';
 import { createScene, isLocked, type Scene, type SceneElement } from './scene';
 import { rotatedBounds } from './rotate';
+import { releaseFrames } from './containment';
 import type { History } from './history';
 import type { Selection } from './selection';
 
@@ -43,6 +44,7 @@ export function createCanvasCommands(options: { history: History; selection: Sel
     if (ids.size === 0) return;
     history.mutate((draft) => {
       draft.elements = draft.elements.filter((e) => !ids.has(e.id));
+      releaseFrames(draft, ids);
     });
     selection.clear();
   }
