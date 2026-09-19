@@ -20,6 +20,10 @@ import type { SceneData, SceneElement, ElementId } from './scene';
 import type { ArrowProps, StyleProps } from './scene';
 import { isShapeType } from './scene';
 import { drawOutline, isOutlineShape } from './shapes';
+import { paintFor, ROUND_SHARE } from './paint';
+import { wrapLines } from './text-layout';
+import { smoothPoints } from './curves';
+import { canvasLineWidth } from './text-measure';
 import { drawHead, headAt, routePoints } from './arrows';
 import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
 import { HANDLES, handleCentre, rotateHandleCentre } from './resize';
@@ -345,6 +349,15 @@ export class CanvasStage {
     this.#stage?.size({ width, height });
   }
 
+  /**
+   * The drawn scene as a canvas, at `pixelRatio` device pixels per scene unit.
+   * What the export encodes: the same nodes, drawn by the same renderer.
+   */
+  toCanvas(pixelRatio = 1): HTMLCanvasElement {
+    if (!this.#stage) throw new Error('canvas: the stage is not mounted');
+    return this.#stage.toCanvas({ pixelRatio });
+  }
+
   size(): { width: number; height: number } {
     return this.#stage ? this.#stage.size() : { width: 0, height: 0 };
   }
@@ -394,6 +407,12 @@ export class CanvasStage {
     this.#handles = [];
     this.#entries.clear();
     this.#pending = null;
+  }
+
+  /** Measures a line the way this element is drawn, for the shared breaker. */
+  #lineWidth(element: SceneElement, read: ReadVariable): (line: string) => number {
+    const paint = paintFor(element, read);
+    return canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
   }
 
   #create(element: SceneElement): Entry {
@@ -459,15 +478,19 @@ export class CanvasStage {
       body.radiusY(element.h / 2);
     } else if (body instanceof Konva.Line) {
       const points = 'points' in element ? element.points : [];
-      body.points(
-        element.type === 'arrow' ? routePoints(points, (element as SceneElement & ArrowProps).arrowType) : points,
-      );
+      const routed =
+        element.type === 'arrow' ? routePoints(points, (element as SceneElement & ArrowProps).arrowType) : points;
+      // Smoothed here rather than by Konva's own tension, which the exporter
+      // cannot see: both renderers draw the samples `curves.ts` returns.
+      body.points(smoothPoints(routed, paintFor(element, read).tension));
     } else {
       body.width(element.w);
       body.height(element.h);
     }
     if (body instanceof Konva.Text && element.type === 'text') {
-      body.text(element.text);
+      // Broken here, not by Konva: the exporter cannot see inside Konva's
+      // wrapping, so both renderers break through `text-layout.ts` instead.
+      body.text(wrapLines(element.text, element.w, this.#lineWidth(element, read)).join('\n'));
     }
 
     // A shape's label is centred in it; a frame's sits at its top-left corner.
@@ -475,13 +498,15 @@ export class CanvasStage {
     const label = labelled && 'label' in element ? element.label : undefined;
     if (label) {
       if (!entry.label) {
-        entry.label = new Konva.Text({ wrap: 'word', listening: false });
+        entry.label = new Konva.Text({ wrap: 'none', listening: false });
         group.add(entry.label);
       }
       const inset = number(read, '--size-label-inset');
       const isFrame = element.type === 'frame';
       const props = element as SceneElement & StyleProps;
-      entry.label.text(label);
+      entry.label.text(
+        wrapLines(label, Math.max(0, element.w - inset * 2), this.#lineWidth(element, read)).join('\n'),
+      );
       entry.label.align(props.align ?? (isFrame ? 'left' : 'center'));
       entry.label.verticalAlign(props.verticalAlign ?? (isFrame ? 'top' : 'middle'));
       entry.label.x(inset);
@@ -539,108 +564,58 @@ export class CanvasStage {
   }
 
   #style(entry: Entry, element: SceneElement, read: ReadVariable): void {
-    const style = resolveStyle(element as { fill?: string; stroke?: string; color?: string }, read);
-    const props = element as SceneElement & StyleProps & ArrowProps;
-    const strokeWidth = props.strokeWidth ?? number(read, '--size-shape-stroke');
-    const fontFamily = read('--font-ui').trim();
-    const fontSize = props.fontSize ?? number(read, '--text-body');
-    const lineHeight = number(read, '--leading-tight');
+    // How it looks is decided once, in paint.ts, and the exporter reads the
+    // same description: a second set of rules here would drift from the file
+    // a user exports.
+    const paint = paintFor(element, read);
     const { body } = entry;
 
     // The element's own opacity, on the group so a label fades with its shape.
-    entry.group.opacity(props.opacity === undefined ? 1 : Math.min(100, Math.max(0, props.opacity)) / 100);
-    body.dash(dashFor(props.strokeStyle, read));
-    if (body instanceof Konva.Rect) {
-      body.cornerRadius(props.edges === 'round' ? number(read, '--radius-shape-round') : 0);
-    }
+    entry.group.opacity(paint.opacity);
+    body.dash(paint.dash);
+    if (body instanceof Konva.Rect) body.cornerRadius(paint.cornerRadius);
     // A polygon outline rounds itself when it draws; the flag rides on the node.
-    if (isOutlineShape(element.type)) body.setAttr('bavaRound', props.edges === 'round');
-    if (body instanceof Konva.Line && props.edges === 'round') {
-      body.tension(LINE_TENSION);
-    } else if (body instanceof Konva.Line) {
-      body.tension(0);
-    }
+    if (isOutlineShape(element.type)) body.setAttr('bavaRound', paint.cornerRadius > 0);
+    // The smoothing is already in the points; Konva must not smooth them again.
+    if (body instanceof Konva.Line) body.tension(0);
 
-    switch (element.type) {
-      case 'text':
-        body.fill(style.text);
-        (body as Konva.Text).fontFamily(fontFamily);
-        (body as Konva.Text).fontSize(fontSize);
-        (body as Konva.Text).lineHeight(lineHeight);
-        (body as Konva.Text).align(props.align ?? 'left');
-        break;
-      case 'line':
-      case 'stroke':
-        body.stroke(style.stroke);
-        body.strokeWidth(
-          props.strokeWidth ?? (element.type === 'stroke' ? number(read, '--size-pen-stroke') : strokeWidth),
-        );
-        break;
-      case 'arrow': {
-        body.stroke(style.stroke);
-        // The arrowhead is filled in the line's colour.
-        body.fill(style.stroke);
-        body.strokeWidth(strokeWidth);
-        const arrow = body as Konva.Arrow;
-        arrow.pointerLength(number(read, '--size-arrowhead'));
-        arrow.pointerWidth(number(read, '--size-arrowhead'));
-        // Which ends carry a head. Their shapes arrive with the routing.
-        // The heads are their own nodes; Konva's pointer draws triangles only.
-        arrow.pointerAtBeginning(false);
-        arrow.pointerAtEnding(false);
-        break;
-      }
-      case 'group':
-        // A group draws nothing of its own; its children are the drawing.
-        body.stroke('');
-        body.fill('');
-        break;
-      case 'frame':
-        body.stroke(style.stroke);
-        body.strokeWidth(strokeWidth);
-        body.fill('');
-        break;
-      default:
-        body.stroke(style.stroke);
-        body.fill(style.fill);
-        body.strokeWidth(strokeWidth);
+    body.stroke(paint.stroke);
+    body.fill(element.type === 'text' ? paint.font.colour : paint.fill);
+    body.strokeWidth(paint.strokeWidth);
+
+    if (body instanceof Konva.Text && element.type === 'text') {
+      body.fontFamily(paint.font.family);
+      body.fontSize(paint.font.size);
+      body.lineHeight(paint.font.lineHeight);
+      body.align(paint.font.align);
+      // Set explicitly, so the exporter and Konva agree rather than each
+      // falling back to its own default.
+      body.verticalAlign(paint.font.verticalAlign);
+    }
+    if (body instanceof Konva.Arrow) {
+      const head = number(read, '--size-arrowhead');
+      body.pointerLength(head);
+      body.pointerWidth(head);
+      // The heads are their own nodes; Konva's pointer draws triangles only.
+      body.pointerAtBeginning(false);
+      body.pointerAtEnding(false);
     }
 
     if (entry.label) {
-      entry.label.fill(style.text);
-      entry.label.fontFamily(fontFamily);
-      entry.label.fontSize(fontSize);
-      entry.label.lineHeight(lineHeight);
+      entry.label.fill(paint.font.colour);
+      entry.label.fontFamily(paint.font.family);
+      entry.label.fontSize(paint.font.size);
+      entry.label.lineHeight(paint.font.lineHeight);
     }
   }
 }
 
-/** Excalidraw's proportional radius: a quarter of the shorter side. */
-const ROUND_SHARE = 0.25;
 
-/**
- * How much a rounded line is smoothed. A polyline has no corners to cut, so
- * Round bends it through its points instead, which Konva calls tension. The
- * value is a shape of a curve, not a length, so it is a constant here rather
- * than a token (`.ai/rules/canvas.md`).
- */
-const LINE_TENSION = 0.4;
 
 /** A sink that draws nothing: for asking a head whether it is filled. */
 const NO_SINK = { moveTo: () => {}, lineTo: () => {}, bezierCurveTo: () => {}, closePath: () => {} };
 
 /** The dash pattern for a stroke style, in scene units, or none. */
-function dashFor(style: string | undefined, read: ReadVariable): number[] {
-  if (style === 'dashed') {
-    const dash = number(read, '--size-dash');
-    return [dash, dash];
-  }
-  if (style === 'dotted') {
-    const dot = number(read, '--size-dot');
-    return [dot, dot * 2];
-  }
-  return [];
-}
 
 function boundsToRect(box: { x: number; y: number; w: number; h: number }) {
   return { x: box.x, y: box.y, width: box.w, height: box.h };

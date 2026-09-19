@@ -62,6 +62,7 @@ func main() {
 	wailsApp := application.New(appOptions(session, []application.Service{
 		application.NewService(app.NewRenderService()),
 		application.NewService(app.NewFileService()),
+		application.NewService(app.NewExportService()),
 		application.NewService(menus),
 		application.NewService(logService),
 	}, emit))

@@ -16,6 +16,8 @@
   import { topLevel } from './canvas/edit';
   import { createScene, isLocked } from './canvas/scene';
   import { angleOfElement } from './canvas/rotate';
+  import { createExporter, exportIO } from './canvas/export/exporter.svelte';
+  import ExportDialog from './components/ExportDialog.svelte';
   import { topmostAt } from './canvas/eraser';
   import { SourcePane } from './editor/source-pane';
   import { createRenderClient } from './ipc/render.svelte';
@@ -66,7 +68,7 @@
   } from './shell/shortcuts';
   import menuSpec from '../../internal/app/menu/spec.json';
   import { Clipboard, Events } from '@wailsio/runtime';
-  import { FileService, LogService, MenuService } from '../bindings/github.com/tenesh/bava/internal/app';
+  import { ExportService, FileService, LogService, MenuService } from '../bindings/github.com/tenesh/bava/internal/app';
   import { t } from './i18n/t';
 
   const client = createRenderClient();
@@ -94,6 +96,23 @@
     rotateGap: () => (parseFloat(readRootVariable('--size-rotate-gap')) || 0) / viewport.zoom,
   });
   const canvasCommands = createCanvasCommands({ history, selection });
+  // Export: the dialog's settings and what each button does. The drawing
+  // itself is pure code under `canvas/export/`.
+  const exporter = createExporter({
+    scene: () => history.current,
+    selection: () => selection.ids,
+    documentName: () => doc.path?.replace(/^.*[\\/]/, '') || t('file.untitled'),
+    notify,
+    io: exportIO({
+      choosePath: async (suggested) => (await FileService.ChooseFileToSave(suggested)).path || null,
+      save: (path, contents) => ExportService.Save(path, contents),
+    }),
+  });
+  // Drawn when the dialog is open or a setting changes, never from inside the
+  // markup: the preview swaps `data-theme` for the length of the draw, which
+  // has no business happening during a render pass.
+  const exportPreview = $derived(exporter.isOpen ? exporter.preview() : '');
+
   const view = createViewState();
   const settingsState = createSettings();
   const recents = createRecents();
@@ -510,6 +529,7 @@
     'file.settings': () => {
       settingsOpen = true;
     },
+    'file.export': () => exporter.open({ onlySelected: false }),
 
     'edit.undo': () =>
       routeEdit({ source: () => pane.undo(), field: fieldCommand('undo'), canvas: canvasEdit(canvasCommands.undo) }),
@@ -574,6 +594,15 @@
     'canvas.duplicate': canvasEdit(canvasCommands.duplicate),
     'canvas.lock': canvasEdit(canvasCommands.lock),
     'canvas.unlockAll': canvasEdit(canvasCommands.unlockAll),
+    'canvas.copyPng': () => {
+      if (canvasShown()) void exporter.copyFromMenu('png');
+    },
+    'canvas.copySvg': () => {
+      if (canvasShown()) void exporter.copyFromMenu('svg');
+    },
+    'canvas.exportSelection': () => {
+      if (canvasShown()) exporter.open({ onlySelected: true });
+    },
     'canvas.copyStyles': () => {
       if (!canvasShown()) return;
       canvasCommands.copyStyles();
@@ -925,6 +954,7 @@
       hasSelection,
       canPasteStyles,
       hasLocked: published.elements.some(isLocked),
+      hasDocument: doc.path !== null || published.elements.length > 0,
       recents: recents.paths,
     };
     void MenuService.SetState(state).catch(() => {
@@ -1059,6 +1089,16 @@
   Always mounted, so closing never reads props from state already cleared:
   that threw at a running window.
 -->
+<ExportDialog
+  open={exporter.isOpen}
+  hasSelection={selectedIds.length > 0}
+  settings={exporter.settings}
+  preview={exportPreview}
+  onSettings={(change) => exporter.change(change)}
+  onExport={(format) => void exporter.exportAs(format)}
+  onCopy={() => void exporter.copy()}
+/>
+
 <ContextMenu
     items={contextMenu?.items ?? []}
     open={contextMenu !== null}

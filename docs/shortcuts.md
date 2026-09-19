@@ -40,6 +40,7 @@ Shortcuts) lists the rest.
 | File | Open… | `⌘O` | `Ctrl+O` |
 | File | Save | `⌘S` | `Ctrl+S` |
 | File | Save As… | `⇧⌘S` | `Ctrl+Shift+S` |
+| File | Export… | `⇧⌘E` | `Ctrl+Shift+E` |
 | File | Settings… | none | `Ctrl+,` |
 | Edit | Undo | `⌘Z` | `Ctrl+Z` |
 | Edit | Redo | `⇧⌘Z` | `Ctrl+Shift+Z` |
@@ -82,6 +83,7 @@ Shortcuts) lists the rest.
 | Canvas | Duplicate | `⌘D` | `Ctrl+D` |
 | Canvas | Lock | `⇧⌘L` | `Ctrl+Shift+L` |
 | Canvas | Unlock All | `⌥⇧⌘L` | `Ctrl+Shift+Alt+L` |
+| Canvas | PNG | `⌥⇧C` | `Shift+Alt+C` |
 | Canvas | Copy Styles | `⌥⌘C` | `Ctrl+Alt+C` |
 | Canvas | Paste Styles | `⌥⌘V` | `Ctrl+Alt+V` |
 | Help | Keyboard Shortcuts | `⌘/` | `Ctrl+/` |

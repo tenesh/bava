@@ -70,6 +70,14 @@
   --size-progress-splash: 148px;
   --size-progress-thickness: 2px;
 
+  // The export dialog's preview panel.
+  --size-export-preview: 220px;
+
+  // An on/off switch: its track, its height, and the dot that slides.
+  --size-toggle-track: 30px;
+  --size-toggle-thumb: 18px;
+  --size-toggle-dot: 14px;
+
   // A slider inside a popover: the opacity control.
   --size-slider-track: 148px;
   --size-slider-thumb: 10px;

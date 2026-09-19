@@ -27,8 +27,10 @@ type State struct {
 	// CanPasteStyles reports a style copied with Copy Styles.
 	CanPasteStyles bool `json:"canPasteStyles"`
 	// HasLocked reports at least one locked element in the scene.
-	HasLocked bool     `json:"hasLocked"`
-	Recents   []string `json:"recents"`
+	HasLocked bool `json:"hasLocked"`
+	// HasDocument reports a file open, which is what Export needs.
+	HasDocument bool     `json:"hasDocument"`
+	Recents     []string `json:"recents"`
 }
 
 // Built is a constructed menu bar and handles to the items state changes.
@@ -208,9 +210,11 @@ func (b *Built) Apply(state State) bool {
 		"canvas.alignTop", "canvas.alignMiddle", "canvas.alignBottom",
 		"canvas.distributeHorizontal", "canvas.distributeVertical",
 		"canvas.copyStyles",
+		"canvas.copyPng", "canvas.copySvg", "canvas.exportSelection",
 	} {
 		enable(id, state.HasSelection)
 	}
+	enable("file.export", state.HasDocument)
 	enable("canvas.pasteStyles", state.HasSelection && state.CanPasteStyles)
 	enable("canvas.lock", state.HasSelection)
 	enable("canvas.unlockAll", state.HasLocked)

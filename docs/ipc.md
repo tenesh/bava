@@ -111,6 +111,26 @@ them beyond handing the parse to `internal/format`.
 | `Settings()` | the user's preferences, defaults when unreadable |
 | `SaveSettings(settings)` | an error string, empty on success |
 
+## ExportService
+
+Added in Milestone 6.4. Writes an exported picture where the user asked.
+
+| Method | Returns |
+|---|---|
+| `Save(path, contentsBase64)` | an error string, empty on success |
+
+**The picture is drawn in the frontend**, which owns the canvas, and crosses as
+base64. The bridge is JSON, so raw bytes would arrive as an array of numbers,
+several times the size of the image. Go decodes and writes; it never draws.
+
+**It writes like a document save**, through `store.Save`: a temporary file
+renamed into place, so a failure never leaves half a PNG where a whole one
+was, and a folder that does not exist is an error rather than something
+silently created.
+
+**It is not part of `FileService`.** An export is a copy, not the user's
+document: nothing here touches the open file, its stamp or its history.
+
 **A scene crosses the bridge whole.** `format.Scene` and `format.Element`
 implement their own JSON encoding, so every key an element has, known or not,
 reaches the frontend and comes back to be saved (fixed in Milestone 6: a plain

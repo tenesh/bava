@@ -20,8 +20,9 @@ function sourceFiles(dir: string): string[] {
       out.push(...sourceFiles(path));
       continue;
     }
-    // Tests describe literals in order to assert about them.
-    if (path.endsWith('.test.ts')) continue;
+    // Tests describe literals in order to assert about them, and so does the
+    // test data beside them: a fixture's whole point is fixed values.
+    if (path.endsWith('.test.ts') || path.includes('__fixtures__')) continue;
     if (EXTENSIONS.some((e) => path.endsWith(e))) out.push(path);
   }
   return out;
