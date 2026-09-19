@@ -133,7 +133,12 @@ export function overflowMenu(controls: ToolbarControl[]): MenuNode[] {
     const options =
       control.kind === 'slider'
         ? OPACITY_STEPS.map((step) => ({ value: step, label: `${step}%` }))
-        : property.options.map((option) => ({ value: option.value, label: t(option.labelKey) }));
+        : // A proper noun (a language) carries its own name; everything else
+          // is a message key.
+          property.options.map((option) => ({
+            value: option.value,
+            label: option.labelKey ? t(option.labelKey) : (option.label ?? ''),
+          }));
     return {
       kind: 'submenu',
       id: `property:${control.id}`,

@@ -5,8 +5,8 @@ describe('insert panel state', () => {
   it('starts at all categories with the first highlighted', () => {
     const insert = createInsert();
     expect(insert.category).toBeNull();
-    // Categories first, then the inserts that are not tools.
-    expect(insert.entries.map((e) => e.id)).toEqual(['shape', 'diagram']);
+    // Categories, then the tools that are not shapes, then what is not a tool.
+    expect(insert.entries.map((e) => e.id)).toEqual(['shape', 'code', 'diagram']);
     expect(insert.entries[0].kind).toBe('category');
     expect(insert.highlighted).toBe(0);
   });

@@ -7,7 +7,7 @@ describe('tool rail layout', () => {
     expect(RAIL_GROUPS.map((group) => group.map((item) => item.id))).toEqual([
       ['insert'],
       ['select', 'rect', 'ellipse', 'arrow', 'line', 'pen', 'text'],
-      ['frame', 'eraser'],
+      ['frame', 'code', 'eraser'],
     ]);
   });
 

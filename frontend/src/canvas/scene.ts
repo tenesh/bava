@@ -105,6 +105,21 @@ export type TextElement = Base & StyleProps & {
   measuredHeight: number;
 };
 
+/**
+ * A block of code, highlighted in the language it names.
+ *
+ * Its size comes from its code (`docs/file-format.md`), so `w`/`h` and the
+ * measurement are recomputed on every edit rather than dragged. An unknown
+ * `language` is kept and drawn as plain text: the file said it for a reason.
+ */
+export type CodeElement = Base & StyleProps & {
+  type: 'code';
+  code: string;
+  language?: string;
+  measuredWidth: number;
+  measuredHeight: number;
+};
+
 export type SceneElement =
   | ShapeElement
   | LineElement
@@ -112,7 +127,8 @@ export type SceneElement =
   | FrameElement
   | GroupElement
   | StrokeElement
-  | TextElement;
+  | TextElement
+  | CodeElement;
 
 /**
  * Omit applied across a union rather than to the union as a whole.

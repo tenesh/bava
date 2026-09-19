@@ -35,6 +35,10 @@
 // The scale, verbatim from the design.
 :root {
   --font-ui: 'Geist', system-ui, sans-serif;
+  // A code block on the canvas: body size in the mono face, generous leading
+  // so lines of code are easy to follow.
+  --text-code: 13px;
+  --leading-code: 1.5;
   --font-mono: 'Geist Mono', ui-monospace, monospace;
 
   --text-body: 13px;

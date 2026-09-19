@@ -334,3 +334,53 @@ func TestRoundTripBindingsAndContainment(t *testing.T) {
 		t.Errorf("bindings or containment changed on the way through.\nwant:\n%s\ngot:\n%s", source, written)
 	}
 }
+
+// A code block is text the user typed, in a language this build may not
+// bundle: both survive exactly, or a file silently says something else
+// (docs/file-format.md, "Code blocks").
+func TestRoundTripCodeBlocks(t *testing.T) {
+	source := "# Notes\n\n```bava-canvas\n" + `{
+  "elements": [
+    {
+      "code": "func main() {\n\tfmt.Println(\"hi\")\n}\n",
+      "h": 60,
+      "id": "c1",
+      "language": "go",
+      "measuredHeight": 60,
+      "measuredWidth": 220,
+      "type": "code",
+      "w": 220,
+      "x": 0,
+      "y": 0,
+      "z": 1
+    },
+    {
+      "code": "SELECT 1;",
+      "h": 20,
+      "id": "c2",
+      "language": "a-language-from-later",
+      "measuredHeight": 20,
+      "measuredWidth": 80,
+      "type": "code",
+      "w": 80,
+      "x": 0,
+      "y": 80,
+      "z": 2
+    }
+  ],
+  "version": 1
+}
+` + "```\n"
+
+	file, err := format.Read(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	written, err := format.Write(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written != source {
+		t.Errorf("a code block changed on the way through.\nwant:\n%s\ngot:\n%s", source, written)
+	}
+}

@@ -94,6 +94,7 @@ export function pasteStyle(history: History, ids: ElementId[], style: CopiedStyl
 
 /** The style properties of `docs/file-format.md`, beyond the three colours. */
 export type PropertyKey =
+  | 'language'
   | 'strokeWidth'
   | 'strokeStyle'
   | 'edges'
@@ -133,6 +134,11 @@ export function propertyKeysFor(type: string): PropertyKey[] {
       break;
     case 'text':
       keys.push('fontSize', 'align');
+      break;
+    case 'code':
+      // A code block's look comes from its language and the theme; the shape
+      // controls would mean nothing on it (canvas-toolbar.md).
+      keys.push('language');
       break;
     default:
       break;

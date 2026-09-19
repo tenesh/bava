@@ -32,3 +32,40 @@
 .bava-label-editor[data-align='left'] {
   text-align: left;
 }
+
+// The editor that opens over a code block (canvas/code/editor.ts). It sits on
+// the block it is editing, so what the user types is where the code is.
+.bava-code-editor {
+  position: absolute;
+  z-index: var(--z-floating);
+  box-sizing: border-box;
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-selection-handle);
+  border-radius: var(--radius-md);
+  background: var(--color-code-surface);
+
+  // Plain descendant selectors: this is a global stylesheet, not a Svelte
+  // component, so `:global()` would reach the browser verbatim and the rule
+  // would be dropped.
+  transform-origin: center;
+
+  .cm-editor {
+    height: 100%;
+    font-family: var(--font-mono);
+    // Relative to the wrapper, which carries the canvas zoom.
+    font-size: 1em;
+    color: var(--syntax-plain);
+  }
+
+  .cm-content {
+    padding: var(--size-code-padding);
+  }
+
+  .cm-editor.cm-focused {
+    outline: none;
+  }
+
+  .cm-gutters {
+    display: none;
+  }
+}

@@ -149,3 +149,54 @@ describe('when a step fails', () => {
     expect(io.copyPng).toHaveBeenCalledWith(expect.any(Promise));
   });
 });
+
+// 6.6 shipped a button that did nothing because a test injected past the
+// wiring. These go through the exporter, the way the app calls it.
+describe('exporting a code block', () => {
+  const withCode: SceneData = {
+    elements: [
+      { id: 'c', type: 'code', x: 0, y: 0, w: 100, h: 40, z: 1, code: 'const a', measuredWidth: 100, measuredHeight: 40 },
+    ] as never[],
+  };
+
+  function codeSetup() {
+    const io = {
+      choosePath: vi.fn().mockResolvedValue('/w/out.svg'),
+      save: vi.fn().mockResolvedValue(''),
+      copyPng: vi.fn().mockResolvedValue({ copied: true }),
+      copySvg: vi.fn().mockResolvedValue({ copied: true }),
+      toPng: vi.fn().mockResolvedValue(new Blob(['png'], { type: 'image/png' })),
+    };
+    const exporter = createExporter({
+      scene: () => withCode,
+      selection: () => [],
+      documentName: () => 'notes.md',
+      io: io as never,
+      notify: vi.fn(),
+      codeRuns: () => ({ c: [[{ text: 'const', kind: 'keyword' as const }, { text: ' a', kind: 'plain' as const }]] }),
+    });
+    return { exporter, io };
+  }
+
+  it('writes the code into the SVG, not an empty panel', async () => {
+    const { exporter, io } = codeSetup();
+    exporter.open();
+    await exporter.exportAs('svg');
+    const [, contents] = io.save.mock.calls[0];
+    expect(atob(contents)).toContain('>const<');
+  });
+
+  it('shows the code in the preview too', () => {
+    const { exporter } = codeSetup();
+    exporter.open();
+    expect(exporter.preview()).toContain('>const<');
+  });
+
+  it('hands the runs to the PNG renderer, which draws them', async () => {
+    const { exporter, io } = codeSetup();
+    exporter.open();
+    await exporter.exportAs('png');
+    const [, options] = io.toPng.mock.calls[0];
+    expect(options.codeRuns).toMatchObject({ c: expect.any(Array) });
+  });
+});

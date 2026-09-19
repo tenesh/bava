@@ -11,15 +11,24 @@
  */
 import type { SceneElement } from '../scene';
 
-/** The bundled variable font, served by the app itself. */
+/** The bundled variable fonts, served by the app itself. */
 export const FONT_FILE = '/fonts/Geist-Variable.woff2';
+export const MONO_FONT_FILE = '/fonts/GeistMono-Variable.woff2';
 
 export type FontOptions = {
   /** The font stack the SVG's text elements carry, or a single family. */
   family: string;
   /** Reads the font bytes. Injected, so a test never touches the bundle. */
   read?: () => Promise<ArrayBuffer>;
+  /** The mono stack, when the export holds a code block. */
+  monoFamily?: string;
+  readMono?: () => Promise<ArrayBuffer>;
 };
+
+/** Whether the export holds a code block, which draws in the mono face. */
+export function carriesCode(elements: SceneElement[]): boolean {
+  return elements.some((element) => element.type === 'code');
+}
 
 /** Whether anything in the export draws lettering. */
 export function carriesText(elements: SceneElement[]): boolean {
@@ -53,8 +62,8 @@ function base64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-async function readFromBundle(): Promise<ArrayBuffer> {
-  const response = await fetch(FONT_FILE);
+async function readFromBundle(file: string): Promise<ArrayBuffer> {
+  const response = await fetch(file);
   if (!response.ok) throw new Error(`export: the bundled font is missing (${response.status})`);
   return response.arrayBuffer();
 }
@@ -65,11 +74,22 @@ async function readFromBundle(): Promise<ArrayBuffer> {
  * picture: its text names the family, and a reader that has Geist uses it.
  */
 export async function fontCss(elements: SceneElement[], options: FontOptions): Promise<string> {
-  if (!carriesText(elements)) return '';
+  const faces: string[] = [];
+  if (carriesText(elements)) faces.push(await face(options.family, options.read ?? (() => readFromBundle(FONT_FILE))));
+  // A code block is drawn at absolute x by mono advance, so a viewer without
+  // the mono face would see every column out of line.
+  if (carriesCode(elements) && options.monoFamily) {
+    faces.push(await face(options.monoFamily, options.readMono ?? (() => readFromBundle(MONO_FONT_FILE))));
+  }
+  return faces.filter(Boolean).join(' ');
+}
+
+/** One `@font-face`, or '' when the family or the bytes are unavailable. */
+async function face(stack: string, read: () => Promise<ArrayBuffer>): Promise<string> {
   try {
-    const family = faceFamily(options.family);
+    const family = faceFamily(stack);
     if (!family) return '';
-    const buffer = await (options.read ?? readFromBundle)();
+    const buffer = await read();
     return (
       `@font-face { font-family: '${family}';` +
       ` src: url(data:font/woff2;base64,${base64(buffer)}) format('woff2'); }`

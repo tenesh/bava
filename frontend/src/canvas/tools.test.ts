@@ -45,8 +45,9 @@ describe('tools', () => {
 
   it('covers the tools the design shows', () => {
     expect(TOOLS.map((t) => t.id).sort()).toEqual(
-      // The eraser joined in 06.2 (canvas-toolbar.md).
-      ['arrow', 'ellipse', 'eraser', 'frame', 'line', 'pen', 'rect', 'select', 'text'].sort(),
+      // The eraser joined in 06.2 and the code block in 06.7
+      // (canvas-toolbar.md).
+      ['arrow', 'code', 'ellipse', 'eraser', 'frame', 'line', 'pen', 'rect', 'select', 'text'].sort(),
     );
   });
 
@@ -69,5 +70,19 @@ describe('tools', () => {
     const tools = createTools();
     tools.activate('cylinder');
     expect(tools.active).toBe('cylinder');
+  });
+});
+
+// A code block is placed like a shape and then typed into.
+describe('the code tool', () => {
+  it('is in the tool list, with a key', () => {
+    const code = TOOLS.find((tool) => tool.id === 'code');
+    expect(code).toBeDefined();
+    expect(code!.key).toBe('c');
+  });
+
+  it('does not take a key another tool already has', () => {
+    const keys = TOOLS.map((tool) => tool.key).filter(Boolean);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });

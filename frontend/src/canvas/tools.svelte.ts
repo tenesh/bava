@@ -16,6 +16,7 @@ export type ToolId =
   | 'pen'
   | 'text'
   | 'frame'
+  | 'code'
   | 'eraser'
   | ShapeToolId;
 
@@ -38,6 +39,7 @@ export const TOOLS: Tool[] = [
   { id: 'pen', key: 'd', labelKey: 'tool.pen' },
   { id: 'text', key: 't', labelKey: 'tool.text' },
   { id: 'frame', key: 'f', labelKey: 'tool.frame' },
+  { id: 'code', key: 'c', labelKey: 'tool.code' },
   { id: 'eraser', key: 'e', labelKey: 'tool.eraser' },
 ];
 

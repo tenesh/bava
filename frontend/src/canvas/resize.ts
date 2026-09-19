@@ -95,9 +95,9 @@ export function resizeBox(box: Box, handle: Handle, dx: number, dy: number, opti
 export function scaleInto<T extends Box & { points?: number[]; type?: string }>(element: T, from: Box, to: Box): T {
   const sx = from.w === 0 ? 1 : to.w / from.w;
   const sy = from.h === 0 ? 1 : to.h / from.h;
-  if (element.type === 'text') {
-    // Text keeps its stored measurement, which must describe its box: it moves
-    // with the group but is not stretched.
+  if (element.type === 'text' || element.type === 'code') {
+    // Text and code keep their stored measurement, which must describe their
+    // box: they move with the group but are not stretched.
     return { ...element, x: tidy(to.x + (element.x - from.x) * sx), y: tidy(to.y + (element.y - from.y) * sy) };
   }
   const scaled = {

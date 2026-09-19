@@ -36,6 +36,11 @@ export const COMMANDS: InsertCommand[] = [
   { kind: 'command', id: 'diagram', labelKey: 'insert.diagram', icon: 'code' },
 ];
 
+/** Tools that are not shapes, offered on their own rather than in a category. */
+export const TOOL_ENTRIES: InsertItem[] = [
+  { kind: 'item', id: 'code', labelKey: 'tool.code', icon: 'code' },
+];
+
 export const CATEGORIES: InsertCategory[] = [
   {
     kind: 'category',
@@ -73,11 +78,11 @@ export function createInsert() {
   const entries = $derived.by((): InsertEntry[] => {
     const needle = query.trim().toLowerCase();
     if (needle) {
-      return [...CATEGORIES.flatMap((c) => c.items), ...COMMANDS].filter((item) =>
+      return [...CATEGORIES.flatMap((c) => c.items), ...TOOL_ENTRIES, ...COMMANDS].filter((item) =>
         t(item.labelKey).toLowerCase().includes(needle),
       );
     }
-    return category ? category.items : [...CATEGORIES, ...COMMANDS];
+    return category ? category.items : [...CATEGORIES, ...TOOL_ENTRIES, ...COMMANDS];
   });
 
   /** Whether the entries show as a grid of tiles rather than rows. */

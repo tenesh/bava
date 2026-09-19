@@ -10,7 +10,7 @@ import { topLevel } from './edit';
 import { createScene, type ElementId, type SceneData } from './scene';
 import { propertyKeysFor, styleKeysFor, type PropertyKey, type StyleKey } from './style';
 
-export type ControlGroup = 'colour' | 'stroke' | 'label' | 'arrow';
+export type ControlGroup = 'colour' | 'stroke' | 'label' | 'arrow' | 'code';
 
 /** How a control is drawn: a swatch chip, a set of icon options, or a slider. */
 export type ControlKind = 'colour' | 'options' | 'slider';
@@ -34,6 +34,7 @@ const COLOURS: StyleKey[] = ['fill', 'stroke', 'color'];
 
 /** Every control, in row order, with the group it belongs to. */
 const ORDERED: ToolbarControl[] = [
+  { id: 'language', group: 'code', kind: 'options' },
   { id: 'fill', group: 'colour', kind: 'colour' },
   { id: 'stroke', group: 'colour', kind: 'colour' },
   { id: 'color', group: 'colour', kind: 'colour' },

@@ -674,3 +674,124 @@ describe('the ends of a selected arrow', () => {
     stage.destroy();
   });
 });
+
+// A code block draws a panel and its code as coloured text, in the theme's
+// syntax colours. Runs come from `canvas/code/highlight.ts`, which the
+// exporter reads too.
+describe('drawing a code block', () => {
+  const read = reader({
+    '--color-code-surface': 'whitesmoke',
+    '--color-border-subtle': 'gainsboro',
+    '--syntax-keyword': 'purple',
+    '--syntax-string': 'green',
+    '--syntax-comment': 'gray',
+    '--syntax-plain': 'black',
+    '--font-mono': 'Geist Mono',
+    '--text-code': '13px',
+    '--leading-code': '1.5',
+    '--size-code-padding': '8px',
+    '--radius-md': '6px',
+  });
+
+  const block = (over: Record<string, unknown> = {}): SceneData =>
+    one({ type: 'code', x: 10, y: 20, w: 200, h: 60, code: 'const a = "x" // note', measuredWidth: 200, measuredHeight: 60, ...over });
+
+  it('draws a panel behind the code', () => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.render(block());
+    expect(stage.bodyFor('e1')!.fill()).toBe('whitesmoke');
+    stage.destroy();
+  });
+
+  it('draws one text node per run, in the run colour', () => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    // Runs arrive from the caller, already tokenised: the stage does not parse.
+    stage.setCodeRuns('e1', [
+      [
+        { text: 'const', kind: 'keyword' },
+        { text: ' a = ', kind: 'plain' },
+        { text: '"x"', kind: 'string' },
+        { text: ' // note', kind: 'comment' },
+      ],
+    ]);
+    stage.render(block());
+
+    const runs = stage.codeRuns('e1');
+    expect(runs.map((node) => node.text())).toEqual(['const', ' a = ', '"x"', ' // note']);
+    expect(runs.map((node) => node.fill())).toEqual(['purple', 'black', 'green', 'gray']);
+    stage.destroy();
+  });
+
+  it('places the runs of a line side by side, on one baseline', () => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.setCodeRuns('e1', [
+      [
+        { text: 'ab', kind: 'plain' },
+        { text: 'cd', kind: 'keyword' },
+      ],
+      [{ text: 'e', kind: 'plain' }],
+    ]);
+    stage.render(block());
+
+    const [first, second, third] = stage.codeRuns('e1');
+    expect(first.y()).toBe(second.y());
+    expect(second.x()).toBeGreaterThan(first.x());
+    expect(third.y()).toBeGreaterThan(first.y());
+    stage.destroy();
+  });
+
+  it('draws nothing but the panel until its runs arrive', () => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.render(block());
+    expect(stage.codeRuns('e1')).toHaveLength(0);
+    stage.destroy();
+  });
+
+  it('takes the old runs away when new ones arrive', () => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.setCodeRuns('e1', [[{ text: 'old', kind: 'plain' }]]);
+    stage.render(block());
+    stage.setCodeRuns('e1', [[{ text: 'new', kind: 'plain' }]]);
+    expect(stage.codeRuns('e1').map((node) => node.text())).toEqual(['new']);
+    stage.destroy();
+  });
+});
+
+// `#apply` runs for every element on every render, including each preview
+// frame of a drag: rebuilding a few hundred text nodes per frame is the trap
+// this class exists to avoid.
+describe('redrawing a code block', () => {
+  it('keeps the same nodes when nothing about the runs changed', () => {
+    const stage = new CanvasStage({
+      read: reader({ '--syntax-plain': 'black', '--font-mono': 'Geist Mono', '--text-code': '13px', '--leading-code': '1.5' }),
+    });
+    stage.mount(host());
+    const scene = one({ type: 'code', x: 0, y: 0, w: 100, h: 40, code: 'a', measuredWidth: 100, measuredHeight: 40 });
+    stage.setCodeRuns('e1', [[{ text: 'a', kind: 'plain' }]]);
+    stage.render(scene);
+
+    const before = stage.codeRuns('e1')[0];
+    stage.render(scene);
+    stage.render(scene);
+    expect(stage.codeRuns('e1')[0]).toBe(before);
+    stage.destroy();
+  });
+
+  it('rebuilds them when the runs do change', () => {
+    const stage = new CanvasStage({
+      read: reader({ '--syntax-plain': 'black', '--font-mono': 'Geist Mono', '--text-code': '13px', '--leading-code': '1.5' }),
+    });
+    stage.mount(host());
+    const scene = one({ type: 'code', x: 0, y: 0, w: 100, h: 40, code: 'a', measuredWidth: 100, measuredHeight: 40 });
+    stage.setCodeRuns('e1', [[{ text: 'a', kind: 'plain' }]]);
+    stage.render(scene);
+    stage.setCodeRuns('e1', [[{ text: 'b', kind: 'plain' }]]);
+    expect(stage.codeRuns('e1')[0].text()).toBe('b');
+    stage.destroy();
+  });
+});

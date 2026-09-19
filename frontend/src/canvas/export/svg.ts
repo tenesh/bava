@@ -15,6 +15,9 @@ import { drawOutline, isOutlineShape } from '../shapes';
 import type { ReadVariable } from '../palette';
 import type { ExportArea } from './area';
 import { svgPathSink } from './path-sink';
+import { monoAdvance } from '../code/advance';
+import { columnsIn } from '../code/measure';
+import type { Run } from '../code/highlight';
 import { wrapLines } from '../text-layout';
 import { canvasLineWidth } from '../text-measure';
 import { smoothPoints } from '../curves';
@@ -26,6 +29,18 @@ export type SvgOptions = {
   background?: boolean;
   /** A `<style>` body, for the embedded font (Task 3). */
   css?: string;
+  /**
+   * Tokenised code per block, by element id. Highlighting is asynchronous (a
+   * language loads on first use) and this writer is not, so the runs arrive
+   * with the request, exactly as they do at the stage.
+   */
+  codeRuns?: Record<string, Run[][]>;
+  /**
+   * The mono advance the canvas measured. Passed rather than measured here, so
+   * an export lays code out on exactly the columns the canvas drew it on; a
+   * measurement taken in a different environment drifts and the runs overlap.
+   */
+  monoAdvance?: number;
 };
 
 const round = (value: number): number => Math.round(value * 1000) / 1000;
@@ -168,12 +183,45 @@ function heads(element: SceneElement, paint: Paint, routed: number[], size: numb
     .join('');
 }
 
+/**
+ * A code block's coloured runs, as real SVG text.
+ *
+ * Laid out by character count in the mono advance, the same way the stage
+ * places them, so an exported block and the canvas agree column for column.
+ */
+function codeRuns(element: SceneElement, paint: Paint, options: SvgOptions): string {
+  const runs = options.codeRuns?.[element.id] ?? [];
+  if (runs.length === 0) return '';
+  const padding = parseFloat(options.read('--size-code-padding')) || 0;
+  const lineHeight = paint.font.size * paint.font.lineHeight;
+  const advance = options.monoAdvance ?? monoAdvance(paint.font.size, paint.font.family);
+
+  return runs
+    .map((line, row) =>
+      line
+        .map((run, index) => {
+          const column = line.slice(0, index).reduce((total, earlier) => total + columnsIn(earlier.text), 0);
+          const x = element.x + padding + column * advance;
+          // SVG places text on its baseline; the stage places a line by its top.
+          const y = element.y + padding + row * lineHeight + paint.font.size;
+          return (
+            `<text x="${round(x)}" y="${round(y)}" fill="${options.read(`--syntax-${run.kind}`).trim()}"` +
+            ` font-family="${escapeXml(paint.font.family)}" font-size="${round(paint.font.size)}"` +
+            ` xml:space="preserve">${escapeXml(run.text)}</text>`
+          );
+        })
+        .join(''),
+    )
+    .join('');
+}
+
 /** One element: its body, its label, its opacity and its rotation. */
 function draw(element: SceneElement, options: SvgOptions, labelInset: number): string {
   const paint = paintFor(element, options.read);
   const label = 'label' in element ? (element.label as string | undefined) : undefined;
   const inner =
     body(element, paint, parseFloat(options.read('--size-arrowhead')) || 0) +
+    (element.type === 'code' ? codeRuns(element, paint, options) : '') +
     (element.type === 'text'
       ? textElement(element, paint, (element as { text: string }).text, 0)
       : label && element.type === 'arrow'

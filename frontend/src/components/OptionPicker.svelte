@@ -19,7 +19,10 @@
     label: string;
     /** The icon on the button: the property, or its current value. */
     icon: IconId;
-    options: readonly { value: Value; labelKey: MessageKey; icon: IconId }[];
+    options: readonly ({ value: Value; icon: IconId } & (
+      | { labelKey: MessageKey; label?: never }
+      | { label: string; labelKey?: never }
+    ))[];
     /** The selection's value, `mixed` where they differ. */
     current: Value | null | 'mixed';
     onSelect: (value: Value) => void;
@@ -29,6 +32,10 @@
 
   const triggerId = $derived(`bava-option-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`);
   const checked = $derived(current === 'mixed' || current === null ? null : String(current));
+
+  /** A translated name, or a proper noun the option carries itself. */
+  const nameOf = (option: { labelKey?: MessageKey; label?: string }) =>
+    option.labelKey ? t(option.labelKey) : (option.label ?? '');
 </script>
 
 <Popover.Root lazyMount unmountOnExit ids={{ trigger: triggerId }}>
@@ -55,11 +62,11 @@
           aria-label={label}
         >
           {#each options as option (option.value)}
-            <RadioGroup.Item value={String(option.value)} class="bava-option" title={t(option.labelKey)}>
+            <RadioGroup.Item value={String(option.value)} class="bava-option" title={nameOf(option)}>
               <RadioGroup.ItemControl class="bava-option-control">
                 <ToolIcon id={option.icon} size="sm" />
               </RadioGroup.ItemControl>
-              <RadioGroup.ItemText class="bava-option-name">{t(option.labelKey)}</RadioGroup.ItemText>
+              <RadioGroup.ItemText class="bava-option-name">{nameOf(option)}</RadioGroup.ItemText>
               <RadioGroup.ItemHiddenInput />
             </RadioGroup.Item>
           {/each}

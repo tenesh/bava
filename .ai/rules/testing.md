@@ -56,3 +56,10 @@ absent at a running window while the suite stays green: Milestone 6.6 shipped
 an Insert button that did nothing, for exactly this reason. Anything that
 translates a response needs one test that drives the real path with the
 binding stubbed.
+
+## A test that supplies what the app computes tests nothing about the app
+Three of Milestone 6.7's blockers hid behind this: an editor test that passed
+its own rect never saw that the app computed a 1x1 one; an export test that
+passed its own runs never saw that the app passed none; a `CodeEditor` test
+never saw that nothing could open it. Where a value crosses from the app into
+a module, one test has to come the way the app comes, even if the rest inject.

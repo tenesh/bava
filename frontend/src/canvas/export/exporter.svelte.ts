@@ -14,6 +14,7 @@ import { toPng } from './png';
 import { fontCss } from './fonts';
 import { copyPng, copySvg, type CopyResult } from './clipboard';
 import { withTheme } from './theme';
+import type { Run } from '../code/highlight';
 
 export type ExportFormat = 'png' | 'svg';
 
@@ -33,7 +34,15 @@ export type ExportIO = {
   copyPng: (png: Promise<Blob>) => Promise<CopyResult>;
   copySvg: (svg: string) => Promise<CopyResult>;
   /** Draws a PNG. Injected so a test needs no browser encoder. */
-  toPng: (area: ExportArea, options: { scale: number; theme: 'light' | 'dark'; background: boolean }) => Promise<Blob>;
+  toPng: (
+    area: ExportArea,
+    options: {
+      scale: number;
+      theme: 'light' | 'dark';
+      background: boolean;
+      codeRuns?: Record<string, Run[][]>;
+    },
+  ) => Promise<Blob>;
 };
 
 export type ExporterOptions = {
@@ -43,6 +52,14 @@ export type ExporterOptions = {
   documentName: () => string;
   io: ExportIO;
   notify: (message: string) => void;
+  /**
+   * The tokenised code of every block, from `canvas/code/runs.ts`. Both the
+   * SVG writer and the offscreen stage need it: highlighting is asynchronous
+   * and neither of them is.
+   */
+  codeRuns?: () => Record<string, Run[][]>;
+  /** The mono advance the canvas is drawing with. */
+  monoAdvance?: () => number;
 };
 
 const DEFAULTS: ExportSettings = { onlySelected: false, background: true, dark: false, scale: 2 };
@@ -66,10 +83,18 @@ export function createExporter(options: ExporterOptions) {
 
   /** The font stack the drawing uses; `fontCss` names the face after its first. */
   const fontStack = (): string => readRootVariable('--font-ui').trim() || 'Geist';
+  const monoStack = (): string => readRootVariable('--font-mono').trim() || 'Geist Mono';
 
   /** The SVG for the current settings. `css` carries the font when asked. */
   function svgFor(current: ExportArea, css = '', read?: ReadVariable): string {
-    const draw = (reader: ReadVariable) => toSvg(current, { read: reader, background: settings.background, css });
+    const draw = (reader: ReadVariable) =>
+      toSvg(current, {
+        read: reader,
+        background: settings.background,
+        css,
+        codeRuns: options.codeRuns?.(),
+        monoAdvance: options.monoAdvance?.(),
+      });
     // The preview and a written file resolve colours the same way: in the
     // theme the settings ask for, whatever the screen is showing.
     return read ? draw(read) : withTheme(theme(), draw);
@@ -90,10 +115,15 @@ export function createExporter(options: ExporterOptions) {
 
     let contents: string;
     if (format === 'svg') {
-      const css = await fontCss(current.elements, { family: fontStack() });
+      const css = await fontCss(current.elements, { family: fontStack(), monoFamily: monoStack() });
       contents = base64(new TextEncoder().encode(svgFor(current, css)));
     } else {
-      const blob = await io.toPng(current, { scale: settings.scale, theme: theme(), background: settings.background });
+      const blob = await io.toPng(current, {
+        scale: settings.scale,
+        theme: theme(),
+        background: settings.background,
+        codeRuns: options.codeRuns?.(),
+      });
       contents = base64(new Uint8Array(await blob.arrayBuffer()));
     }
 
@@ -108,12 +138,19 @@ export function createExporter(options: ExporterOptions) {
 
   async function putOnClipboard(format: ExportFormat, current: ExportArea): Promise<CopyResult> {
     if (format === 'svg') {
-      const css = await fontCss(current.elements, { family: fontStack() });
+      const css = await fontCss(current.elements, { family: fontStack(), monoFamily: monoStack() });
       return io.copySvg(svgFor(current, css));
     }
     // Not awaited: the clipboard item has to be built from the picture while
     // the gesture that asked for it is still live (`clipboard.ts`).
-    return io.copyPng(io.toPng(current, { scale: settings.scale, theme: theme(), background: settings.background }));
+    return io.copyPng(
+      io.toPng(current, {
+        scale: settings.scale,
+        theme: theme(),
+        background: settings.background,
+        codeRuns: options.codeRuns?.(),
+      }),
+    );
   }
 
   async function copyOrOffer(format: ExportFormat): Promise<void> {

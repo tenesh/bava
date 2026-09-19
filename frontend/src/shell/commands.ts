@@ -43,6 +43,7 @@ export const COMMAND_IDS = [
   'tool.pen',
   'tool.text',
   'tool.frame',
+  'tool.code',
   'tool.eraser',
   'tool.diamond',
   'tool.cylinder',
