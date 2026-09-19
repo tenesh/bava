@@ -206,3 +206,12 @@ exactly once however the selection was expanded.
 The trap it leaves: any future edit that walks members and *then* expands
 groups would apply a delta twice. `carriedWith` is the one expansion, and it
 de-duplicates by id; add a second one and this is what breaks.
+
+## Conversion is pure, and what it makes is ordinary
+`canvas/import/` turns a D2 layout into elements: geometry in, elements out,
+with no IPC, no Konva and no history, so it is tested against a fixture taken
+from the real pipeline. What it produces carries no mark of being generated,
+because from the moment it lands it is not: the same move, resize, bind and
+delete paths own it. `import/ordinary.test.ts` is the test that says so, and
+a failure there means the conversion made something the rest of the canvas
+does not understand.

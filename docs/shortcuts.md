@@ -41,6 +41,7 @@ Shortcuts) lists the rest.
 | File | Save | `⌘S` | `Ctrl+S` |
 | File | Save As… | `⇧⌘S` | `Ctrl+Shift+S` |
 | File | Export… | `⇧⌘E` | `Ctrl+Shift+E` |
+| File | Diagram from Code… | `⇧⌘D` | `Ctrl+Shift+D` |
 | File | Settings… | none | `Ctrl+,` |
 | Edit | Undo | `⌘Z` | `Ctrl+Z` |
 | Edit | Redo | `⇧⌘Z` | `Ctrl+Shift+Z` |

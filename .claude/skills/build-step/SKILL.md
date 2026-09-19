@@ -257,6 +257,28 @@ wrong facts. When a milestone closes, update this section in the same change.
 
 ### Milestones
 
+- **6.1 to 6.6 pass their gates** (2026-09-19) and are committed through 6.5;
+  6.6 is uncommitted at the time of writing. None is complete: every one owes
+  the hand check at a running window, in both themes, that its plan's
+  Verification section describes. The plans under `.claude/work/plans/` carry
+  an "As built" section each, with the deviations and the spec-review outcome.
+  - **6.2/6.2.1** interface: icon rail, insert panel, selection toolbar,
+    right-click menu, constrained drags.
+  - **6.3** styles and rotation: eleven optional style keys, literal colours
+    with theme adaptation, locking, rotation.
+  - **6.4** export: PNG and SVG through the canvas's own drawing code
+    (`canvas/paint.ts`, `canvas/export/`), font embedded in an SVG.
+  - **6.5** connections and containers: arrows bound by element id, re-routed
+    inside `history.mutate`; frames owning what is dropped in.
+  - **6.6** diagram from code: `render.Result.Layout` carries geometry (read
+    against **D2 v0.9.0**, `d2target.Shape`/`Connection`), converted in
+    `frontend/src/canvas/import/`.
+- **Two traps found by review in 6.6, worth remembering**: a test seam at the
+  transport (`createRenderClient`'s injected `send`) never executes the code
+  that translates a real response, so a dropped field passed every test and
+  did nothing at the window; and D2 writes remote URLs into its SVG for
+  `icon:` and `link:`, so any preview of rendered SVG must strip them
+  (`canvas/import/safe-svg.ts`).
 - Milestones 0, 0.5, 1, 2, 3, 4, 5 and 5.5 (wiring) complete. **5.6 (chrome)
   passes its gates** (2026-09-17) but its exit criterion's hand check at a
   running window has not been done, so it is not complete. 5.6's brand task

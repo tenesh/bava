@@ -22,6 +22,8 @@
   import { topmostAt } from './canvas/eraser';
   import { SourcePane } from './editor/source-pane';
   import { createRenderClient } from './ipc/render.svelte';
+  import DiagramDialog from './components/DiagramDialog.svelte';
+  import { toElements } from './canvas/import/convert';
   import { createTheme } from './styles/theme.svelte';
   import Shell from './shell/Shell.svelte';
   import { createDocument, sceneToSave } from './files/document.svelte';
@@ -99,6 +101,35 @@
     rotateGap: () => (parseFloat(readRootVariable('--size-rotate-gap')) || 0) / viewport.zoom,
   });
   const canvasCommands = createCanvasCommands({ history, selection });
+
+  // Diagram from code: its own render client, so previewing a diagram being
+  // written never disturbs the document's own render, and the debounce and
+  // staleness rules come with it.
+  const diagramClient = createRenderClient();
+  let diagramOpen = $state.raw(false);
+
+  function openDiagramDialog() {
+    if (!canvasShown()) return;
+    diagramOpen = true;
+    diagramClient.request(DIAGRAM_STARTER);
+  }
+
+  /** What the dialog opens with: enough to show that something happens. */
+  const DIAGRAM_STARTER = 'a -> b';
+
+  function insertDiagram() {
+    const layout = diagramClient.state.layout;
+    if (layout.shapes.length === 0 && layout.connections.length === 0) return;
+    // Centred on what the user is looking at, at the diagram's own size.
+    const centre = viewport.screenToScene({
+      x: (canvasHostEl?.clientWidth ?? 0) / 2,
+      y: (canvasHostEl?.clientHeight ?? 0) / 2,
+    });
+    canvasCommands.insertDiagram(toElements(layout, { at: centre }));
+    diagramOpen = false;
+    commit();
+    syncSelection();
+  }
   // Export: the dialog's settings and what each button does. The drawing
   // itself is pure code under `canvas/export/`.
   const exporter = createExporter({
@@ -533,6 +564,7 @@
       settingsOpen = true;
     },
     'file.export': () => exporter.open({ onlySelected: false }),
+    'insert.diagram': openDiagramDialog,
 
     'edit.undo': () =>
       routeEdit({ source: () => pane.undo(), field: fieldCommand('undo'), canvas: canvasEdit(canvasCommands.undo) }),
@@ -963,6 +995,7 @@
       canPasteStyles,
       hasLocked: published.elements.some(isLocked),
       hasDocument: doc.path !== null || published.elements.length > 0,
+      showsCanvas: view.showsCanvas,
       recents: recents.paths,
     };
     void MenuService.SetState(state).catch(() => {
@@ -1079,6 +1112,7 @@
             {insert}
             onOutcome={(outcome) => {
               if (outcome.type === 'choose') tools.activate(outcome.tool);
+              if (outcome.type === 'command' && outcome.id === 'diagram') openDiagramDialog();
               closeInsertPanel();
             }}
           />
@@ -1097,6 +1131,20 @@
   Always mounted, so closing never reads props from state already cleared:
   that threw at a running window.
 -->
+<DiagramDialog
+  open={diagramOpen}
+  source={DIAGRAM_STARTER}
+  preview={diagramClient.state.svg}
+  errors={diagramClient.state.errors}
+  pending={diagramClient.state.pending}
+  shapes={diagramClient.state.layout.shapes.length}
+  onSource={(next) => diagramClient.request(next)}
+  onInsert={insertDiagram}
+  onOpenChange={(next) => {
+    diagramOpen = next;
+  }}
+/>
+
 <ExportDialog
   open={exporter.isOpen}
   hasSelection={selectedIds.length > 0}

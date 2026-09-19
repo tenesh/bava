@@ -15,6 +15,7 @@ export const COMMAND_IDS = [
   'file.save',
   'file.saveAs',
   'file.export',
+  'insert.diagram',
   'file.settings',
   'edit.undo',
   'edit.redo',

@@ -1,0 +1,152 @@
+{
+  "shapes": [
+    {
+      "id": "frontend",
+      "type": "rectangle",
+      "x": 782,
+      "y": 60,
+      "w": 404,
+      "h": 186,
+      "label": "Frontend"
+    },
+    {
+      "id": "frontend.editor",
+      "type": "rectangle",
+      "parent": "frontend",
+      "x": 984,
+      "y": 120,
+      "w": 142,
+      "h": 66,
+      "label": "Source Editor"
+    },
+    {
+      "id": "frontend.canvas",
+      "type": "rectangle",
+      "parent": "frontend",
+      "x": 842,
+      "y": 120,
+      "w": 96,
+      "h": 66,
+      "label": "Canvas"
+    },
+    {
+      "id": "backend",
+      "type": "rectangle",
+      "x": 0,
+      "y": 60,
+      "w": 632,
+      "h": 186,
+      "label": "Backend"
+    },
+    {
+      "id": "backend.compile",
+      "type": "rectangle",
+      "parent": "backend",
+      "x": 60,
+      "y": 120,
+      "w": 104,
+      "h": 66,
+      "label": "Compile"
+    },
+    {
+      "id": "backend.layout",
+      "type": "rectangle",
+      "parent": "backend",
+      "x": 273,
+      "y": 120,
+      "w": 94,
+      "h": 66,
+      "label": "Layout"
+    },
+    {
+      "id": "backend.render",
+      "type": "rectangle",
+      "parent": "backend",
+      "x": 476,
+      "y": 120,
+      "w": 96,
+      "h": 66,
+      "label": "Render"
+    }
+  ],
+  "connections": [
+    {
+      "id": "(frontend.editor -\u003e backend.compile)[0]",
+      "src": "frontend.editor",
+      "dst": "backend.compile",
+      "srcArrow": "none",
+      "dstArrow": "triangle",
+      "label": "source",
+      "route": [
+        {
+          "x": 1055,
+          "y": 120
+        },
+        {
+          "x": 1055,
+          "y": 0
+        },
+        {
+          "x": 112,
+          "y": 0
+        },
+        {
+          "x": 112,
+          "y": 120
+        }
+      ]
+    },
+    {
+      "id": "backend.(compile -\u003e layout)[0]",
+      "src": "backend.compile",
+      "dst": "backend.layout",
+      "srcArrow": "none",
+      "dstArrow": "triangle",
+      "route": [
+        {
+          "x": 164,
+          "y": 153
+        },
+        {
+          "x": 273,
+          "y": 153
+        }
+      ]
+    },
+    {
+      "id": "backend.(layout -\u003e render)[0]",
+      "src": "backend.layout",
+      "dst": "backend.render",
+      "srcArrow": "none",
+      "dstArrow": "triangle",
+      "route": [
+        {
+          "x": 367,
+          "y": 153
+        },
+        {
+          "x": 476,
+          "y": 153
+        }
+      ]
+    },
+    {
+      "id": "(backend.render -\u003e frontend.canvas)[0]",
+      "src": "backend.render",
+      "dst": "frontend.canvas",
+      "srcArrow": "none",
+      "dstArrow": "triangle",
+      "label": "svg",
+      "route": [
+        {
+          "x": 572,
+          "y": 153
+        },
+        {
+          "x": 842,
+          "y": 153
+        }
+      ]
+    }
+  ]
+}

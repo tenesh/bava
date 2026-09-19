@@ -10,6 +10,7 @@
   import Segments from './Segments.svelte';
   import Toggle from './Toggle.svelte';
   import { t } from '../i18n/t';
+  import { withoutRemoteRefs } from '../canvas/import/safe-svg';
 
   export type ExportFormat = 'png' | 'svg';
   export type ExportSettings = {
@@ -40,9 +41,10 @@
 <Dialog bind:open title={t('export.title')}>
   <div class="preview-frame">
     <!-- The caller draws this with the same writer that exports the file, so
-         the preview is the export rather than an impression of it. -->
+         the preview is the export rather than an impression of it. Remote
+         references are taken out: a preview makes no network call. -->
     <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-    <div class="bava-export-preview">{@html preview}</div>
+    <div class="bava-export-preview">{@html withoutRemoteRefs(preview)}</div>
   </div>
 
   <div class="settings">

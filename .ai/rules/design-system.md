@@ -209,6 +209,7 @@ check both before building either by hand.
 | `StyleBar` ✓ | Fill, border and text pickers as swatch chips, named by their tooltip, wrapping Ark's Popover and RadioGroup. Each popover holds the swatches and a `#rrggbb` field for any other colour. A group inside `SelectionToolbar`, which draws the surface. |
 | `OptionPicker` ✓ | One property from a few icon choices (stroke width, line style, edges, text size, alignment, arrow type, arrowheads): a chip opening a popover of radio options. Generic over its value; options in `canvas/property-options.ts`. |
 | `OpacityPicker` ✓ | Opacity on a slider in steps of ten, in a popover, wrapping Ark's Slider. |
+| `DiagramDialog` ✓ | Write D2, see it, insert it: a `SourcePane` editor beside a live preview, diagnostics beneath, Insert disabled while it does not compile. The editor is created when the portalled host appears, not at mount. |
 | `ExportDialog` ✓ | Export settings over a live preview: Only selected, Background, Dark mode, Scale, and the PNG, SVG and Copy buttons. Padding is fixed. State in `canvas/export/exporter.svelte.ts`. |
 | `Toggle` ✓ | An on/off setting, wrapping Ark's Switch. Disabled rather than hidden when it does not apply, so it still explains itself. |
 | `Disclosure` ✓ | A collapsed-by-default section, wrapping Ark's Collapsible. |

@@ -126,3 +126,29 @@ describe('what moves with a selection', () => {
     expect(carriedWith(scene(), ['edge']).map((e) => e.id)).toEqual(['edge']);
   });
 });
+
+// A frame inside a frame: the outer one has to carry the whole tree, not the
+// first level of it. A converted D2 diagram nests as deeply as its source.
+describe('frames inside frames', () => {
+  const nested = (): SceneData => ({
+    elements: [
+      { id: 'outer', type: 'frame', x: 0, y: 0, w: 300, h: 300, z: 1 },
+      { id: 'inner', type: 'frame', x: 20, y: 20, w: 200, h: 200, z: 2, frame: 'outer' },
+      { id: 'leaf', type: 'rect', x: 40, y: 40, w: 40, h: 40, z: 3, frame: 'inner' },
+    ] as SceneElement[],
+  });
+
+  it('carries every level, not only the first', () => {
+    expect(carriedWith(nested(), ['outer']).map((e) => e.id).sort()).toEqual(['inner', 'leaf', 'outer']);
+  });
+
+  it('carries the inner frame contents when only it is moved', () => {
+    expect(carriedWith(nested(), ['inner']).map((e) => e.id).sort()).toEqual(['inner', 'leaf']);
+  });
+
+  it('does not loop when a frame somehow records itself', () => {
+    const cycle = nested();
+    cycle.elements[0] = { ...cycle.elements[0], frame: 'inner' } as SceneElement;
+    expect(carriedWith(cycle, ['outer']).map((e) => e.id).sort()).toEqual(['inner', 'leaf', 'outer']);
+  });
+});

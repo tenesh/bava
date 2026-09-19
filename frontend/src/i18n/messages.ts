@@ -115,6 +115,7 @@ export const messages = {
   'insert.all': 'All Categories',
   'insert.shape': 'Shape',
   'insert.shapeDescription': 'Rectangles, cylinders, clouds and more',
+  'insert.diagram': 'Diagram from code',
   'insert.hint': '↑↓ to navigate · enter to insert',
   'insert.empty': 'Nothing matches',
   'canvas.zoomIn': 'Zoom in',
@@ -138,6 +139,10 @@ export const messages = {
   'file.unsaved.discard': 'Discard',
   'file.cancel': 'Cancel',
 
+  'diagram.title': 'Diagram from code',
+  'diagram.insert': 'Insert',
+  'diagram.cancel': 'Cancel',
+  'diagram.hint': 'Write D2. The diagram lands on the canvas as shapes you can edit.',
   'export.title': 'Export',
   'export.onlySelected': 'Only selected',
   'export.background': 'Background',

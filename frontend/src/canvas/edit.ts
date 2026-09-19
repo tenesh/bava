@@ -8,6 +8,7 @@
 import type { ElementId, GroupElement, Scene, SceneElement } from './scene';
 import type { Box } from './selection';
 import { angleOfElement, normalise, rotatedBounds } from './rotate';
+import { remapReferences } from './references';
 
 /** How far a pasted copy lands from its original, so it is visibly a copy. */
 export const PASTE_OFFSET = 16;
@@ -63,27 +64,25 @@ export function paste(scene: Scene, elements: SceneElement[]): SceneElement[] {
     copies.set(element.id, added);
     return added;
   });
-  remapReferences(scene, pasted, copies);
+  pointAtCopies(scene, pasted, copies);
   return refreshed(scene, pasted);
 }
 
 /**
  * Point a copy's references at the other copies rather than the originals.
  *
- * A copied arrow attaches to the copied shapes, and a copied child joins the
- * copied frame; a reference to something that was *not* copied is kept, since
- * that element is still there and the copy sits on it.
+ * A copied arrow attaches to the copied shapes, a copied child joins the
+ * copied frame, and a copied group holds the copied children. A reference to
+ * something that was *not* copied is kept, since that element is still there
+ * and the copy sits on it. The rewriting itself is `references.ts`, shared
+ * with the insert path.
  */
-function remapReferences(scene: Scene, copies: SceneElement[], byOriginal: Map<ElementId, SceneElement>): void {
-  for (const copy of copies) {
-    const referring = copy as SceneElement & { startBinding?: string; endBinding?: string; frame?: string };
-    const update: Record<string, string> = {};
-    for (const key of ['startBinding', 'endBinding', 'frame'] as const) {
-      const original = referring[key];
-      const replacement = original === undefined ? undefined : byOriginal.get(original);
-      if (replacement) update[key] = replacement.id;
-    }
-    if (Object.keys(update).length > 0) scene.update(copy.id, update as Partial<SceneElement>);
+function pointAtCopies(scene: Scene, copies: SceneElement[], byOriginal: Map<ElementId, SceneElement>): void {
+  const renamed = new Map([...byOriginal].map(([original, copy]) => [original, copy.id]));
+  const remapped = remapReferences(copies, renamed);
+  for (let i = 0; i < copies.length; i += 1) {
+    if (remapped[i] === copies[i]) continue;
+    scene.update(copies[i].id, remapped[i] as Partial<SceneElement>);
   }
 }
 
@@ -120,13 +119,10 @@ export function duplicate(scene: Scene, elements: SceneElement[]): SceneElement[
   const ordered = [...all.filter((e) => e.type !== 'group'), ...all.filter((e) => e.type === 'group')];
   for (const element of ordered) {
     const moved = { ...element, x: element.x + PASTE_OFFSET, y: element.y + PASTE_OFFSET };
-    if (moved.type === 'group') {
-      moved.children = moved.children.map((id) => copies.get(id)?.id ?? id);
-    }
     copies.set(element.id, scene.add(moved));
   }
   // The copies refer to each other, never back to what they were copied from.
-  remapReferences(scene, [...copies.values()], copies);
+  pointAtCopies(scene, [...copies.values()], copies);
   return refreshed(
     scene,
     elements.map((e) => copies.get(e.id)).filter((e): e is SceneElement => Boolean(e)),

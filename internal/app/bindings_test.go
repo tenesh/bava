@@ -17,7 +17,40 @@ func TestResultJSONFieldNames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal Result: %v", err)
 	}
-	assertKeys(t, "Result", b, []string{"errors", "nodeMap", "svg"})
+	assertKeys(t, "Result", b, []string{"errors", "layout", "nodeMap", "svg"})
+}
+
+// The layout is what the canvas builds shapes from, so its names are a
+// contract too. Colours are deliberately not among them: a generated shape
+// arrives in Bava's own style (decided 2026-09-19).
+func TestLayoutJSONFieldNames(t *testing.T) {
+	b, err := json.Marshal(render.Layout{})
+	if err != nil {
+		t.Fatalf("marshal Layout: %v", err)
+	}
+	assertKeys(t, "Layout", b, []string{"connections", "shapes"})
+
+	// Populated, not zero: `omitempty` hides exactly the names the frontend
+	// reads for nesting, labels and arrowheads.
+	shape, err := json.Marshal(render.LayoutShape{ID: "a.b", Type: "rectangle", Parent: "a", Label: "B", W: 1, H: 1})
+	if err != nil {
+		t.Fatalf("marshal LayoutShape: %v", err)
+	}
+	assertKeys(t, "LayoutShape", shape, []string{"h", "id", "label", "parent", "type", "w", "x", "y"})
+
+	connection, err := json.Marshal(render.LayoutConnection{
+		ID:       "(a -> b)[0]",
+		Src:      "a",
+		Dst:      "b",
+		SrcArrow: "none",
+		DstArrow: "triangle",
+		Label:    "sends",
+		Route:    []render.LayoutPoint{{X: 0, Y: 0}},
+	})
+	if err != nil {
+		t.Fatalf("marshal LayoutConnection: %v", err)
+	}
+	assertKeys(t, "LayoutConnection", connection, []string{"dst", "dstArrow", "id", "label", "route", "src", "srcArrow"})
 }
 
 func TestDiagnosticJSONFieldNames(t *testing.T) {

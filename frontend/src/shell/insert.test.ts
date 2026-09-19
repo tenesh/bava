@@ -5,7 +5,8 @@ describe('insert panel state', () => {
   it('starts at all categories with the first highlighted', () => {
     const insert = createInsert();
     expect(insert.category).toBeNull();
-    expect(insert.entries.map((e) => e.id)).toEqual(['shape']);
+    // Categories first, then the inserts that are not tools.
+    expect(insert.entries.map((e) => e.id)).toEqual(['shape', 'diagram']);
     expect(insert.entries[0].kind).toBe('category');
     expect(insert.highlighted).toBe(0);
   });
@@ -66,5 +67,26 @@ describe('insert panel state', () => {
     insert.reset();
     expect(insert.category).toBeNull();
     expect(insert.query).toBe('');
+  });
+});
+
+// Not every insert is a tool: a diagram is written as code and arrives whole.
+describe('inserting a diagram from code', () => {
+  it('is offered beside the categories', () => {
+    const insert = createInsert();
+    const ids = insert.entries.map((entry) => entry.id);
+    expect(ids).toContain('diagram');
+  });
+
+  it('is found by searching for it', () => {
+    const insert = createInsert();
+    insert.setQuery('diagram');
+    expect(insert.entries.map((entry) => entry.id)).toEqual(['diagram']);
+  });
+
+  it('asks for the dialog rather than a tool', () => {
+    const insert = createInsert();
+    insert.setQuery('diagram');
+    expect(insert.choose(0)).toEqual({ type: 'command', id: 'diagram' });
   });
 });
