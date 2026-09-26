@@ -201,6 +201,13 @@ export function createScene(initial: SceneData = { elements: [] }) {
       return byId.get(id);
     },
 
+    /** Put `element` in place of the one with `id`, keeping its id and place in the stack. */
+    replace(id: ElementId, element: SceneElement): void {
+      const existing = byId.get(id);
+      if (!existing) return;
+      byId.set(id, { ...element, id, z: existing.z } as SceneElement);
+    },
+
     update(id: ElementId, changes: Partial<SceneElement>): void {
       const existing = byId.get(id);
       if (!existing) return;

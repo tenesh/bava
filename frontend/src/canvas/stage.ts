@@ -23,17 +23,17 @@ import { drawOutline, isOutlineShape } from './shapes';
 import { DEFAULT_STROKE_WIDTH, paintFor, ROUND_SHARE } from './paint';
 import { wrapLines } from './text-layout';
 import { smoothPoints } from './curves';
-import { bindingsOf, drawnPoints, isDetached } from './binding';
+import { bindingsOf, drawnPoints, isDetached, type Point } from './binding';
 import { tensionOf } from './hit';
 import type { Run } from './code/highlight';
 import { monoAdvance } from './code/advance';
 import { columnsIn } from './code/measure';
 import { columnsFor, wrapRuns } from './code/wrap';
 import { canvasLineWidth } from './text-measure';
-import { drawHead, headAt, labelPoint, middlesAlong, pathLength, routePoints } from './arrows';
+import { drawHead, headAt, labelPoint, middlesAlong, pathLength, pathOf } from './arrows';
 import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
 import { handleCentre, rotateHandleCentre } from './resize';
-import { chromeFor, offersMiddles } from './selection-chrome';
+import { chromeFor, elbowSegmentHandles, focusSpots, grown, offersMiddles } from './selection-chrome';
 import { angleOfElement, centreOf, rotatedBounds, selectionFrame } from './rotate';
 
 export type CanvasStageOptions = {
@@ -65,6 +65,9 @@ const number = (read: ReadVariable, name: string) => parseFloat(read(name)) || 0
  * a bend rather than marking one. A ratio, not a length or a colour.
  */
 const MIDDLE_HANDLE_OPACITY = 0.6;
+
+/** The hover disc under a handle: Excalidraw's 0.4. */
+const HOVER_OPACITY = 0.4;
 
 type Entry = {
   group: Konva.Group;
@@ -99,11 +102,17 @@ export class CanvasStage {
   /** Handles at the ends of a single selected arrow. */
   #endpoints: Konva.Circle[] = [];
   #middles: Konva.Circle[] = [];
+  #segments: Konva.Circle[] = [];
+  #hover: Konva.Circle | null = null;
+  #focus: Konva.Circle[] = [];
+  #focusLines: Konva.Line[] = [];
   /** The line or arrow in point editing, and its selected points (06.13). */
   #pointEditing: { id: ElementId; selected: number[] } | null = null;
   /** Outlines on the shapes an arrow being drawn would attach to. */
   #candidates: Konva.Rect[] = [];
   #candidateIds: ElementId[] = [];
+  #snapSpots: Point[] = [];
+  #snapDots: Konva.Circle[] = [];
   /** Tokenised code per block, handed in by the caller. */
   #codeRuns = new Map<ElementId, Run[][]>();
   #marquee: Konva.Rect | null = null;
@@ -226,8 +235,9 @@ export class CanvasStage {
    * Outline the shapes the arrow being drawn would attach to, so the user can
    * see the attachment before letting go.
    */
-  setBindingCandidates(ids: ElementId[]): void {
+  setBindingCandidates(ids: ElementId[], spots: Point[] = []): void {
     this.#candidateIds = [...ids];
+    this.#snapSpots = [...spots];
     this.#drawCandidates(cached(this.#read));
   }
 
@@ -235,12 +245,24 @@ export class CanvasStage {
     return this.#candidates;
   }
 
+  snapDots(): Konva.Circle[] {
+    return this.#snapDots;
+  }
+
   #drawCandidates(read: ReadVariable): void {
     if (!this.#overlay) return;
     this.#candidates.forEach((node) => node.destroy());
     this.#candidates = [];
+    this.#snapDots.forEach((node) => node.destroy());
+    this.#snapDots = [];
     const colour = read('--color-selection-handle').trim();
     const scale = 1 / this.#zoom;
+    const radius = (number(read, '--size-snap-dot') / 2) * scale;
+    for (const spot of this.#snapSpots) {
+      const dot = new Konva.Circle({ x: spot.x, y: spot.y, radius, fill: colour, listening: false });
+      this.#snapDots.push(dot);
+      this.#overlay.add(dot);
+    }
     for (const id of this.#candidateIds) {
       const element = this.#last.elements.find((e) => e.id === id);
       if (!element) continue;
@@ -253,6 +275,8 @@ export class CanvasStage {
       this.#candidates.push(outline);
       this.#overlay.add(outline);
     }
+    // The dots over the outlines they sit on.
+    this.#snapDots.forEach((dot) => dot.moveToTop());
     this.#overlay.batchDraw();
   }
 
@@ -354,6 +378,50 @@ export class CanvasStage {
     this.#drawSelection(cached(this.#read));
   }
 
+  /**
+   * A translucent disc under the handle the pointer is over (Excalidraw's
+   * `interactiveScene.ts:163-216`), or none.
+   */
+  setHoverHandle(at: Point | null): void {
+    if (!this.#overlay) return;
+    // Called on every pointer move: nothing to do when nothing changed.
+    const was = this.#hover ? { x: this.#hover.x(), y: this.#hover.y() } : null;
+    if (was === at || (was && at && was.x === at.x && was.y === at.y)) return;
+    this.#hover?.destroy();
+    this.#hover = null;
+    if (at) {
+      const read = cached(this.#read);
+      this.#hover = new Konva.Circle({
+        x: at.x,
+        y: at.y,
+        radius: (number(read, '--size-point-hover') / 2) / this.#zoom,
+        fill: read('--color-selection-handle').trim(),
+        opacity: HOVER_OPACITY,
+        listening: false,
+      });
+      this.#overlay.add(this.#hover);
+    }
+    this.#overlay.batchDraw();
+  }
+
+  hoverHandle(): Konva.Circle | null {
+    return this.#hover;
+  }
+
+  /** The discs on the selected arrow's attached ends' anchors. */
+  focusHandles(): Konva.Circle[] {
+    return this.#focus;
+  }
+
+  focusLines(): Konva.Line[] {
+    return this.#focusLines;
+  }
+
+  /** The handles at the middles of the selected elbow's segments. */
+  segmentHandles(): Konva.Circle[] {
+    return this.#segments;
+  }
+
   /** The handles at the middles of a selected line's or arrow's segments. */
   middleHandles(): Konva.Circle[] {
     return this.#middles;
@@ -372,6 +440,16 @@ export class CanvasStage {
     this.#endpoints.forEach((end) => end.destroy());
     this.#middles.forEach((middle) => middle.destroy());
     this.#middles = [];
+    this.#segments.forEach((handle) => handle.destroy());
+    this.#segments = [];
+    this.#focus.forEach((disc) => disc.destroy());
+    this.#focus = [];
+    this.#focusLines.forEach((line) => line.destroy());
+    this.#focusLines = [];
+    // A hover disc belongs to the handles as they were; the next move puts
+    // it back where there still is one, at the zoom now.
+    this.#hover?.destroy();
+    this.#hover = null;
     this.#outline = null;
     this.#handles = [];
     this.#rotate = null;
@@ -388,7 +466,7 @@ export class CanvasStage {
     // One element's frame carries its angle, so the outline and the handles
     // sit on the shape; several have no shared angle and stay upright.
     const frame = selectionFrame(selected);
-    const bounds = { x: frame.x, y: frame.y, w: frame.w, h: frame.h };
+    let bounds = { x: frame.x, y: frame.y, w: frame.w, h: frame.h };
     const centre = centreOf(bounds);
     // Everything in the overlay is drawn in the frame's own space and then
     // turned about the selection's centre, so one rotation describes them all.
@@ -407,6 +485,8 @@ export class CanvasStage {
     // A line in point editing shows its points alone, as Excalidraw's editor.
     const editingThis = selected.length === 1 && this.#pointEditing?.id === selected[0].id;
     const chrome = chromeFor(selected, this.#pointEditing?.id ?? null);
+    const tight = bounds;
+    if (chrome.padded) bounds = grown(tight, number(read, '--size-bent-box-padding') * scale);
     if (chrome.box) {
       this.#outline = turn(
         new Konva.Rect({ ...boundsToRect(bounds), stroke: colour, strokeWidth: scale }),
@@ -450,11 +530,16 @@ export class CanvasStage {
       const count = drawn.length >= 4 ? drawn.length / 2 : 0;
       for (let i = 0; i < count; i += 1) {
         if (elbow && i !== 0 && i !== count - 1) continue;
+        // A point on top of the one before it is drawn larger and hollow, so
+        // both show (Excalidraw's `interactiveScene.ts:268-289`, `:1120-1127`).
+        const overlapping = i > 0 && Math.hypot(drawn[i * 2] - drawn[i * 2 - 2], drawn[i * 2 + 1] - drawn[i * 2 - 1]) <= number(read, '--size-point-overlap') * scale;
+        const radius = editingThis ? editRadius : pointRadius;
         const handle = new Konva.Circle({
           x: drawn[i * 2],
           y: drawn[i * 2 + 1],
-          radius: editingThis ? editRadius : pointRadius,
+          radius: overlapping ? radius * (editingThis ? 1.5 : 2) : radius,
           fill: chosen.has(i) ? colour : surface,
+          fillEnabled: !overlapping || chosen.has(i),
           stroke: colour,
           strokeWidth: scale,
         });
@@ -467,13 +552,10 @@ export class CanvasStage {
         count >= 2 && offersMiddles(linear, editingThis)
           ? middlesAlong(drawn, (linear as SceneElement & ArrowProps).arrowType, tensionOf(linear))
           : [];
-      // A middle under the label is not offered: a press there slides the label.
-      const label = this.labelBounds(linear.id);
-      const underLabel = (p: { x: number; y: number }) =>
-        label !== null && p.x >= label.x && p.x <= label.x + label.w && p.y >= label.y && p.y <= label.y + label.h;
+      // A middle is offered under the label too: a press on it bends (S8).
       middles.forEach((middle, i) => {
         const [x1, y1, x2, y2] = drawn.slice(i * 2, i * 2 + 4);
-        if (Math.hypot(x2 - x1, y2 - y1) < shortest || underLabel(middle)) return;
+        if (Math.hypot(x2 - x1, y2 - y1) < shortest) return;
         const handle = new Konva.Circle({
           x: middle.x,
           y: middle.y,
@@ -484,6 +566,38 @@ export class CanvasStage {
         this.#middles.push(handle);
         this.#overlay?.add(handle);
       });
+      // Each attached end's anchor, a disc with a dashed line to its end,
+      // dragged to move it (`selection-chrome.ts`, as the pointer presses it).
+      const focusRadius = (number(read, '--size-focus-point') / 2) * scale;
+      for (const spot of focusSpots(linear, this.#last.elements, pointRadius * 2)) {
+        const line = new Konva.Line({
+          points: [spot.at.x, spot.at.y, spot.end.x, spot.end.y],
+          stroke: colour,
+          strokeWidth: scale,
+          dash: [number(read, '--size-marquee-dash') * scale, number(read, '--size-marquee-dash') * scale],
+          listening: false,
+        });
+        const disc = new Konva.Circle({ x: spot.at.x, y: spot.at.y, radius: focusRadius, fill: colour, listening: false });
+        this.#focusLines.push(line);
+        this.#focus.push(disc);
+        this.#overlay?.add(line);
+        this.#overlay?.add(disc);
+      }
+      // An elbow's segments, each dragged by its middle (the rule in
+      // `selection-chrome.ts`, which the pointer presses by): hollow when
+      // free, filled when fixed.
+      for (const segment of elbowSegmentHandles(linear, (number(read, '--size-point-handle') / 2) * scale)) {
+        const handle = new Konva.Circle({
+          x: segment.at.x,
+          y: segment.at.y,
+          radius: pointRadius,
+          fill: segment.fixed ? colour : surface,
+          stroke: colour,
+          strokeWidth: scale,
+        });
+        this.#segments.push(handle);
+        this.#overlay?.add(handle);
+      }
     }
 
     // The rotate handle: a disc above the frame, clear of the top edge. Not
@@ -776,7 +890,7 @@ export class CanvasStage {
     } else if (body instanceof Konva.Line) {
       const points = 'points' in element ? element.points : [];
       const routed =
-        element.type === 'arrow' ? routePoints(points, (element as SceneElement & ArrowProps).arrowType) : points;
+        element.type === 'arrow' ? pathOf(points, (element as SceneElement & ArrowProps).arrowType) : points;
       // Smoothed here rather than by Konva's own tension, which the exporter
       // cannot see: both renderers draw the samples `curves.ts` returns.
       body.points(smoothPoints(routed, paintFor(element, read).tension));

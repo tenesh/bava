@@ -301,6 +301,7 @@ describe('style properties survive a load and a save', () => {
         startBinding: 's1',
         startAnchor: [0.125, 0.875],
         startMode: 'inside',
+        fixedSegments: [{ index: 2, start: [40, 0], end: [40, 60] }],
         label: 'slides',
         labelPosition: 0.25,
       },

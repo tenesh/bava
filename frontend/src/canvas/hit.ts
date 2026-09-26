@@ -8,7 +8,7 @@
  * this is that logic, shared, so selection and the label editor test the same
  * thing (`.ai/rules/canvas.md`).
  */
-import { routePoints } from './arrows';
+import { pathOf } from './arrows';
 import { smoothPoints } from './curves';
 import { paintFor } from './paint';
 import { angleOfElement, centreOf, rotatePoint } from './rotate';
@@ -39,7 +39,7 @@ export function drawnPathOf(element: SceneElement): Point[] {
   }
   if (element.type === 'line' || element.type === 'arrow' || element.type === 'stroke') {
     const points = ('points' in element ? element.points : []) as number[];
-    const routed = element.type === 'arrow' ? routePoints(points, (element as { arrowType?: string }).arrowType) : points;
+    const routed = element.type === 'arrow' ? pathOf(points, (element as { arrowType?: string }).arrowType) : points;
     const drawn = smoothPoints(routed, paintFor(element, NO_THEME).tension);
     const path: Point[] = [];
     for (let i = 0; i + 1 < drawn.length; i += 2) path.push(at(drawn[i], drawn[i + 1]));

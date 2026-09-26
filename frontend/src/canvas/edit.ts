@@ -82,9 +82,36 @@ function pointAtCopies(scene: Scene, copies: SceneElement[], byOriginal: Map<Ele
   const renamed = new Map([...byOriginal].map(([original, copy]) => [original, copy.id]));
   const remapped = remapReferences(copies, renamed);
   for (let i = 0; i < copies.length; i += 1) {
-    if (remapped[i] === copies[i]) continue;
-    scene.update(copies[i].id, remapped[i] as Partial<SceneElement>);
+    const loose = letGoOfOriginals(remapped[i], renamed, scene);
+    if (loose === copies[i]) continue;
+    // Replaced whole: `update` merges, and cannot take a key away.
+    scene.replace(copies[i].id, loose);
   }
+}
+
+/**
+ * A copied arrow lets go of any shape that was not copied with it (binding,
+ * anchor and mode), as Excalidraw's copies do: kept, re-aiming pulls the copy
+ * back onto the original's shapes. A target already gone stays named, so the
+ * copy is detached as its original is.
+ */
+function letGoOfOriginals(element: SceneElement, renamed: Map<ElementId, ElementId>, scene: Scene): SceneElement {
+  if (element.type !== 'arrow') return element;
+  const copied = new Set(renamed.values());
+  const loose = { ...element } as SceneElement & Record<string, unknown>;
+  let changed = false;
+  for (const [key, anchor, mode] of [
+    ['startBinding', 'startAnchor', 'startMode'],
+    ['endBinding', 'endAnchor', 'endMode'],
+  ] as const) {
+    const target = loose[key] as string | undefined;
+    if (target === undefined || copied.has(target) || !scene.get(target)) continue;
+    delete loose[key];
+    delete loose[anchor];
+    delete loose[mode];
+    changed = true;
+  }
+  return changed ? loose : element;
 }
 
 /** The scene's current version of each element, after an update replaced it. */

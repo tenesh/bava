@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { drawnPathOf, nearElement, pathBounds } from './hit';
 import type { SceneElement } from './scene';
+import { pathOf } from './arrows';
 
 const arrow = (over: Record<string, unknown> = {}): SceneElement =>
   ({ id: 'a', type: 'arrow', x: 0, y: 0, w: 100, h: 100, z: 1, points: [0, 0, 100, 100], ...over }) as SceneElement;
@@ -15,6 +16,14 @@ describe('what an element draws, for hit-testing', () => {
 
   it('follows an elbow around its corners', () => {
     expect(drawnPathOf(arrow({ arrowType: 'elbow' })).length).toBeGreaterThan(2);
+  });
+
+  // 06.14 E4: the hit test measures the rounded corners the stage draws.
+  it("follows an elbow's rounded corners, not the square ones", () => {
+    const path = drawnPathOf(arrow({ arrowType: 'elbow', points: [0, 0, 100, 0, 100, 100] }));
+    const flat = pathOf([0, 0, 100, 0, 100, 100], 'elbow');
+    expect(path).toEqual(Array.from({ length: flat.length / 2 }, (_, i) => ({ x: flat[i * 2], y: flat[i * 2 + 1] })));
+    expect(path).not.toContainEqual({ x: 100, y: 0 });
   });
 
   it('is the outline of a frame, and nothing for a filled shape', () => {

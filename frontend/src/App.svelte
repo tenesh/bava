@@ -37,6 +37,7 @@
   import { createHistory } from './canvas/history';
   import { createSelection } from './canvas/selection';
   import { createPointerHandler } from './canvas/pointer';
+  import { cursorFor } from './canvas/cursor';
   import { frameThrottle } from './canvas/frame-throttle';
   import { bindingReach } from './canvas/binding';
   import { paintFor } from './canvas/paint';
@@ -97,6 +98,13 @@
   const tools = createTools();
   const history = createHistory({ elements: [] });
   const selection = createSelection();
+  // Set when the canvas is mounted: puts the right cursor on it now.
+  let cursorUpdate: (() => void) | null = null;
+  // A new tool is a new cursor, before the pointer moves.
+  $effect(() => {
+    void tools.active;
+    cursorUpdate?.();
+  });
   const pointer = createPointerHandler({
     history,
     selection,
@@ -113,6 +121,9 @@
     bendMinSegment: () => (parseFloat(readRootVariable('--size-bend-min-segment')) || 0) / viewport.zoom,
     // How near a press must come to a line's point, in scene units at this zoom.
     pointHit: () => (parseFloat(readRootVariable('--size-point-hit')) || 0) / viewport.zoom,
+    segmentMin: () => (parseFloat(readRootVariable('--size-point-handle')) || 0) / 2 / viewport.zoom,
+    pointHandle: () => (parseFloat(readRootVariable('--size-point-handle')) || 0) / viewport.zoom,
+    bentBoxPadding: () => (parseFloat(readRootVariable('--size-bent-box-padding')) || 0) / viewport.zoom,
     bendInsertDistance: () => (parseFloat(readRootVariable('--size-bend-insert')) || 0) / viewport.zoom,
     minLinear: () => (parseFloat(readRootVariable('--size-min-linear')) || 0) / viewport.zoom,
     confirmDistance: () => (parseFloat(readRootVariable('--size-line-confirm')) || 0) / viewport.zoom,
@@ -175,7 +186,8 @@
       measure: (code) => {
         // At the block's width: it wraps, and only grows taller.
         const size = measureCode(code, codeMetrics(), element.w);
-        return { width: size.width * viewport.zoom, height: size.height * viewport.zoom };
+        // A block made taller than its code keeps that height while typed in.
+        return { width: size.width * viewport.zoom, height: Math.max(size.height, element.h) * viewport.zoom };
       },
       onCommit: (code) => {
         commitCode(history, element.id, code, codeMetrics());
@@ -898,6 +910,21 @@
     // Where the pointer last was during a drag, so a modifier pressed without
     // moving it can redraw the preview.
     let lastDragPoint: { x: number; y: number } | null = null;
+    // Where the pointer last was over the canvas, for the cursor.
+    let lastPointer: { x: number; y: number } | null = null;
+    // The cursor for what is under the pointer and what is going on
+    // (`canvas/cursor.ts`). A drag keeps the cursor it started with, except
+    // a label's, which is held.
+    const updateCursor = () => {
+      if (pointer.dragging && !pointer.draggingLabel && !panningFrom) return;
+      diagramHost.style.cursor = cursorFor({
+        tool: tools.active,
+        over: lastPointer && !pointer.dragging ? pointer.cursorTarget(lastPointer) : null,
+        panning: panningFrom ? 'moving' : spaceHeld ? 'ready' : null,
+        dragging: pointer.draggingLabel ? 'label' : null,
+      });
+    };
+    cursorUpdate = updateCursor;
     const onDown = (event: PointerEvent) => {
       // A press inside the label editor is typing, not a canvas gesture.
       if (labelEditor?.contains(event.target)) return;
@@ -906,6 +933,7 @@
       diagramHost.setPointerCapture(event.pointerId);
       if (event.button === 1 || spaceHeld) {
         panningFrom = screenPoint(event);
+        updateCursor();
         return;
       }
       // Text is placed with a click and typed; it is not a drag.
@@ -913,6 +941,7 @@
       pointer.down(scenePoint(event), { additive: event.shiftKey, alt: event.altKey, shift: event.shiftKey });
       // A click selects; show it now rather than on release.
       syncSelection();
+      updateCursor();
     };
     // Drawn at most once per frame: a pointer reports moves faster than the
     // screen redraws. Every move still reaches the pointer handler, so a pen
@@ -928,9 +957,15 @@
       canvas.render(pointer.preview(point, { shift, alt, mod }) ?? history.current);
       canvas.setMarquee(pointer.marquee);
       // The shapes this arrow would attach to, shown while it is drawn.
-      canvas.setBindingCandidates(pointer.bindingCandidates);
+      canvas.setBindingCandidates(pointer.bindingCandidates, pointer.snapSpots);
     });
     const drawPan = frameThrottle(() => applyView());
+    // What the pointer is over, looked up once a frame: a disc under the
+    // handle it is on (none while dragging), and the cursor.
+    const drawHover = frameThrottle((point: { x: number; y: number }) => {
+      canvas.setHoverHandle(pointer.hoveredHandle(point));
+      updateCursor();
+    });
     const drawClicking = frameThrottle((point: { x: number; y: number }) => {
       canvas.render(pointer.pointsPreview(point) ?? history.current);
     });
@@ -944,12 +979,14 @@
       }
       const point = scenePoint(event);
       lastDragPoint = point;
+      lastPointer = point;
       pointer.move(point, { alt: event.altKey, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey });
+      drawHover(point);
       // Drawing click by click: the next segment follows the pointer, pressed
       // or not; a press there draws nothing of its own.
       if (pointer.drawingPoints) {
         drawClicking(point);
-        canvas.setBindingCandidates(pointer.bindingCandidates);
+        canvas.setBindingCandidates(pointer.bindingCandidates, pointer.snapSpots);
         return;
       }
       if (!pointer.dragging) return;
@@ -967,6 +1004,7 @@
         panningFrom = null;
         drawPan.cancel();
         applyView();
+        updateCursor();
         return;
       }
       if (tools.active === 'text') {
@@ -992,6 +1030,7 @@
       // republishes). Show what is. Unchanged elements are skipped. While a
       // line is drawn click by click, what is includes its next segment.
       canvas.render(pointer.pointsPreview(scenePoint(event)) ?? history.current);
+      updateCursor();
     };
     // Right-click: an unselected element under the pointer becomes the
     // selection first, then the menu opens at the pointer for it.
@@ -1009,9 +1048,10 @@
     };
     const onDoubleClick = (event: MouseEvent) => {
       if (labelEditor?.contains(event.target)) return;
-      // A double-click on a bend of the selected line or arrow removes it,
-      // before it could open the label editor.
-      if (pointer.removeBendAt(scenePoint(event as PointerEvent))) {
+      // A double-click on a fixed segment of the selected elbow lets it go,
+      // and on a bend of the selected line or arrow removes it, before either
+      // could open the label editor.
+      if (pointer.releaseSegmentAt(scenePoint(event as PointerEvent)) || pointer.removeBendAt(scenePoint(event as PointerEvent))) {
         commit();
         return;
       }
@@ -1050,11 +1090,13 @@
       // Always cleared on release, wherever focus went while it was held.
       if (event.type === 'keyup') {
         spaceHeld = false;
+        updateCursor();
         return;
       }
       if (canvasKeyStandsDown(event.target as Element | null, event.key, event.defaultPrevented)) return;
       if (editTarget(event.target as Element | null, { canvasVisible: canvasShown() }) !== 'canvas') return;
       spaceHeld = true;
+      updateCursor();
       event.preventDefault();
     };
     const releaseSpace = () => (spaceHeld = false);

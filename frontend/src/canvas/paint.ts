@@ -10,7 +10,7 @@
 import { resolveStyle, type ReadVariable } from './palette';
 import { isOutlineShape } from './shapes';
 import { isShapeType, type SceneElement } from './scene';
-import { PROPERTY_DEFAULTS } from './style';
+import { PROPERTY_DEFAULTS } from './style-defaults';
 
 /** Excalidraw's proportional radius: a quarter of the shorter side. */
 export const ROUND_SHARE = 0.25;

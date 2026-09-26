@@ -224,7 +224,7 @@ describe('syntax colours', () => {
 // without a word.
 describe('the canvas distances added in 06.12', () => {
   const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
-  it.each(['--size-point-handle', '--size-point-hit', '--size-bend-insert', '--size-min-linear', '--size-bend-min-segment', '--size-elbow-margin', '--size-line-confirm', '--size-point-handle-editing'])(
+  it.each(['--size-point-handle', '--size-point-hit', '--size-bend-insert', '--size-min-linear', '--size-bend-min-segment', '--size-elbow-margin', '--size-line-confirm', '--size-point-handle-editing', '--size-snap-dot', '--size-bent-box-padding', '--size-point-hover', '--size-focus-point', '--size-point-overlap'])(
     '%s has a non-zero length',
     (name) => {
       const match = css.match(new RegExp(`${name}:\\s*([0-9.]+)px`));
@@ -232,4 +232,13 @@ describe('the canvas distances added in 06.12', () => {
       expect(parseFloat(match![1])).toBeGreaterThan(0);
     },
   );
+});
+
+// 06.14 S12: a line is hit within Excalidraw's 0.85 × 8 = 6.8 screen px
+// (`App.tsx:6808-6816`), rounded to a whole pixel.
+describe('how near a line counts as on it', () => {
+  it("is Excalidraw's 6.8 screen px, rounded to 7", () => {
+    const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+    expect(css).toMatch(/--size-hit-tolerance:\s*7px/);
+  });
 });

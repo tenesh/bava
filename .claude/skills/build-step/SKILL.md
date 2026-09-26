@@ -631,6 +631,20 @@ deliberately at `5.24.2` or later.
   (ArrowDown, Enter); RadioGroup items accept a click. Popovers render closed
   content unless `lazyMount`.
 
+### Milestone 6.14 findings (elbow segments, handles, cursors), 2026-09-27
+
+- **Gates green; not seen at a running window.** Plan
+  `.claude/work/plans/06.14-elbows-cursors-code.md`; the rows it built are
+  marked "built 06.14" in `.claude/work/specs/excalidraw-lines-inventory.md`.
+  06.15 (point editing P, creation C) and 06.16 (the rest) follow.
+- Elbows: 40 padding, rounded corners (`pathOf`, used by stage, hit test and
+  export), the 5% middle snap with dots, segments dragged and fixed
+  (`fixedSegments`, `elbow-segments.ts`), a bound elbow not dragged by its
+  body. Handles: padded bent-line box, hover disc, anchor discs, middles over
+  labels, 7 px line hits. Cursors from `cursor.ts`. Code blocks grow taller.
+- `canvas/style-defaults.ts` exists to break an import loop (style, binding,
+  paint); import the defaults from there in drawing code.
+
 ### Milestone 6.13 findings (pinned ends, point editing, click-by-click), 2026-09-26
 
 - **Gates green; not seen at a running window.** Plan

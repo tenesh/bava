@@ -14,13 +14,32 @@ import type { Selection, Box } from './selection';
 import type { ToolId } from './tools.svelte';
 import { produce } from 'immer';
 import { createScene, isLocked, type ArrowProps, type ElementId, type SceneData, type SceneElement } from './scene';
-import { labelPoint, middlesAlong, positionAlong, routePoints } from './arrows';
+import { labelPoint, middlesAlong, pathOf, positionAlong } from './arrows';
+import { smoothPoints } from './curves';
 import { duplicate, withDescendants } from './edit';
-import { anchorFor, BINDING_REACH_MIN, drawnPoints, isInside, reroute, settledAround, targetAt, unturned } from './binding';
+import {
+  anchorFor,
+  BINDING_GAP,
+  BINDING_REACH_MIN,
+  bindingsOf,
+  drawnPoints,
+  elbowEnds,
+  elbowSnapSpots,
+  fixedOf,
+  isInside,
+  reroute,
+  settledAround,
+  targetAt,
+  unturned,
+  withFixed,
+} from './binding';
+import { routeElbow } from './elbow';
+import { moveSegment, releaseSegment } from './elbow-segments';
 import { carriedWith, releaseFrames } from './containment';
 import { measureCode, MIN_RESIZE_COLUMNS, type CodeMetrics } from './code/measure';
 import { isLinear, nearElement, tensionOf } from './hit';
-import { chromeFor, offersMiddles } from './selection-chrome';
+import { chromeFor, elbowSegmentHandles, focusSpots, grown, offersMiddles } from './selection-chrome';
+import type { CursorTarget } from './cursor';
 import { simplify } from './stroke';
 import { snapAngle, squareBox } from './constrain';
 import { erasableAlong, eraseSet } from './eraser';
@@ -83,6 +102,19 @@ export type PointerHandlerOptions = {
    */
   bendMinSegment?: () => number;
   /**
+   * The shortest elbow segment, in scene units, that shows a handle at its
+   * middle for dragging it: Excalidraw's 5 screen px, half of
+   * `--size-point-handle`, divided by the zoom.
+   */
+  segmentMin?: () => number;
+  /**
+   * A point handle's size, in scene units: an anchor this near its end shows
+   * no disc, the end's handle being there. `--size-point-handle` over the zoom.
+   */
+  pointHandle?: () => number;
+  /** How far a bent line's box stands clear of it, in scene units: 10 screen px. */
+  bentBoxPadding?: () => number;
+  /**
    * How near a press must come to a line's or arrow's point to take it, in
    * scene units: Excalidraw's 11 screen px (`linearElementEditor.ts:1433-1458`),
    * which the caller divides by the zoom.
@@ -130,6 +162,17 @@ type Drag = {
    * position in the list.
    */
   bend?: { id: ElementId; index: number; insert: boolean; original: SceneElement; at: Point };
+  /**
+   * Set when the press landed on the middle of a selected elbow's segment:
+   * it moves across itself and stays there (a fixed segment).
+   */
+  segment?: { id: ElementId; index: number; original: SceneElement };
+  /**
+   * Set when the press landed on an attached end's anchor disc: the anchor
+   * moves, onto another shape re-attaches, off every shape the end lets go.
+   * `offset` keeps the disc where it was grabbed.
+   */
+  focus?: { id: ElementId; side: 'start' | 'end'; original: SceneElement; offset: Point };
   /** Set when the press landed on the selected arrow's label, which slides along it. */
   label?: { id: ElementId; original: SceneElement };
   /** Set in point editing when the press took points: they move together. */
@@ -196,7 +239,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   const handleSize = options.handleSize ?? (() => 4);
   const eraserTolerance = options.eraserTolerance ?? (() => 3);
   // The eraser's brush width and the slop on a click are different decisions.
-  const hitTolerance = options.hitTolerance ?? (() => 4);
+  const hitTolerance = options.hitTolerance ?? (() => 7);
   // The token's value at zoom 1, as the other defaults do: a test that presses
   // at a gap the app never uses cannot catch a gap regression.
   const rotateGap = options.rotateGap ?? (() => 16);
@@ -206,6 +249,9 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   // The token's value at zoom 1, as the others.
   const bendMinSegment = options.bendMinSegment ?? (() => 40);
   const pointHit = options.pointHit ?? (() => 11);
+  const segmentMin = options.segmentMin ?? (() => 5);
+  const pointHandle = options.pointHandle ?? (() => 10);
+  const bentBoxPadding = options.bentBoxPadding ?? (() => 10);
   const bendInsertDistance = options.bendInsertDistance ?? (() => 10);
   const minLinear = options.minLinear ?? (() => 20);
   const confirmDistance = options.confirmDistance ?? (() => 8);
@@ -235,7 +281,13 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     const tolerance = hitTolerance();
     return history.current.elements.filter((e) => {
       if (isLocked(e)) return false;
-      return isLinear(e.type) ? nearElement(e, point, tolerance) : containsPoint(e, point);
+      if (!isLinear(e.type)) return containsPoint(e, point);
+      if (nearElement(e, point, tolerance)) return true;
+      // Selected alone and showing a box (a bent line), it is hit anywhere in
+      // the box as drawn, its padding included (Excalidraw's `App.tsx:6824-6842`).
+      if (selection.ids.length !== 1 || !selection.has(e.id)) return false;
+      const chrome = chromeFor([e], currentEditing()?.id ?? null);
+      return chrome.box && containsPoint({ ...e, ...grown(e, chrome.padded ? bentBoxPadding() : tolerance) }, point);
     });
   }
 
@@ -246,6 +298,22 @@ export function createPointerHandler(options: PointerHandlerOptions) {
    */
   function dragTargets(): SceneElement[] {
     return carriedWith(history.current, selection.ids);
+  }
+
+  /**
+   * What a drag of the body moves, as Excalidraw's (`dragElements.ts:46-67`):
+   * an attached elbow alone not at all (its route belongs to its shapes), and
+   * an elbow attached at both ends only when both its shapes move too.
+   */
+  function movable(targets: SceneElement[]): SceneElement[] {
+    const bound = (e: SceneElement) => isElbow(e) && Boolean(bindingsOf(e).start ?? bindingsOf(e).end);
+    if (targets.length === 1 && bound(targets[0])) return [];
+    const ids = new Set(targets.map((e) => e.id));
+    return targets.filter((e) => {
+      if (!isElbow(e)) return true;
+      const { start, end } = bindingsOf(e);
+      return start === undefined || end === undefined || (ids.has(start) && ids.has(end));
+    });
   }
 
   /** What a resize acts on: the selection, with groups expanded but not frames. */
@@ -287,6 +355,11 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       return drag !== null;
     },
 
+    /** Whether the drag in progress slides an arrow's label, for the cursor. */
+    get draggingLabel(): boolean {
+      return Boolean(drag?.label);
+    },
+
     /** The marquee rectangle while one is being dragged, for the stage to draw. */
     get marquee(): Box | null {
       return marquee;
@@ -319,6 +392,19 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const ends = [drag.origin, shift ? snapAngle(drag.origin, lastPoint) : lastPoint];
       const ids = ends.map((end) => targetAt(history.current, end, drag!.newId, reach())?.id);
       return ids.filter((id, i) => id !== undefined && ids.indexOf(id) === i) as ElementId[];
+    },
+
+    /**
+     * The spots an elbow end being dragged can snap to on the shape it would
+     * attach to, for the stage to show as dots (Excalidraw's elbow midpoints).
+     * Empty for any other drag.
+     */
+    get snapSpots(): Point[] {
+      if (!drag?.endpoint || !isElbow(drag.endpoint.original)) return [];
+      return this.bindingCandidates.flatMap((id) => {
+        const shape = history.current.elements.find((e) => e.id === id);
+        return shape ? elbowSnapSpots(shape) : [];
+      });
     },
 
     down(point: Point, options: { additive?: boolean; alt?: boolean; shift?: boolean } = {}): void {
@@ -358,12 +444,15 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         const end = endpointAt(point);
         // A bend, a line's end or a segment's middle: after an arrow's ends,
         // before the box handles, which share their corners on a thin box.
-        let bend = end ? null : bendAt(point);
-        // The label beats only a segment's middle, which it covers on a
-        // straight arrow; the points stay reachable on top of it.
-        const label = end || (bend && !bend.insert) ? null : labelAt(point);
-        if (label) bend = null;
-        if (end || bend || label) {
+        const focus = end ? null : focusAt(point);
+        const bend = end || focus ? null : bendAt(point);
+        // An elbow's segment handle.
+        const segment = end ? null : segmentAt(point);
+        // Every handle beats the label over it, a middle included, so a
+        // labelled arrow can still be bent (Excalidraw's, S8); the rest of the
+        // label slides it.
+        const label = end || focus || segment || bend ? null : labelAt(point);
+        if (end || focus || bend || segment || label) {
           drag = {
             origin: point,
             moving: [],
@@ -373,6 +462,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
             rotate: null,
             endpoint: end,
             bend: bend ?? undefined,
+            segment: segment ?? undefined,
+            focus: focus ?? undefined,
             label: label ?? undefined,
             newId: '',
           };
@@ -381,52 +472,37 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       }
 
       // A selection handle wins over whatever lies beneath it.
-      if (tools.active === 'select' && selection.ids.length > 0) {
-        const { frame, selected } = frameFor();
-        const bounds = { x: frame.x, y: frame.y, w: frame.w, h: frame.h };
-        const size = handleSize();
-        // Only the handles the stage draws for this selection can be pressed.
-        const chrome = chromeFor(history.current.elements.filter((e) => selection.has(e.id)), wasEditing);
-        // Handles are drawn on the frame, so a press is read in its space.
-        const local = pointInFrame(point, frame);
-        // A gap of zero would put the rotate zone on the top handle and make
-        // that handle unreachable; no gap means no rotate handle.
-        const gap = rotateGap();
-        if (gap > 0 && chrome.rotate && isRotateHandle(local, bounds, size, gap) && selected.some(canRotate)) {
-          const centre = centreOf(bounds);
-          drag = {
-            origin: point,
-            moving: [],
-            originals: new Map(),
-            strokePoints: [],
-            resize: null,
-            rotate: { centre, startAngle: angleOf(centre, point), originals: new Map(selected.map((e) => [e.id, e])) },
-            endpoint: null,
-            newId: '',
-          };
-          return;
-        }
-        const handle = handleAt(local, bounds, size, chrome.handles);
-        // A selection only a few handles across is covered by its handles;
-        // pressing inside it moves it, and the handles' outer halves resize.
-        const inside = local.x > bounds.x && local.x < bounds.x + bounds.w && local.y > bounds.y && local.y < bounds.y + bounds.h;
-        const small = bounds.w < size * 6 || bounds.h < size * 6;
-        if (handle && !(inside && small)) {
-          drag = {
-            origin: point,
-            moving: [],
-            originals: new Map(),
-            strokePoints: [],
-            // A group resizes with its children; a frame alone, since what it
-            // holds keeps its own size and place (membership is re-checked
-            // after, as for any change).
-            resize: { handle, bounds, angle: frame.angle, originals: new Map(resized().map((e) => [e.id, e])) },
-            rotate: null,
-            endpoint: null,
-            newId: '',
-          };
-          return;
-        }
+      const boxHandle = tools.active === 'select' ? boxHandleAt(point, wasEditing) : null;
+      if (boxHandle?.kind === 'rotate') {
+        const { centre, selected } = boxHandle;
+        drag = {
+          origin: point,
+          moving: [],
+          originals: new Map(),
+          strokePoints: [],
+          resize: null,
+          rotate: { centre, startAngle: angleOf(centre, point), originals: new Map(selected.map((e) => [e.id, e])) },
+          endpoint: null,
+          newId: '',
+        };
+        return;
+      }
+      if (boxHandle?.kind === 'resize') {
+        const { handle, bounds, angle } = boxHandle;
+        drag = {
+          origin: point,
+          moving: [],
+          originals: new Map(),
+          strokePoints: [],
+          // A group resizes with its children; a frame alone, since what it
+          // holds keeps its own size and place (membership is re-checked
+          // after, as for any change).
+          resize: { handle, bounds, angle, originals: new Map(resized().map((e) => [e.id, e])) },
+          rotate: null,
+          endpoint: null,
+          newId: '',
+        };
+        return;
       }
 
       const hits = elementsAt(point);
@@ -445,9 +521,10 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       }
 
       const drags = tools.active === 'select' && (hits.length > 0 || insideSelection);
-      const moving = drags ? dragTargets().map((e) => e.id) : [];
+      const targets = drags ? movable(dragTargets()) : [];
+      const moving = targets.map((e) => e.id);
       const originals = new Map<ElementId, { x: number; y: number }>();
-      for (const element of drags ? dragTargets() : []) {
+      for (const element of targets) {
         originals.set(element.id, { x: element.x, y: element.y });
       }
 
@@ -462,6 +539,9 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         newId: nextId(history.current.elements.length),
         pendingClick,
         pendingClear: insideSelection,
+        // A press on what cannot be dragged (an attached elbow alone) drags
+        // nothing, and is no marquee either; released, it is still a click.
+        inert: drags && hits.length > 0 && targets.length === 0 ? true : undefined,
       };
     },
 
@@ -489,7 +569,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
       // A resize is a select-tool drag that moves nothing; the marquee belongs
       // to dragging empty space, not to it.
-      if (tools.active === 'select' && !drag.resize && !drag.rotate && !drag.endpoint && !drag.bend && !drag.label && !drag.points && !drag.inert && drag.moving.length === 0) {
+      if (tools.active === 'select' && !drag.resize && !drag.rotate && !drag.endpoint && !drag.bend && !drag.segment && !drag.focus && !drag.label && !drag.points && !drag.inert && drag.moving.length === 0) {
         marquee = boxBetween(drag.origin, point);
       }
     },
@@ -607,6 +687,94 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     },
 
     /**
+     * What is under a point, for the cursor (`cursor.ts`), by the rules a
+     * press there would follow: the confirm zone while drawing by clicks; a
+     * handle of the one selected line or arrow; a box handle; the label; or
+     * an element, and whether a drag would move it. Null over nothing.
+     */
+    cursorTarget(point: Point): CursorTarget | null {
+      if (clicking && (tools.active === 'line' || tools.active === 'arrow')) {
+        const last = clicking.points[clicking.points.length - 1];
+        return Math.hypot(point.x - last.x, point.y - last.y) <= confirmDistance() ? { kind: 'confirm' } : null;
+      }
+      if (tools.active !== 'select') return null;
+      const editing = currentEditing();
+      if (editing) {
+        const found = bendAt(point);
+        if (found) return { kind: found.insert ? 'middle' : 'point' };
+        if (endpointAt(point)) return { kind: 'point' };
+      }
+      if (selection.ids.length === 1) {
+        if (endpointAt(point)) return { kind: 'point' };
+        if (focusAt(point)) return { kind: 'focus' };
+        const bend = bendAt(point);
+        if (bend) return { kind: bend.insert ? 'middle' : 'point' };
+        if (segmentAt(point)) return { kind: 'segment' };
+        if (labelAt(point)) return { kind: 'label' };
+      }
+      const box = boxHandleAt(point, editing?.id ?? null);
+      if (box?.kind === 'rotate') return { kind: 'rotate' };
+      if (box?.kind === 'resize') return { kind: 'resize', handle: box.handle, angle: box.angle };
+      const hits = elementsAt(point);
+      const top = hits[hits.length - 1];
+      if (!top) return null;
+      // What a press there would drag: the selection when it is in it, else it alone.
+      const ids = selection.has(top.id) ? selection.ids : [top.id];
+      return { kind: 'element', movable: movable(carriedWith(history.current, ids)).length > 0 };
+    },
+
+    /**
+     * Where the handle under a point is, for the stage's hover disc: an end,
+     * a point or a middle of the one selected line or arrow, or a segment's
+     * middle of an elbow. Null during a drag, or over none.
+     */
+    hoveredHandle(point: Point): Point | null {
+      if (drag || tools.active !== 'select' || selection.ids.length !== 1) return null;
+      const end = endpointAt(point);
+      if (end) return end.at;
+      const focus = focusAt(point);
+      if (focus) return { x: point.x - focus.offset.x, y: point.y - focus.offset.y };
+      const bend = bendAt(point);
+      if (bend) return bend.at;
+      const segment = segmentAt(point);
+      if (!segment) return null;
+      return elbowSegmentHandles(segment.original, segmentMin()).find((h) => h.index === segment.index)?.at ?? null;
+    },
+
+    /**
+     * Let go of the fixed elbow segment whose handle is under a point, as one
+     * step: the route between its fixed neighbours is worked out again, or
+     * the whole route when it was the last. Returns whether one was released,
+     * so the caller skips its own double-click behaviour.
+     */
+    releaseSegmentAt(point: Point): boolean {
+      const found = segmentAt(point);
+      if (!found) return false;
+      const { id, index, original } = found;
+      const fixed = fixedOf(original);
+      if (!fixed.includes(index)) return false;
+      const points = ('points' in original ? original.points : []) as number[];
+      const world: Point[] = [];
+      for (let i = 0; i + 1 < points.length; i += 2) world.push({ x: original.x + points[i], y: original.y + points[i + 1] });
+      const { start, end } = bindingsOf(original);
+      const find = (key?: string) => (key === undefined ? undefined : history.current.elements.find((e) => e.id === key));
+      const { from, to } = elbowEnds(original, points, find(start), find(end));
+      const released = releaseSegment(world, fixed, index, from, to, (a, b) => routeElbow(a, b, { gap: BINDING_GAP }));
+      history.mutate((scene) => {
+        const i = scene.elements.findIndex((e) => e.id === id);
+        if (i < 0) return;
+        if (!released) {
+          // The last fixed segment: the arrow is routed whole again (`reroute`).
+          scene.elements[i] = withFixed(scene.elements[i], []);
+          return;
+        }
+        const flat = released.points.flatMap((p) => [p.x, p.y]);
+        scene.elements[i] = settledAround(withFixed({ ...original, x: 0, y: 0, points: flat } as SceneElement, released.fixed), flat);
+      });
+      return true;
+    },
+
+    /**
      * Remove the bend under a point, on the one selected line or arrow, as one
      * step. The ends are not bends: a line or arrow keeps at least two points.
      * Returns whether a bend was removed, so the caller skips its own
@@ -714,7 +882,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         return null;
       }
 
-      if (tools.active === 'select' && !started.resize && !started.rotate && !started.endpoint && !started.bend && !started.label && !started.points && !started.inert && started.moving.length === 0) {
+      if (tools.active === 'select' && !started.resize && !started.rotate && !started.endpoint && !started.bend && !started.segment && !started.focus && !started.label && !started.points && !started.inert && started.moving.length === 0) {
         if (farEnough(started.origin, point)) {
           selection.marquee(boxBetween(started.origin, point), history.current);
         }
@@ -840,7 +1008,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const { id, original } = started.label;
       if (!farEnough(started.origin, point)) return null;
       const props = original as SceneElement & ArrowProps;
-      const routed = routePoints((('points' in original ? original.points : []) as number[]), props.arrowType);
+      // The path as drawn, which the stage centres the label on.
+      const routed = smoothPoints(pathOf((('points' in original ? original.points : []) as number[]), props.arrowType), tensionOf(original));
       // The label moves with the pointer, kept on the path: where it was, moved
       // by the drag, then brought to the nearest point along the arrow.
       const from = labelPoint(routed, props.labelPosition);
@@ -854,6 +1023,67 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       return (scene) => {
         const element = scene.elements.find((e) => e.id === id) as (SceneElement & ArrowProps) | undefined;
         if (element) element.labelPosition = position;
+      };
+    }
+
+    if (started.focus) {
+      const { id, side, original, offset } = started.focus;
+      if (!farEnough(started.origin, point)) return null;
+      const aimed = { x: point.x - offset.x, y: point.y - offset.y };
+      const record = original as unknown as Record<string, unknown>;
+      const other = record[side === 'start' ? 'endBinding' : 'startBinding'];
+      const candidate = mod ? undefined : targetAt(history.current, aimed, id, reach());
+      const target = candidate && candidate.id === other ? undefined : candidate;
+      const [key, anchorKey, modeKey] = [`${side}Binding`, `${side}Anchor`, `${side}Mode`];
+      // Off every shape, the end itself goes there, free.
+      const base = unturned(original);
+      const points = [...(('points' in base ? base.points : []) as number[])];
+      const at = side === 'start' ? 0 : points.length - 2;
+      points[at] = aimed.x - base.x;
+      points[at + 1] = aimed.y - base.y;
+      return (scene) => {
+        const i = scene.elements.findIndex((e) => e.id === id);
+        if (i < 0) return;
+        if (target) {
+          const bound = { ...scene.elements[i] } as unknown as Record<string, unknown>;
+          bound[key] = target.id;
+          // Exactly where it is put: the end aims through it (Alt pins it there).
+          bound[anchorKey] = anchorFor(target, aimed, reach(), true);
+          if (alt) bound[modeKey] = 'inside';
+          else delete bound[modeKey];
+          scene.elements[i] = bound as unknown as SceneElement;
+          return;
+        }
+        const loose = settledAround(base, points) as unknown as Record<string, unknown>;
+        delete loose[key];
+        delete loose[anchorKey];
+        delete loose[modeKey];
+        scene.elements[i] = loose as unknown as SceneElement;
+      };
+    }
+
+    if (started.segment) {
+      const { id, index, original } = started.segment;
+      // It moves at once, as Excalidraw's; a click without moving fixes nothing.
+      if (point.x === started.origin.x && point.y === started.origin.y) return null;
+      const points = ('points' in original ? original.points : []) as number[];
+      const world: Point[] = [];
+      for (let i = 0; i + 1 < points.length; i += 2) world.push({ x: original.x + points[i], y: original.y + points[i + 1] });
+      const a = world[index - 1];
+      const b = world[index];
+      const across = Math.abs(b.y - a.y) <= Math.abs(b.x - a.x);
+      // By the drag, from where it was: it does not jump to the pointer.
+      const coordinate = tidy(across ? a.y + point.y - started.origin.y : a.x + point.x - started.origin.x);
+      const { start, end } = bindingsOf(original);
+      const find = (key?: string) => (key === undefined ? undefined : history.current.elements.find((e) => e.id === key));
+      const { from, to } = elbowEnds(original, points, find(start), find(end));
+      const moved = moveSegment(world, fixedOf(original), index, coordinate, from, to);
+      const flat = moved.points.flatMap((p) => [p.x, p.y]);
+      const base = withFixed({ ...original, x: 0, y: 0, points: flat } as SceneElement, moved.fixed);
+      return (scene) => {
+        const i = scene.elements.findIndex((e) => e.id === id);
+        // The ends re-aim and the legs adapt in the same step (`reroute`).
+        if (i >= 0) scene.elements[i] = settledAround(base, flat);
       };
     }
 
@@ -925,7 +1155,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         const inside = Boolean(target) && pinnedAt(target!, aimed, original);
         if (target) {
           bound[key] = target.id;
-          bound[anchorKey] = anchorFor(target, aimed, reach(), inside);
+          bound[anchorKey] = anchorFor(target, aimed, reach(), inside, isElbow(original));
         } else {
           delete bound[key];
           delete bound[anchorKey];
@@ -1119,15 +1349,17 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
   /**
    * A code block after a resize: the width is the user's (never narrower
-   * than a few columns), and the height is its code wrapped to that width
-   * (`docs/file-format.md`, "Code blocks").
+   * than a few columns), and so is the height, but never below its code
+   * wrapped to that width (`docs/file-format.md`, "Code blocks").
    */
   function codeResized(element: SceneElement): SceneElement {
     const metrics = codeMetrics();
     const block = element as SceneElement & { code: string };
     const w = Math.max(element.w, MIN_RESIZE_COLUMNS * metrics.advance + metrics.padding * 2);
     const size = measureCode(block.code, metrics, w);
-    return { ...element, w: size.width, h: size.height, measuredWidth: size.width, measuredHeight: size.height } as SceneElement;
+    // As tall as the user drags it, never shorter than its wrapped code.
+    const h = Math.max(element.h, size.height);
+    return { ...element, w: size.width, h, measuredWidth: size.width, measuredHeight: size.height } as SceneElement;
   }
 
   /** A line or arrow through `points` (scene space), boxed around them. */
@@ -1267,6 +1499,66 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     return false;
   }
 
+  /**
+   * The selection's rotate or resize handle under a point, as the stage draws
+   * them (`chromeFor`); null over none.
+   */
+  function boxHandleAt(
+    point: Point,
+    editingId: ElementId | null,
+  ):
+    | { kind: 'rotate'; centre: Point; selected: SceneElement[] }
+    | { kind: 'resize'; handle: Handle; bounds: Box; angle: number }
+    | null {
+    if (selection.ids.length === 0) return null;
+    const { frame, selected } = frameFor();
+    const bounds = { x: frame.x, y: frame.y, w: frame.w, h: frame.h };
+    const size = handleSize();
+    // Only the handles the stage draws for this selection can be pressed.
+    const chrome = chromeFor(history.current.elements.filter((e) => selection.has(e.id)), editingId);
+    // Handles are drawn on the frame, so a press is read in its space.
+    const local = pointInFrame(point, frame);
+    // Where the handles are drawn: out on a padded box. A resize still
+    // acts on the tight bounds, by the drag.
+    const drawnBox = chrome.padded ? grown(bounds, bentBoxPadding()) : bounds;
+    // A gap of zero would put the rotate zone on the top handle and make
+    // that handle unreachable; no gap means no rotate handle.
+    const gap = rotateGap();
+    if (gap > 0 && chrome.rotate && isRotateHandle(local, drawnBox, size, gap) && selected.some(canRotate)) {
+      return { kind: 'rotate', centre: centreOf(bounds), selected };
+    }
+    const handle = handleAt(local, drawnBox, size, chrome.handles);
+    // A selection only a few handles across is covered by its handles;
+    // pressing inside it moves it, and the handles' outer halves resize.
+    const inside =
+      local.x > drawnBox.x && local.x < drawnBox.x + drawnBox.w && local.y > drawnBox.y && local.y < drawnBox.y + drawnBox.h;
+    const small = drawnBox.w < size * 6 || drawnBox.h < size * 6;
+    return handle && !(inside && small) ? { kind: 'resize', handle, bounds, angle: frame.angle } : null;
+  }
+
+  /** The anchor disc of the one selected arrow under a point. */
+  function focusAt(point: Point): Drag['focus'] | null {
+    const found = bendable();
+    if (!found || found.element.type !== 'arrow') return null;
+    const reach = pointHit();
+    const spot = focusSpots(found.element, history.current.elements, pointHandle()).find(
+      (s) => Math.hypot(point.x - s.at.x, point.y - s.at.y) <= reach,
+    );
+    if (!spot) return null;
+    return { id: found.element.id, side: spot.side, original: found.element, offset: { x: point.x - spot.at.x, y: point.y - spot.at.y } };
+  }
+
+  /** The handle of a segment of the one selected elbow under a point. */
+  function segmentAt(point: Point): Drag['segment'] | null {
+    const found = bendable();
+    if (!found || !found.elbow) return null;
+    const reach = pointHit();
+    const handle = elbowSegmentHandles(found.element, segmentMin()).find(
+      (h) => Math.hypot(point.x - h.at.x, point.y - h.at.y) <= reach,
+    );
+    return handle ? { id: found.element.id, index: handle.index, original: found.element } : null;
+  }
+
   /** The one selected line or arrow that can be bent, with its points. */
   function bendable(): { element: SceneElement; points: number[]; elbow: boolean } | null {
     if (selection.ids.length !== 1) return null;
@@ -1340,7 +1632,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
    * "inside" mode). An elbow end never is: it keeps to a side.
    */
   function pinnedAt(target: SceneElement, point: Point, arrow?: SceneElement): boolean {
-    if ((arrow as { arrowType?: string } | undefined)?.arrowType === 'elbow') return false;
+    if (arrow && isElbow(arrow)) return false;
     return alt || isInside(target, point);
   }
 
@@ -1378,4 +1670,8 @@ function boundsOfPoints(points: number[]) {
  */
 function nextId(count: number): string {
   return `e${count + 1}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function isElbow(element: SceneElement): boolean {
+  return element.type === 'arrow' && (element as { arrowType?: string }).arrowType === 'elbow';
 }
