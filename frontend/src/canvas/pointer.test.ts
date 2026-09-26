@@ -85,6 +85,7 @@ describe('pointer input', () => {
     handler.down(at(0, 0));
     handler.move(at(20, 20));
     handler.up(at(20, 20));
+    tools.activate('rect');
     handler.down(at(100, 0));
     handler.move(at(120, 20));
     handler.up(at(120, 20));
@@ -356,6 +357,8 @@ describe('erasing', () => {
     const h = harness('rect');
     h.handler.down(at(0, 0));
     h.handler.up(at(20, 20));
+    // A drawn shape hands back to select; draw the second with the rect tool too.
+    h.tools.activate('rect');
     h.handler.down(at(50, 0));
     h.handler.up(at(70, 20));
     h.tools.activate('eraser');
@@ -408,14 +411,16 @@ describe('erasing', () => {
 
 describe('the z a drawn element gets', () => {
   it('is above everything, even after a deletion left a gap', () => {
-    const { history, handler } = harness('rect');
+    const { history, handler, tools } = harness('rect');
     handler.down(at(0, 0));
     handler.up(at(20, 20));
+    tools.activate('rect');
     handler.down(at(30, 0));
     handler.up(at(50, 20));
     history.mutate((scene) => {
       scene.elements = scene.elements.filter((_, i) => i !== 0);
     });
+    tools.activate('rect');
     handler.down(at(60, 0));
     handler.up(at(80, 20));
     const z = history.current.elements.map((e) => e.z);
@@ -1134,5 +1139,73 @@ describe('a freshly placed code block', () => {
     expect(block.w).toBeGreaterThan(0);
     expect(block.h).toBeGreaterThan(0);
     expect(block).toMatchObject({ measuredWidth: block.w, measuredHeight: block.h });
+  });
+});
+
+// As Excalidraw does: a shape tool lets go once it has made something, so the
+// next press selects rather than drawing again. The pen is used stroke after
+// stroke and the eraser pass after pass, so both stay on.
+describe('the tool after a draw', () => {
+  function draw(tool: Parameters<ReturnType<typeof createTools>['activate']>[0], to = at(60, 50)) {
+    const h = harness(tool);
+    h.handler.down(at(10, 10));
+    h.handler.move(to);
+    h.handler.up(to);
+    return h;
+  }
+
+  it('selects a drawn rectangle and returns to select', () => {
+    const { history, selection, tools } = draw('rect');
+    expect(tools.active).toBe('select');
+    expect(selection.ids).toEqual([history.current.elements[0].id]);
+  });
+
+  it('selects a drawn arrow and returns to select', () => {
+    const { history, selection, tools } = draw('arrow');
+    expect(tools.active).toBe('select');
+    expect(selection.ids).toEqual([history.current.elements[0].id]);
+  });
+
+  it('selects a drawn frame and returns to select', () => {
+    const { history, selection, tools } = draw('frame');
+    expect(tools.active).toBe('select');
+    expect(selection.ids).toEqual([history.current.elements[0].id]);
+  });
+
+  it('keeps the pen on after a stroke, and selects nothing', () => {
+    const { history, selection, tools } = draw('pen');
+    expect(history.current.elements).toHaveLength(1);
+    expect(tools.active).toBe('pen');
+    expect(selection.ids).toEqual([]);
+  });
+
+  it('keeps a shape tool when a click makes nothing', () => {
+    const { history, selection, tools } = draw('rect', at(11, 11));
+    expect(history.current.elements).toHaveLength(0);
+    expect(tools.active).toBe('rect');
+    expect(selection.ids).toEqual([]);
+  });
+});
+
+// The threshold is on screen: the caller divides it by the zoom, so a twitch is
+// a click at any zoom and a drag needs the same hand movement at any zoom.
+describe('the drag threshold', () => {
+  function drag(threshold: number, by: number) {
+    const history = createHistory({ elements: [] });
+    const tools = createTools();
+    tools.activate('rect');
+    const handler = createPointerHandler({ history, selection: createSelection(), tools, dragThreshold: () => threshold });
+    handler.down(at(10, 10));
+    handler.move(at(10 + by, 10 + by));
+    handler.up(at(10 + by, 10 + by));
+    return history.current.elements.length;
+  }
+
+  it('treats a 5 unit move as a click when zoomed in (threshold 12)', () => {
+    expect(drag(12, 5)).toBe(0);
+  });
+
+  it('draws from a 1 unit move when zoomed out (threshold 0.75)', () => {
+    expect(drag(0.75, 1)).toBe(1);
   });
 });

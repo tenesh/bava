@@ -10,6 +10,7 @@
 import { resolveStyle, type ReadVariable } from './palette';
 import { isOutlineShape } from './shapes';
 import { isShapeType, type SceneElement } from './scene';
+import { PROPERTY_DEFAULTS } from './style';
 
 /** Excalidraw's proportional radius: a quarter of the shorter side. */
 export const ROUND_SHARE = 0.25;
@@ -50,6 +51,10 @@ export type Paint = {
 
 const number = (read: ReadVariable, name: string) => parseFloat(read(name)) || 0;
 
+/** What an absent `strokeWidth` and `fontSize` mean (`docs/file-format.md`). */
+export const DEFAULT_STROKE_WIDTH = PROPERTY_DEFAULTS.strokeWidth as number;
+export const DEFAULT_FONT_SIZE = PROPERTY_DEFAULTS.fontSize as number;
+
 type StyleProps = {
   strokeWidth?: number;
   strokeStyle?: string;
@@ -78,9 +83,9 @@ export function paintFor(element: SceneElement, read: ReadVariable): Paint {
   const style = resolveStyle(element as { fill?: string; stroke?: string; color?: string }, read);
   const props = element as SceneElement & StyleProps;
   const isFrame = element.type === 'frame';
-  const strokeWidth =
-    props.strokeWidth ??
-    (element.type === 'stroke' ? number(read, '--size-pen-stroke') : number(read, '--size-shape-stroke'));
+  // Absent means the file format's default, pen strokes included: a file
+  // means the same whatever the theme, and picking the default clears the key.
+  const strokeWidth = props.strokeWidth ?? DEFAULT_STROKE_WIDTH;
 
   const paint: Paint = {
     fill: isShapeType(element.type) ? style.fill : '',
@@ -92,7 +97,7 @@ export function paintFor(element: SceneElement, read: ReadVariable): Paint {
     tension: 0,
     font: {
       family: read('--font-ui').trim(),
-      size: props.fontSize ?? number(read, '--text-body'),
+      size: props.fontSize ?? DEFAULT_FONT_SIZE,
       lineHeight: number(read, '--leading-tight'),
       align: props.align ?? (element.type === 'text' || isFrame ? 'left' : 'center'),
       // Free text starts at the top of its box, as Konva draws it; a shape's

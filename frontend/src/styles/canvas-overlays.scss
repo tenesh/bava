@@ -2,7 +2,10 @@
 // their styles cannot live in one. Tokens only, like everything else.
 
 // The label editor: a textarea over a shape's label or a text element while it
-// is being typed (canvas/label-editor.ts).
+// is being typed (canvas/label-editor.ts). It must look like the text it edits,
+// so it has no chrome of its own: font, size, colour, alignment and opacity are
+// the element's, set inline from its paint, and the stage hides the drawn text
+// underneath while it is open.
 .bava-label-editor {
   position: absolute;
   // A rotated element's field turns about its centre, as the stage turns the
@@ -10,27 +13,16 @@
   transform-origin: center;
   z-index: var(--z-floating);
   box-sizing: border-box;
+  // An empty new text field still has somewhere to click.
   min-width: var(--size-label-editor-min-width);
   min-height: var(--size-label-editor-min-height);
   margin: 0;
-  padding: var(--space-1);
-  border: var(--border-width) solid var(--color-selection-handle);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-raised);
-  font-family: var(--font-ui);
-  font-size: var(--text-body);
-  line-height: var(--leading-tight);
-  color: var(--color-text-primary);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
   resize: none;
   outline: none;
-}
-
-.bava-label-editor[data-align='center'] {
-  text-align: center;
-}
-
-.bava-label-editor[data-align='left'] {
-  text-align: left;
 }
 
 // The editor that opens over a code block (canvas/code/editor.ts). It sits on

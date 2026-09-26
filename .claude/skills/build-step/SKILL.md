@@ -631,6 +631,20 @@ deliberately at `5.24.2` or later.
   (ArrowDown, Enter); RadioGroup items accept a click. Popovers render closed
   content unless `lazyMount`.
 
+### Milestone 6.8 findings (feel fixes), 2026-09-26
+
+- **Gates green; not seen at a running window.** Plan
+  `.claude/work/plans/06.8-feel-fixes.md`, drawn from
+  `.claude/work/specs/excalidraw-comparison.md` (a full read of Excalidraw at
+  `5db42c3`, with a table of Bava bugs it found).
+- **Absent `strokeWidth`/`fontSize` now draw at 2 and 20**, the file format's
+  defaults; `--size-shape-stroke` and `--size-pen-stroke` are gone. Old test
+  files with unsized free text were measured at 13 and now wrap at 20.
+- Shape tools hand back to select with the new element selected; the pen and
+  eraser stay on. The drag threshold is `--size-drag-threshold` / zoom.
+- The scene layer does not listen, `render` skips unchanged elements, and a
+  drag draws once per frame (`.ai/rules/canvas.md`).
+
 ### Milestone 6.1 findings (window check and launch), 2026-09-17
 
 - **The first window check found three defects every test missed**: a

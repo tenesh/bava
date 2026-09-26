@@ -50,10 +50,37 @@ export function measureTextBlock(
   };
 }
 
+/**
+ * One context for every measurement: this runs for each label on each render,
+ * and a canvas per call was an allocation each time. Created on first use.
+ */
+let shared: CanvasRenderingContext2D | null | undefined;
+
+function sharedContext(): CanvasRenderingContext2D | null {
+  if (shared === undefined) shared = globalThis.document?.createElement('canvas').getContext('2d') ?? null;
+  return shared;
+}
+
 /** A line's width with the browser's canvas; an estimate where there is none. */
 export function canvasLineWidth(font: string): (line: string) => number {
-  const context = globalThis.document?.createElement('canvas').getContext('2d');
+  const context = sharedContext();
   if (!context) return (line) => estimate(line).width;
-  context.font = font;
-  return (line) => context.measureText(line).width;
+  // Set on every call: other measurers share the context between calls.
+  return (line) => {
+    context.font = font;
+    return context.measureText(line).width;
+  };
+}
+
+/**
+ * A text block's size in the font it is drawn in: `paintFor(element).font`,
+ * so free text at 28 is measured at 28, not at the UI's body size. The line
+ * font string is the one the stage wraps with.
+ */
+export function measureFor(
+  text: string,
+  font: { family: string; size: number; lineHeight: number },
+  lineWidth: (font: string) => (line: string) => number = canvasLineWidth,
+): Measurement {
+  return measureTextBlock(text, { fontSize: font.size, lineHeight: font.lineHeight }, lineWidth(`${font.size}px ${font.family}`));
 }

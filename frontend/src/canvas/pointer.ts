@@ -41,9 +41,6 @@ import {
 
 export type Point = { x: number; y: number };
 
-/** Below this, a drag is a click. Stops shape tools leaving zero-size elements. */
-export const DRAG_THRESHOLD = 3;
-
 type Tools = { readonly active: ToolId; escape(): void };
 
 export type PointerHandlerOptions = {
@@ -64,6 +61,12 @@ export type PointerHandlerOptions = {
   hitTolerance?: () => number;
   /** How far above the selection the rotate handle sits, in scene units. */
   rotateGap?: () => number;
+  /**
+   * Below this, in scene units, a drag is a click. The caller divides a
+   * screen-space distance by the zoom, so a twitch is a click at any zoom.
+   * Also stops shape tools leaving zero-size elements.
+   */
+  dragThreshold?: () => number;
   /** How a code block is measured: the mono advance, line height and padding. */
   codeMetrics?: () => CodeMetrics;
 };
@@ -94,10 +97,6 @@ function boxBetween(a: Point, b: Point): Box {
   };
 }
 
-function farEnough(a: Point, b: Point): boolean {
-  return Math.abs(b.x - a.x) >= DRAG_THRESHOLD || Math.abs(b.y - a.y) >= DRAG_THRESHOLD;
-}
-
 export function createPointerHandler(options: PointerHandlerOptions) {
   const { history, selection, tools } = options;
 
@@ -123,6 +122,13 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   // The token's value at zoom 1, as the other defaults do: a test that presses
   // at a gap the app never uses cannot catch a gap regression.
   const rotateGap = options.rotateGap ?? (() => 16);
+  // The token's value at zoom 1, as the others.
+  const dragThreshold = options.dragThreshold ?? (() => 3);
+
+  function farEnough(a: Point, b: Point): boolean {
+    const threshold = dragThreshold();
+    return Math.abs(b.x - a.x) >= threshold || Math.abs(b.y - a.y) >= threshold;
+  }
   // The defaults match the tokens at their default sizes, as the others do.
   const codeMetrics = options.codeMetrics ?? (() => ({ advance: 8, lineHeight: 19.5, padding: 8 }));
 
@@ -408,6 +414,14 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       // One step for the whole gesture, however many move events it had.
       const recipe = changeFor(started, point);
       if (recipe) history.mutate(recipe);
+      // A shape tool lets go once it has made something, with the new element
+      // selected, so the next press edits rather than drawing again. The pen
+      // is used stroke after stroke, so it stays on.
+      const drawn = tools.active !== 'select' && tools.active !== 'pen';
+      if (drawn && history.current.elements.some((e) => e.id === started.newId)) {
+        tools.escape();
+        selection.click(started.newId);
+      }
       return null;
     },
   };
@@ -514,7 +528,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       // A tap is not a stroke. Counting points is not enough: a tap still
       // yields two identical ones, and a zero-size element cannot be
       // selected or explained.
-      if (box.w < DRAG_THRESHOLD && box.h < DRAG_THRESHOLD) return null;
+      if (box.w < dragThreshold() && box.h < dragThreshold()) return null;
       return (scene) => {
         scene.elements.push({
           id: started.newId,

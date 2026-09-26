@@ -12,13 +12,8 @@ import type { ElementId, SceneData, SceneElement } from './scene';
 import { isLocked, isShapeType } from './scene';
 import { containsPoint } from './rotate';
 import { nearElement } from './hit';
+import type { TextPaint } from './paint';
 
-/**
- * How near a line counts as a hit, in scene units, matching
- * `--size-hit-tolerance`. The editor is opened from a double-click, which has
- * no zoom to divide by; the pointer handler passes its own scaled value.
- */
-const LINE_TOLERANCE = 4;
 import type { Point } from './viewport';
 
 /** Set or clear a shape's label, as one undo step. */
@@ -64,13 +59,17 @@ export function commitText(
   });
 }
 
-/** The topmost shape, frame or text element under a point, which can be typed into. */
-export function editableAt(scene: SceneData, point: Point): SceneElement | undefined {
+/**
+ * The topmost shape, frame or text element under a point, which can be typed
+ * into. `lineTolerance` is how near an arrow counts, in scene units: the caller
+ * divides `--size-hit-tolerance` by the zoom, as the pointer handler does.
+ */
+export function editableAt(scene: SceneData, point: Point, lineTolerance: number): SceneElement | undefined {
   const hits = scene.elements.filter((e) => {
     if (isLocked(e)) return false;
     // An arrow carries a label too, and is typed on where it is drawn: its
     // box is mostly empty space.
-    if (e.type === 'arrow') return nearElement(e, point, LINE_TOLERANCE);
+    if (e.type === 'arrow') return nearElement(e, point, lineTolerance);
     if (!(isShapeType(e.type) || e.type === 'text' || e.type === 'frame' || e.type === 'code')) return false;
     // Where the element is drawn, rotation included: the field opens on the
     // shape the user double-clicked, not on the box it is stored as.
@@ -124,8 +123,36 @@ export type EditorRequest = {
    * user types. Omitted for a label, which keeps its shape's box.
    */
   measure?: (value: string) => { width: number; height: number };
+  /**
+   * How the text is drawn (`paintFor(element).font`), so the field looks like
+   * it. Omitted, the stylesheet's defaults apply.
+   */
+  font?: TextPaint;
+  /** The element's opacity, 0 to 1. */
+  opacity?: number;
+  /** The view's zoom: the font is scaled by it, as the drawn text is. */
+  zoom?: number;
+  /**
+   * The on-screen height of a value once wrapped, for a label placed by its
+   * vertical alignment: the field is pushed down by the free space, as the
+   * stage places the text.
+   */
+  textHeight?: (value: string) => number;
   onCommit: (value: string) => void;
 };
+
+/**
+ * The box a label is drawn in, in scene units, as the stage lays it out: inset
+ * from the sides of a shape, and from every edge of a frame. Free text has its
+ * own box. The field covers this box, so its text wraps and sits where the
+ * stage will draw it.
+ */
+export function labelBox(element: SceneElement, inset: number): { x: number; y: number; w: number; h: number } {
+  if (element.type === 'text' || element.type === 'arrow') return { x: element.x, y: element.y, w: element.w, h: element.h };
+  const w = Math.max(0, element.w - inset * 2);
+  if (element.type === 'frame') return { x: element.x + inset, y: element.y + inset, w, h: Math.max(0, element.h - inset * 2) };
+  return { x: element.x + inset, y: element.y, w, h: element.h };
+}
 
 export class LabelEditor {
   #host: HTMLElement;
@@ -150,8 +177,23 @@ export class LabelEditor {
     this.commit();
     const field = document.createElement('textarea');
     field.className = 'bava-label-editor';
-    field.dataset.align = request.align ?? 'center';
+    const { font } = request;
+    field.style.textAlign = font?.align ?? request.align ?? 'center';
     field.value = request.value;
+    if (font) {
+      // The drawn text's own style, scaled as the stage scales it, so typing
+      // looks like the result.
+      const zoom = request.zoom ?? 1;
+      Object.assign(field.style, {
+        fontFamily: font.family,
+        fontSize: `${font.size * zoom}px`,
+        lineHeight: String(font.lineHeight),
+        color: font.colour,
+      });
+    }
+    if (request.opacity !== undefined) field.style.opacity = String(request.opacity);
+    // Free text grows to its lines; a label wraps inside its box, as drawn.
+    field.style.whiteSpace = request.measure ? 'pre' : 'pre-wrap';
     // Position and size are the element's, in screen units, set inline because
     // they change with every element; the minimum size is a token in the
     // stylesheet.
@@ -176,7 +218,12 @@ export class LabelEditor {
       request.onCommit(value);
     };
     field.addEventListener('keydown', (event) => {
-      // Escape, or Cmd/Ctrl+Enter, commits; plain Enter is a new line.
+      // Escape, or Cmd/Ctrl+Enter, commits; plain Enter is a new line. Enter
+      // that confirms a character being composed (an input method) is not.
+      if (event.isComposing) {
+        event.stopPropagation();
+        return;
+      }
       if (event.key === 'Escape' || (event.key === 'Enter' && (event.metaKey || event.ctrlKey))) {
         event.preventDefault();
         commit();
@@ -185,6 +232,18 @@ export class LabelEditor {
       event.stopPropagation();
     });
     field.addEventListener('blur', commit);
+    const { textHeight } = request;
+    if (textHeight) {
+      // The stage places a label by its vertical alignment; the field does it
+      // with the free space above the text, recomputed as lines come and go.
+      const place = () => {
+        const free = Math.max(0, request.rect.height - textHeight(field.value));
+        const align = font?.verticalAlign ?? 'middle';
+        field.style.paddingTop = `${align === 'top' ? 0 : align === 'bottom' ? free : free / 2}px`;
+      };
+      place();
+      field.addEventListener('input', place);
+    }
     const { measure } = request;
     if (measure) {
       // The stylesheet's minimum size still applies below the measurement.
