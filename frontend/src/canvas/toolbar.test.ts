@@ -63,9 +63,10 @@ describe('the adaptive row', () => {
     expect(model.controls.find((c) => c.id === 'strokeWidth')?.group).toBe('stroke');
   });
 
-  it('gives an arrow its own controls and no label ones', () => {
+  // Since 06.16 (L8) an arrow takes its label's size, and no other label control.
+  it('gives an arrow its own controls and its label size', () => {
     expect(ids(toolbarFor(scene, ['a']))).toEqual([
-      'stroke', 'strokeWidth', 'strokeStyle', 'opacity', 'arrowType', 'startArrowhead', 'endArrowhead',
+      'stroke', 'strokeWidth', 'strokeStyle', 'opacity', 'fontSize', 'arrowType', 'startArrowhead', 'endArrowhead',
     ]);
   });
 

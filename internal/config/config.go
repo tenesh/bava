@@ -34,6 +34,12 @@ type Settings struct {
 	// VerboseLogging adds debug detail to Bava's log while someone reproduces
 	// a problem. Off by default; the log never holds content at any level.
 	VerboseLogging bool `json:"verboseLogging"`
+	// ArrowBinding is whether an arrow's ends attach to the shapes they are
+	// dropped on; Cmd/Ctrl turns it over for one drag. On by default.
+	ArrowBinding bool `json:"arrowBinding"`
+	// MidpointSnap is whether an arrow end snaps to a side's middle. On by
+	// default.
+	MidpointSnap bool `json:"midpointSnap"`
 }
 
 // Autosave modes.
@@ -58,6 +64,9 @@ func Defaults() Settings {
 		// Off: writing to someone's files unasked is a choice they make.
 		Autosave:        AutosaveOff,
 		AutosaveDelayMS: 1000,
+		// As Excalidraw's: arrows attach, and ends snap to side middles.
+		ArrowBinding: true,
+		MidpointSnap: true,
 	}
 }
 

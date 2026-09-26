@@ -65,16 +65,14 @@ type StyleProps = {
   verticalAlign?: TextPaint['verticalAlign'];
 };
 
-/** The dash pattern for a line style, in scene units. */
-export function dashFor(style: string | undefined, read: ReadVariable): number[] {
-  if (style === 'dashed') {
-    const dash = number(read, '--size-dash');
-    return [dash, dash];
-  }
-  if (style === 'dotted') {
-    const dot = number(read, '--size-dot');
-    return [dot, dot * 2];
-  }
+/**
+ * The dash pattern for a line style at a stroke width, in scene units:
+ * Excalidraw's dashed [8, 8 + width] and dotted [1.5, 6 + width]
+ * (`element/src/shape.ts:200-216`).
+ */
+export function dashFor(style: string | undefined, width: number): number[] {
+  if (style === 'dashed') return [8, 8 + width];
+  if (style === 'dotted') return [1.5, 6 + width];
   return [];
 }
 
@@ -90,8 +88,10 @@ export function paintFor(element: SceneElement, read: ReadVariable): Paint {
   const paint: Paint = {
     fill: isShapeType(element.type) ? style.fill : '',
     stroke: element.type === 'text' ? '' : style.stroke,
-    strokeWidth,
-    dash: dashFor(props.strokeStyle, read),
+    // A dashed or dotted line is drawn half a unit thicker, so its dashes
+    // read as heavy as a solid line (Excalidraw's `shape.ts:168-170`).
+    strokeWidth: props.strokeStyle === 'dashed' || props.strokeStyle === 'dotted' ? strokeWidth + 0.5 : strokeWidth,
+    dash: dashFor(props.strokeStyle, strokeWidth),
     opacity: props.opacity === undefined ? 1 : Math.min(100, Math.max(0, props.opacity)) / 100,
     cornerRadius: 0,
     tension: 0,
@@ -144,8 +144,10 @@ export function paintFor(element: SceneElement, read: ReadVariable): Paint {
       paint.fill = (element as { closed?: boolean }).closed === true && (element as { fill?: string }).fill !== undefined ? style.fill : '';
       break;
     case 'arrow':
-      // The heads are filled in the line's colour.
+      // The heads are filled in the line's colour, and the label is written
+      // in it, as Excalidraw's (06.16, L9).
       paint.fill = style.stroke;
+      paint.font.colour = style.stroke;
       break;
     default:
       break;

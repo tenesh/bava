@@ -19,7 +19,7 @@ import Konva from 'konva';
 import type { SceneData, SceneElement, ElementId } from './scene';
 import type { ArrowProps, StyleProps } from './scene';
 import { isShapeType } from './scene';
-import { drawOutline, isOutlineShape } from './shapes';
+import { drawOutline, isOutlineShape, type OutlineShape, type PathSink } from './shapes';
 import { DEFAULT_STROKE_WIDTH, paintFor, ROUND_SHARE } from './paint';
 import { wrapLines } from './text-layout';
 import { smoothPoints } from './curves';
@@ -30,11 +30,11 @@ import { monoAdvance } from './code/advance';
 import { columnsIn } from './code/measure';
 import { columnsFor, wrapRuns } from './code/wrap';
 import { canvasLineWidth } from './text-measure';
-import { drawHead, headAt, labelPoint, middlesAlong, pathLength, pathOf } from './arrows';
+import { LABEL_CLEARANCE, drawHead, endSegment, headAt, headDash, labelSpot, labelWrapWidth, middlesAlong, pathOf } from './arrows';
 import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
 import { handleCentre, rotateHandleCentre } from './resize';
 import { chromeFor, elbowSegmentHandles, focusSpots, grown, offersMiddles } from './selection-chrome';
-import { angleOfElement, centreOf, rotatedBounds, selectionFrame } from './rotate';
+import { angleOfElement, centreOf, selectionFrame } from './rotate';
 
 export type CanvasStageOptions = {
   /** Reads a CSS custom property. Injected so tests need no stylesheet. */
@@ -68,6 +68,21 @@ const MIDDLE_HANDLE_OPACITY = 0.6;
 
 /** The hover disc under a handle: Excalidraw's 0.4. */
 const HOVER_OPACITY = 0.4;
+
+/**
+ * The attach highlight's width, in screen px, between which it follows the
+ * shape's stroke: Excalidraw's clamp(1.75, strokeWidth, 4)
+ * (`interactiveScene.ts:123-131`). Excalidraw's own values, kept with it.
+ */
+const HIGHLIGHT_MIN = 1.75;
+const HIGHLIGHT_MAX = 4;
+
+/** The pulse's opacity: around 0.7, by 0.3 either way. */
+const PULSE_MIDDLE = 0.7;
+const PULSE_DEPTH = 0.3;
+
+/** Beyond anything drawn: the outer edge of the clip that cuts a label's hole. */
+const CLIP_EXTENT = 1e6;
 
 type Entry = {
   group: Konva.Group;
@@ -109,7 +124,8 @@ export class CanvasStage {
   /** The line or arrow in point editing, and its selected points (06.13). */
   #pointEditing: { id: ElementId; selected: number[] } | null = null;
   /** Outlines on the shapes an arrow being drawn would attach to. */
-  #candidates: Konva.Rect[] = [];
+  #candidates: Konva.Shape[] = [];
+  #pulse: Konva.Animation | null = null;
   #candidateIds: ElementId[] = [];
   #snapSpots: Point[] = [];
   #snapDots: Konva.Circle[] = [];
@@ -241,7 +257,12 @@ export class CanvasStage {
     this.#drawCandidates(cached(this.#read));
   }
 
-  bindingHighlights(): Konva.Rect[] {
+  /** Whether the attach highlight is pulsing. */
+  pulsing(): boolean {
+    return this.#pulse?.isRunning() ?? false;
+  }
+
+  bindingHighlights(): Konva.Shape[] {
     return this.#candidates;
   }
 
@@ -255,7 +276,7 @@ export class CanvasStage {
     this.#candidates = [];
     this.#snapDots.forEach((node) => node.destroy());
     this.#snapDots = [];
-    const colour = read('--color-selection-handle').trim();
+    const colour = read('--color-binding-highlight').trim();
     const scale = 1 / this.#zoom;
     const radius = (number(read, '--size-snap-dot') / 2) * scale;
     for (const spot of this.#snapSpots) {
@@ -266,14 +287,48 @@ export class CanvasStage {
     for (const id of this.#candidateIds) {
       const element = this.#last.elements.find((e) => e.id === id);
       if (!element) continue;
-      const outline = new Konva.Rect({
-        ...boundsToRect(rotatedBounds(element)),
+      // The shape's own outline, turned with it (Excalidraw's
+      // `interactiveScene.ts:292-557`), as wide as its stroke within 1.75 and
+      // 4 on screen.
+      const width = (element as { strokeWidth?: number }).strokeWidth ?? 2;
+      const kind = element.type === 'ellipse' ? 'ellipse' : isOutlineShape(element.type) ? element.type : 'rect';
+      const outline = new Konva.Shape({
+        x: element.x + element.w / 2,
+        y: element.y + element.h / 2,
+        width: element.w,
+        height: element.h,
+        offsetX: element.w / 2,
+        offsetY: element.h / 2,
+        rotation: angleOfElement(element),
         stroke: colour,
-        strokeWidth: scale * 2,
+        strokeWidth: Math.min(HIGHLIGHT_MAX, Math.max(HIGHLIGHT_MIN, width)) * scale,
         listening: false,
+        bavaOutline: kind,
+        sceneFunc: (context, shape) => {
+          context.beginPath();
+          if (kind === 'ellipse') context.ellipse(element.w / 2, element.h / 2, element.w / 2, element.h / 2, 0, 0, Math.PI * 2);
+          else if (kind === 'rect') context.rect(0, 0, element.w, element.h);
+          else drawOutline(kind as OutlineShape, context as unknown as PathSink, element.w, element.h);
+          context.closePath();
+          context.strokeShape(shape);
+        },
       });
       this.#candidates.push(outline);
       this.#overlay.add(outline);
+    }
+    // A gentle pulse while anything is highlighted, as Excalidraw's; none
+    // under reduced motion (the token is 0 there).
+    const beat = number(read, '--duration-pulse');
+    if (this.#candidates.length > 0 && !this.#pulse && this.#overlay && beat > 0) {
+      const overlay = this.#overlay;
+      this.#pulse = new Konva.Animation((frame) => {
+        const opacity = PULSE_MIDDLE + PULSE_DEPTH * Math.sin(((frame?.time ?? 0) / beat) * Math.PI * 2);
+        this.#candidates.forEach((node) => node.opacity(opacity));
+      }, overlay);
+      this.#pulse.start();
+    } else if (this.#candidates.length === 0 && this.#pulse) {
+      this.#pulse.stop();
+      this.#pulse = null;
     }
     // The dots over the outlines they sit on.
     this.#snapDots.forEach((dot) => dot.moveToTop());
@@ -806,6 +861,8 @@ export class CanvasStage {
   }
 
   destroy(): void {
+    this.#pulse?.stop();
+    this.#pulse = null;
     this.#stage?.destroy();
     this.#stage = null;
     this.#layer = null;
@@ -830,7 +887,15 @@ export class CanvasStage {
     const detached: Konva.Circle[] = [];
     const runs: Konva.Text[] = [];
     const drawnRuns: Run[][] | null = null;
-    group.add(body);
+    // A line's body sits in a group of its own, which clips it out from
+    // under its label (06.16, L7); the heads and label stay outside it.
+    if (element.type === 'arrow' || element.type === 'line') {
+      const clip = new Konva.Group();
+      clip.add(body);
+      group.add(clip);
+    } else {
+      group.add(body);
+    }
     return { group, body, heads, detached, runs, drawnRuns, drawnPaint: '', label: null, type: element.type, applied: null };
   }
 
@@ -923,14 +988,14 @@ export class CanvasStage {
       entry.label.align(props.align ?? (isFrame ? 'left' : 'center'));
       entry.label.verticalAlign(props.verticalAlign ?? (isFrame ? 'top' : 'middle'));
       if (isArrow) {
-        // Centred on the middle of the drawn path, in the group's own space,
-        // and wrapped to the path's length: the exporter wraps to the same
-        // width, so a long label breaks identically in both.
+        // Centred on the middle point (or where it was slid), in the group's
+        // own space, and wrapped as Excalidraw wraps it: the exporter does the
+        // same, so a long label breaks identically in both.
         const routed = (body as Konva.Line).points();
-        const at = labelPoint(routed, (element as SceneElement & ArrowProps).labelPosition);
         const paint = paintFor(element, read);
+        const at = labelSpot(element, paint.tension, routed);
         const measure = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
-        const lines = wrapLines(label, pathLength(routed), measure);
+        const lines = wrapLines(label, labelWrapWidth(element, paint.font.size), measure);
         entry.label.text(lines.join('\n'));
         const width = Math.max(...lines.map(measure));
         const height = paint.font.size * paint.font.lineHeight * lines.length;
@@ -940,6 +1005,13 @@ export class CanvasStage {
         entry.label.height(height);
         entry.label.x(at.x - width / 2);
         entry.label.y(at.y - height / 2);
+        // The line is hidden under the label's box and a margin round it.
+        const hole = { x: at.x - width / 2 - LABEL_CLEARANCE, y: at.y - height / 2 - LABEL_CLEARANCE, w: width + LABEL_CLEARANCE * 2, h: height + LABEL_CLEARANCE * 2 };
+        (body.getParent() as Konva.Group).clipFunc((context) => {
+          context.rect(-CLIP_EXTENT, -CLIP_EXTENT, CLIP_EXTENT * 2, CLIP_EXTENT * 2);
+          context.rect(hole.x, hole.y, hole.w, hole.h);
+          return ['evenodd'];
+        });
       } else {
         entry.label.x(inset);
         entry.label.y(isFrame ? inset : 0);
@@ -950,6 +1022,8 @@ export class CanvasStage {
       entry.label.destroy();
       entry.label = null;
     }
+    // No label, nothing hidden.
+    if (!entry.label && body.getParent() !== entry.group) (body.getParent() as Konva.Group).clipFunc(undefined as never);
 
     this.#style(entry, element, read);
     // A label created mid-edit starts hidden, as the one it replaces was.
@@ -1006,9 +1080,13 @@ export class CanvasStage {
 
     const props = element as SceneElement & ArrowProps;
     const points = (entry.body as Konva.Line).points();
-    const size = number(read, '--size-arrowhead');
+    // The arrow's own points cap a head's size, as Excalidraw's: a drawn
+    // curve's samples and an elbow's rounded corners do not.
+    const route = ('points' in element ? element.points : []) as number[];
     const colour = resolveStyle(element as { stroke?: string }, read).stroke;
+    const surface = read('--color-canvas-bg').trim();
     const width = (element as SceneElement & StyleProps).strokeWidth ?? DEFAULT_STROKE_WIDTH;
+    const style = (element as SceneElement & StyleProps).strokeStyle;
 
     for (const end of ['start', 'end'] as const) {
       const kind = end === 'start' ? (props.startArrowhead ?? 'none') : (props.endArrowhead ?? 'arrow');
@@ -1022,15 +1100,18 @@ export class CanvasStage {
         listening: false,
         sceneFunc: (context, shape) => {
           context.beginPath();
-          drawHead(context, kind, size);
+          drawHead(context, kind, endSegment(route, end), width);
           context.fillStrokeShape(shape);
         },
       });
-      // Whether this head is filled or stroked, asked without drawing.
-      const filled = drawHead(NO_SINK, kind, size);
-      node.fill(filled ? colour : '');
+      // How this head is filled, asked without drawing: the line's colour,
+      // or the canvas's for an outline head, which hides the line under it.
+      const fill = drawHead(NO_SINK, kind, endSegment(route, end), width);
+      node.fill(fill === 'stroke' ? colour : fill === 'surface' ? surface : '');
       node.stroke(colour);
-      node.strokeWidth(width);
+      // The line's own stroke, half a unit thicker when dashed or dotted.
+      node.strokeWidth(paintFor(element, read).strokeWidth);
+      node.dash(headDash(kind, style, width));
       entry.heads.push(node);
       entry.group.add(node);
     }
@@ -1068,9 +1149,8 @@ export class CanvasStage {
       body.verticalAlign(paint.font.verticalAlign);
     }
     if (body instanceof Konva.Arrow) {
-      const head = number(read, '--size-arrowhead');
-      body.pointerLength(head);
-      body.pointerWidth(head);
+      body.pointerLength(0);
+      body.pointerWidth(0);
       // The heads are their own nodes; Konva's pointer draws triangles only.
       body.pointerAtBeginning(false);
       body.pointerAtEnding(false);

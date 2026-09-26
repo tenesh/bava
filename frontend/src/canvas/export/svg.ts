@@ -7,7 +7,7 @@
  * something looks: that would be a second drawing implementation, and it would
  * drift from the canvas the first time a shape changed.
  */
-import { drawHead, headAt, labelPoint, pathLength, pathOf, routePoints } from '../arrows';
+import { LABEL_CLEARANCE, drawHead, endSegment, headAt, headDash, labelSpot, labelWrapWidth, pathOf, routePoints } from '../arrows';
 import { paintFor, type Paint } from '../paint';
 import { angleOfElement, centreOf } from '../rotate';
 import { isShapeType, type SceneElement } from '../scene';
@@ -106,7 +106,7 @@ function textElement(element: SceneElement, paint: Paint, value: string, inset: 
 }
 
 /** The body of an element: the shape itself, without its label. */
-function body(element: SceneElement, paint: Paint, headSize: number): string {
+function body(element: SceneElement, paint: Paint, surface: string): string {
   const attrs = paintAttributes(paint);
   const points = 'points' in element ? (element.points as number[]) : [];
 
@@ -132,8 +132,11 @@ function body(element: SceneElement, paint: Paint, headSize: number): string {
     }
     // A closed line's fill (06.15); an arrow's paint fill is its heads'.
     const fill = element.type === 'line' ? paint.fill : '';
-    const line = `<polyline points="${pairs.join(' ')}" ${paintAttributes(paint, { fill })} stroke-linecap="round" stroke-linejoin="round"/>`;
-    return element.type === 'arrow' ? line + heads(element, paint, straight, headSize) : line;
+    const label = element.type === 'arrow' && 'label' in element ? (element.label as string | undefined) : undefined;
+    const mask = label ? labelMask(element, paint, label) : '';
+    const masked = label ? ` mask="url(#label-${element.id})"` : '';
+    const line = `${mask}<polyline points="${pairs.join(' ')}" ${paintAttributes(paint, { fill })}${masked} stroke-linecap="round" stroke-linejoin="round"/>`;
+    return element.type === 'arrow' ? line + heads(element, paint, straight, surface) : line;
   }
   if (element.type === 'text') return '';
 
@@ -151,39 +154,55 @@ function body(element: SceneElement, paint: Paint, headSize: number): string {
  * positioned the same way.
  */
 function arrowLabel(element: SceneElement, paint: Paint, label: string): string {
-  // The path as the stage draws it, which it centres the label on.
-  const points = smoothPoints(pathOf(('points' in element ? element.points : []) as number[], (element as { arrowType?: string }).arrowType), paint.tension);
-  const at = labelPoint(points, (element as { labelPosition?: number }).labelPosition);
-  const measure = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
-  // The same width the stage wraps to: the length of the path it sits on.
-  const lines = wrapLines(label, pathLength(points), measure);
-  const width = Math.max(...lines.map(measure));
-  const height = paint.font.size * paint.font.lineHeight * lines.length;
-  const box = {
-    ...element,
-    x: element.x + at.x - width / 2,
-    y: element.y + at.y - height / 2,
-    w: width,
-    h: height,
-  } as SceneElement;
+  const box = { ...element, ...arrowLabelBox(element, paint, label) } as SceneElement;
   return textElement(box, { ...paint, font: { ...paint.font, align: 'center', verticalAlign: 'middle' } }, label, 0);
 }
 
+/** Where an arrow's label is, in scene space, as the stage lays it out. */
+function arrowLabelBox(element: SceneElement, paint: Paint, label: string): { x: number; y: number; w: number; h: number } {
+  // The path as the stage draws it, which it centres the label on.
+  const points = smoothPoints(pathOf(('points' in element ? element.points : []) as number[], (element as { arrowType?: string }).arrowType), paint.tension);
+  const at = labelSpot(element, paint.tension, points);
+  const measure = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
+  // The same width the stage wraps to (Excalidraw's).
+  const lines = wrapLines(label, labelWrapWidth(element, paint.font.size), measure);
+  const w = Math.max(...lines.map(measure));
+  const h = paint.font.size * paint.font.lineHeight * lines.length;
+  return { x: element.x + at.x - w / 2, y: element.y + at.y - h / 2, w, h };
+}
+
+/**
+ * The mask that hides an arrow's line under its label's box and a margin
+ * round it, as the stage clips it (06.16, L7).
+ */
+function labelMask(element: SceneElement, paint: Paint, label: string): string {
+  const box = arrowLabelBox(element, paint, label);
+  const c = LABEL_CLEARANCE;
+  return (
+    `<mask id="label-${element.id}" maskUnits="userSpaceOnUse">` +
+    `<rect x="-1000000" y="-1000000" width="2000000" height="2000000" fill="white"/>` +
+    `<rect x="${round(box.x - c)}" y="${round(box.y - c)}" width="${round(box.w + c * 2)}" height="${round(box.h + c * 2)}" fill="black"/></mask>`
+  );
+}
+
 /** An arrow's heads, drawn and turned exactly as the stage draws them. */
-function heads(element: SceneElement, paint: Paint, routed: number[], size: number): string {
-  const props = element as SceneElement & { startArrowhead?: string; endArrowhead?: string };
+function heads(element: SceneElement, paint: Paint, routed: number[], surface: string): string {
+  const props = element as SceneElement & { startArrowhead?: string; endArrowhead?: string; strokeStyle?: string; strokeWidth?: number };
+  const width = props.strokeWidth ?? 2;
   return (['start', 'end'] as const)
     .map((end) => {
       const kind = end === 'start' ? (props.startArrowhead ?? 'none') : (props.endArrowhead ?? 'arrow');
       if (kind === 'none') return '';
       const at = headAt(routed, end);
       const sink = svgPathSink();
-      const filled = drawHead(sink, kind, size);
-      const fill = filled ? paint.stroke : '';
+      // Capped by the arrow's own points, as the stage caps it.
+      const own = ('points' in element ? element.points : []) as number[];
+      const filled = drawHead(sink, kind, endSegment(own, end), width);
+      const fill = filled === 'stroke' ? paint.stroke : filled === 'surface' ? surface : '';
       return (
         `<g data-head="${end}" transform="translate(${round(element.x + at.x)} ${round(element.y + at.y)})` +
-        // Solid, as the stage draws it: a dash broke a small head into bits.
-        ` rotate(${round(at.angle)})"><path d="${sink.d()}" ${paintAttributes({ ...paint, dash: [] }, { fill })}/></g>`
+        // As the stage draws it: solid, but dotted strokes on a dotted line.
+        ` rotate(${round(at.angle)})"><path d="${sink.d()}" ${paintAttributes({ ...paint, dash: headDash(kind, props.strokeStyle, width) }, { fill })}/></g>`
       );
     })
     .join('');
@@ -227,7 +246,7 @@ function draw(element: SceneElement, options: SvgOptions, labelInset: number): s
   const paint = paintFor(element, options.read);
   const label = 'label' in element ? (element.label as string | undefined) : undefined;
   const inner =
-    body(element, paint, parseFloat(options.read('--size-arrowhead')) || 0) +
+    body(element, paint, options.read('--color-canvas-bg').trim()) +
     (element.type === 'code' ? codeRuns(element, paint, options) : '') +
     (element.type === 'text'
       ? textElement(element, paint, (element as { text: string }).text, 0)

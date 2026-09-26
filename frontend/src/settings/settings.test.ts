@@ -9,6 +9,8 @@ const defaults = {
   autosave: 'off',
   autosaveDelayMs: 1000,
   verboseLogging: false,
+  arrowBinding: true,
+  midpointSnap: true,
 };
 
 function io(over: Partial<SettingsIO> = {}): SettingsIO {
@@ -85,6 +87,8 @@ describe('settings', () => {
     expect(AUTOSAVE_DELAY_LIMITS).toEqual({ min: constant('MinAutosaveDelayMS'), max: constant('MaxAutosaveDelayMS') });
     expect(go).toContain(`AutosaveDelayMS: ${SETTINGS_DEFAULTS.autosaveDelayMs},`);
     expect(go).toContain(`DebounceMS:   ${SETTINGS_DEFAULTS.debounceMs},`);
+    expect(go).toContain(`ArrowBinding: ${SETTINGS_DEFAULTS.arrowBinding},`);
+    expect(go).toContain(`MidpointSnap: ${SETTINGS_DEFAULTS.midpointSnap},`);
   });
 
   // Go owns the verbose flag: it changes the live log level as well as the
@@ -126,3 +130,19 @@ describe('the layout engine', () => {
     expect(settings.layoutEngine).toBe('tala');
   });
 });
+
+// 06.16 B8, B12: Settings ▸ Canvas.
+describe('the canvas settings', () => {
+  it('attach arrows and snap to side middles by default, and save a change', async () => {
+    const stored = io();
+    const settings = createSettings(stored);
+    await settings.load();
+    expect(settings.arrowBinding).toBe(true);
+    expect(settings.midpointSnap).toBe(true);
+    await settings.setArrowBinding(false);
+    await settings.setMidpointSnap(false);
+    expect(settings.arrowBinding).toBe(false);
+    expect(stored.save).toHaveBeenLastCalledWith({ ...defaults, arrowBinding: false, midpointSnap: false });
+  });
+});
+

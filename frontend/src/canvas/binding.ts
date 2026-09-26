@@ -11,7 +11,7 @@
  */
 import { angleOfElement, centreOf, rotatedBounds, rotatePoint } from './rotate';
 import { isOutlineShape, drawOutline, type PathSink } from './shapes';
-import type { ElementId, SceneData, SceneElement } from './scene';
+import { isShapeType, type ElementId, type SceneData, type SceneElement } from './scene';
 import { drawnPathOf, pathBounds } from './hit';
 import { tidy } from './resize';
 import { headingOf, routeElbow, sideOf, type ElbowEnd, type Heading } from './elbow';
@@ -21,11 +21,17 @@ import { routePoints } from './arrows';
 export type Point = { x: number; y: number };
 
 /**
- * How far clear of the outline an attached end stops, in scene units. The
- * token is the source; this is the value at the default theme, for the pure
- * functions below, which take no reader (`--size-binding-gap`).
+ * How far clear of the outline an attached end stops, in scene units:
+ * Excalidraw's 5 plus half the shape's stroke width (`getBindingGap`,
+ * `element/src/binding.ts:117`, `:125-131`). This is its value for a shape at
+ * the default width; `gapOf` gives any shape's.
  */
-export const BINDING_GAP = 4;
+export const BINDING_GAP = 6;
+
+/** The gap an end keeps from `shape`'s outline (`BINDING_GAP` at the default width). */
+export function gapOf(shape?: SceneElement): number {
+  return 5 + (shape ? strokeOf(shape) : 2) / 2;
+}
 
 type Bound = { startBinding?: string; endBinding?: string };
 
@@ -77,8 +83,8 @@ export function anchorOn(shape: SceneElement, towards: Point, from: Point = cent
 
   const length = Math.hypot(direction.x, direction.y);
   const out = {
-    x: centre.x + origin.x + direction.x * t + (direction.x / length) * BINDING_GAP,
-    y: centre.y + origin.y + direction.y * t + (direction.y / length) * BINDING_GAP,
+    x: centre.x + origin.x + direction.x * t + (direction.x / length) * gapOf(shape),
+    y: centre.y + origin.y + direction.y * t + (direction.y / length) * gapOf(shape),
   };
   return rotatePoint(out, centre, angle);
 }
@@ -190,11 +196,27 @@ export function routeFor(arrow: SceneElement, scene: SceneData): number[] {
   // An end aimed at its own spot has no direction to leave by, and anchoring
   // it there would collapse the arrow to a point. It keeps the point it was
   // drawn with until its neighbour moves somewhere else.
+  // An end whose outline point falls inside the other, overlapping shape
+  // would turn the arrow inside out: it sits at its anchor instead
+  // (Excalidraw's `element/src/binding.ts:2037-2094`).
   const place = (shape: SceneElement, spot: Point, towards: Point, index: number) => {
     const anchor = anchorOn(shape, towards, spot);
     if (anchor.x === spot.x && anchor.y === spot.y) return;
-    points[index] = anchor.x - arrow.x;
-    points[index + 1] = anchor.y - arrow.y;
+    const other = shape === startShape ? endShape : startShape;
+    // Only between shapes of like size: a child's arrow to its container
+    // still leaves the child's edge (Excalidraw's area test, and its gap as
+    // the reach of "inside").
+    const inverts =
+      other !== undefined &&
+      other !== shape &&
+      other.w * other.h < shape.w * shape.h * 2 &&
+      (() => {
+        const { contains, distance } = measureAgainst(other, anchor);
+        return contains || distance <= gapOf(other);
+      })();
+    const at = inverts ? spot : anchor;
+    points[index] = at.x - arrow.x;
+    points[index + 1] = at.y - arrow.y;
   };
   // A pinned end sits at its spot, inside the shape (`mode: "inside"`).
   const pin = (spot: Point, index: number) => {
@@ -209,8 +231,17 @@ export function routeFor(arrow: SceneElement, scene: SceneData): number[] {
     if (bound.endMode === 'inside') pin(endSpot, last);
     else place(endShape, endSpot, endTarget, last);
   }
+  // Shorter than the least an arrow can be, its edge ends fall back to their
+  // anchors too (Excalidraw's `BASE_ARROW_MIN_LENGTH`).
+  if (Math.hypot(points[last] - points[0], points[last + 1] - points[1]) < MIN_ARROW_LENGTH) {
+    if (startShape && bound.startMode !== 'inside') pin(startSpot, 0);
+    if (endShape && bound.endMode !== 'inside') pin(endSpot, last);
+  }
   return points;
 }
+
+/** The shortest an attached arrow's ends may be apart, in scene units (Excalidraw's 10). */
+const MIN_ARROW_LENGTH = 10;
 
 /** The least reach, in scene units, at 100% zoom and closer (Excalidraw's). */
 export const BINDING_REACH_MIN = 15;
@@ -241,7 +272,7 @@ function elbowRoute(arrow: SceneElement, points: number[], startShape?: SceneEle
   const key = JSON.stringify([from, to]);
   let route = routed.get(key);
   if (!route) {
-    route = routeElbow(from, to, { gap: BINDING_GAP }) ?? zRoute(from.point, to.point);
+    route = routeElbow(from, to, { gap: Math.max(gapOf(startShape), gapOf(endShape)) }) ?? zRoute(from.point, to.point);
     if (routed.size >= ROUTE_CACHE_SIZE) routed.clear();
     routed.set(key, route);
   }
@@ -364,9 +395,13 @@ const ELBOW_DIRECTION: Record<Heading, Point> = {
  * outline to anchor on.
  */
 export function targetAt(scene: SceneData, point: Point, exclude: ElementId, reach = BINDING_REACH_MIN): SceneElement | undefined {
-  let chosen: SceneElement | undefined;
-  for (const element of scene.elements) {
-    if (element.id === exclude || NEVER_A_TARGET.has(element.type) || element.locked === true) continue;
+  // Front to back, as Excalidraw's `getBindingCandidates`
+  // (`element/src/collision.ts:346-404`): a shape holding the point hides
+  // everything behind it, locked or not, and a locked one is never a target.
+  const candidates: { element: SceneElement; distance: number }[] = [];
+  const ordered = [...scene.elements].sort((a, b) => b.z - a.z);
+  for (const element of ordered) {
+    if (element.id === exclude || NEVER_A_TARGET.has(element.type)) continue;
     // Cheap first: a point beyond the box grown by the reach cannot be near
     // the outline inside it. This runs on every move while an end is dragged.
     const box = rotatedBounds(element);
@@ -374,13 +409,41 @@ export function targetAt(scene: SceneData, point: Point, exclude: ElementId, rea
       continue;
     }
     const { contains, distance } = measureAgainst(element, point);
+    // A frame is attached to from outside only: an end inside one goes to
+    // what is in it.
+    if (element.type === 'frame' && contains) continue;
     if (!contains && distance > reach) continue;
-    // The smallest of everything in reach, inside or out, as Excalidraw
-    // prefers: a small shape inside a big one wins from just outside it too.
-    // Later is higher, so between equal areas the one on top.
-    if (!chosen || element.w * element.h <= chosen.w * chosen.h) chosen = element;
+    // Positive inside, negative outside, as Excalidraw measures.
+    if (element.locked !== true) candidates.push({ element, distance: contains ? distance : -distance });
+    if (contains && opaque(element)) break;
   }
-  return chosen;
+  if (candidates.length <= 1) return candidates[0]?.element;
+  // The nearest outline wins, unless the point is inside it and inside a
+  // smaller element overlapping it (over a quarter of that one, under three
+  // quarters of the nearest's size), which then wins.
+  candidates.sort((a, b) => Math.abs(a.distance) - Math.abs(b.distance));
+  const nearest = candidates[0];
+  if (nearest.distance < 0) return nearest.element;
+  const near = rotatedBounds(nearest.element);
+  const nearArea = Math.max(0.00001, near.w * near.h);
+  const smaller = candidates.slice(1).find(({ element, distance }) => {
+    if (distance < 0) return false;
+    const b = rotatedBounds(element);
+    const overlap =
+      Math.max(0, Math.min(b.x + b.w, near.x + near.w) - Math.max(b.x, near.x)) *
+      Math.max(0, Math.min(b.y + b.h, near.y + near.h) - Math.max(b.y, near.y));
+    const area = Math.max(0.00001, b.w * b.h);
+    return overlap / area > 0.25 && area / nearArea < 0.75;
+  });
+  return (smaller ?? nearest).element;
+}
+
+/**
+ * Whether an element hides what is behind it from attaching: a shape or a
+ * code block, which Bava always fills; text and frames do not.
+ */
+function opaque(element: SceneElement): boolean {
+  return isShapeType(element.type) || element.type === 'code';
 }
 
 /** The middles of a box's sides, as anchors: top, right, bottom, left. */
@@ -400,25 +463,28 @@ const SIDE_MIDDLES: [number, number][] = [
  * An `elbow` end snaps by the elbow's own rule (`elbowSnap`) and is never
  * pinned.
  */
-export function anchorFor(shape: SceneElement, point: Point, reach = BINDING_REACH_MIN, inside = false, elbow = false): [number, number] {
+export function anchorFor(
+  shape: SceneElement,
+  point: Point,
+  reach = BINDING_REACH_MIN,
+  inside = false,
+  elbow = false,
+  from?: Point,
+  snap = true,
+): [number, number] {
   if (elbow) {
-    const snapped = elbowSnap(shape, point, reach);
+    const snapped = snap ? elbowSnap(shape, point, reach) : null;
     if (snapped) return snapped;
     inside = false;
   } else if (!inside && !measureAgainst(shape, point).contains) {
-    // The nearest middle in reach, not the first: on a small shape several
-    // are in reach at once.
-    let best: [number, number] | null = null;
-    let bestDistance = reach;
-    for (const middle of SIDE_MIDDLES) {
-      const at = spotOn(shape, middle);
-      const distance = Math.hypot(at.x - point.x, at.y - point.y);
-      if (distance <= bestDistance) {
-        best = middle;
-        bestDistance = distance;
-      }
-    }
-    if (best) return best;
+    // A side's middle within reach plus half the stroke width (Excalidraw's
+    // `getSnapOutlineMidPoint`); off with Shift or the setting.
+    const best = snap ? nearestMiddle(shape, point, reach + strokeOf(shape) / 2) : null;
+    if (best) return best.anchor;
+    // Carried onto the shape's nearer diagonal along the line from the other
+    // end, so the end keeps aiming the same way when the shape moves.
+    const projected = from ? ontoDiagonal(shape, point, from) : null;
+    if (projected) return projected;
   }
   const centre = centreOf(shape);
   const upright = rotatePoint(point, centre, -angleOfElement(shape));
@@ -456,7 +522,8 @@ function elbowSnap(shape: SceneElement, point: Point, reach: number): [number, n
   const upright = rotatePoint(point, centre, -angleOfElement(shape));
   const dx = upright.x - centre.x;
   const dy = upright.y - centre.y;
-  if (Math.hypot(dx, dy) < BINDING_GAP) return null;
+  const gap = gapOf(shape);
+  if (Math.hypot(dx, dy) < gap) return null;
   const clamp = (value: number) => Math.min(reach, Math.max(5, value));
   const across = clamp(ELBOW_SNAP_BAND * shape.w);
   const down = clamp(ELBOW_SNAP_BAND * shape.h);
@@ -467,7 +534,7 @@ function elbowSnap(shape: SceneElement, point: Point, reach: number): [number, n
   if (shape.type === 'diamond') {
     const within = Math.max(across, down);
     for (const [fx, fy, sx, sy] of DIAMOND_EDGE_MIDDLES) {
-      const zone = { x: shape.x + fx * shape.w + sx * BINDING_GAP, y: shape.y + fy * shape.h + sy * BINDING_GAP };
+      const zone = { x: shape.x + fx * shape.w + sx * gap, y: shape.y + fy * shape.h + sy * gap };
       if (Math.hypot(zone.x - upright.x, zone.y - upright.y) < within) return [fx, fy];
     }
   }
@@ -482,6 +549,90 @@ function elbowSnap(shape: SceneElement, point: Point, reach: number): [number, n
 export function elbowSnapSpots(shape: SceneElement): Point[] {
   const edges: [number, number][] = shape.type === 'diamond' ? DIAMOND_EDGE_MIDDLES.map(([fx, fy]) => [fx, fy]) : [];
   return [...SIDE_MIDDLES, ...edges].map((middle) => spotOn(shape, middle));
+}
+
+/**
+ * The drop point carried along the line from `from` onto the nearer of the
+ * shape's diagonals (centre lines for a curved or pointed shape), as a
+ * fraction of its box; null when the arrow has no length to aim by or the
+ * point found is off the shape (Excalidraw's `projectFixedPointOntoDiagonal`).
+ */
+function ontoDiagonal(shape: SceneElement, point: Point, from: Point): [number, number] | null {
+  if (Math.abs(point.x - from.x) < 3 && Math.abs(point.y - from.y) < 3) return null;
+  const centre = centreOf(shape);
+  const angle = angleOfElement(shape);
+  const a = rotatePoint(from, centre, -angle);
+  const p = rotatePoint(point, centre, -angle);
+  const { x, y, w, h } = shape;
+  const boxy = shape.type === 'rect' || shape.type === 'code' || shape.type === 'text' || shape.type === 'frame';
+  const lines: [Point, Point][] = boxy
+    ? [
+        [{ x, y }, { x: x + w, y: y + h }],
+        [{ x: x + w, y }, { x, y: y + h }],
+      ]
+    : [
+        [{ x, y: y + h / 2 }, { x: x + w, y: y + h / 2 }],
+        [{ x: x + w / 2, y }, { x: x + w / 2, y: y + h }],
+      ];
+  let best: Point | null = null;
+  let bestDistance = Infinity;
+  for (const [c, d] of lines) {
+    const hit = throughSegment(a, p, c, d);
+    if (!hit) continue;
+    const distance = Math.hypot(hit.x - a.x, hit.y - a.y);
+    if (distance < bestDistance) {
+      best = hit;
+      bestDistance = distance;
+    }
+  }
+  if (!best) return null;
+  const local = { x: best.x - centre.x, y: best.y - centre.y };
+  if (!insidePolygon(outlineOf(shape), local) && !onOutline(shape, local)) return null;
+  const fraction = (value: number, size: number) => (size > 0 ? tidy(Math.min(1, Math.max(0, value / size + 0.5))) : 0.5);
+  return [fraction(local.x, w), fraction(local.y, h)];
+}
+
+/** Where the line from `a` through `b`, beyond `b` too, crosses segment c–d. */
+function throughSegment(a: Point, b: Point, c: Point, d: Point): Point | null {
+  const r = { x: b.x - a.x, y: b.y - a.y };
+  const s = { x: d.x - c.x, y: d.y - c.y };
+  const cross = r.x * s.y - r.y * s.x;
+  if (Math.abs(cross) < 1e-9) return null;
+  const t = ((c.x - a.x) * s.y - (c.y - a.y) * s.x) / cross;
+  const u = ((c.x - a.x) * r.y - (c.y - a.y) * r.x) / cross;
+  if (t < 0 || u < 0 || u > 1) return null;
+  return { x: a.x + r.x * t, y: a.y + r.y * t };
+}
+
+/** Whether a local point sits on the outline itself (a diagonal's end). */
+function onOutline(shape: SceneElement, local: Point): boolean {
+  const outline = outlineOf(shape);
+  for (let i = 0, j = outline.length - 1; i < outline.length; j = i, i += 1) if (toSegment(local, outline[i], outline[j]) < 0.01) return true;
+  return false;
+}
+
+/**
+ * The side middle of `shape` nearest `point` within `within`, as an anchor and
+ * where it is; the nearest, not the first, since on a small shape several are
+ * in reach at once.
+ */
+export function nearestMiddle(shape: SceneElement, point: Point, within: number): { anchor: [number, number]; at: Point } | null {
+  let best: { anchor: [number, number]; at: Point } | null = null;
+  let bestDistance = within;
+  for (const middle of SIDE_MIDDLES) {
+    const at = spotOn(shape, middle);
+    const distance = Math.hypot(at.x - point.x, at.y - point.y);
+    if (distance <= bestDistance) {
+      best = { anchor: middle, at };
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+/** A shape's stroke width, the file format's default when absent. */
+function strokeOf(shape: SceneElement): number {
+  return (shape as { strokeWidth?: number }).strokeWidth ?? 2;
 }
 
 /** Whether a point is strictly inside an element's drawn outline. */
@@ -564,7 +715,7 @@ function toSegment(p: Point, a: Point, b: Point): number {
   return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
 }
 
-const NEVER_A_TARGET = new Set(['arrow', 'line', 'stroke', 'group', 'frame']);
+const NEVER_A_TARGET = new Set(['arrow', 'line', 'stroke', 'group']);
 
 /**
  * Re-aim every attached arrow in `scene`, in place.

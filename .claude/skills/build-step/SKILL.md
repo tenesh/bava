@@ -631,6 +631,16 @@ deliberately at `5.24.2` or later.
   (ArrowDown, Enter); RadioGroup items accept a click. Popovers render closed
   content unless `lazyMount`.
 
+### Milestone 6.16 findings (binding, heads, labels, the rest), 2026-09-27
+
+- **Gates green; not seen at a running window.** Plan
+  `.claude/work/plans/06.16-binding-heads-labels.md`. Every inventory row is
+  now same, built (06.14 to 06.16) or, for B22, kept by the `CLAUDE.md` rule.
+- New settings `arrowBinding` and `midpointSnap` in `internal/config`
+  (Settings ▸ Canvas). `--size-arrowhead`, `--size-dash`, `--size-dot` and
+  `--size-binding-gap` are retired: heads, dashes and the gap are scene units
+  in code (`arrows.ts`, `paint.ts`, `binding.ts`).
+
 ### Milestone 6.15 findings (points and creation), 2026-09-27
 
 - **Gates green; not seen at a running window.** Plan

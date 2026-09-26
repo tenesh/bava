@@ -15,9 +15,6 @@ const read = (name: string) =>
     '--swatch-blue-fill': 'lightblue',
     '--swatch-blue-stroke': 'steelblue',
     '--swatch-blue-text': 'navy',
-    '--size-dash': '6px',
-    '--size-dot': '2px',
-    '--size-arrowhead': '10px',
     '--radius-shape-round': '32px',
     '--font-ui': 'Geist',
     '--text-body': '16px',
@@ -44,7 +41,8 @@ describe('exporting to SVG', () => {
 
   it('writes a dashed line as a dash array', () => {
     const svg = svgOf([{ id: 'l', type: 'line', x: 0, y: 0, w: 50, h: 0, z: 1, points: [0, 0, 50, 0], strokeStyle: 'dashed' }]);
-    expect(svg).toContain('stroke-dasharray="6 6"');
+    // Excalidraw's [8, 8 + width] since 06.16 (T2), and half a unit thicker.
+    expect(svg).toContain('stroke-width="2.5" stroke-dasharray="8 10"');
   });
 
   it('turns a rotated element about its own centre', () => {
@@ -79,12 +77,19 @@ describe('exporting to SVG', () => {
     expect(svg).toContain('data-head="end"');
   });
 
-  // The head is sized by its own token, not by whatever else was to hand.
-  it('draws the head at the arrowhead size', () => {
+  // Since 06.16 (H2, H3) a head is sized by its kind, capped by the last
+  // segment: the stage's own geometry, in the export.
+  it("draws the head at its kind's size, capped by the arrow's length", () => {
     const svg = svgOf([{ id: 'a', type: 'arrow', x: 0, y: 0, w: 40, h: 0, z: 1, points: [0, 0, 40, 0] }]);
     const sink = svgPathSink();
-    drawHead(sink, 'arrow', 10);
+    drawHead(sink, 'arrow', 40, 2);
     expect(svg).toContain(sink.d());
+  });
+
+  // 06.16 H5: an outline head is filled with the canvas, hiding the line.
+  it('fills an outline head with the canvas colour', () => {
+    const svg = svgOf([{ id: 'a', type: 'arrow', x: 0, y: 0, w: 100, h: 0, z: 1, points: [0, 0, 100, 0], endArrowhead: 'triangle-outline' }]);
+    expect(svg).toMatch(/data-head="end"[^>]*><path[^>]*fill="white"/);
   });
 
   it('writes text with its size and content, escaped', () => {
@@ -155,13 +160,14 @@ describe('exporting an arrow label', () => {
     expect(svg).toMatch(/<text[^>]*x="50"/);
   });
 
-  // Review of 06.14: an elbow's label sits on its rounded path, as drawn.
-  it("writes an elbow's label on the path as drawn, corners rounded", () => {
-    const svg = svgOf([
-      { id: 'a', type: 'arrow', arrowType: 'elbow', x: 0, y: 0, w: 100, h: 100, z: 1, points: [0, 0, 100, 0, 100, 100], label: 'x' },
-    ]);
-    const at = labelPoint(pathOf([0, 0, 100, 0, 100, 100], 'elbow'));
-    expect(svg).toContain(`<text x="${Math.round(at.x * 1000) / 1000}"`);
+  // Since 06.16 (decision 16) a label sits on the middle point; slid, it
+  // sits along the path as drawn, corners rounded (the 06.14 review).
+  it("writes an elbow's label at its middle point, or slid along the drawn path", () => {
+    const at = (over: Record<string, unknown>) =>
+      svgOf([{ id: 'a', type: 'arrow', arrowType: 'elbow', x: 0, y: 0, w: 100, h: 100, z: 1, points: [0, 0, 100, 0, 100, 100], label: 'x', ...over }]);
+    expect(at({})).toContain('<text x="100"');
+    const slid = labelPoint(pathOf([0, 0, 100, 0, 100, 100], 'elbow'), 0.5);
+    expect(at({ labelPosition: 0.5 })).toContain(`<text x="${Math.round(slid.x * 1000) / 1000}"`);
   });
 });
 
@@ -268,5 +274,32 @@ describe('exporting a closed line', () => {
   it('fills it', () => {
     const svg = svgOf([{ id: 'l', type: 'line', x: 0, y: 0, w: 10, h: 10, z: 1, points: [0, 0, 10, 0, 10, 10, 0, 0], closed: true, fill: 'blue' }]);
     expect(svg).toMatch(/<polyline[^>]*fill="lightblue"/);
+  });
+});
+
+describe("the line under an exported arrow's label", () => {
+  it('is masked out where the label sits', () => {
+    const svg = svgOf([{ id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, points: [0, 0, 200, 0], label: 'sends' }]);
+    expect(svg).toContain('<mask id="label-a"');
+    expect(svg).toMatch(/<polyline[^>]*mask="url\(#label-a\)"/);
+    expect(svgOf([{ id: 'b', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, points: [0, 0, 200, 0] }])).not.toContain('<mask');
+  });
+});
+
+// Review of 06.16: a head is capped by the arrow's own last segment, not by
+// a drawn curve's samples or an elbow's rounded corner, in both renderers.
+describe('the size of a head on a bent arrow', () => {
+  const headOf = (svg: string) => svg.match(/data-head="end"[^>]*><path d="([^"]*)"/)![1];
+  it('on a curved arrow is its full size', () => {
+    const svg = svgOf([{ id: 'a', type: 'arrow', arrowType: 'arc', x: 0, y: 0, w: 240, h: 60, z: 1, points: [0, 0, 120, 60, 240, 0] }]);
+    const sink = svgPathSink();
+    drawHead(sink, 'arrow', Math.hypot(120, 60), 2);
+    expect(headOf(svg)).toBe(sink.d());
+  });
+  it('on an elbow is capped by its last leg', () => {
+    const svg = svgOf([{ id: 'e', type: 'arrow', arrowType: 'elbow', x: 0, y: 0, w: 130, h: 100, z: 1, points: [0, 0, 100, 0, 100, 100, 130, 100] }]);
+    const sink = svgPathSink();
+    drawHead(sink, 'arrow', 30, 2);
+    expect(headOf(svg)).toBe(sink.d());
   });
 });

@@ -178,3 +178,33 @@ func TestVerboseLoggingDefaultsToOff(t *testing.T) {
 		t.Error("VerboseLogging did not survive a save")
 	}
 }
+
+// 06.16 B8, B12: attaching arrows and the side-middle snap are on unless the
+// user turns them off, including for a settings file written before they
+// existed.
+func TestArrowSettingsDefaultOn(t *testing.T) {
+	if d := config.Defaults(); !d.ArrowBinding || !d.MidpointSnap {
+		t.Fatalf("defaults: ArrowBinding=%v MidpointSnap=%v, want both on", d.ArrowBinding, d.MidpointSnap)
+	}
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"debounceMs": 300}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	older, err := config.LoadFrom(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !older.ArrowBinding || !older.MidpointSnap {
+		t.Errorf("an older file: ArrowBinding=%v MidpointSnap=%v, want both on", older.ArrowBinding, older.MidpointSnap)
+	}
+	if err := os.WriteFile(path, []byte(`{"arrowBinding": false, "midpointSnap": false}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	off, err := config.LoadFrom(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if off.ArrowBinding || off.MidpointSnap {
+		t.Errorf("turned off: ArrowBinding=%v MidpointSnap=%v, want both off", off.ArrowBinding, off.MidpointSnap)
+	}
+}

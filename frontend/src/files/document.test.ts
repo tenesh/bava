@@ -309,6 +309,8 @@ describe('style properties survive a load and a save', () => {
       // A closed, filled line, and a new element's kind written out (06.15).
       { id: 'l2', type: 'line', x: 0, y: 200, w: 10, h: 10, z: 8, points: [0, 0, 10, 0, 10, 10, 0, 0], closed: true, fill: 'blue', edges: 'round' },
       { id: 'a4', type: 'arrow', x: 0, y: 300, w: 40, h: 0, z: 9, points: [0, 0, 40, 0], arrowType: 'arc' },
+      // A crow's-foot head and a label size on an arrow (06.16).
+      { id: 'a5', type: 'arrow', x: 0, y: 400, w: 40, h: 0, z: 10, points: [0, 0, 40, 0], endArrowhead: 'zeroOrMany', label: 'has', fontSize: 28 },
     ],
     grid: { size: 8 },
   };

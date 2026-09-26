@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { drawHead, headAt, routePoints, labelPoint, positionAlong } from './arrows';
+import { drawHead, headDash, labelSpot, labelWrapWidth, headAt, routePoints, labelPoint, positionAlong } from './arrows';
 
 const from = [0, 0, 100, 60];
 
@@ -42,43 +42,87 @@ describe('routePoints', () => {
   });
 });
 
+// 06.16 H1 to H5: heads as Excalidraw draws them (`element/src/bounds.ts:710-845`,
+// `element/src/shape.ts:290-575`), tip at the origin, pointing along +x.
 describe('arrowhead shapes', () => {
   const sink = () => {
     const calls: string[] = [];
+    const points: [number, number][] = [];
     return {
       calls,
-      moveTo: () => calls.push('moveTo'),
-      lineTo: () => calls.push('lineTo'),
-      bezierCurveTo: () => calls.push('curve'),
+      points,
+      moveTo: (x: number, y: number) => (calls.push('moveTo'), points.push([x, y])),
+      lineTo: (x: number, y: number) => (calls.push('lineTo'), points.push([x, y])),
+      bezierCurveTo: (_a: number, _b: number, _c: number, _d: number, x: number, y: number) => (calls.push('curve'), points.push([x, y])),
       closePath: () => calls.push('close'),
     };
   };
+  const reach = (s: ReturnType<typeof sink>) => Math.round(-Math.min(...s.points.map(([x]) => x)));
+  const long = 200;
 
   it('draws nothing for none', () => {
     const s = sink();
-    expect(drawHead(s, 'none', 10)).toBe(false);
+    expect(drawHead(s, 'none', long, 2)).toBe('none');
     expect(s.calls).toEqual([]);
   });
 
-  it('draws each head, and says whether it is filled', () => {
-    for (const kind of ['arrow', 'triangle', 'bar', 'circle', 'diamond']) {
+  it('sizes each kind as Excalidraw does', () => {
+    const size = (kind: string) => {
       const s = sink();
-      drawHead(s, kind, 10);
+      drawHead(s, kind, long, 2);
+      return reach(s);
+    };
+    // The arrow's barbs reach 25 back at 20°; a diamond is twice its 12.
+    expect(size('arrow')).toBe(Math.round(25 * Math.cos((20 * Math.PI) / 180)));
+    expect(size('triangle')).toBe(Math.round(15 * Math.cos((25 * Math.PI) / 180)));
+    expect(size('diamond')).toBe(24);
+  });
+
+  it('shrinks on a short last segment: half of it, a quarter for a diamond', () => {
+    const s = sink();
+    drawHead(s, 'arrow', 20, 2);
+    expect(reach(s)).toBe(Math.round(10 * Math.cos((20 * Math.PI) / 180)));
+    const d = sink();
+    drawHead(d, 'diamond', 20, 2);
+    expect(reach(d)).toBe(10);
+  });
+
+  it('grows a circle with the stroke width', () => {
+    const thin = sink();
+    drawHead(thin, 'circle', long, 2);
+    const thick = sink();
+    drawHead(thick, 'circle', long, 4);
+    const span = (s: ReturnType<typeof sink>) => Math.max(...s.points.map(([x]) => x)) - Math.min(...s.points.map(([x]) => x));
+    expect(span(thick) - span(thin)).toBeCloseTo(2, 5);
+  });
+
+  it('fills solid heads with the line colour and outline heads with the canvas', () => {
+    expect(drawHead(sink(), 'triangle', long, 2)).toBe('stroke');
+    expect(drawHead(sink(), 'triangle-outline', long, 2)).toBe('surface');
+    expect(drawHead(sink(), 'circle-outline', long, 2)).toBe('surface');
+    expect(drawHead(sink(), 'diamond', long, 2)).toBe('stroke');
+    expect(drawHead(sink(), 'arrow', long, 2)).toBe('none');
+    expect(drawHead(sink(), 'zeroOrMany', long, 2)).toBe('surface');
+  });
+
+  it("draws the crow's-foot heads", () => {
+    for (const kind of ['one', 'many', 'oneOrMany', 'exactlyOne', 'zeroOrOne', 'zeroOrMany']) {
+      const s = sink();
+      drawHead(s, kind, long, 2);
       expect(s.calls.length, kind).toBeGreaterThan(0);
     }
-    expect(drawHead(sink(), 'triangle', 10)).toBe(true);
-    expect(drawHead(sink(), 'triangle-outline', 10)).toBe(false);
-    expect(drawHead(sink(), 'circle', 10)).toBe(true);
-    expect(drawHead(sink(), 'circle-outline', 10)).toBe(false);
-    expect(drawHead(sink(), 'arrow', 10)).toBe(false);
+    // Many spreads towards the tip from 15 back.
+    const many = sink();
+    drawHead(many, 'many', long, 2);
+    expect(reach(many)).toBe(15);
   });
 
   it('draws an unknown head as the default arrow', () => {
     const known = sink();
-    drawHead(known, 'arrow', 10);
+    drawHead(known, 'arrow', long, 2);
     const unknown = sink();
-    drawHead(unknown, 'sparkle', 10);
-    expect(unknown.calls).toEqual(known.calls);
+    drawHead(unknown, 'sparkle', long, 2);
+    expect(unknown.points).toEqual(known.points);
   });
 });
 
@@ -156,5 +200,37 @@ describe('a label placed along the path', () => {
   it('gives the share along the path nearest a point', () => {
     expect(positionAlong(bent, { x: 40, y: 10 })).toBeCloseTo(0.2);
     expect(positionAlong(bent, { x: 130, y: 150 })).toBe(1);
+  });
+});
+
+// 06.16 H6: strokes-only heads dot with a dotted line; filled ones stay solid.
+describe('a head on a dotted line', () => {
+  it('is dotted a little tighter when drawn in strokes, solid otherwise', () => {
+    expect(headDash('arrow', 'dotted', 2)).toEqual([1.5, 6]);
+    expect(headDash('triangle', 'dotted', 2)).toEqual([]);
+    expect(headDash('arrow', 'dashed', 2)).toEqual([]);
+  });
+});
+
+// 06.16 L2, L6: where a label sits and how wide it wraps, as Excalidraw's
+// (`linearElementEditor.ts:1942-1961`, `textElement.ts:511-521`).
+describe("an arrow's label", () => {
+  const arrow = (over: Record<string, unknown>) => ({ id: 'a', type: 'arrow', x: 0, y: 0, w: 100, h: 300, z: 1, ...over }) as never;
+
+  it('sits on the middle point of an odd number of points', () => {
+    expect(labelSpot(arrow({ points: [0, 0, 100, 0, 100, 300] }), 0)).toEqual({ x: 100, y: 0 });
+  });
+
+  it('sits at the middle of the middle segment of an even number', () => {
+    expect(labelSpot(arrow({ points: [0, 0, 100, 0, 100, 300, 200, 300] }), 0)).toEqual({ x: 100, y: 150 });
+  });
+
+  it('keeps a slid label where it was slid, along the length', () => {
+    expect(labelSpot(arrow({ points: [0, 0, 100, 0, 100, 300], labelPosition: 0.5 }), 0)).toEqual({ x: 100, y: 100 });
+  });
+
+  it('wraps to 0.7 of the arrow or 11 times the font size, the wider', () => {
+    expect(labelWrapWidth(arrow({ w: 100 }), 20)).toBe(220);
+    expect(labelWrapWidth(arrow({ w: 1000 }), 20)).toBe(700);
   });
 });

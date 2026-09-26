@@ -326,9 +326,7 @@ describe('style properties on the stage', () => {
     '--color-shape-fill': 'ivory',
     '--color-shape-stroke': 'slategray',
     '--color-shape-text': 'black',
-    '--size-dash': '6px',
     '--radius-shape-round': '32px',
-    '--size-dot': '2px',
     '--text-body': '13px',
     '--leading-tight': '1.2',
     '--font-ui': 'Geist',
@@ -339,7 +337,8 @@ describe('style properties on the stage', () => {
     const stage = mounted(theme);
     stage.render(one({ type: 'rect', x: 0, y: 0, w: 100, h: 60, strokeWidth: 4, strokeStyle: 'dashed', edges: 'round', opacity: 40 }));
     const body = stage.bodyFor('e1') as Konva.Rect;
-    expect(body.strokeWidth()).toBe(4);
+    // Dashed: half a unit thicker since 06.16 (T2).
+    expect(body.strokeWidth()).toBe(4.5);
     expect(body.dash().length).toBeGreaterThan(0);
     expect(body.cornerRadius()).toBeGreaterThan(0);
     expect(stage.nodeFor('e1')!.opacity()).toBeCloseTo(0.4, 5);
@@ -630,23 +629,26 @@ describe('an arrow with a label', () => {
 // While an arrow is being drawn onto a shape, that shape is highlighted, so
 // the user can see the attachment before letting go.
 describe('the attachment highlight', () => {
-  const read = reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px' });
-
+  // 06.16 B13: the shape's own outline in the highlight colour, as wide as
+  // its stroke within 1.75 and 4 screen px (Excalidraw's
+  // `interactiveScene.ts:292-557`).
   it('outlines the candidates it is given, and clears them', () => {
-    const stage = new CanvasStage({ read });
+    const stage = new CanvasStage({ read: reader({ '--color-binding-highlight': 'orchid' }) });
     stage.mount(host());
     stage.render({
       elements: [
-        { id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 },
-        { id: 'b', type: 'rect', x: 200, y: 0, w: 60, h: 60, z: 2 },
+        { id: 'a', type: 'ellipse', x: 0, y: 0, w: 60, h: 40, z: 1, strokeWidth: 1 },
+        { id: 'b', type: 'rect', x: 200, y: 0, w: 60, h: 60, z: 2, strokeWidth: 4 },
       ] as SceneElement[],
     });
 
-    stage.setBindingCandidates(['a']);
+    stage.setBindingCandidates(['a', 'b']);
     const outlines = stage.bindingHighlights();
-    expect(outlines).toHaveLength(1);
-    expect(outlines[0].getAbsolutePosition()).toEqual({ x: 0, y: 0 });
-    expect(outlines[0].width()).toBe(60);
+    expect(outlines).toHaveLength(2);
+    expect(outlines.map((o) => o.stroke())).toEqual(['orchid', 'orchid']);
+    expect(outlines.map((o) => o.strokeWidth())).toEqual([1.75, 4]);
+    expect(outlines.map((o) => o.getAttr('bavaOutline'))).toEqual(['ellipse', 'rect']);
+    expect(outlines[0].getClientRect({ skipStroke: true })).toMatchObject({ x: 0, y: 0, width: 60, height: 40 });
 
     stage.setBindingCandidates([]);
     expect(stage.bindingHighlights()).toHaveLength(0);
@@ -1195,6 +1197,46 @@ describe('a line in point editing', () => {
     expect(points[1].fill()).toBe('dodgerblue');
     expect(stage.selectionOutline()).toBeNull();
     expect(stage.middleHandles()).toHaveLength(2);
+    stage.destroy();
+  });
+});
+
+// 06.16 L7: the line is hidden under its label's box plus 5, as Excalidraw's
+// `renderElement.ts:787-817`.
+describe("the line under an arrow's label", () => {
+  it('is clipped out where the label sits, and only when there is one', () => {
+    const stage = mounted(themeA);
+    stage.render(one({ type: 'arrow', x: 0, y: 0, w: 200, h: 0, points: [0, 0, 200, 0], label: 'sends' }));
+    const clip = stage.bodyFor('e1')!.getParent() as Konva.Group;
+    expect(typeof clip.clipFunc()).toBe('function');
+    stage.render(one({ type: 'arrow', x: 0, y: 0, w: 200, h: 0, points: [0, 0, 200, 0] }));
+    expect((stage.bodyFor('e1')!.getParent() as Konva.Group).clipFunc()).toBeFalsy();
+    stage.destroy();
+  });
+});
+
+// Review of 06.16: the highlight's pulse starts with a candidate, stops when
+// there is none or the stage goes, and never starts under reduced motion.
+describe("the attach highlight's pulse", () => {
+  const scene = { elements: [{ id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 }] as SceneElement[] };
+  it('runs while something is highlighted', () => {
+    const stage = new CanvasStage({ read: reader({ '--duration-pulse': '1200ms' }) });
+    stage.mount(host());
+    stage.render(scene);
+    stage.setBindingCandidates(['a']);
+    expect(stage.pulsing()).toBe(true);
+    stage.setBindingCandidates([]);
+    expect(stage.pulsing()).toBe(false);
+    stage.setBindingCandidates(['a']);
+    stage.destroy();
+    expect(stage.pulsing()).toBe(false);
+  });
+  it('does not run under reduced motion', () => {
+    const stage = new CanvasStage({ read: reader({ '--duration-pulse': '0ms' }) });
+    stage.mount(host());
+    stage.render(scene);
+    stage.setBindingCandidates(['a']);
+    expect(stage.pulsing()).toBe(false);
     stage.destroy();
   });
 });

@@ -521,3 +521,122 @@ describe('the spots an elbow end shows', () => {
     expect(elbowSnapSpots(diamond)).toContainEqual({ x: 25, y: 25 });
   });
 });
+
+// 06.16 B2, B3, B5, B6: what an end attaches to, as Excalidraw's
+// `getHoveredElementForBinding` (`element/src/collision.ts:346-478`).
+describe('the shape an end attaches to', () => {
+  const rect = (id: string, x: number, y: number, w: number, h: number, z: number, over: Record<string, unknown> = {}) =>
+    ({ id, type: 'rect', x, y, w, h, z, ...over }) as never as SceneElement;
+  const scene = (...elements: SceneElement[]): SceneData => ({ elements });
+
+  it('is a frame from just outside it, never from inside', () => {
+    const frame = { id: 'f', type: 'frame', x: 0, y: 0, w: 200, h: 200, z: 1 } as never as SceneElement;
+    expect(targetAt(scene(frame), { x: -5, y: 100 }, 'arrow')?.id).toBe('f');
+    expect(targetAt(scene(frame), { x: 100, y: 100 }, 'arrow')).toBeUndefined();
+  });
+
+  it('is the child under an end inside a frame', () => {
+    const frame = { id: 'f', type: 'frame', x: 0, y: 0, w: 200, h: 200, z: 1 } as never as SceneElement;
+    const child = rect('c', 50, 50, 50, 50, 2, { frame: 'f' });
+    expect(targetAt(scene(frame, child), { x: 75, y: 75 }, 'arrow')?.id).toBe('c');
+  });
+
+  it('is the front shape containing the point, which hides the one behind', () => {
+    const behind = rect('a', 60, 40, 50, 40, 1);
+    const front = rect('b', 50, 50, 100, 100, 2);
+    expect(targetAt(scene(behind, front), { x: 100, y: 55 }, 'arrow')?.id).toBe('b');
+  });
+
+  it('is the nearest outline, not the smallest shape, between two in reach', () => {
+    const near = rect('a', 0, 0, 100, 100, 1);
+    const far = rect('b', 110, 0, 50, 50, 2);
+    expect(targetAt(scene(near, far), { x: 103, y: 40 }, 'arrow')?.id).toBe('a');
+  });
+
+  it('is nothing behind a locked shape, which hides without attaching', () => {
+    const behind = rect('a', 0, 0, 200, 200, 1);
+    const locked = rect('l', 50, 50, 100, 100, 2, { locked: true });
+    expect(targetAt(scene(behind, locked), { x: 100, y: 100 }, 'arrow')).toBeUndefined();
+  });
+
+  it('prefers a smaller overlapping element that holds the point', () => {
+    const container = rect('r', 0, 0, 200, 100, 1);
+    const text = { id: 't', type: 'text', x: -50, y: 40, w: 100, h: 20, z: 2, text: 'x', measuredWidth: 100, measuredHeight: 20 } as never as SceneElement;
+    expect(targetAt(scene(container, text), { x: 2, y: 50 }, 'arrow')?.id).toBe('t');
+  });
+});
+
+// 06.16 B10: the gap is 5 plus half the target's stroke width, as
+// Excalidraw's `getBindingGap` (`element/src/binding.ts:117`, `:125-131`).
+describe('the gap an attached end keeps', () => {
+  it('grows with the shape’s stroke width', () => {
+    const thin = { id: 'a', type: 'rect', x: 0, y: 0, w: 100, h: 60, z: 1 } as never as SceneElement;
+    const thick = { ...(thin as object), strokeWidth: 4 } as never as SceneElement;
+    expect(anchorOn(thin, { x: 300, y: 30 }).x).toBe(106);
+    expect(anchorOn(thick, { x: 300, y: 30 }).x).toBe(107);
+    expect(BINDING_GAP).toBe(6);
+  });
+});
+
+// 06.16 B11: an end attached at the edge is stored as the drop point carried
+// onto the shape's nearer diagonal (centre lines for a curved shape), along
+// the line from the arrow's other end (`projectFixedPointOntoDiagonal`,
+// `element/src/utils.ts:810-903`).
+describe('where an edge anchor is stored', () => {
+  const box = { id: 'a', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 } as never as SceneElement;
+  const ellipse = { ...(box as object), type: 'ellipse' } as never as SceneElement;
+
+  it('is on the diagonal nearer the other end', () => {
+    const [fx, fy] = anchorFor(box, { x: 104, y: 20 }, 15, false, false, { x: 300, y: 50 });
+    expect(fx).toBeCloseTo(0.832, 2);
+    expect(fy).toBeCloseTo(0.168, 2);
+  });
+
+  it('is on a centre line for a curved shape', () => {
+    const [fx, fy] = anchorFor(ellipse, { x: 104, y: 20 }, 15, false, false, { x: 300, y: 50 });
+    expect(fx).toBeCloseTo(0.5, 2);
+    expect(fy).toBeLessThan(0.2);
+  });
+
+  it('snaps to a side middle first, and falls back without another end', () => {
+    expect(anchorFor(box, { x: 104, y: 50 }, 15, false, false, { x: 300, y: 50 })).toEqual([1, 0.5]);
+    expect(anchorFor(box, { x: 104, y: 20 }, 15)).toEqual([1, 0.2]);
+  });
+});
+
+// 06.16 B18: an arrow never turns inside out: an end whose outline point is
+// inside the other, overlapping shape, or an arrow under 10 long, sits at its
+// anchor instead (`element/src/binding.ts:2037-2094`).
+describe('an arrow between overlapping shapes', () => {
+  it('ends at its anchor when its outline point is inside the other shape', () => {
+    const data: SceneData = {
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 } as never,
+        { id: 'b', type: 'rect', x: 60, y: 0, w: 100, h: 100, z: 2 } as never,
+        { id: 'r', type: 'arrow', x: 30, y: 50, w: 100, h: 0, z: 3, points: [0, 0, 100, 0], startBinding: 'a', startAnchor: [0.3, 0.5], endBinding: 'b', endAnchor: [0.7, 0.5] } as never,
+      ],
+    };
+    const route = routeFor(data.elements[2], data);
+    const arrow = data.elements[2] as unknown as { x: number; y: number };
+    // A's right edge (106 out) lies inside B: the start sits at A's anchor, (30, 50).
+    expect([arrow.x + route[0], arrow.y + route[1]]).toEqual([30, 50]);
+  });
+});
+
+// Review of 06.16: the inside-out guard applies only between shapes of like
+// size (Excalidraw's area test), so a child's arrow to its container still
+// leaves the child's edge.
+describe('an arrow from a child to its container', () => {
+  it('leaves the child from its edge', () => {
+    const data: SceneData = {
+      elements: [
+        { id: 'big', type: 'rect', x: 0, y: 0, w: 400, h: 400, z: 1 } as never,
+        { id: 'small', type: 'rect', x: 50, y: 50, w: 60, h: 60, z: 2 } as never,
+        { id: 'r', type: 'arrow', x: 80, y: 80, w: 300, h: 0, z: 3, points: [0, 0, 300, 0], startBinding: 'small', startAnchor: [0.5, 0.5], endBinding: 'big', endAnchor: [1, 0.2] } as never,
+      ],
+    };
+    const route = routeFor(data.elements[2], data);
+    const arrow = data.elements[2] as unknown as { x: number };
+    expect(arrow.x + route[0]).toBeGreaterThan(110);
+  });
+});

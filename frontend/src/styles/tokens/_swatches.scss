@@ -47,6 +47,8 @@ $swatches-dark: (
   --color-shape-text: #25251f;
   // Selection outline and resize handles.
   --color-selection-handle: #2f6ba3;
+  // The shape an arrow end would attach to, outlined (Excalidraw's blue).
+  --color-binding-highlight: #4a47b1;
 }
 
 :root[data-theme='dark'] {
@@ -56,4 +58,5 @@ $swatches-dark: (
   --color-shape-stroke: #7f857f;
   --color-shape-text: #dcdcd8;
   --color-selection-handle: #7fabd9;
+  --color-binding-highlight: #8f8cf0;
 }

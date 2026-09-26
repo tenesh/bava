@@ -15,6 +15,8 @@
   // One sweep of an indeterminate progress bar. Not zeroed under reduced
   // motion: a zero-length loop flickers, so the bar stops animating instead.
   --duration-indeterminate: 1400ms;
+  // One beat of the pulse on the shape an arrow end would attach to.
+  --duration-pulse: 1200ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -22,5 +24,6 @@
     --duration-fast: 0ms;
     --duration-base: 0ms;
     --duration-slow: 0ms;
+    --duration-pulse: 0ms;
   }
 }

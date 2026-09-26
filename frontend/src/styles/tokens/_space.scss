@@ -25,14 +25,10 @@
   --size-titlebar: 36px;
   --size-statusbar: 24px;
 
-  // Drawing on the canvas, in scene units.
-  --size-arrowhead: 10px;
   // Space between a label and its shape's edge.
   --size-label-inset: 6px;
   // A selection handle's side on screen, whatever the zoom.
   --size-selection-handle: 8px;
-  // How far clear of a shape an attached arrow stops.
-  --size-binding-gap: 4px;
   // How far an elbow's route keeps from the shapes it joins (canvas/elbow.ts).
   --size-elbow-margin: 40px;
   // How near a line counts as a click on it: Excalidraw's 0.85 × 8 = 6.8 px.
@@ -60,6 +56,8 @@
   // A point this near the one before it is drawn larger, so both show
   // (Excalidraw's 2 px).
   --size-point-overlap: 2px;
+  // How far an arrow's label is dragged before it slides (Excalidraw's 10).
+  --size-label-drag: 10px;
   // A bent line's selection box stands this clear of it, so its corner
   // handles are not on its points (Excalidraw's 10 px).
   --size-bent-box-padding: 10px;
@@ -76,9 +74,6 @@
   --size-marquee-dash: 4px;
   // The eraser trail's width on screen, whatever the zoom.
   --size-eraser-trail: 6px;
-  // Dashes and dots for a dashed or dotted stroke, in scene units.
-  --size-dash: 6px;
-  --size-dot: 2px;
   // A tool rail button, square.
   --size-rail-button: 32px;
   // The insert panel beside the rail, and a tile in its grid.

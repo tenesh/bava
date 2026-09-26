@@ -13,9 +13,6 @@ const theme = read({
   '--swatch-blue-fill': 'lightblue',
   '--swatch-blue-stroke': 'steelblue',
   '--swatch-blue-text': 'navy',
-  '--size-dash': '6px',
-  '--size-dot': '2px',
-  '--size-arrowhead': '10px',
   '--radius-shape-round': '32px',
   '--font-ui': 'Geist',
   '--text-body': '16px',
@@ -61,10 +58,15 @@ describe('how an element paints', () => {
     expect(paint.font.size).toBe(20);
   });
 
-  it('turns a line style into a dash pattern', () => {
-    expect(paintFor(el({ strokeStyle: 'dashed' }), theme).dash).toEqual([6, 6]);
-    expect(paintFor(el({ strokeStyle: 'dotted' }), theme).dash).toEqual([2, 4]);
+  // 06.16 T2: Excalidraw's patterns, scaled by the stroke width, and a
+  // non-solid line drawn half a unit thicker (`element/src/shape.ts:168-216`).
+  it('turns a line style into a dash pattern that grows with the width', () => {
+    expect(paintFor(el({ strokeStyle: 'dashed' }), theme).dash).toEqual([8, 10]);
+    expect(paintFor(el({ strokeStyle: 'dotted' }), theme).dash).toEqual([1.5, 8]);
+    expect(paintFor(el({ strokeStyle: 'dashed', strokeWidth: 4 }), theme).dash).toEqual([8, 12]);
     expect(paintFor(el({}), theme).dash).toEqual([]);
+    expect(paintFor(el({ strokeStyle: 'dotted' }), theme).strokeWidth).toBe(2.5);
+    expect(paintFor(el({}), theme).strokeWidth).toBe(2);
   });
 
   it('reads opacity as a fraction, and clamps what is out of range', () => {
@@ -124,5 +126,15 @@ describe('the fill of a line', () => {
   it('is not drawn while it is open, nor without a fill of its own', () => {
     expect(paintFor(loop as unknown as SceneElement, theme).fill).toBe('');
     expect(paintFor({ ...loop, closed: true, fill: undefined } as unknown as SceneElement, theme).fill).toBe('');
+  });
+});
+
+// 06.16 L8, L9: an arrow's label takes its own size and the arrow's colour.
+describe("an arrow's label paint", () => {
+  it("is the size set on the arrow, in the arrow's stroke colour", () => {
+    const arrow = el({ type: 'arrow', fontSize: 28, stroke: 'blue', points: [0, 0, 10, 0] } as never);
+    const paint = paintFor(arrow, theme);
+    expect(paint.font.size).toBe(28);
+    expect(paint.font.colour).toBe('steelblue');
   });
 });

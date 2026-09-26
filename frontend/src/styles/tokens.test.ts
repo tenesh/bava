@@ -224,7 +224,7 @@ describe('syntax colours', () => {
 // without a word.
 describe('the canvas distances added in 06.12', () => {
   const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
-  it.each(['--size-point-handle', '--size-point-hit', '--size-bend-insert', '--size-min-linear', '--size-bend-min-segment', '--size-elbow-margin', '--size-line-confirm', '--size-point-handle-editing', '--size-snap-dot', '--size-bent-box-padding', '--size-point-hover', '--size-focus-point', '--size-point-overlap'])(
+  it.each(['--size-point-handle', '--size-point-hit', '--size-bend-insert', '--size-min-linear', '--size-bend-min-segment', '--size-elbow-margin', '--size-line-confirm', '--size-point-handle-editing', '--size-snap-dot', '--size-bent-box-padding', '--size-point-hover', '--size-focus-point', '--size-point-overlap', '--size-label-drag'])(
     '%s has a non-zero length',
     (name) => {
       const match = css.match(new RegExp(`${name}:\\s*([0-9.]+)px`));
@@ -240,5 +240,18 @@ describe('how near a line counts as on it', () => {
   it("is Excalidraw's 6.8 screen px, rounded to 7", () => {
     const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
     expect(css).toMatch(/--size-hit-tolerance:\s*7px/);
+  });
+});
+
+// 06.16 B13: the attach highlight's colour in both themes, and its pulse,
+// stilled under reduced motion.
+describe('the attach highlight tokens', () => {
+  const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+  it('has a colour in each theme', () => {
+    expect((css.match(/--color-binding-highlight:/g) ?? []).length).toBe(2);
+  });
+  it('pulses, but not under reduced motion', () => {
+    expect(css).toMatch(/--duration-pulse:\s*1200ms/);
+    expect(css).toMatch(/prefers-reduced-motion[\s\S]*--duration-pulse:\s*0ms/);
   });
 });

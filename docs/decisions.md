@@ -168,4 +168,12 @@ could reasonably have gone another way.
 | 2026-09-27 | Delete with no point selected, and double-click on a bend, do nothing | The user's answer, as Excalidraw: both were Bava-only and could delete by mistake. Reverses 06.10 decision 2 and a 06.13 review choice. |
 | 2026-09-27 | A line can be closed into a loop, and a closed line filled | Excalidraw's polygon, stored as `closed: true`; `fill` on a line only while closed. |
 | 2026-09-27 | New elements take the last style chosen, for the session only | Excalidraw's `currentItem*`. Held in memory: it is not document state, and it is not a convenience worth a stored preference. |
+| 2026-09-27 | An arrow's label sits on its middle point | The user's answer, as Excalidraw: the middle point, or the middle of the middle segment. A bent arrow without a `labelPosition` moves its label. |
+| 2026-09-27 | Deleting a shape still freezes its arrows' ends | Excalidraw lets them go; `CLAUDE.md` says a binding whose target disappears freezes and is marked detached, never silently dropped, and that rule outranks "Excalidraw wins". |
+| 2026-09-27 | Heads are sized by kind, in scene units | Excalidraw's sizes (arrow 25, bar 15, diamond 12, crow's foot 15, cardinality 20, others 15), capped on short arrows; the `--size-arrowhead` token is retired. Every existing head redraws. |
+| 2026-09-27 | Outline heads are filled with the canvas colour | As Excalidraw: the line no longer shows through them. |
+| 2026-09-27 | Dash patterns scale with the stroke width | Excalidraw's dashed [8, 8 + width] and dotted [1.5, 6 + width], a non-solid line 0.5 thicker. Existing dashed lines redraw. |
+| 2026-09-27 | A lone attached arrow lets go only past 10 units, and when resized or rotated | As Excalidraw; replaces 06.10's let-go after the 3 px drag threshold and the thrown-away rotation. |
+| 2026-09-27 | Both ends of an arrow may attach to one shape | As Excalidraw, both pinned inside at their drop points; Bava refused the second. |
+| 2026-09-27 | Attaching and the side-middle snap are settings | Excalidraw's two toggles, in Settings ▸ Canvas, stored in Bava's config, on by default. |
 

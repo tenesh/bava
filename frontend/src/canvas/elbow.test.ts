@@ -258,20 +258,20 @@ describe('an elbow with a fixed segment', () => {
       box('a', 0, 0, 100, 100),
       box('b', 300, bY, 100, 100),
       elbow({
-        x: 104,
+        x: 106,
         y: 50,
-        points: [0, 0, 126, 0, 126, 200, 192, 200],
+        points: [0, 0, 124, 0, 124, 200, 188, 200],
         startBinding: 'a',
         startAnchor: [1, 0.5],
         endBinding: 'b',
         endAnchor: [0, 0.5],
-        fixedSegments: [{ index: 2, start: [126, 0], end: [126, 200] }],
+        fixedSegments: [{ index: 2, start: [124, 0], end: [124, 200] }],
       }),
     ],
   });
 
   it('keeps it when a shape moves', () => {
-    expect(routed(scene(230))).toEqual([104, 50, 230, 50, 230, 280, 296, 280]);
+    expect(routed(scene(230))).toEqual([106, 50, 230, 50, 230, 280, 294, 280]);
   });
 
   it('keeps its record in step with the points', () => {
@@ -295,7 +295,7 @@ describe('an elbow with a fixed segment', () => {
   it('routes whole again once no fixed segment is left', () => {
     const plain = scene(230);
     delete (plain.elements[2] as { fixedSegments?: unknown }).fixedSegments;
-    expect(routed(plain)).not.toEqual([104, 50, 230, 50, 230, 280, 296, 280]);
+    expect(routed(plain)).not.toEqual([106, 50, 230, 50, 230, 280, 294, 280]);
   });
 });
 

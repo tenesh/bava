@@ -8,6 +8,7 @@
    * it shows the current value and reports a choice.
    */
   import { Popover, Portal, RadioGroup } from '@ark-ui/svelte';
+  import { tick } from 'svelte';
   import { portalRoot } from './portal-root';
   import ToolIcon from './ToolIcon.svelte';
   import Tooltip from './Tooltip.svelte';
@@ -19,7 +20,8 @@
     label: string;
     /** The icon on the button: the property, or its current value. */
     icon: IconId;
-    options: readonly ({ value: Value; icon: IconId } & (
+    /** `more`: shown only once More is pressed, or when it is the current value. */
+    options: readonly ({ value: Value; icon: IconId; more?: boolean } & (
       | { labelKey: MessageKey; label?: never }
       | { label: string; labelKey?: never }
     ))[];
@@ -32,13 +34,35 @@
 
   const triggerId = $derived(`bava-option-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`);
   const checked = $derived(current === 'mixed' || current === null ? null : String(current));
+  let expanded = $state(false);
+  const hasMore = $derived(options.some((option) => option.more));
+  const currentIsMore = $derived(options.some((option) => option.more && option.value === current));
+  const shown = $derived(expanded || currentIsMore ? options : options.filter((option) => !option.more));
+  let list = $state<HTMLElement | null>(null);
+
+  /** Reveal the rest, and put the keyboard on the first of them: More itself goes. */
+  async function showMore() {
+    expanded = true;
+    await tick();
+    const first = options.find((option) => option.more);
+    const input = first ? list?.querySelector<HTMLInputElement>(`input[value="${String(first.value)}"]`) : null;
+    input?.focus();
+  }
 
   /** A translated name, or a proper noun the option carries itself. */
   const nameOf = (option: { labelKey?: MessageKey; label?: string }) =>
     option.labelKey ? t(option.labelKey) : (option.label ?? '');
 </script>
 
-<Popover.Root lazyMount unmountOnExit ids={{ trigger: triggerId }}>
+<Popover.Root
+  lazyMount
+  unmountOnExit
+  ids={{ trigger: triggerId }}
+  onOpenChange={(details) => {
+    // Each opening starts short again.
+    if (!details.open) expanded = false;
+  }}
+>
   <Tooltip {label} placement="top" {triggerId}>
     {#snippet trigger(tipProps)}
       {#snippet optionButton(popoverProps: typeof tipProps)}
@@ -51,7 +75,7 @@
   </Tooltip>
   <Portal container={portalRoot()}>
     <Popover.Positioner>
-      <Popover.Content class="bava-control-popover">
+      <Popover.Content class="bava-control-popover" bind:ref={list}>
         <RadioGroup.Root
           class="bava-options"
           value={checked}
@@ -61,7 +85,7 @@
           }}
           aria-label={label}
         >
-          {#each options as option (option.value)}
+          {#each shown as option (option.value)}
             <RadioGroup.Item value={String(option.value)} class="bava-option" title={nameOf(option)}>
               <RadioGroup.ItemControl class="bava-option-control">
                 <ToolIcon id={option.icon} size="sm" />
@@ -71,6 +95,9 @@
             </RadioGroup.Item>
           {/each}
         </RadioGroup.Root>
+        {#if hasMore && shown.length < options.length}
+          <button type="button" class="bava-options-more" onclick={showMore}>{t('option.more')}</button>
+        {/if}
       </Popover.Content>
     </Popover.Positioner>
   </Portal>
@@ -104,6 +131,30 @@
   }
 
   :global(.bava-option[data-focus-visible]) {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+    outline-offset: calc(var(--focus-halo-width) * -1);
+  }
+
+  /* The row that reveals the rest of a long list (the crow's-foot heads). */
+  .bava-options-more {
+    width: 100%;
+    height: var(--size-row);
+    margin-top: var(--space-1);
+    padding: 0 var(--space-2);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    font: inherit;
+    font-size: var(--text-meta);
+    color: var(--color-text-secondary);
+    text-align: left;
+  }
+
+  .bava-options-more:hover {
+    background: var(--color-surface-sunken);
+  }
+
+  .bava-options-more:focus-visible {
     outline: var(--focus-ring-width) solid var(--color-focus-ring);
     outline-offset: calc(var(--focus-halo-width) * -1);
   }
