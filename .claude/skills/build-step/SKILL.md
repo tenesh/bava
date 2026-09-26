@@ -631,6 +631,14 @@ deliberately at `5.24.2` or later.
   (ArrowDown, Enter); RadioGroup items accept a click. Popovers render closed
   content unless `lazyMount`.
 
+### Plans and roadmap reconciled, 2026-09-27
+
+- The Milestone 6 plans (6 and 6.1 to 6.17) are one file,
+  `.claude/work/plans/06-canvas.md`: an overview, then each part in full.
+  The roadmap has one Milestone 6 entry listing the parts; Milestone 7 is
+  complete (checked at the window by the user); Milestone 8 waits on a
+  discussion with the user before it is planned.
+
 ### Milestone 7 findings (snapping), 2026-09-27
 
 - **Gates green; not seen at a running window.** Plan
@@ -645,7 +653,7 @@ deliberately at `5.24.2` or later.
 ### Milestone 6.17 findings (code blocks, arrow labels, two bugs), 2026-09-27
 
 - **Gates green; not seen at a running window.** Plan
-  `.claude/work/plans/06.17-code-labels.md`.
+  `.claude/work/plans/06-canvas.md` (part 6.17).
 - `store.Stamp.ModifiedUnixNano` crosses IPC as a string (it was rounded in
   JavaScript: every second save said "changed on disk"). The bindings were
   regenerated (`wails3 generate bindings -f '' -clean=true -ts -i`).
@@ -656,7 +664,7 @@ deliberately at `5.24.2` or later.
 ### Milestone 6.16 findings (binding, heads, labels, the rest), 2026-09-27
 
 - **Gates green; not seen at a running window.** Plan
-  `.claude/work/plans/06.16-binding-heads-labels.md`. Every inventory row is
+  `.claude/work/plans/06-canvas.md` (part 6.16). Every inventory row is
   now same, built (06.14 to 06.16) or, for B22, kept by the `CLAUDE.md` rule.
 - New settings `arrowBinding` and `midpointSnap` in `internal/config`
   (Settings ▸ Canvas). `--size-arrowhead`, `--size-dash`, `--size-dot` and
@@ -666,7 +674,7 @@ deliberately at `5.24.2` or later.
 ### Milestone 6.15 findings (points and creation), 2026-09-27
 
 - **Gates green; not seen at a running window.** Plan
-  `.claude/work/plans/06.15-points-and-creation.md`; its rows are marked
+  `.claude/work/plans/06-canvas.md` (part 6.15); its rows are marked
   "built 06.15" in the lines inventory. 06.16 finishes it.
 - New: closed lines (`closed`, `closed.ts`), line fill while closed, the
   last-used style (`current-style.ts`), the tool lock (`Q`), `⌘`/`Ctrl`+`Enter`
@@ -676,7 +684,7 @@ deliberately at `5.24.2` or later.
 ### Milestone 6.14 findings (elbow segments, handles, cursors), 2026-09-27
 
 - **Gates green; not seen at a running window.** Plan
-  `.claude/work/plans/06.14-elbows-cursors-code.md`; the rows it built are
+  `.claude/work/plans/06-canvas.md` (part 6.14); the rows it built are
   marked "built 06.14" in `.claude/work/specs/excalidraw-lines-inventory.md`.
   06.15 (point editing P, creation C) and 06.16 (the rest) follow.
 - Elbows: 40 padding, rounded corners (`pathOf`, used by stage, hit test and
@@ -690,7 +698,7 @@ deliberately at `5.24.2` or later.
 ### Milestone 6.13 findings (pinned ends, point editing, click-by-click), 2026-09-26
 
 - **Gates green; not seen at a running window.** Plan
-  `.claude/work/plans/06.13-inside-edit-click.md`, decisions 7 to 9 in
+  `.claude/work/plans/06-canvas.md` (part 6.13), decisions 7 to 9 in
   `.claude/work/specs/06.12-arrows-and-code.md`.
 - `startMode`/`endMode: "inside"` pins an end (a drop inside, or Alt);
   Cmd/Ctrl leaves it free, replacing Alt-means-free. Point-edit mode
@@ -701,7 +709,7 @@ deliberately at `5.24.2` or later.
 ### Milestone 6.12 findings (arrows like Excalidraw, resizable code), 2026-09-26
 
 - **Gates green; not seen at a running window.** Plan
-  `.claude/work/plans/06.12-arrows-and-code.md`, decisions in
+  `.claude/work/plans/06-canvas.md` (part 6.12), decisions in
   `.claude/work/specs/06.12-arrows-and-code.md`.
 - Code blocks are resized and wrap (`code/wrap.ts`); a selected straight line
   or arrow or an elbow shows no box (`selection-chrome.ts`); point handles are
@@ -716,7 +724,7 @@ deliberately at `5.24.2` or later.
 ### Milestone 6.11 findings (Diagram from Code dialog), 2026-09-26
 
 - **Gates green; not seen at a running window.** Plan
-  `.claude/work/plans/06.11-diagram-dialog.md`.
+  `.claude/work/plans/06-canvas.md` (part 6.11).
 - `Dialog` has a `wide` size; `LayoutEnginePicker` exists; `render.Options`
   has `Direction`, appended to the source only when it sets none (never
   prepended, so diagnostics keep their lines). The document's own render now
@@ -728,7 +736,7 @@ deliberately at `5.24.2` or later.
 ### Milestone 6.10 findings (arrows you can shape), 2026-09-26
 
 - **Gates green; not seen at a running window.** Plan
-  `.claude/work/plans/06.10-arrows-you-can-shape.md`, decisions in
+  `.claude/work/plans/06-canvas.md` (part 6.10), decisions in
   `.claude/work/specs/arrows.md`.
 - **The file format gained three optional keys** (`startAnchor`, `endAnchor`,
   `labelPosition`) and bent lines and arrows (more than two points). Absent
@@ -741,7 +749,7 @@ deliberately at `5.24.2` or later.
 ### Milestone 6.9 findings (code block and selection), 2026-09-26
 
 - **Gates green; not seen at a running window.** Plan
-  `.claude/work/plans/06.9-code-block-and-selection.md`.
+  `.claude/work/plans/06-canvas.md` (part 6.9).
 - A code block is never narrower than 20 columns (`docs/file-format.md`), and
   its editor grows as it is typed in: a new block used to clip everything
   past its first column.
@@ -759,7 +767,7 @@ deliberately at `5.24.2` or later.
 ### Milestone 6.8 findings (feel fixes), 2026-09-26
 
 - **Gates green; not seen at a running window.** Plan
-  `.claude/work/plans/06.8-feel-fixes.md`, drawn from
+  `.claude/work/plans/06-canvas.md` (part 6.8), drawn from
   `.claude/work/specs/excalidraw-comparison.md` (a full read of Excalidraw at
   `5db42c3`, with a table of Bava bugs it found).
 - **Absent `strokeWidth`/`fontSize` now draw at 2 and 20**, the file format's
@@ -775,7 +783,7 @@ deliberately at `5.24.2` or later.
 - **The first window check found three defects every test missed**: a
   "closed unexpectedly" notice after every quit, the shape menu stuck open,
   and a zero-height canvas (no rail, no drawing). Plan
-  `.claude/work/plans/06.1-window-check-and-launch.md`. Gates green; the
+  `.claude/work/plans/06-canvas.md` (part 6.1). Gates green; the
   running-window look in both themes is **still owed** (the display was asleep
   when this was written).
 - **On macOS `Run` never returns**: the session closes in `PostShutdown`
@@ -801,7 +809,7 @@ deliberately at `5.24.2` or later.
 - **Gates green; seen at a running window on macOS, dark theme**: live
   drawing, icon rail, insert panel, selection toolbar, right-click menu with
   cascading submenus, aligned traffic lights. Light theme and Windows/Linux
-  not seen. Plan `.claude/work/plans/06.2-canvas-interface.md` lists
+  not seen. Plan `.claude/work/plans/06-canvas.md` (part 6.2) lists
   deviations.
 - **Page shortcuts are matched before any editor.** A key that means
   something in CodeMirror or a text field must be `scope: "canvas"`.
