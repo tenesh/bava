@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { drawHead, headDash, labelSpot, labelWrapWidth, headAt, routePoints, labelPoint, positionAlong } from './arrows';
+import { drawHead, headDash, labelField, labelLayout, labelSpot, labelWrapWidth, headAt, routePoints, labelPoint, positionAlong } from './arrows';
 
 const from = [0, 0, 100, 60];
 
@@ -232,5 +232,69 @@ describe("an arrow's label", () => {
   it('wraps to 0.7 of the arrow or 11 times the font size, the wider', () => {
     expect(labelWrapWidth(arrow({ w: 100 }), 20)).toBe(220);
     expect(labelWrapWidth(arrow({ w: 1000 }), 20)).toBe(700);
+  });
+});
+
+// 06.17: one layout for an arrow's label, which the stage, the exporter and
+// the label editor all use; `along` turns it to the arrow, never upside down.
+describe("an arrow label's layout", () => {
+  const measure = (text: string) => text.length * 10;
+  const arrow = (points: number[], over: Record<string, unknown> = {}) =>
+    ({ id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 200, z: 1, points, label: 'abcd', ...over }) as never;
+  const layout = (element: never) => labelLayout(element, (element as { points: number[] }).points, 0, { size: 20, lineHeight: 1.25 }, measure);
+
+  it('centres the lines on the spot, upright by default', () => {
+    expect(layout(arrow([0, 0, 200, 0]))).toMatchObject({ at: { x: 100, y: 0 }, width: 40, height: 25, angle: 0, lines: ['abcd'] });
+  });
+
+  it('turns along a sloped or upright arrow', () => {
+    expect(layout(arrow([0, 0, 200, 200], { labelDirection: 'along' })).angle).toBeCloseTo(45, 5);
+    expect(layout(arrow([0, 0, 0, 200], { labelDirection: 'along' })).angle).toBeCloseTo(90, 5);
+  });
+
+  it('never reads upside down on an arrow going left', () => {
+    expect(layout(arrow([200, 0, 0, 0], { labelDirection: 'along' })).angle).toBeCloseTo(0, 5);
+    expect(layout(arrow([200, 200, 0, 0], { labelDirection: 'along' })).angle).toBeCloseTo(45, 5);
+  });
+});
+
+// 06.17: the label editor's field sits on the label, not over the arrow's box.
+describe("the field for typing an arrow's label", () => {
+  const measure = (text: string) => text.length * 10;
+  it('is centred on the label, as wide as it wraps, turned with it', () => {
+    const arrow = { id: 'a', type: 'arrow', x: 10, y: 20, w: 200, h: 0, z: 1, points: [0, 0, 200, 0], label: 'abcd' } as never;
+    expect(labelField(arrow, (arrow as { points: number[] }).points, 0, { size: 20, lineHeight: 1.25 }, measure)).toEqual({
+      x: 0,
+      y: 7.5,
+      w: 220,
+      h: 25,
+      angle: 0,
+    });
+  });
+});
+
+describe('a label along a turned arrow (review of 06.17)', () => {
+  it('stays readable on screen, the turn included', () => {
+    const measure = (text: string) => text.length * 10;
+    const arrow = { id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, angle: 180, points: [0, 0, 200, 0], label: 'x', labelDirection: 'along' } as never;
+    const layout = labelLayout(arrow, [0, 0, 200, 0], 0, { size: 20, lineHeight: 1.25 }, measure);
+    expect((((layout.angle + 180) % 360) + 360) % 360).toBeCloseTo(0, 5);
+  });
+});
+
+describe("the field for an arrow's label, along and turned (review of 06.17)", () => {
+  const measure = (text: string) => text.length * 10;
+  const font = { size: 20, lineHeight: 1.25 };
+  it('turns along the arrow', () => {
+    const arrow = { id: 'a', type: 'arrow', x: 0, y: 0, w: 0, h: 200, z: 1, points: [0, 0, 0, 200], label: 'abcd', labelDirection: 'along' } as never;
+    expect(labelField(arrow, [0, 0, 0, 200], 0, font, measure).angle).toBeCloseTo(90, 5);
+  });
+  it("adds a turned arrow's turn, about its centre", () => {
+    const arrow = { id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, angle: 90, points: [0, 0, 100, 0, 200, 0], label: 'abcd', labelPosition: 0.25 } as never;
+    const field = labelField(arrow, [0, 0, 100, 0, 200, 0], 0, font, measure);
+    expect(field.angle).toBeCloseTo(90, 5);
+    // A quarter along, (50, 0), turned a quarter about (100, 0): (100, -50).
+    expect(field.x + field.w / 2).toBeCloseTo(100, 5);
+    expect(field.y + field.h / 2).toBeCloseTo(-50, 5);
   });
 });

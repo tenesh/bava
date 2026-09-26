@@ -343,3 +343,26 @@ describe('labelBox', () => {
     expect(labelBox(el('text'), 6)).toEqual({ x: 10, y: 20, w: 100, h: 50 });
   });
 });
+
+// Review of 06.17: an arrow label's field grows about its middle as lines
+// are typed, so nothing typed is hidden.
+describe('a field that grows about its middle', () => {
+  it('grows taller, staying centred on where it opened', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const editor = new LabelEditor(host);
+    editor.open({
+      value: '',
+      rect: { x: 0, y: 100, width: 200, height: 20 },
+      textHeight: (value) => value.split('\n').length * 20,
+      growCentred: true,
+      onCommit: vi.fn(),
+    });
+    const field = host.querySelector('textarea')!;
+    field.value = 'one\ntwo\nthree';
+    field.dispatchEvent(new Event('input'));
+    expect(field.style.height).toBe('60px');
+    expect(field.style.top).toBe('80px');
+    host.remove();
+  });
+});

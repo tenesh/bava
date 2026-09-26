@@ -10,7 +10,7 @@
 import { resolveStyle, type ReadVariable } from './palette';
 import { isOutlineShape } from './shapes';
 import { isShapeType, type SceneElement } from './scene';
-import { PROPERTY_DEFAULTS } from './style-defaults';
+import { CODE_FONT_SIZE, PROPERTY_DEFAULTS } from './style-defaults';
 
 /** Excalidraw's proportional radius: a quarter of the shorter side. */
 export const ROUND_SHARE = 0.25;
@@ -116,7 +116,8 @@ export function paintFor(element: SceneElement, read: ReadVariable): Paint {
     paint.font = {
       ...paint.font,
       family: read('--font-mono').trim(),
-      size: props.fontSize ?? number(read, '--text-code'),
+      // Absent means the file format's 13, not whatever a token says.
+      size: props.fontSize ?? CODE_FONT_SIZE,
       lineHeight: number(read, '--leading-code'),
       align: 'left',
       verticalAlign: 'top',

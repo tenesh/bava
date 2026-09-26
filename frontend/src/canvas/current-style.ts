@@ -9,8 +9,7 @@
  * nothing, so an element carries only what differs from an absent key.
  */
 import type { SceneElement } from './scene';
-import { propertyKeysFor, styleKeysFor, type PropertyKey, type PropertyValue, type StyleKey } from './style';
-import { PROPERTY_DEFAULTS } from './style-defaults';
+import { defaultFor, fontSizeFor, propertyKeysFor, styleKeysFor, type PropertyKey, type PropertyValue, type SizeScale, type StyleKey } from './style';
 
 type Key = StyleKey | PropertyKey;
 type ElementType = SceneElement['type'];
@@ -21,17 +20,23 @@ const INITIAL: Partial<Record<ElementType, Partial<Record<Key, PropertyValue>>>>
   line: { edges: 'round' },
 };
 
-/** Keys never carried to a new element: a code block's language is its own. */
-const OWN: Key[] = ['language'];
+/**
+ * Keys never carried to a new element: a code block's language is its own,
+ * and a label's direction means nothing on an arrow drawn without one.
+ */
+const OWN: Key[] = ['language', 'labelDirection'];
 
 export function createCurrentStyle() {
   // A key chosen back to the theme's default is remembered as null, so the
   // initial value does not return.
   const chosen = new Map<Key, PropertyValue | null>();
+  // The scale a remembered size was chosen from (code sizes or text sizes).
+  let sizeScale: SizeScale = 'text';
 
   return {
     /** A choice made in the toolbar; null clears a colour back to the theme's. */
-    remember(key: Key, value: PropertyValue | null): void {
+    remember(key: Key, value: PropertyValue | null, scale: SizeScale = 'text'): void {
+      if (key === 'fontSize') sizeScale = scale;
       if (OWN.includes(key)) return;
       // Turning something into a line says nothing about the next arrow.
       if (key === 'arrowType' && value === 'line') return;
@@ -46,9 +51,11 @@ export function createCurrentStyle() {
       const values = new Map<Key, PropertyValue | null>(Object.entries(INITIAL[type] ?? {}) as [Key, PropertyValue][]);
       for (const [key, value] of chosen) values.set(key, value);
       const out: Record<string, PropertyValue> = {};
-      for (const [key, value] of values) {
-        if (!takes.has(key) || value === null) continue;
-        if (PROPERTY_DEFAULTS[key as PropertyKey] === value) continue;
+      for (const [key, raw] of values) {
+        if (!takes.has(key) || raw === null) continue;
+        // A size by its step on this kind's scale (text or code).
+        const value = key === 'fontSize' ? fontSizeFor(type, raw, sizeScale) : raw;
+        if (defaultFor(key as PropertyKey, type) === value) continue;
         out[key] = value;
       }
       return out;

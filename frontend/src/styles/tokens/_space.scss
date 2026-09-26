@@ -58,6 +58,10 @@
   --size-point-overlap: 2px;
   // How far an arrow's label is dragged before it slides (Excalidraw's 10).
   --size-label-drag: 10px;
+  // How far from a code block's left corner its language is named (06.17).
+  --size-code-language-inset: 12px;
+  // How far round that name its border is hidden.
+  --size-code-language-clearance: 4px;
   // A bent line's selection box stands this clear of it, so its corner
   // handles are not on its points (Excalidraw's 10 px).
   --size-bent-box-padding: 10px;

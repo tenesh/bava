@@ -43,6 +43,20 @@ export function commitCode(history: History, id: ElementId, code: string, metric
   });
 }
 
+/**
+ * A block re-measured in place, at the metrics it now draws with (a new font
+ * size): its width is the user's, its code re-wraps to it, and it grows when
+ * the code needs more height (06.17).
+ */
+export function fitToCode(element: SceneElement, metrics: CodeMetrics): void {
+  if (element.type !== 'code') return;
+  const block = element as SceneElement & CodeFields;
+  const size = measureCode(block.code, metrics, block.w);
+  block.h = Math.max(block.h, size.height);
+  block.measuredWidth = size.width;
+  block.measuredHeight = size.height;
+}
+
 type CodeFields = { code: string; measuredWidth: number; measuredHeight: number };
 
 export type CodeEditorRequest = {
@@ -54,6 +68,8 @@ export type CodeEditorRequest = {
   angle?: number;
   /** The canvas zoom, so the typed text matches the code underneath. */
   zoom?: number;
+  /** The block's size over the base code size, so the text matches it (06.17). */
+  fontScale?: number;
   /**
    * The on-screen size of the block that would hold `code`: the editor grows
    * to it as the user types, as free text's field does, so nothing typed is
@@ -102,7 +118,7 @@ export class CodeEditor {
       // Turned about its centre, as the stage turns the block; and scaled with
       // the canvas, so what is typed lines up with what is drawn.
       transform: request.angle ? `rotate(${request.angle}deg)` : '',
-      fontSize: `${zoom}em`,
+      fontSize: `${zoom * (request.fontScale ?? 1)}em`,
     });
 
     let done = false;

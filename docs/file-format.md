@@ -186,7 +186,7 @@ Optional on the element types listed, and absent means the default:
 | `strokeStyle` | `solid`, `dashed`, `dotted` | `solid` | as above |
 | `edges` | `sharp`, `round` | `sharp` | `rect`, `diamond`, `hexagon`, `parallelogram` and `line`; the curved outlines have no corners to round |
 | `opacity` | 0 to 100 | 100 | every element |
-| `fontSize` | 16, 20, 28 or 36 | 20 | `text`, and a shape's, frame's or arrow's label |
+| `fontSize` | 16, 20, 28 or 36; on `code`, 11, 13, 16 or 20 | 20; on `code`, 13 | `text`, `code`, and a shape's, frame's or arrow's label |
 | `align` | `left`, `center`, `right` | `center` in a shape, `left` in free text | `text` and labels |
 | `verticalAlign` | `top`, `middle`, `bottom` | `middle` | labels |
 | `locked` | `true` | not locked | every element |
@@ -202,6 +202,7 @@ Optional on the element types listed, and absent means the default:
 | `endMode` | as above, for the other end | on the element's edge | `arrow`, with `endBinding` |
 | `fixedSegments` | a list of `{ "index": n, "start": [x, y], "end": [x, y] }`: the middle segments of an elbow the user dragged, in the arrow's own coordinates | fully routed | `arrow` with `arrowType: "elbow"` |
 | `closed` | `true`: the line is a loop, its last point on its first, and stays one when either is moved or deleted | open | `line` |
+| `labelDirection` | `along`: the label lies along the arrow at its place, turned to stay readable | upright | `arrow` with a `label` |
 | `labelPosition` | 0 to 1: where the label sits, as a share of the drawn path's length | the middle point: the middle one of an odd number of points, else the middle of the middle segment (before 06.16, half the length) | `arrow` with a `label` |
 | `frame` | the `id` of the `frame` that owns this element | not in a frame | every element |
 | `language` | the language a code block is highlighted as | plain text | `code` |
@@ -295,7 +296,14 @@ each line that does not fit wraps onto the next, at its last space or, for a
 word too long, at the edge. Its height is what the user makes it, but never
 less than the wrapped code needs: an edit that needs more grows it, so nothing
 it holds is ever hidden. A block written before this rule was
-sized to fit its longest line, so it draws unchanged.
+sized to fit its longest line, so it draws unchanged. All of this is measured
+at the block's `fontSize` (13 when absent): the 20 columns, the wrapping, and
+`measuredWidth`/`measuredHeight`; a new size re-wraps the code to the width
+and grows the height when the code needs it.
+
+**A block with a known `language` names it on its top edge,** near the left,
+the border hidden behind the name. Plain text, or a language this build does
+not know, shows no name.
 
 **An unknown `language` is kept and drawn as plain text.** A file written by a
 later Bava, or by hand, names a language this build may not bundle: losing the

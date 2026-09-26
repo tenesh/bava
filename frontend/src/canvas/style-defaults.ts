@@ -20,4 +20,9 @@ export const PROPERTY_DEFAULTS: Partial<Record<PropertyKey, PropertyValue>> = {
   arrowType: 'straight',
   startArrowhead: 'none',
   endArrowhead: 'arrow',
+  labelDirection: 'upright',
 };
+
+/** A code block's size when its file names none (`docs/file-format.md`). */
+export const CODE_FONT_SIZE = 13;
+

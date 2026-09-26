@@ -67,6 +67,8 @@ export type ArrowProps = {
    */
   startAnchor?: [number, number];
   endAnchor?: [number, number];
+  /** `along`: the label lies along the arrow, turned to stay readable (06.17). */
+  labelDirection?: 'upright' | 'along';
   /** `inside`: the end is pinned at its anchor, inside the element. */
   startMode?: 'inside';
   endMode?: 'inside';

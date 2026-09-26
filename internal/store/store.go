@@ -18,8 +18,11 @@ import (
 // check whenever the window regains focus. A content hash would be exact and
 // would mean reading every open file on every focus change.
 type Stamp struct {
-	Size             int64 `json:"size"`
-	ModifiedUnixNano int64 `json:"modifiedUnixNano"`
+	Size int64 `json:"size"`
+	// ModifiedUnixNano crosses to the frontend as a decimal string: its 19
+	// digits do not survive a JavaScript number, which rounded it and made
+	// every file look changed on disk.
+	ModifiedUnixNano int64 `json:"modifiedUnixNano,string"`
 }
 
 // File is a file read from disk.

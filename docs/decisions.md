@@ -176,4 +176,7 @@ could reasonably have gone another way.
 | 2026-09-27 | A lone attached arrow lets go only past 10 units, and when resized or rotated | As Excalidraw; replaces 06.10's let-go after the 3 px drag threshold and the thrown-away rotation. |
 | 2026-09-27 | Both ends of an arrow may attach to one shape | As Excalidraw, both pinned inside at their drop points; Bava refused the second. |
 | 2026-09-27 | Attaching and the side-middle snap are settings | Excalidraw's two toggles, in Settings ▸ Canvas, stored in Bava's config, on by default. |
+| 2026-09-27 | A file's modification time crosses to the frontend as a string | As a JSON number its nanoseconds were rounded in JavaScript, so every second save said "This file changed on disk". Found by the user. |
+| 2026-09-27 | A code block shows its language on its top edge, and takes a font size | The user's request: the name at the top left, on the border, the border hidden behind it; plain text shows none. Sizes 11, 13, 16, 20, absent 13, so existing blocks are unchanged. |
+| 2026-09-27 | An arrow's label can lie along the arrow | The user's request (`labelDirection: along`), turned to the path at its place and never upside down; absent means upright, as before. |
 

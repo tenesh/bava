@@ -10,5 +10,11 @@
  */
 export interface Stamp {
     "size": number;
-    "modifiedUnixNano": number;
+
+    /**
+     * ModifiedUnixNano crosses to the frontend as a decimal string: its 19
+     * digits do not survive a JavaScript number, which rounded it and made
+     * every file look changed on disk.
+     */
+    "modifiedUnixNano": `${number}`;
 }

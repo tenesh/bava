@@ -631,6 +631,17 @@ deliberately at `5.24.2` or later.
   (ArrowDown, Enter); RadioGroup items accept a click. Popovers render closed
   content unless `lazyMount`.
 
+### Milestone 6.17 findings (code blocks, arrow labels, two bugs), 2026-09-27
+
+- **Gates green; not seen at a running window.** Plan
+  `.claude/work/plans/06.17-code-labels.md`.
+- `store.Stamp.ModifiedUnixNano` crosses IPC as a string (it was rounded in
+  JavaScript: every second save said "changed on disk"). The bindings were
+  regenerated (`wails3 generate bindings -f '' -clean=true -ts -i`).
+- The webview's own right-click menu is cancelled window-wide except in text
+  (`shell/native-menu.ts`); in a dev build Wails otherwise shows it, Reload and
+  all.
+
 ### Milestone 6.16 findings (binding, heads, labels, the rest), 2026-09-27
 
 - **Gates green; not seen at a running window.** Plan

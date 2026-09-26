@@ -3616,3 +3616,55 @@ describe('an elbow drawn from a shape back onto it', () => {
     expect(history.current.elements.find((e) => e.type === 'arrow')).toMatchObject({ startBinding: 's', endBinding: 's' });
   });
 });
+
+// Review of 06.17: a new code block is measured at the size it is given.
+describe('a code block placed at a remembered size', () => {
+  it('is measured at that size', () => {
+    const history = createHistory({ elements: [] });
+    const tools = createTools();
+    tools.activate('code');
+    const handler = createPointerHandler({
+      history,
+      selection: createSelection(),
+      tools,
+      newStyle: (type) => (type === 'code' ? { fontSize: 26 } : {}),
+      codeMetrics: (element) => {
+        const scale = ((element as { fontSize?: number } | undefined)?.fontSize ?? 13) / 13;
+        return { advance: 6 * scale, lineHeight: 20 * scale, padding: 8 };
+      },
+    });
+    handler.down(at(0, 0));
+    handler.up(at(0, 0));
+    expect(history.current.elements[0]).toMatchObject({ type: 'code', fontSize: 26, h: 40 + 16 });
+  });
+});
+
+describe('resizing a code block at its own size (review of 06.17)', () => {
+  it('stops at its code as measured at that size', () => {
+    const history = createHistory({
+      elements: [{ id: 'c', type: 'code', x: 0, y: 0, w: 200, h: 96, z: 1, code: 'a\nb', fontSize: 26, measuredWidth: 200, measuredHeight: 96 }] as never,
+    });
+    const selection = createSelection();
+    selection.click('c');
+    const tools = createTools();
+    const handler = createPointerHandler({
+      history,
+      selection,
+      tools,
+      codeMetrics: (element) => {
+        const scale = ((element as { fontSize?: number } | undefined)?.fontSize ?? 13) / 13;
+        return { advance: 6 * scale, lineHeight: 20 * scale, padding: 8 };
+      },
+    });
+    handler.down(at(100, 96));
+    handler.move(at(100, 40));
+    handler.up(at(100, 40));
+    // Two lines at 40 plus padding: 96, not the 56 of the base size.
+    expect(history.current.elements[0]).toMatchObject({ h: 96 });
+    // The press took the handle: the same drag downward makes it taller.
+    handler.down(at(100, 96));
+    handler.move(at(100, 150));
+    handler.up(at(100, 150));
+    expect(history.current.elements[0]).toMatchObject({ h: 150 });
+  });
+});

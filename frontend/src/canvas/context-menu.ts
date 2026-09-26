@@ -9,7 +9,7 @@
 import menuSpec from '../../../internal/app/menu/spec.json';
 import { currentPlatform, formatAccelerator, type MenuSpec, type Platform } from '../shell/shortcuts';
 import { isSwatch, SWATCHES } from './palette';
-import { PROPERTY_OPTIONS } from './property-options';
+import { controlOptions, PROPERTY_OPTIONS } from './property-options';
 import { t } from '../i18n/t';
 import type { ToolbarControl } from './toolbar';
 import type { PropertyKey, PropertyValue, StyleKey } from './style';
@@ -129,7 +129,7 @@ export function overflowMenu(controls: ToolbarControl[]): MenuNode[] {
         })),
       };
     }
-    const property = PROPERTY_OPTIONS[control.id as keyof typeof PROPERTY_OPTIONS];
+    const property = controlOptions(control);
     const options =
       control.kind === 'slider'
         ? OPACITY_STEPS.map((step) => ({ value: step, label: `${step}%` }))
@@ -180,7 +180,9 @@ export function parseOverflowId(id: string): OverflowChoice | null {
     const value = Number(raw);
     return OPACITY_STEPS.includes(value) ? { kind: 'property', key, value } : null;
   }
-  const option = control.options.find((candidate) => String(candidate.value) === raw);
+  // A size may be a code block's (06.17).
+  const choices = key === 'fontSize' ? [...control.options, ...controlOptions({ id: key, variant: 'code' }).options] : control.options;
+  const option = choices.find((candidate) => String(candidate.value) === raw);
   return option ? { kind: 'property', key: key as PropertyKey, value: option.value } : null;
 }
 

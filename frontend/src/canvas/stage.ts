@@ -26,11 +26,12 @@ import { smoothPoints } from './curves';
 import { bindingsOf, drawnPoints, isDetached, type Point } from './binding';
 import { tensionOf } from './hit';
 import type { Run } from './code/highlight';
+import { languageTag } from './code/language-tag';
 import { monoAdvance } from './code/advance';
 import { columnsIn } from './code/measure';
 import { columnsFor, wrapRuns } from './code/wrap';
 import { canvasLineWidth } from './text-measure';
-import { LABEL_CLEARANCE, drawHead, endSegment, headAt, headDash, labelSpot, labelWrapWidth, middlesAlong, pathOf } from './arrows';
+import { LABEL_CLEARANCE, drawHead, endSegment, headAt, headDash, labelCorners, labelLayout, middlesAlong, pathOf } from './arrows';
 import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
 import { handleCentre, rotateHandleCentre } from './resize';
 import { chromeFor, elbowSegmentHandles, focusSpots, grown, offersMiddles } from './selection-chrome';
@@ -95,6 +96,9 @@ type Entry = {
   detached: Konva.Circle[];
   /** One text node per coloured run, for a code block. */
   runs: Konva.Text[];
+  /** A code block's language on its top edge, and its border broken for it. */
+  tag: Konva.Text | null;
+  border: Konva.Rect | null;
   /**
    * The element this entry was last drawn from. The scene is immutable, so
    * the same object means nothing about it changed and it is not re-applied.
@@ -799,7 +803,10 @@ export class CanvasStage {
     const read = cached(this.#read);
     for (const element of this.#last.elements) {
       const entry = this.#entries.get(element.id);
-      if (entry) this.#style(entry, element, read);
+      if (entry) {
+        this.#style(entry, element, read);
+        this.#drawLanguage(entry, element, read);
+      }
     }
     this.#layer?.batchDraw();
     this.#drawSelection(read);
@@ -896,7 +903,7 @@ export class CanvasStage {
     } else {
       group.add(body);
     }
-    return { group, body, heads, detached, runs, drawnRuns, drawnPaint: '', label: null, type: element.type, applied: null };
+    return { group, body, heads, detached, runs, drawnRuns, drawnPaint: '', label: null, type: element.type, applied: null, tag: null, border: null };
   }
 
   #createBody(element: SceneElement): Konva.Shape {
@@ -993,26 +1000,34 @@ export class CanvasStage {
         // same, so a long label breaks identically in both.
         const routed = (body as Konva.Line).points();
         const paint = paintFor(element, read);
-        const at = labelSpot(element, paint.tension, routed);
         const measure = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
-        const lines = wrapLines(label, labelWrapWidth(element, paint.font.size), measure);
-        entry.label.text(lines.join('\n'));
-        const width = Math.max(...lines.map(measure));
-        const height = paint.font.size * paint.font.lineHeight * lines.length;
+        // One layout for the stage, the exporter and the label editor, turned
+        // along the arrow when it says so (06.17).
+        const layout = labelLayout(element, routed, paint.tension, paint.font, measure, label);
+        entry.label.text(layout.lines.join('\n'));
         entry.label.align('center');
         entry.label.verticalAlign('middle');
-        entry.label.width(width);
-        entry.label.height(height);
-        entry.label.x(at.x - width / 2);
-        entry.label.y(at.y - height / 2);
-        // The line is hidden under the label's box and a margin round it.
-        const hole = { x: at.x - width / 2 - LABEL_CLEARANCE, y: at.y - height / 2 - LABEL_CLEARANCE, w: width + LABEL_CLEARANCE * 2, h: height + LABEL_CLEARANCE * 2 };
+        entry.label.width(layout.width);
+        entry.label.height(layout.height);
+        entry.label.offsetX(layout.width / 2);
+        entry.label.offsetY(layout.height / 2);
+        entry.label.x(layout.at.x);
+        entry.label.y(layout.at.y);
+        entry.label.rotation(layout.angle);
+        // The line is hidden under the label's box and a margin round it,
+        // turned with it.
+        const hole = labelCorners(layout, LABEL_CLEARANCE);
         (body.getParent() as Konva.Group).clipFunc((context) => {
           context.rect(-CLIP_EXTENT, -CLIP_EXTENT, CLIP_EXTENT * 2, CLIP_EXTENT * 2);
-          context.rect(hole.x, hole.y, hole.w, hole.h);
+          context.moveTo(hole[0].x, hole[0].y);
+          for (const corner of hole.slice(1)) context.lineTo(corner.x, corner.y);
+          context.closePath();
           return ['evenodd'];
         });
       } else {
+        entry.label.rotation(0);
+        entry.label.offsetX(0);
+        entry.label.offsetY(0);
         entry.label.x(inset);
         entry.label.y(isFrame ? inset : 0);
         entry.label.width(Math.max(0, element.w - inset * 2));
@@ -1031,6 +1046,74 @@ export class CanvasStage {
     this.#drawHeads(entry, element, read);
     this.#drawDetached(entry, element, read);
     this.#drawCode(entry, element, read);
+    this.#drawLanguage(entry, element, read);
+  }
+
+  /**
+   * A code block's language on its top edge, near the left, with the border
+   * hidden behind it (`code/language-tag.ts`); none for plain text.
+   */
+  #drawLanguage(entry: Entry, element: SceneElement, read: ReadVariable): void {
+    // Only code blocks carry one; nothing to undo on anything else.
+    if (element.type !== 'code' && !entry.tag) return;
+    const paint = paintFor(element, read);
+    const size = number(read, '--text-code-language');
+    const family = read('--font-mono').trim() || paint.font.family;
+    const tag =
+      element.type === 'code'
+        ? languageTag(element, canvasLineWidth(`${size}px ${family}`), {
+            size,
+            lineHeight: number(read, '--leading-tight'),
+            inset: number(read, '--size-code-language-inset'),
+            clearance: number(read, '--size-code-language-clearance'),
+          })
+        : null;
+    if (!tag) {
+      entry.tag?.destroy();
+      entry.tag = null;
+      entry.border?.getParent()?.destroy();
+      entry.border = null;
+      if (element.type === 'code') entry.body.strokeEnabled(true);
+      return;
+    }
+    // The body keeps its fill; its border is drawn apart, with a hole.
+    entry.body.strokeEnabled(false);
+    if (!entry.border) {
+      const clip = new Konva.Group({ listening: false });
+      entry.border = new Konva.Rect({ listening: false });
+      clip.add(entry.border);
+      entry.group.add(clip);
+    }
+    entry.border.setAttrs({ width: element.w, height: element.h, cornerRadius: paint.cornerRadius, stroke: paint.stroke, strokeWidth: paint.strokeWidth });
+    const gap = tag.gap;
+    (entry.border.getParent() as Konva.Group).clipFunc((context) => {
+      context.rect(-CLIP_EXTENT, -CLIP_EXTENT, CLIP_EXTENT * 2, CLIP_EXTENT * 2);
+      context.rect(gap.x, gap.y, gap.w, gap.h);
+      return ['evenodd'];
+    });
+    if (!entry.tag) {
+      entry.tag = new Konva.Text({ listening: false, wrap: 'none' });
+      entry.group.add(entry.tag);
+    }
+    entry.tag.setAttrs({
+      x: tag.x,
+      y: tag.y,
+      text: tag.text,
+      fontFamily: family,
+      fontSize: size,
+      lineHeight: number(read, '--leading-tight'),
+      fill: read('--color-text-muted').trim(),
+    });
+  }
+
+  /** A code block's language name node, or null (for tests). */
+  codeLanguage(id: ElementId): Konva.Text | null {
+    return this.#entries.get(id)?.tag ?? null;
+  }
+
+  /** A code block's border, drawn apart when its language is named (for tests). */
+  codeBorder(id: ElementId): Konva.Rect | null {
+    return this.#entries.get(id)?.border ?? null;
   }
 
   /**
