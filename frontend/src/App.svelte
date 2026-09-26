@@ -35,11 +35,14 @@
   import { createHistory } from './canvas/history';
   import { createSelection } from './canvas/selection';
   import { createPointerHandler } from './canvas/pointer';
+  import { frameThrottle } from './canvas/frame-throttle';
+  import { paintFor } from './canvas/paint';
   import { handleKey } from './canvas/keymap';
   import { createCanvasCommands } from './canvas/commands';
   import { wheelAction } from './canvas/navigation';
-  import { LabelEditor, commitLabel, commitText, editableAt, insertText } from './canvas/label-editor';
-  import { canvasLineWidth, measureTextBlock } from './canvas/text-measure';
+  import { LabelEditor, commitLabel, commitText, editableAt, insertText, labelBox } from './canvas/label-editor';
+  import { canvasLineWidth, measureFor } from './canvas/text-measure';
+  import { wrapLines } from './canvas/text-layout';
   import { applyStyle, currentProperty, currentStyle, setProperty, type PropertyKey } from './canvas/style';
   import SelectionToolbar from './components/SelectionToolbar.svelte';
   import { toolbarFor, type ToolbarControl } from './canvas/toolbar';
@@ -100,13 +103,20 @@
     // Half the trail's on-screen width, in scene units: what the trail visibly covers.
     eraserTolerance: () => (parseFloat(readRootVariable('--size-eraser-trail')) || 0) / 2 / viewport.zoom,
     // How near a click counts as hitting a line, in scene units at this zoom.
-    hitTolerance: () => (parseFloat(readRootVariable('--size-hit-tolerance')) || 0) / viewport.zoom,
+    hitTolerance,
+    // How far a press must travel to be a drag, in scene units at this zoom.
+    dragThreshold: () => (parseFloat(readRootVariable('--size-drag-threshold')) || 0) / viewport.zoom,
     // The rotate handle's distance above the selection, as the stage draws it.
     rotateGap: () => (parseFloat(readRootVariable('--size-rotate-gap')) || 0) / viewport.zoom,
     // A placed code block is sized the way a committed one is.
     codeMetrics,
   });
   const canvasCommands = createCanvasCommands({ history, selection });
+
+  /** How near a click counts as hitting a line, in scene units at the current zoom. */
+  function hitTolerance() {
+    return (parseFloat(readRootVariable('--size-hit-tolerance')) || 0) / viewport.zoom;
+  }
 
   /** The editor that opens over a code block, and the block it is on. */
   let codeEditor: CodeEditor | null = null;
@@ -463,27 +473,47 @@
 
   let labelEditor: LabelEditor | null = null;
 
-  /** Measure text as the stage draws it: the body font, line by line. */
-  function measureText(text: string) {
-    const fontSize = parseFloat(readRootVariable('--text-body')) || 0;
-    const lineHeight = parseFloat(readRootVariable('--leading-tight')) || 0;
-    const font = `${readRootVariable('--text-body').trim()} ${readRootVariable('--font-ui').trim()}`;
-    return measureTextBlock(text, { fontSize, lineHeight }, canvasLineWidth(font));
+  /**
+   * Measure text as the stage draws it: in the element's own font, line by
+   * line. A new text element has no font size yet, so it takes the defaults.
+   */
+  function measurerFor(element: SceneElement | null) {
+    const font = paintFor(element ?? ({ type: 'text' } as SceneElement), readRootVariable).font;
+    return (text: string) => measureFor(text, font);
   }
 
   /** Open the editor over a shape's label, a frame's label, or a text element. */
   function editElement(element: SceneElement) {
     if (!labelEditor) return;
-    const topLeft = viewport.sceneToScreen({ x: element.x, y: element.y });
     const isText = element.type === 'text';
+    const isArrow = element.type === 'arrow';
+    const measure = measurerFor(element);
+    const paint = paintFor(element, readRootVariable);
+    // The box the stage draws the text in, so the field wraps and sits as the
+    // text will be drawn.
+    const box = labelBox(element, parseFloat(readRootVariable('--size-label-inset')) || 0);
+    const topLeft = viewport.sceneToScreen({ x: box.x, y: box.y });
+    const lineWidth = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
+    canvas.setEditing(element.id);
     labelEditor.open({
       value: isText ? (element as { text: string }).text : ((element as { label?: string }).label ?? ''),
-      rect: { x: topLeft.x, y: topLeft.y, width: element.w * viewport.zoom, height: element.h * viewport.zoom },
+      rect: { x: topLeft.x, y: topLeft.y, width: box.w * viewport.zoom, height: box.h * viewport.zoom },
       angle: angleOfElement(element),
-      align: isText || element.type === 'frame' ? 'left' : 'center',
-      measure: isText ? measureOnScreen : undefined,
+      // An arrow's label is always centred on its path, whatever it stores.
+      font: isArrow ? { ...paint.font, align: 'center', verticalAlign: 'middle' } : paint.font,
+      opacity: paint.opacity,
+      zoom: viewport.zoom,
+      measure: isText ? onScreen(measure) : undefined,
+      // A label's wrapped height on screen, for its vertical alignment. Not an
+      // arrow's: the stage wraps that to the path's length, not to a box, and
+      // the field still opens over the arrow's box (plan 06.8, out of scope).
+      textHeight:
+        isText || isArrow
+          ? undefined
+          : (value) => wrapLines(value, box.w, lineWidth).length * paint.font.size * paint.font.lineHeight * viewport.zoom,
       onCommit: (value) => {
-        if (isText) commitText(history, element.id, value, measureText);
+        canvas.setEditing(null);
+        if (isText) commitText(history, element.id, value, measure);
         else commitLabel(history, element.id, value);
         commit();
       },
@@ -491,22 +521,27 @@
   }
 
   /** Free text's size on screen: its scene measurement at the current zoom. */
-  function measureOnScreen(text: string) {
-    const size = measureText(text);
-    return { width: size.width * viewport.zoom, height: size.height * viewport.zoom };
+  function onScreen(measure: (text: string) => { width: number; height: number }) {
+    return (text: string) => {
+      const size = measure(text);
+      return { width: size.width * viewport.zoom, height: size.height * viewport.zoom };
+    };
   }
 
   /** Place new text: nothing enters history until something is typed. */
   function placeText(point: { x: number; y: number }) {
     if (!labelEditor) return;
     const screen = viewport.sceneToScreen(point);
+    const measure = measurerFor(null);
+    const paint = paintFor({ type: 'text' } as SceneElement, readRootVariable);
     labelEditor.open({
       value: '',
       rect: { x: screen.x, y: screen.y, width: 0, height: 0 },
-      measure: measureOnScreen,
-      align: 'left',
+      measure: onScreen(measure),
+      font: paint.font,
+      zoom: viewport.zoom,
       onCommit: (value) => {
-        if (insertText(history, point, value, measureText)) commit();
+        if (insertText(history, point, value, measure)) commit();
       },
     });
   }
@@ -515,7 +550,7 @@
     const ids = selection.ids;
     if (ids.length !== 1) return;
     const element = history.current.elements.find((e) => e.id === ids[0]);
-    if (element && (editableAt({ elements: [element] }, { x: element.x, y: element.y }) || element.type === 'frame')) {
+    if (element && (editableAt({ elements: [element] }, { x: element.x, y: element.y }, hitTolerance()) || element.type === 'frame')) {
       editElement(element);
     }
   }
@@ -774,6 +809,10 @@
     invalidateAdvanceOnFontLoad();
     canvas.mount(diagramHost);
     canvas.render(history.current);
+    // Text wrapped before Geist loaded was measured with a fallback; wrap it
+    // again once fonts arrive. jsdom has no FontFaceSet.
+    const onFontsLoaded = () => canvas.invalidate();
+    document.fonts?.addEventListener('loadingdone', onFontsLoaded);
     void highlightBlocks(history.current);
 
     const scenePoint = (event: PointerEvent) => {
@@ -812,17 +851,10 @@
       // A click selects; show it now rather than on release.
       syncSelection();
     };
-    const onMove = (event: PointerEvent) => {
-      if (panningFrom) {
-        const now = screenPoint(event);
-        viewport.panBy(now.x - panningFrom.x, now.y - panningFrom.y);
-        panningFrom = now;
-        applyView();
-        return;
-      }
-      const point = scenePoint(event);
-      lastDragPoint = point;
-      pointer.move(point, { alt: event.altKey, shift: event.shiftKey });
+    // Drawn at most once per frame: a pointer reports moves faster than the
+    // screen redraws. Every move still reaches the pointer handler, so a pen
+    // stroke or an eraser trail keeps every point.
+    const drawDrag = frameThrottle((point: { x: number; y: number }, shift: boolean) => {
       if (!pointer.dragging) return;
       if (tools.active === 'eraser') {
         canvas.setErasing(pointer.erasing, pointer.eraserTrail);
@@ -830,18 +862,37 @@
       }
       // Live feedback: the drag's result drawn as it would be committed, or the
       // scene as it is when the drag would change nothing.
-      canvas.render(pointer.preview(point, { shift: event.shiftKey }) ?? history.current);
+      canvas.render(pointer.preview(point, { shift }) ?? history.current);
       canvas.setMarquee(pointer.marquee);
       // The shapes this arrow would attach to, shown while it is drawn.
       canvas.setBindingCandidates(pointer.bindingCandidates);
+    });
+    const drawPan = frameThrottle(() => applyView());
+    const onMove = (event: PointerEvent) => {
+      if (panningFrom) {
+        const now = screenPoint(event);
+        viewport.panBy(now.x - panningFrom.x, now.y - panningFrom.y);
+        panningFrom = now;
+        drawPan();
+        return;
+      }
+      const point = scenePoint(event);
+      lastDragPoint = point;
+      pointer.move(point, { alt: event.altKey, shift: event.shiftKey });
+      if (!pointer.dragging) return;
+      drawDrag(point, event.shiftKey);
     };
     const onUp = (event: PointerEvent) => {
       if (labelEditor?.contains(event.target)) return;
       // The right button belongs to the context menu, on release as on press.
       if (event.button === 2) return;
       lastDragPoint = null;
+      // Nothing from before the release may be drawn after it.
+      drawDrag.cancel();
       if (panningFrom) {
         panningFrom = null;
+        drawPan.cancel();
+        applyView();
         return;
       }
       if (tools.active === 'text') {
@@ -862,6 +913,10 @@
       canvas.setErasing(new Set(), []);
       canvas.setBindingCandidates([]);
       commit();
+      // The last frame drawn was a preview, possibly of a place the release
+      // did not commit (a drag back to its start changes nothing, so nothing
+      // republishes). Show what is. Unchanged elements are skipped.
+      canvas.render(history.current);
     };
     // Right-click: an unselected element under the pointer becomes the
     // selection first, then the menu opens at the pointer for it.
@@ -879,7 +934,7 @@
     };
     const onDoubleClick = (event: MouseEvent) => {
       if (labelEditor?.contains(event.target)) return;
-      const element = editableAt(history.current, scenePoint(event as PointerEvent));
+      const element = editableAt(history.current, scenePoint(event as PointerEvent), hitTolerance());
       if (element?.type === 'code') editCode(element);
       else if (element) editElement(element);
     };
@@ -899,7 +954,9 @@
     const onShift = (event: KeyboardEvent) => {
       if (event.key !== 'Shift' || !pointer.dragging || !lastDragPoint) return;
       const held = event.type === 'keydown';
-      canvas.render(pointer.preview(lastDragPoint, { shift: held }) ?? history.current);
+      // Through the frame throttle, so a move queued before the key cannot
+      // draw over this with the old Shift state.
+      drawDrag(lastDragPoint, held);
     };
     const onSpace = (event: KeyboardEvent) => {
       if (event.key !== ' ') return;
@@ -1046,6 +1103,9 @@
       diagramHost.removeEventListener('wheel', onWheel);
       diagramHost.removeEventListener('dblclick', onDoubleClick);
       diagramHost.removeEventListener('contextmenu', onContextMenu);
+      document.fonts?.removeEventListener('loadingdone', onFontsLoaded);
+      drawDrag.cancel();
+      drawPan.cancel();
       labelEditor?.destroy();
       codeEditor?.destroy();
       codeEditor = null;

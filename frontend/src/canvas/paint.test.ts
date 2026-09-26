@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { paintFor, ROUND_SHARE } from './paint';
 import type { SceneElement } from './scene';
+import { createHistory } from './history';
+import { setProperty } from './style';
 
 const read = (values: Record<string, string>) => (name: string) => values[name] ?? '';
 
@@ -11,8 +13,6 @@ const theme = read({
   '--swatch-blue-fill': 'lightblue',
   '--swatch-blue-stroke': 'steelblue',
   '--swatch-blue-text': 'navy',
-  '--size-shape-stroke': '1.5px',
-  '--size-pen-stroke': '2px',
   '--size-dash': '6px',
   '--size-dot': '2px',
   '--size-arrowhead': '10px',
@@ -33,14 +33,32 @@ describe('how an element paints', () => {
     expect(paintFor(el({}), theme)).toMatchObject({ fill: 'ivory', stroke: 'slategray' });
   });
 
-  it('uses the stored stroke width, or the theme default', () => {
+  it('uses the stored stroke width', () => {
     expect(paintFor(el({ strokeWidth: 4 }), theme).strokeWidth).toBe(4);
-    expect(paintFor(el({}), theme).strokeWidth).toBe(1.5);
   });
 
-  // A freehand stroke is drawn with the pen's own width, not a shape's.
-  it('gives a freehand stroke the pen width', () => {
+  // The file format's "absent means 2": the theme has no say in what a file
+  // means, or picking Medium (which clears the key) would draw something else.
+  it('draws a shape with no stroke width at 2', () => {
+    expect(paintFor(el({}), theme).strokeWidth).toBe(2);
+  });
+
+  it('draws a pen stroke with no stroke width at 2', () => {
     expect(paintFor(el({ type: 'stroke', points: [0, 0, 5, 5] }), theme).strokeWidth).toBe(2);
+  });
+
+  it('draws a shape with no font size at 20', () => {
+    expect(paintFor(el({ label: 'A' }), theme).font.size).toBe(20);
+    expect(paintFor(el({ type: 'text', text: 'hi' }), theme).font.size).toBe(20);
+  });
+
+  it('draws what was picked when Medium and 20 clear their keys', () => {
+    const history = createHistory({ elements: [el({ strokeWidth: 4, fontSize: 28, label: 'A' })] });
+    setProperty(history, ['e'], 'strokeWidth', 2);
+    setProperty(history, ['e'], 'fontSize', 20);
+    const paint = paintFor(history.current.elements[0], theme);
+    expect(paint.strokeWidth).toBe(2);
+    expect(paint.font.size).toBe(20);
   });
 
   it('turns a line style into a dash pattern', () => {

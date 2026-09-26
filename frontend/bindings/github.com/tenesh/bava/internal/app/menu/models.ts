@@ -26,5 +26,10 @@ export interface State {
      * HasDocument reports a file open, which is what Export needs.
      */
     "hasDocument": boolean;
+
+    /**
+     * ShowsCanvas reports the canvas visible, which is where a diagram goes.
+     */
+    "showsCanvas": boolean;
     "recents": string[] | null;
 }

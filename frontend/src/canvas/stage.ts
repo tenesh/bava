@@ -20,7 +20,7 @@ import type { SceneData, SceneElement, ElementId } from './scene';
 import type { ArrowProps, StyleProps } from './scene';
 import { isShapeType } from './scene';
 import { drawOutline, isOutlineShape } from './shapes';
-import { paintFor, ROUND_SHARE } from './paint';
+import { DEFAULT_STROKE_WIDTH, paintFor, ROUND_SHARE } from './paint';
 import { wrapLines } from './text-layout';
 import { smoothPoints } from './curves';
 import { bindingsOf, isDetached } from './binding';
@@ -68,6 +68,11 @@ type Entry = {
   detached: Konva.Circle[];
   /** One text node per coloured run, for a code block. */
   runs: Konva.Text[];
+  /**
+   * The element this entry was last drawn from. The scene is immutable, so
+   * the same object means nothing about it changed and it is not re-applied.
+   */
+  applied: SceneElement | null;
   /** What those nodes were built from, so a redraw can skip unchanged runs. */
   drawnRuns: Run[][] | null;
   drawnPaint: string;
@@ -97,6 +102,10 @@ export class CanvasStage {
   /** A scene that arrived before there was anywhere to paint it. */
   #pending: SceneData | null = null;
   #last: SceneData = { elements: [] };
+  /** The element whose text an editor is drawing, and which this must not. */
+  #editing: ElementId | null = null;
+  /** The paint order last applied, so an unchanged order is not re-stacked. */
+  #order: ElementId[] = [];
   #read: ReadVariable;
 
   constructor(options: CanvasStageOptions = {}) {
@@ -109,7 +118,9 @@ export class CanvasStage {
       width: host.clientWidth,
       height: host.clientHeight,
     });
-    this.#layer = new Konva.Layer();
+    // Not listening: all input is DOM events through the pointer handler, so a
+    // hit canvas redrawn every frame and read on every mouse move buys nothing.
+    this.#layer = new Konva.Layer({ listening: false });
     this.#stage.add(this.#layer);
     this.#overlay = new Konva.Layer({ listening: false });
     this.#stage.add(this.#overlay);
@@ -137,6 +148,8 @@ export class CanvasStage {
     }
 
     const seen = new Set<ElementId>();
+    // A new group goes on top of the layer, wherever its element belongs.
+    let created = false;
 
     for (const element of scene.elements) {
       seen.add(element.id);
@@ -149,8 +162,14 @@ export class CanvasStage {
         entry = this.#create(element);
         this.#entries.set(element.id, entry);
         this.#layer.add(entry.group);
+        created = true;
       }
-      this.#apply(entry, element, read);
+      // An arrow is re-applied whatever: whether an end is detached depends
+      // on other elements, which the arrow's own object does not show.
+      if (entry.applied !== element || element.type === 'arrow') {
+        this.#apply(entry, element, read);
+        entry.applied = element;
+      }
     }
 
     for (const [id, entry] of this.#entries) {
@@ -161,8 +180,13 @@ export class CanvasStage {
       this.#codeRuns.delete(id);
     }
 
-    // Konva paints in child order, so z is applied rather than assumed.
-    scene.elements.forEach((element, index) => this.#entries.get(element.id)?.group.zIndex(index));
+    // Konva paints in child order, so z is applied rather than assumed; each
+    // zIndex call reshuffles the layer's children, so only when order changed.
+    const order = scene.elements.map((e) => e.id);
+    if (created || order.length !== this.#order.length || order.some((id, i) => id !== this.#order[i])) {
+      scene.elements.forEach((element, index) => this.#entries.get(element.id)?.group.zIndex(index));
+      this.#order = order;
+    }
 
     this.#layer.batchDraw();
     this.#drawSelection(read);
@@ -438,8 +462,12 @@ export class CanvasStage {
   setErasing(ids: ReadonlySet<ElementId>, trail: number[]): void {
     const read = cached(this.#read);
     const faded = parseFloat(read('--opacity-erasing')) || 0;
+    // Back to the element's own opacity: an unchanged element is not
+    // re-applied by the next render, so nothing else would restore it.
     for (const id of this.#markedForErase) {
-      if (!ids.has(id)) this.#entries.get(id)?.group.opacity(1);
+      if (ids.has(id)) continue;
+      const element = this.#last.elements.find((e) => e.id === id);
+      if (element) this.#entries.get(id)?.group.opacity(paintFor(element, read).opacity);
     }
     for (const id of ids) this.#entries.get(id)?.group.opacity(faded);
     this.#markedForErase = new Set(ids);
@@ -534,6 +562,36 @@ export class CanvasStage {
     return this.#entries.get(id)?.body;
   }
 
+  /**
+   * Re-apply every element, as if all had changed: for a change render cannot
+   * see in the scene, such as the bundled fonts finishing loading, after which
+   * text measured with a fallback must be wrapped again.
+   */
+  invalidate(): void {
+    for (const entry of this.#entries.values()) entry.applied = null;
+    this.render(this.#last);
+  }
+
+  /**
+   * Hide an element's text while an editor draws it, or show it again with
+   * null. A label is hidden; free text's body is its text, so the body is.
+   */
+  setEditing(id: ElementId | null): void {
+    const previous = this.#editing;
+    this.#editing = id;
+    for (const each of [previous, id]) {
+      const entry = each ? this.#entries.get(each) : undefined;
+      if (entry) this.#showText(entry, each!);
+    }
+    this.#layer?.batchDraw();
+  }
+
+  #showText(entry: Entry, id: ElementId): void {
+    const shown = this.#editing !== id;
+    entry.label?.visible(shown);
+    if (entry.type === 'text') entry.body.visible(shown);
+  }
+
   /** A shape's label, when it has one. */
   labelFor(id: ElementId): Konva.Text | undefined {
     return this.#entries.get(id)?.label ?? undefined;
@@ -557,6 +615,7 @@ export class CanvasStage {
     this.#outline = null;
     this.#handles = [];
     this.#entries.clear();
+    this.#order = [];
     this.#pending = null;
   }
 
@@ -574,7 +633,7 @@ export class CanvasStage {
     const runs: Konva.Text[] = [];
     const drawnRuns: Run[][] | null = null;
     group.add(body);
-    return { group, body, heads, detached, runs, drawnRuns, drawnPaint: '', label: null, type: element.type };
+    return { group, body, heads, detached, runs, drawnRuns, drawnPaint: '', label: null, type: element.type, applied: null };
   }
 
   #createBody(element: SceneElement): Konva.Shape {
@@ -695,6 +754,8 @@ export class CanvasStage {
     }
 
     this.#style(entry, element, read);
+    // A label created mid-edit starts hidden, as the one it replaces was.
+    this.#showText(entry, element.id);
     this.#drawHeads(entry, element, read);
     this.#drawDetached(entry, element, read);
     this.#drawCode(entry, element, read);
@@ -749,7 +810,7 @@ export class CanvasStage {
     const points = (entry.body as Konva.Line).points();
     const size = number(read, '--size-arrowhead');
     const colour = resolveStyle(element as { stroke?: string }, read).stroke;
-    const width = (element as SceneElement & StyleProps).strokeWidth ?? number(read, '--size-shape-stroke');
+    const width = (element as SceneElement & StyleProps).strokeWidth ?? DEFAULT_STROKE_WIDTH;
 
     for (const end of ['start', 'end'] as const) {
       const kind = end === 'start' ? (props.startArrowhead ?? 'none') : (props.endArrowhead ?? 'arrow');

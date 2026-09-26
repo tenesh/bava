@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createHistory } from './history';
-import { commitLabel, commitText, editableAt, insertText, LabelEditor } from './label-editor';
+import { commitLabel, commitText, editableAt, insertText, labelBox, LabelEditor } from './label-editor';
 import { editTarget } from '../shell/edit-target';
 import type { SceneData } from './scene';
 
@@ -53,9 +53,9 @@ describe('committing an edit', () => {
 
 describe('finding what to edit', () => {
   it('finds the topmost shape or text under a point', () => {
-    expect(editableAt(scene(), { x: 10, y: 10 })?.id).toBe('r');
-    expect(editableAt(scene(), { x: 210, y: 5 })?.id).toBe('t');
-    expect(editableAt(scene(), { x: 500, y: 500 })).toBeUndefined();
+    expect(editableAt(scene(), { x: 10, y: 10 }, 4)?.id).toBe('r');
+    expect(editableAt(scene(), { x: 210, y: 5 }, 4)?.id).toBe('t');
+    expect(editableAt(scene(), { x: 500, y: 500 }, 4)).toBeUndefined();
   });
 
   // A locked element is inert: no edit reaches it, typing included
@@ -68,7 +68,7 @@ describe('finding what to edit', () => {
         { id: 'over', type: 'rect', x: 0, y: 0, w: 100, h: 50, z: 2, locked: true } as never,
       ],
     };
-    expect(editableAt(locked, { x: 10, y: 10 })?.id).toBe('under');
+    expect(editableAt(locked, { x: 10, y: 10 }, 4)?.id).toBe('under');
   });
 
   // Placing text is one gesture and one undo step: nothing enters history
@@ -188,7 +188,7 @@ describe('LabelEditor lifecycle', () => {
     document.body.append(host);
     const editor = new LabelEditor(host);
     editor.open({ value: '', rect: { x: 0, y: 0, width: 10, height: 10 }, onCommit: vi.fn(), align: 'left' });
-    expect(host.querySelector('textarea')!.dataset.align).toBe('left');
+    expect(host.querySelector('textarea')!.style.textAlign).toBe('left');
     editor.destroy();
   });
 });
@@ -202,8 +202,8 @@ describe('editing a rotated element', () => {
 
   it('is found where it is drawn, not where its box is', () => {
     // Turned a quarter, the bar runs from y -40 to 60 at x 40 to 60.
-    expect(editableAt(rotated, { x: 50, y: 55 })?.id).toBe('r');
-    expect(editableAt(rotated, { x: 5, y: 10 })).toBeUndefined();
+    expect(editableAt(rotated, { x: 50, y: 55 }, 4)?.id).toBe('r');
+    expect(editableAt(rotated, { x: 5, y: 10 }, 4)).toBeUndefined();
   });
 
   it('turns the field with the element', () => {
@@ -226,7 +226,14 @@ describe('typing on an arrow', () => {
   };
 
   it('finds the arrow under a point on its line', () => {
-    expect(editableAt(withArrow, { x: 50, y: 0 })?.id).toBe('a');
+    expect(editableAt(withArrow, { x: 50, y: 0 }, 4)?.id).toBe('a');
+  });
+
+  // The caller divides the on-screen tolerance by the zoom: zoomed out, a
+  // point further off the line in scene units is still on it on screen.
+  it('finds the arrow within the tolerance it is given', () => {
+    expect(editableAt(withArrow, { x: 50, y: 6 }, 8)?.id).toBe('a');
+    expect(editableAt(withArrow, { x: 50, y: 6 }, 4)).toBeUndefined();
   });
 
   it('commits a label on it like any other', () => {
@@ -246,10 +253,93 @@ describe('finding a code block to edit', () => {
   };
 
   it('is returned for a point inside it', () => {
-    expect(editableAt(withCode, { x: 60, y: 20 })?.id).toBe('c');
+    expect(editableAt(withCode, { x: 60, y: 20 }, 4)?.id).toBe('c');
   });
 
   it('is not returned for a point outside it', () => {
-    expect(editableAt(withCode, { x: 300, y: 300 })).toBeUndefined();
+    expect(editableAt(withCode, { x: 300, y: 300 }, 4)).toBeUndefined();
+  });
+});
+
+// The field is where the text is typed, so it must look like the text: the
+// element's font, size, colour, alignment and opacity, at the current zoom,
+// with nothing around it (Excalidraw's wysiwyg does the same).
+describe('the editor looks like the text it edits', () => {
+  const font = { family: 'Geist', size: 28, lineHeight: 1.2, align: 'right' as const, verticalAlign: 'middle' as const, colour: 'red' };
+
+  function open(over: Record<string, unknown> = {}) {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const editor = new LabelEditor(host);
+    editor.open({ value: 'Hi', rect: { x: 0, y: 0, width: 200, height: 100 }, font, zoom: 2, opacity: 0.5, onCommit: vi.fn(), ...over });
+    return { editor, field: host.querySelector('textarea')! };
+  }
+
+  it('takes the element font size scaled by the zoom', () => {
+    const { editor, field } = open();
+    expect(field.style.fontSize).toBe('56px');
+    expect(field.style.fontFamily).toBe('Geist');
+    expect(field.style.lineHeight).toBe('1.2');
+    editor.destroy();
+  });
+
+  it('takes the element colour, alignment and opacity', () => {
+    const { editor, field } = open();
+    expect(field.style.color).toBe('red');
+    expect(field.style.textAlign).toBe('right');
+    expect(field.style.opacity).toBe('0.5');
+    editor.destroy();
+  });
+
+  it('pushes a middle-aligned label down by half the free height', () => {
+    const { editor, field } = open({ textHeight: () => 40 });
+    expect(field.style.paddingTop).toBe('30px');
+    editor.destroy();
+  });
+
+  it('recomputes the push as lines are typed', () => {
+    const { editor, field } = open({ textHeight: (value: string) => value.split('\n').length * 20 });
+    expect(field.style.paddingTop).toBe('40px');
+    field.value = 'a\nb\nc';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(field.style.paddingTop).toBe('20px');
+    editor.destroy();
+  });
+
+  it('pushes a bottom-aligned label to the bottom, and never above the top', () => {
+    const bottom = open({ font: { ...font, verticalAlign: 'bottom' }, textHeight: () => 40 });
+    expect(bottom.field.style.paddingTop).toBe('60px');
+    bottom.editor.destroy();
+    const overflowing = open({ textHeight: () => 400 });
+    expect(overflowing.field.style.paddingTop).toBe('0px');
+    overflowing.editor.destroy();
+  });
+
+  it('does not commit on Cmd+Enter while a character is being composed', () => {
+    const onCommit = vi.fn();
+    const { editor, field } = open({ onCommit });
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, isComposing: true, bubbles: true }));
+    expect(onCommit).not.toHaveBeenCalled();
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }));
+    expect(onCommit).toHaveBeenCalledWith('Hi');
+    editor.destroy();
+  });
+});
+
+// The box the field covers is the one the stage draws the label in, so the
+// text wraps and sits where it will be drawn.
+describe('labelBox', () => {
+  const el = (type: string) => ({ id: 'e', type, x: 10, y: 20, w: 100, h: 50, z: 1 }) as never;
+
+  it('insets a shape label left and right', () => {
+    expect(labelBox(el('rect'), 6)).toEqual({ x: 16, y: 20, w: 88, h: 50 });
+  });
+
+  it('insets a frame label on every side', () => {
+    expect(labelBox(el('frame'), 6)).toEqual({ x: 16, y: 26, w: 88, h: 38 });
+  });
+
+  it('gives free text its own box', () => {
+    expect(labelBox(el('text'), 6)).toEqual({ x: 10, y: 20, w: 100, h: 50 });
   });
 });

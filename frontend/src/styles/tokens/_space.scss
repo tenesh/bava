@@ -26,8 +26,6 @@
   --size-statusbar: 24px;
 
   // Drawing on the canvas, in scene units.
-  --size-shape-stroke: 1.5px;
-  --size-pen-stroke: 2.25px;
   --size-arrowhead: 10px;
   // Space between a label and its shape's edge.
   --size-label-inset: 6px;
@@ -37,6 +35,8 @@
   --size-binding-gap: 4px;
   // How near a line counts as a click on it.
   --size-hit-tolerance: 4px;
+  // How far a press must travel, on screen, before it is a drag, not a click.
+  --size-drag-threshold: 3px;
   // How far the rotate handle sits above the selection, clear of the top one.
   --size-rotate-gap: 16px;
   // The marquee's dash and gap on screen, whatever the zoom.

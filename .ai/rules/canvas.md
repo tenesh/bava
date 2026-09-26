@@ -222,3 +222,30 @@ tags into the nine kinds the theme colours. The stage and the exporter both
 draw those runs; nothing else parses code. Highlighting is asynchronous
 because a language loads on first use, so the runs are handed to the stage
 rather than computed in it, and a block draws its panel until they arrive.
+
+## A default the file relies on comes from `PROPERTY_DEFAULTS`, never a token
+`docs/file-format.md` says what an absent `strokeWidth` or `fontSize` means,
+and `canvas/style.ts` holds that as `PROPERTY_DEFAULTS`. Drawing reads it.
+Picking the default clears the key, so a theme token behind the fallback drew
+Medium at 1.5 and 20 at 13, whatever the user chose, until 06.8.
+
+## The text editor takes its style from paint
+The label editor's textarea is where the text is typed, so it must look like
+the drawn text: `paintFor(element).font` and `.opacity`, scaled by the zoom,
+over the box `labelBox` gives, with no chrome of its own. The stage hides the
+drawn text meanwhile (`setEditing`). A stylesheet font, size or colour on
+`.bava-label-editor` brings back "text loses its styles in edit mode".
+
+## Render skips what did not change, except arrows
+The scene is immutable, so `render` re-applies an element only when its
+object differs from the one last drawn, and restacks only when the paint order
+changed or a node was created. An arrow is always re-applied: whether its end
+is detached depends on other elements. Anything else drawn from state outside
+the element must be re-applied by its own method, as `setCodeRuns` and
+`setEditing` are, or a render will not show it.
+
+## Drawing during a drag is once per frame; input is not
+`frameThrottle` limits the preview and the pan to one per animation frame.
+The pointer handler still sees every move, because a pen stroke and an eraser
+trail are built from them. A release cancels the pending frame and redraws
+the committed scene, since a drag that commits nothing republishes nothing.

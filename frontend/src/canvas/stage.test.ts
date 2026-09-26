@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import Konva from 'konva';
 import { CanvasStage } from './stage';
 import { createScene, type SceneData, type SceneElement } from './scene';
@@ -16,7 +16,6 @@ const themeA = reader({
   '--swatch-blue-fill': 'lightblue',
   '--swatch-blue-stroke': 'steelblue',
   '--swatch-blue-text': 'navy',
-  '--size-shape-stroke': '1.5px',
 });
 
 function one(element: Omit<SceneElement, 'id' | 'z'> & Record<string, unknown>): SceneData {
@@ -294,9 +293,9 @@ describe('CanvasStage', () => {
   });
 
   it('draws every line of a multi-line text whose box holds them', () => {
-    const stage = new CanvasStage({ read: reader({ '--text-body': '10px', '--leading-tight': '1.2' }) });
+    const stage = new CanvasStage({ read: reader({ '--leading-tight': '1.2' }) });
     stage.mount(host());
-    stage.render(one({ type: 'text', x: 0, y: 0, w: 40, h: 24, text: 'a\nb', measuredWidth: 40, measuredHeight: 24 }));
+    stage.render(one({ type: 'text', x: 0, y: 0, w: 40, h: 24, text: 'a\nb', fontSize: 10, measuredWidth: 40, measuredHeight: 24 }));
     const body = stage.bodyFor('e1') as Konva.Text & { textArr: unknown[] };
     expect(body.lineHeight()).toBe(1.2);
     expect(body.fontSize()).toBe(10);
@@ -326,7 +325,6 @@ describe('style properties on the stage', () => {
     '--color-shape-fill': 'ivory',
     '--color-shape-stroke': 'slategray',
     '--color-shape-text': 'black',
-    '--size-shape-stroke': '1.5px',
     '--size-dash': '6px',
     '--radius-shape-round': '32px',
     '--size-dot': '2px',
@@ -351,7 +349,8 @@ describe('style properties on the stage', () => {
     const stage = mounted(theme);
     stage.render(one({ type: 'rect', x: 0, y: 0, w: 10, h: 10 }));
     const body = stage.bodyFor('e1') as Konva.Rect;
-    expect(body.strokeWidth()).toBe(1.5);
+    // The file format's default, not a theme value.
+    expect(body.strokeWidth()).toBe(2);
     expect(body.dash()).toEqual([]);
     expect(body.cornerRadius()).toBe(0);
     expect(stage.nodeFor('e1')!.opacity()).toBe(1);
@@ -560,7 +559,6 @@ describe('an arrow whose target has gone', () => {
     '--color-selection-handle': 'dodgerblue',
     '--color-danger': 'crimson',
     '--size-selection-handle': '8px',
-    '--size-shape-stroke': '1.5px',
   });
 
   const bound = (targetPresent: boolean): SceneData => ({
@@ -792,6 +790,137 @@ describe('redrawing a code block', () => {
     stage.render(scene);
     stage.setCodeRuns('e1', [[{ text: 'b', kind: 'plain' }]]);
     expect(stage.codeRuns('e1')[0].text()).toBe('b');
+    stage.destroy();
+  });
+});
+
+// While a label is typed into, the field draws the text; the stage must not
+// draw it underneath as well.
+describe('an element being edited', () => {
+  it('hides its label while edited, and shows it again after', () => {
+    const stage = mounted();
+    stage.render(one({ type: 'rect', x: 0, y: 0, w: 100, h: 50, label: 'A' }));
+    stage.setEditing('e1');
+    expect(stage.labelFor('e1')!.visible()).toBe(false);
+    stage.setEditing(null);
+    expect(stage.labelFor('e1')!.visible()).toBe(true);
+    stage.destroy();
+  });
+
+  it('keeps it hidden across a render while still edited', () => {
+    const stage = mounted();
+    stage.render(one({ type: 'rect', x: 0, y: 0, w: 100, h: 50, label: 'A' }));
+    stage.setEditing('e1');
+    stage.render(one({ type: 'rect', x: 5, y: 0, w: 100, h: 50, label: 'A' }));
+    expect(stage.labelFor('e1')!.visible()).toBe(false);
+    stage.destroy();
+  });
+
+  it('hides a text element body while edited', () => {
+    const stage = mounted();
+    stage.render(one({ type: 'text', x: 0, y: 0, w: 40, h: 24, text: 'hi', measuredWidth: 40, measuredHeight: 24 }));
+    stage.setEditing('e1');
+    expect(stage.bodyFor('e1')!.visible()).toBe(false);
+    stage.setEditing(null);
+    expect(stage.bodyFor('e1')!.visible()).toBe(true);
+    stage.destroy();
+  });
+});
+
+// A drag renders once per frame. Work for elements that did not change is
+// what made that cost grow with the scene rather than with the drag.
+describe('rendering only what changed', () => {
+  const rect = { id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 50, z: 1, label: 'A' } as SceneElement;
+  const other = { id: 's', type: 'rect', x: 200, y: 0, w: 100, h: 50, z: 2 } as SceneElement;
+
+  function textSets(spy: { mock: { calls: unknown[][] } }) {
+    return spy.mock.calls.filter((args) => args.length > 0).length;
+  }
+
+  it('does not listen on the scene layer: input is DOM events', () => {
+    const stage = mounted();
+    stage.render({ elements: [rect] });
+    expect(stage.nodeFor('r')!.getLayer()!.listening()).toBe(false);
+    stage.destroy();
+  });
+
+  it('does not re-apply an element that is the same object as last time', () => {
+    const stage = mounted();
+    stage.render({ elements: [rect, other] });
+    const spy = vi.spyOn(Konva.Text.prototype, 'text');
+    stage.render({ elements: [rect, other] });
+    expect(textSets(spy)).toBe(0);
+    spy.mockRestore();
+    stage.destroy();
+  });
+
+  it('re-applies an element that changed', () => {
+    const stage = mounted();
+    stage.render({ elements: [rect, other] });
+    stage.render({ elements: [{ ...rect, label: 'B' } as SceneElement, other] });
+    expect(stage.labelFor('r')!.text()).toBe('B');
+    stage.destroy();
+  });
+
+  it('re-applies an arrow whose target went, though the arrow is the same object', () => {
+    const target = { id: 'b', type: 'rect', x: 200, y: 0, w: 60, h: 60, z: 1 } as SceneElement;
+    const arrow = { id: 'a', type: 'arrow', x: 0, y: 30, w: 200, h: 0, z: 2, points: [0, 0, 200, 0], endBinding: 'b' } as SceneElement;
+    const stage = mounted();
+    stage.render({ elements: [target, arrow] });
+    stage.render({ elements: [arrow] });
+    expect(stage.detachedMarkers()).toHaveLength(1);
+    stage.destroy();
+  });
+
+  it('does not restack when the order is unchanged', () => {
+    const stage = mounted();
+    stage.render({ elements: [rect, other] });
+    const spy = vi.spyOn(Konva.Node.prototype, 'zIndex');
+    stage.render({ elements: [{ ...rect, x: 5 }, other] });
+    expect(spy.mock.calls.filter((args) => args.length > 0)).toHaveLength(0);
+    spy.mockRestore();
+    stage.destroy();
+  });
+
+  it('restacks when the order changes', () => {
+    const stage = mounted();
+    stage.render({ elements: [rect, other] });
+    stage.render({ elements: [other, rect] });
+    expect(stage.nodeFor('r')!.zIndex()).toBeGreaterThan(stage.nodeFor('s')!.zIndex());
+    stage.destroy();
+  });
+});
+
+// The eraser fades what it marks from outside `render`, so un-marking must put
+// back the element's own opacity: a render of the unchanged element is skipped
+// and would not.
+describe('un-marking an element for erasing', () => {
+  it('restores its own opacity, not full opacity', () => {
+    const faded = { id: 'f', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1, opacity: 50 } as SceneElement;
+    const stage = new CanvasStage({ read: reader({ '--opacity-erasing': '0.2' }) });
+    stage.mount(host());
+    stage.render({ elements: [faded] });
+    stage.setErasing(new Set(['f']), []);
+    expect(stage.nodeFor('f')!.opacity()).toBeCloseTo(0.2);
+    stage.setErasing(new Set(), []);
+    stage.render({ elements: [faded] });
+    expect(stage.nodeFor('f')!.opacity()).toBeCloseTo(0.5);
+    stage.destroy();
+  });
+});
+
+// Text wraps by measuring with the bundled font. Wrapped before the font has
+// loaded, it wraps with a fallback; an unchanged element is not re-applied, so
+// the stage is told when fonts arrive.
+describe('fonts arriving', () => {
+  it('re-applies every element on invalidate', () => {
+    const rect = { id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 50, z: 1, label: 'A' } as SceneElement;
+    const stage = mounted();
+    stage.render({ elements: [rect] });
+    const spy = vi.spyOn(Konva.Text.prototype, 'text');
+    stage.invalidate();
+    expect(spy.mock.calls.filter((args) => args.length > 0).length).toBeGreaterThan(0);
+    spy.mockRestore();
     stage.destroy();
   });
 });

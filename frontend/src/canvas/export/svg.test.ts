@@ -15,8 +15,6 @@ const read = (name: string) =>
     '--swatch-blue-fill': 'lightblue',
     '--swatch-blue-stroke': 'steelblue',
     '--swatch-blue-text': 'navy',
-    '--size-shape-stroke': '1.5px',
-    '--size-pen-stroke': '2px',
     '--size-dash': '6px',
     '--size-dot': '2px',
     '--size-arrowhead': '10px',
@@ -41,7 +39,7 @@ describe('exporting to SVG', () => {
     const svg = svgOf([{ id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 50, z: 1, fill: 'blue' }]);
     expect(svg).toContain('fill="lightblue"');
     expect(svg).toContain('stroke="slategray"');
-    expect(svg).toContain('stroke-width="1.5"');
+    expect(svg).toContain('stroke-width="2"');
   });
 
   it('writes a dashed line as a dash array', () => {
