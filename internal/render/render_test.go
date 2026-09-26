@@ -83,3 +83,57 @@ func first(s string, n int) string {
 	}
 	return s[:n]
 }
+
+// Direction comes from the dialog's control. It applies only when the source
+// sets none: the code the user wrote wins (plan 06.11). dagre honours
+// direction; TALA ignores it, which is why the control hides for TALA.
+func TestRenderAppliesDirection(t *testing.T) {
+	cases := []struct {
+		name, source, direction string
+		rightward               bool
+	}{
+		{"right lays out left to right", "a -> b", "right", true},
+		{"down lays out top to bottom", "a -> b", "down", false},
+		{"the source's own direction wins", "direction: down\na -> b", "right", false},
+		// Quoted, "direction" is a shape's name, not the keyword: the option applies.
+		{"a quoted direction is a shape, not a setting", "\"direction\": down\na -> b", "right", true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			result, err := render.Render(context.Background(), c.source, render.Options{Engine: "dagre", Direction: c.direction})
+			if err != nil {
+				t.Fatal(err)
+			}
+			at := map[string]render.LayoutShape{}
+			for _, shape := range result.Layout.Shapes {
+				at[shape.ID] = shape
+			}
+			a, b := at["a"], at["b"]
+			rightward := b.X > a.X+a.W/2 && b.Y < a.Y+a.H
+			if rightward != c.rightward {
+				t.Errorf("a at (%v, %v), b at (%v, %v): rightward = %v, want %v", a.X, a.Y, b.X, b.Y, rightward, c.rightward)
+			}
+		})
+	}
+}
+
+// Appending the direction must not move anything the user wrote: every
+// diagnostic still points at its own line.
+func TestRenderDirectionKeepsDiagnosticLines(t *testing.T) {
+	// Parses (so the direction is appended) but does not compile: the error
+	// is on line 2, and would be on line 3 if the direction were prepended.
+	result, err := render.Render(context.Background(), "a -> b\nb.style.fill: 5\n", render.Options{Engine: "dagre", Direction: "right"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Errors) == 0 || result.Errors[0].Line != 2 {
+		t.Errorf("diagnostics %+v should point at line 2, where the fault is", result.Errors)
+	}
+}
+
+func TestRenderUnknownDirectionReturnsError(t *testing.T) {
+	_, err := render.Render(context.Background(), validSource, render.Options{Direction: "sideways"})
+	if err == nil || !strings.Contains(err.Error(), "sideways") {
+		t.Fatalf("got %v, want an error naming the direction", err)
+	}
+}

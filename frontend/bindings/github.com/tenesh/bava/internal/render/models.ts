@@ -84,6 +84,13 @@ export interface Options {
     "engine": string;
 
     /**
+     * Direction is the diagram's top-level direction: "down", "right", "up"
+     * or "left", or empty for none. It applies only when the source sets no
+     * direction of its own: the code the user wrote wins. TALA ignores it.
+     */
+    "direction"?: string;
+
+    /**
      * Theme carries the diagram colours. Nil renders D2's own defaults, which
      * is what every golden committed before theming was added expects.
      */

@@ -130,3 +130,30 @@ describe('closing and reopening', () => {
     unmount(second);
   });
 });
+
+// The dialog has no width of its own by default, so its two panes shrank to
+// their content and the code area was a sliver. It asks for the wide size.
+describe('the Diagram from Code dialog size', () => {
+  it('uses the wide dialog', async () => {
+    const { app } = await render();
+    expect(document.querySelector('.bava-dialog-content')!.getAttribute('data-size')).toBe('wide');
+    unmount(app);
+  });
+});
+
+describe('choosing a layout in the dialog', () => {
+  it('shows the picker and reports an engine choice', async () => {
+    const onEngine = vi.fn();
+    const { app } = await render({ engine: 'tala', direction: 'down', onEngine, onDirection: vi.fn() });
+    const dagre = [...document.querySelectorAll<HTMLElement>('[data-part="item"]')].find((el) => el.textContent?.trim() === 'Dagre');
+    flushSync(() => dagre!.click());
+    expect(onEngine).toHaveBeenCalledWith('dagre');
+    unmount(app);
+  });
+
+  it('says the code wins when a direction can be chosen', async () => {
+    const { app } = await render({ engine: 'dagre', direction: 'down', onEngine: vi.fn(), onDirection: vi.fn() });
+    expect(document.body.textContent).toContain('A direction written in the code wins over this one.');
+    unmount(app);
+  });
+});

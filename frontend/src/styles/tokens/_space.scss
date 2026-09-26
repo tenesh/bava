@@ -78,7 +78,7 @@
   --size-progress-thickness: 2px;
 
   // The diagram dialog: its editor and preview, and the error list beneath.
-  --size-diagram-dialog: 380px;
+  --size-diagram-dialog: 480px;
   --size-diagram-errors: 96px;
 
   // The export dialog's preview panel.
@@ -98,6 +98,9 @@
 
   // A dialog scrolls rather than outgrowing the window.
   --size-dialog-body-max: 60vh;
+  // A dialog whose panes share its width (Diagram from Code): room to write
+  // in, never wider than the window allows.
+  --size-dialog-wide: min(1100px, 90vw);
   // A short numeric field: milliseconds, a zoom percentage.
   --size-field-number: 10ch;
 }

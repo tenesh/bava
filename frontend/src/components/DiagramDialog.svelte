@@ -11,6 +11,8 @@
    * cleanup: it is never handed reactive props (`.ai/rules/editors.md`).
    */
   import Dialog from './Dialog.svelte';
+  import LayoutEnginePicker from './LayoutEnginePicker.svelte';
+  import type { Direction, LayoutEngine } from '../settings/layout-engine';
   import { SourcePane } from '../editor/source-pane';
   import { withoutRemoteRefs } from '../canvas/import/safe-svg';
   import { t } from '../i18n/t';
@@ -27,13 +29,31 @@
     pending: boolean;
     /** How many shapes the last good layout holds. Nothing to insert at zero. */
     shapes: number;
+    /** The layout the preview is drawn with, and the insert will use. */
+    engine: LayoutEngine;
+    direction: Direction;
+    onEngine: (engine: LayoutEngine) => void;
+    onDirection: (direction: Direction) => void;
     onSource: (source: string) => void;
     onInsert: () => void;
     onOpenChange: (open: boolean) => void;
   };
 
-  let { open = $bindable(), source, preview, errors, pending, shapes, onSource, onInsert, onOpenChange }: Props =
-    $props();
+  let {
+    open = $bindable(),
+    source,
+    preview,
+    errors,
+    pending,
+    shapes,
+    engine,
+    direction,
+    onEngine,
+    onDirection,
+    onSource,
+    onInsert,
+    onOpenChange,
+  }: Props = $props();
 
   let host: HTMLDivElement | undefined = $state();
   let pane: SourcePane | undefined;
@@ -76,7 +96,10 @@
 
 <!-- The editor is built when the content appears and destroyed with it, so a
      reopen starts from the source the caller gives it, not the last one. -->
-<Dialog bind:open unmountWhenClosed title={t('diagram.title')} onOpenChange={(next) => onOpenChange(next)}>
+<Dialog bind:open unmountWhenClosed size="wide" title={t('diagram.title')} onOpenChange={(next) => onOpenChange(next)}>
+  <div class="layout">
+    <LayoutEnginePicker {engine} {direction} directionHint={t('diagram.directionHint')} {onEngine} {onDirection} />
+  </div>
   <div class="panes">
     <div class="editor" bind:this={host}></div>
     <div class="preview-frame">
@@ -104,6 +127,10 @@
 </Dialog>
 
 <style>
+  .layout {
+    margin-bottom: var(--space-3);
+  }
+
   .panes {
     display: grid;
     grid-template-columns: 1fr 1fr;

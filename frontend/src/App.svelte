@@ -28,6 +28,7 @@
   import { SourcePane } from './editor/source-pane';
   import { createRenderClient } from './ipc/render.svelte';
   import DiagramDialog from './components/DiagramDialog.svelte';
+  import { createDiagramDialog } from './shell/diagram-dialog.svelte';
   import { toElements } from './canvas/import/convert';
   import { createTheme } from './styles/theme.svelte';
   import Shell from './shell/Shell.svelte';
@@ -182,11 +183,17 @@
   // staleness rules come with it.
   const diagramClient = createRenderClient();
   let diagramOpen = $state.raw(false);
+  // What the dialog's preview is laid out with, and so what Insert uses.
+  const diagramDialog = createDiagramDialog({
+    request: (source, layout) => diagramClient.request(source, layout),
+    defaultEngine: () => settingsState.layoutEngine,
+    saveDefault: async (engine) => reportSettingsError(await settingsState.setLayoutEngine(engine)),
+  });
 
   function openDiagramDialog() {
     if (!canvasShown()) return;
     diagramOpen = true;
-    diagramClient.request(DIAGRAM_STARTER);
+    diagramDialog.open(DIAGRAM_STARTER);
   }
 
   /** What the dialog opens with: enough to show that something happens. */
@@ -201,6 +208,11 @@
       y: (canvasHostEl?.clientHeight ?? 0) / 2,
     });
     canvasCommands.insertDiagram(toElements(layout, { at: centre }));
+    // The engine used becomes the default, so the next dialog opens with it;
+    // the document is laid out with the default, so it is laid out again.
+    void diagramDialog.inserted().then((changed) => {
+      if (changed) client.request(pane.doc, { engine: settingsState.layoutEngine });
+    });
     diagramOpen = false;
     commit();
     syncSelection();
@@ -814,7 +826,8 @@
 
     pane.mount(editorHost, {
       doc: '',
-      onChange: (source) => client.request(source),
+      // Laid out with the configured engine, which the status bar names.
+      onChange: (source) => client.request(source, { engine: settingsState.layoutEngine }),
       isReserved: reservedByMenu(menuSpec as MenuSpec, platform),
     });
     // A mono advance measured before Geist Mono resolves would be stored in
@@ -1197,7 +1210,7 @@
   hints={noFileHints}
   title={doc.path ?? t('file.untitled')}
   dirty={doc.dirty}
-  engine={doc.isOpen ? 'tala' : undefined}
+  engine={doc.isOpen ? settingsState.layoutEngine : undefined}
   nodes={doc.isOpen ? nodeCount : undefined}
   errors={client.state.errors.length}
   status={notice ??
@@ -1314,7 +1327,11 @@
   errors={diagramClient.state.errors}
   pending={diagramClient.state.pending}
   shapes={diagramClient.state.layout.shapes.length}
-  onSource={(next) => diagramClient.request(next)}
+  engine={diagramDialog.engine}
+  direction={diagramDialog.direction}
+  onEngine={(next) => diagramDialog.setEngine(next)}
+  onDirection={(next) => diagramDialog.setDirection(next)}
+  onSource={(next) => diagramDialog.setSource(next)}
   onInsert={insertDiagram}
   onOpenChange={(next) => {
     diagramOpen = next;

@@ -13,6 +13,7 @@ import (
 	"io"
 	"log/slog"
 	"regexp"
+	"strings"
 
 	"github.com/d2lang/d2/d2graph"
 	"github.com/d2lang/d2/d2lib"
@@ -30,6 +31,10 @@ import (
 type Options struct {
 	// Engine names the layout algorithm. Empty selects layout.DefaultEngine.
 	Engine string `json:"engine"`
+	// Direction is the diagram's top-level direction: "down", "right", "up"
+	// or "left", or empty for none. It applies only when the source sets no
+	// direction of its own: the code the user wrote wins. TALA ignores it.
+	Direction string `json:"direction,omitempty"`
 	// Theme carries the diagram colours. Nil renders D2's own defaults, which
 	// is what every golden committed before theming was added expects.
 	Theme *Theme `json:"theme,omitempty"`
@@ -103,6 +108,11 @@ func Render(ctx context.Context, source string, opts Options) (Result, error) {
 			return Result{}, err
 		}
 		renderOpts.ThemeOverrides = opts.Theme.overrides()
+	}
+
+	source, err = withDirection(source, opts.Direction)
+	if err != nil {
+		return Result{}, err
 	}
 
 	engineName := engine.Name
@@ -218,3 +228,40 @@ func discardLogger() *slog.Logger {
 }
 
 func boolPtr(b bool) *bool { return &b }
+
+// directions are the values Options.Direction accepts, as D2 spells them.
+var directions = map[string]bool{"down": true, "right": true, "up": true, "left": true}
+
+// withDirection returns source with a top-level `direction` appended when one
+// is asked for and the source sets none. Appended, never prepended: every
+// line the user wrote keeps its number, so diagnostics still point at it. A
+// source that does not parse is returned unchanged; its compile reports why.
+// The source is parsed here and again by the compile: a cost paid once per
+// debounced render, not per keystroke.
+func withDirection(source, direction string) (string, error) {
+	if direction == "" {
+		return source, nil
+	}
+	if !directions[direction] {
+		return "", fmt.Errorf("unknown direction %q", direction)
+	}
+	root, err := d2parser.Parse("", strings.NewReader(source), nil)
+	if err != nil || root == nil {
+		return source, nil
+	}
+	for _, node := range root.Nodes {
+		key := node.MapKey
+		if key == nil || key.Key == nil || len(key.Edges) > 0 || len(key.Key.Path) != 1 {
+			continue
+		}
+		// Only the unquoted word is the keyword: quoted, "direction" is the
+		// name of a shape, and the option still applies.
+		if name := key.Key.Path[0]; name.UnquotedString != nil && name.ScalarString() == "direction" {
+			return source, nil
+		}
+	}
+	if !strings.HasSuffix(source, "\n") && source != "" {
+		source += "\n"
+	}
+	return source + "direction: " + direction + "\n", nil
+}

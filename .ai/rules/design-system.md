@@ -198,7 +198,7 @@ check both before building either by hand.
 | `Tooltip` ✓ | Names a control (and its key) on hover and keyboard focus, wrapping Ark's Tooltip. It renders the button itself, or wraps a control the caller renders through `trigger`, which avoids a button inside a button. |
 | `ToolIcon` ✓ | Interface icons by id: Lucide (ISC), plus the in-house parallelogram. |
 | `Toolbar` | Contextual: changes with the current selection. |
-| `LayoutEnginePicker` | Per `diagram` element, not per canvas. |
+| `LayoutEnginePicker` ✓ | TALA, Dagre or ELK over `Segments`, with a direction control, and an optional hint beside it, shown only for Dagre and ELK (TALA ignores direction); the one place that rule lives in the interface. In the Diagram from Code dialog; per `diagram` element when that element exists, never per canvas. |
 | `ErrorList` | D2 compiler diagnostics, click-to-jump to source line. |
 | `EmptyState` ✓ | Repeated across file tree, canvas, search, and the no-file window. `mark` adds the faded brand mark for "nothing open yet"; `hints` lists keys beside what they do. |
 | `Splash` ✓ | The launch cover: mark, wordmark, indeterminate `Progress`, a status line. The caller decides when startup is over. |
@@ -209,7 +209,8 @@ check both before building either by hand.
 | `StyleBar` ✓ | Fill, border and text pickers as swatch chips, named by their tooltip, wrapping Ark's Popover and RadioGroup. Each popover holds the swatches and a `#rrggbb` field for any other colour. A group inside `SelectionToolbar`, which draws the surface. |
 | `OptionPicker` ✓ | One property from a few icon choices (stroke width, line style, edges, text size, alignment, arrow type, arrowheads): a chip opening a popover of radio options. Generic over its value; options in `canvas/property-options.ts`. |
 | `OpacityPicker` ✓ | Opacity on a slider in steps of ten, in a popover, wrapping Ark's Slider. |
-| `DiagramDialog` ✓ | Write D2, see it, insert it: a `SourcePane` editor beside a live preview, diagnostics beneath, Insert disabled while it does not compile. The editor is created when the portalled host appears, not at mount. |
+| `DiagramDialog` ✓ | Write D2, see it, insert it: a `LayoutEnginePicker` above a `SourcePane` editor beside a live preview, diagnostics beneath, Insert disabled while it does not compile. The editor is created when the portalled host appears, not at mount. Uses the wide `Dialog`. |
+| `Dialog` ✓ | Wraps Ark's Dialog. `size="wide"` gives the content `--size-dialog-wide`; by default it is as wide as what it holds, which suits a question with buttons but shrinks side-by-side panes to nothing. |
 | `ExportDialog` ✓ | Export settings over a live preview: Only selected, Background, Dark mode, Scale, and the PNG, SVG and Copy buttons. Padding is fixed. State in `canvas/export/exporter.svelte.ts`. |
 | `Toggle` ✓ | An on/off setting, wrapping Ark's Switch. Disabled rather than hidden when it does not apply, so it still explains itself. |
 | `Disclosure` ✓ | A collapsed-by-default section, wrapping Ark's Collapsible. |

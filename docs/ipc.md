@@ -23,6 +23,7 @@ Registered as `RenderService` in `main.go`; generated bindings land in
 |---|---|---|
 | `source` | string | D2 source text |
 | `opts.engine` | string | `tala` (default when empty), `dagre`, or `elk` |
+| `opts.direction` | string | `down`, `right`, `up`, `left`, or empty for none. Appended as a top-level `direction` only when the source sets none, so the code wins and diagnostics keep their lines. TALA ignores it. An unknown value is a returned error. |
 
 An unrecognised engine is a **returned error**, not a diagnostic: it is a bug
 in the caller, not a problem with the diagram. `direction` is deliberately not

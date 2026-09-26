@@ -25,11 +25,18 @@
      * next open shows what was there before.
      */
     unmountWhenClosed?: boolean;
+    /**
+     * `wide` gives the content a width of its own. By default the content is
+     * as wide as what it holds, which suits a question with buttons; a dialog
+     * whose panes share the width (code beside a preview) shrinks them to
+     * nothing without one.
+     */
+    size?: 'default' | 'wide';
     onOpenChange?: (open: boolean) => void;
     children: Snippet;
   };
 
-  let { open = $bindable(), title, unmountWhenClosed = false, onOpenChange, children }: Props = $props();
+  let { open = $bindable(), title, unmountWhenClosed = false, size = 'default', onOpenChange, children }: Props = $props();
 </script>
 
 <Dialog.Root
@@ -41,7 +48,7 @@
   <Portal container={portalRoot()}>
     <Dialog.Backdrop class="bava-dialog-backdrop" />
     <Dialog.Positioner class="bava-dialog-positioner">
-      <Dialog.Content class="bava-dialog-content">
+      <Dialog.Content class="bava-dialog-content" data-size={size}>
         <Dialog.Title class="bava-dialog-title">{title}</Dialog.Title>
         {@render children()}
       </Dialog.Content>
@@ -70,6 +77,11 @@
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-overlay);
     padding: var(--space-5);
+  }
+
+  :global(.bava-dialog-content[data-size='wide']) {
+    box-sizing: border-box;
+    width: var(--size-dialog-wide);
   }
 
   :global(.bava-dialog-title) {
