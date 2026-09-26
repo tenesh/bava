@@ -157,3 +157,17 @@ describe('choosing a layout in the dialog', () => {
     unmount(app);
   });
 });
+
+// The menu owns Cmd/Ctrl+Z and friends and routes them to the focused editor;
+// an editor that also kept the binding would act twice.
+describe('keys the menu reserves', () => {
+  it('are dropped by the dialog editor, as by the document pane', async () => {
+    const { app } = await render({ isReserved: (binding: { key?: string }) => binding.key === 'Mod-z' });
+    const { EditorView } = await import('@codemirror/view');
+    const view = EditorView.findFromDOM(document.querySelector('.bava-dialog-content .cm-editor') as HTMLElement)!;
+    view.dispatch({ changes: { from: view.state.doc.length, insert: '!' } });
+    view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', keyCode: 90, ctrlKey: true, bubbles: true, cancelable: true }));
+    expect(view.state.doc.toString()).toBe('a -> b!');
+    unmount(app);
+  });
+});

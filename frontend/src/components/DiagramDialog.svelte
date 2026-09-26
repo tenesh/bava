@@ -14,6 +14,7 @@
   import LayoutEnginePicker from './LayoutEnginePicker.svelte';
   import type { Direction, LayoutEngine } from '../settings/layout-engine';
   import { SourcePane } from '../editor/source-pane';
+  import type { KeyBinding } from '@codemirror/view';
   import { withoutRemoteRefs } from '../canvas/import/safe-svg';
   import { t } from '../i18n/t';
   import type { Diagnostic } from '../../bindings/github.com/tenesh/bava/internal/render/models';
@@ -34,6 +35,8 @@
     direction: Direction;
     onEngine: (engine: LayoutEngine) => void;
     onDirection: (direction: Direction) => void;
+    /** Keys the native menu owns, which the editor drops, as the document pane does. */
+    isReserved?: (binding: KeyBinding) => boolean;
     onSource: (source: string) => void;
     onInsert: () => void;
     onOpenChange: (open: boolean) => void;
@@ -50,6 +53,7 @@
     direction,
     onEngine,
     onDirection,
+    isReserved,
     onSource,
     onInsert,
     onOpenChange,
@@ -75,6 +79,7 @@
     typed = source;
     editor.mount(element, {
       doc: source,
+      isReserved,
       onChange: (next) => {
         typed = next;
         onSource(next);

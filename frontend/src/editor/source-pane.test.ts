@@ -65,3 +65,36 @@ describe('SourcePane edit commands', () => {
     }).not.toThrow();
   });
 });
+
+// Edit commands arrive from the native menu and go to the editor with focus.
+// Two source panes can be on screen (the document's and the Diagram from Code
+// dialog's): Paste in the dialog went into the document's pane, unseen.
+describe('the pane an element is in', () => {
+  it('is the pane whose editor contains it, not another', () => {
+    const first = new SourcePane();
+    const second = new SourcePane();
+    const a = document.createElement('div');
+    const b = document.createElement('div');
+    document.body.append(a, b);
+    first.mount(a, { doc: 'one', onChange: () => {} });
+    second.mount(b, { doc: 'two', onChange: () => {} });
+    const inside = b.querySelector('.cm-content')!;
+    expect(SourcePane.containing(inside)).toBe(second);
+    SourcePane.containing(inside)!.replaceSelection('pasted ');
+    expect(second.doc).toContain('pasted');
+    expect(first.doc).toBe('one');
+    first.destroy();
+    second.destroy();
+  });
+
+  it('is none for an element outside every pane, or after the pane is destroyed', () => {
+    const pane = new SourcePane();
+    const host = document.createElement('div');
+    document.body.append(host);
+    pane.mount(host, { doc: 'x', onChange: () => {} });
+    const inside = host.querySelector('.cm-content')!;
+    expect(SourcePane.containing(document.body)).toBeNull();
+    pane.destroy();
+    expect(SourcePane.containing(inside)).toBeNull();
+  });
+});
