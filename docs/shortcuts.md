@@ -116,6 +116,7 @@ or the source editor has it.
 | `Esc` | Back to Select, and clear the selection; while typing a label, finish typing; while drawing a line point by point, finish it; in point editing, leave it |
 | `⌘Enter` / `Ctrl+Enter` | Finish typing a label (plain `Enter` is a new line); on the canvas, edit the selected line's or arrow's points (Canvas ▸ Edit Points) |
 | `Space` held | Drag to pan |
+| `⌘Z` / `Ctrl+Z` while drawing a line point by point | Nothing: undo and redo wait until the line is finished |
 | `Q` | Keep the drawing tool on after it draws, with nothing selected; again to stop (the rail's lock) |
 
 In the insert panel, opened from the rail's +: `↑↓←→` move, `Enter` inserts,
@@ -135,18 +136,18 @@ In the insert panel, opened from the rail's +: `↑↓←→` move, `Enter` inse
 |---|---|
 | Drag with a shape tool | Create that shape; hold `⇧` for a square (a circle, a square box) |
 | Drag with Line or Arrow | Draw it (a drag of at least 20 px); hold `⇧` to snap to 15° steps |
-| Drag with Arrow onto a shape | Attach the arrow to it: ended inside the shape it is pinned there, just outside it attaches to the edge; hold `⌥` to pin it, `⌘` / `Ctrl` to leave it free |
+| Drag with Arrow onto a shape | Attach the arrow to it: ended inside the shape it is pinned there, just outside it attaches to the edge; hold `⌥` to pin it, `⌘` / `Ctrl` to leave it free (with attaching off in Settings ▸ Canvas, `⌘` / `Ctrl` attaches it); what each end does is read when it is placed, the start at the press |
 | Click with Line or Arrow | Start a line point by point: each click adds a point (`⇧` snaps it to 15°); click the last point again, click Done, or press `Enter` or `Esc`, to finish; a line clicked back on its first point closes into a loop; an arrow finishes on a click just outside a shape, attached to its edge (inside one, the click adds a point); an elbow on its second click |
 | Double-click a line, or `⌘` / `Ctrl` + double-click an arrow | Edit its points: click to select one (`⇧` adds or removes), drag around points to select them, drag to move the selected (drag the line to move it whole), `⌫` removes them, hold `⌥` to see the next point and `⌥`-click to add it, `⌘` / `Ctrl` + `D` duplicates them, `Esc` or a click elsewhere finishes |
-| Drag an end of a selected arrow | Attach it to a shape (inside it pins, just outside attaches to the edge, and the shape lights up; `⌥` pins, `⌘` / `Ctrl` leaves it free), or drop it on empty canvas to let go; it keeps aiming at the spot it was dropped on, and snaps to a side's middle when dropped just outside it. An elbow's end stays on the side it was dropped on, snaps to that side's middle when dropped level with it (from inside the shape too, with the middles shown as dots), and the elbow routes around the shapes |
+| Drag an end of a selected arrow | Attach it to a shape (inside it pins, just outside attaches to the edge, and the shape lights up; `⌥` pins, `⌘` / `Ctrl` leaves it free, or attaches it with attaching off; `⇧` takes the shape under the pointer and does not snap to a middle), or drop it on empty canvas to let go; both ends may be on one shape; it keeps aiming at the spot it was dropped on, and snaps to a side's middle when dropped just outside it. An elbow's end stays on the side it was dropped on, snaps to that side's middle when dropped level with it (from inside the shape too, with the middles shown as dots), and the elbow routes around the shapes |
 | Drag a segment's handle on a selected elbow arrow | Move that segment sideways and keep it there; the first or last segment gains a short stub |
 | Double-click a moved elbow segment's handle | Release it to automatic routing |
 | Drag the disc showing where an attached end aims | Move where it aims on its shape (onto another shape attaches it there; `⌥` pins it inside; off every shape, the end goes there, free) |
 | Drag the middle of a selected straight line or arrow | Add a bend there, once dragged 10 px (on a bent one, in point editing) |
 | Drag a point of a selected line or arrow | Move it; it keeps where you grabbed it, and `⇧` snaps it to 15° steps about its neighbour |
-| Drag the label of a selected arrow | Slide it along the arrow (a handle over the label is taken first) |
+| Drag the label of a selected arrow | Slide it along the arrow, once dragged 10 px (a handle over the label is taken first); a click on an arrow's label selects the arrow |
 | Drag an attached arrow by its body | Move it, and let go of any shape not moving with it; an attached elbow does not move alone, and one attached at both ends moves only with both its shapes |
-| Click with Text | Place text and start typing; nothing is added until you type |
+| Click with Text | Place text and start typing; nothing is added until you type. By a free arrow end, the text is that end's: the end attaches to it |
 | Double-click a shape, frame or text | Type into its label or text |
 | Drag a selection handle | Resize; hold `⇧` to keep the proportions, from any handle |
 | Drag the handle above the selection | Rotate about its centre; hold `⇧` to snap to 15° steps |

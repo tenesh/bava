@@ -33,12 +33,16 @@ export function createCurrentStyle() {
     /** A choice made in the toolbar; null clears a colour back to the theme's. */
     remember(key: Key, value: PropertyValue | null): void {
       if (OWN.includes(key)) return;
+      // Turning something into a line says nothing about the next arrow.
+      if (key === 'arrowType' && value === 'line') return;
       chosen.set(key, value);
     },
 
     /** The keys a new element of `type` is written with. */
     for(type: ElementType): Record<string, PropertyValue> {
       const takes = new Set<Key>([...styleKeysFor(type), ...propertyKeysFor(type)]);
+      // A line has no kind of its own to write: its picker entry converts it.
+      if (type === 'line') takes.delete('arrowType');
       const values = new Map<Key, PropertyValue | null>(Object.entries(INITIAL[type] ?? {}) as [Key, PropertyValue][]);
       for (const [key, value] of chosen) values.set(key, value);
       const out: Record<string, PropertyValue> = {};

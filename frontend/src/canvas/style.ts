@@ -74,12 +74,20 @@ export function currentStyle(scene: SceneData, ids: ElementId[], key: StyleKey):
 }
 
 /** A copied style: each key the source takes, `null` where it used the default. */
-export type CopiedStyle = Partial<Record<StyleKey, string | null>>;
+export type CopiedStyle = Partial<Record<StyleKey | PropertyKey, string | number | null>>;
 
-/** The style of one element, for Paste Styles. */
+/** Keys Copy Styles leaves behind: an arrow's kind and a code block's language are its own. */
+const NOT_A_STYLE: PropertyKey[] = ['arrowType', 'language'];
+
+/**
+ * The style of one element, for Paste Styles: its colours, and the other
+ * style keys it takes (width, line style, opacity, edges, text size and
+ * alignment, an arrow's heads), as Excalidraw's `actionStyles.ts:118-186`.
+ */
 export function copyStyle(element: SceneElement): CopiedStyle {
-  const styled = element as SceneElement & Partial<Record<StyleKey, string>>;
-  return Object.fromEntries(styleKeysOf(element).map((key) => [key, styled[key] ?? null]));
+  const styled = element as unknown as Record<string, string | number | undefined>;
+  const keys = [...styleKeysOf(element), ...propertyKeysFor(element.type).filter((key) => !NOT_A_STYLE.includes(key))];
+  return Object.fromEntries(keys.map((key) => [key, styled[key] ?? null]));
 }
 
 /**
@@ -91,10 +99,11 @@ export function pasteStyle(history: History, ids: ElementId[], style: CopiedStyl
   history.mutate((draft) => {
     for (const element of draft.elements) {
       if (!selected.has(element.id)) continue;
-      const styled = element as typeof element & Partial<Record<StyleKey, string>>;
-      for (const key of styleKeysOf(element)) {
+      const styled = element as unknown as Record<string, string | number | undefined>;
+      const keys = [...styleKeysOf(element), ...propertyKeysFor(element.type).filter((key) => !NOT_A_STYLE.includes(key))];
+      for (const key of keys) {
         if (!(key in style)) continue;
-        const value = style[key];
+        const value = style[key as keyof CopiedStyle];
         if (value === null || value === undefined) {
           if (key in styled) delete styled[key];
         } else if (styled[key] !== value) {
@@ -136,11 +145,15 @@ export function propertyKeysFor(type: string): PropertyKey[] {
   if (isShapeType(type)) keys.push(...STROKE_KEYS, ...LABEL_KEYS);
   switch (type) {
     case 'line':
+      // The kind picker turns a line into an arrow (06.16, X11).
+      keys.push(...STROKE_KEYS, 'arrowType');
+      break;
     case 'stroke':
       keys.push(...STROKE_KEYS);
       break;
     case 'arrow':
-      keys.push(...STROKE_KEYS, 'arrowType', 'startArrowhead', 'endArrowhead');
+      // A label's size too (06.16, L8).
+      keys.push(...STROKE_KEYS, 'arrowType', 'startArrowhead', 'endArrowhead', 'fontSize');
       break;
     case 'frame':
       keys.push(...STROKE_KEYS, ...LABEL_KEYS);
@@ -178,6 +191,26 @@ export function applyProperty(
       // The element's own types name each key; a generic setter writes through
       // a record view of the same object.
       const styled = element as unknown as Record<string, PropertyValue | undefined>;
+      // A line and an arrow turn into each other through the kind picker
+      // (Excalidraw's `ConvertElementTypePopup.tsx:529-601`), points kept.
+      if (key === 'arrowType' && (element.type === 'line' || element.type === 'arrow')) {
+        const kind = value ?? 'straight';
+        const record = element as unknown as Record<string, unknown>;
+        if (element.type === 'arrow' && kind === 'line') {
+          const curved = record.arrowType === 'arc';
+          record.type = 'line';
+          // A line has no ends that attach, no heads and no label: nothing of
+          // them is left hidden in the file (undo brings them back).
+          for (const gone of ['arrowType', 'startBinding', 'endBinding', 'startAnchor', 'endAnchor', 'startMode', 'endMode', 'startArrowhead', 'endArrowhead', 'fixedSegments', 'label', 'labelPosition', 'fontSize']) delete record[gone];
+          if (curved) record.edges = 'round';
+          continue;
+        }
+        if (element.type === 'line') {
+          if (kind === 'line') continue;
+          record.type = 'arrow';
+          for (const gone of ['edges', 'closed', 'fill']) delete record[gone];
+        }
+      }
       // Switching kinds as Excalidraw does (`actionProperties.tsx:2077-2221`):
       // only the ends are kept, where they are drawn, and each attached end
       // is attached again there by the new kind's rule. Becoming an elbow, the
@@ -211,7 +244,7 @@ export function applyProperty(
           const shape = draft.elements.find((e) => e.id === id);
           if (!shape) return;
           const inside = !toElbow && record[`${side}Mode`] === 'inside';
-          record[`${side}Anchor`] = anchorFor(shape, ends[i], BINDING_REACH_MIN, inside, toElbow);
+          record[`${side}Anchor`] = anchorFor(shape, ends[i], BINDING_REACH_MIN, inside, toElbow, ends[1 - i]);
         });
       }
       if (value === null) {
@@ -236,7 +269,8 @@ export function currentProperty(
   const selected = new Set(ids);
   const values = scene.elements
     .filter((e) => selected.has(e.id) && propertyKeysFor(e.type).includes(key))
-    .map((e) => (e as unknown as Record<string, PropertyValue | undefined>)[key] ?? null);
+    // A line's kind is Line (06.16, X11).
+    .map((e) => (key === 'arrowType' && e.type === 'line' ? 'line' : ((e as unknown as Record<string, PropertyValue | undefined>)[key] ?? null)));
   if (values.length === 0) return 'unavailable';
   return values.every((value) => value === values[0]) ? values[0] : 'mixed';
 }

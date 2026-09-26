@@ -14,11 +14,13 @@ import type { Selection, Box } from './selection';
 import type { ToolId } from './tools.svelte';
 import { produce } from 'immer';
 import { createScene, isLocked, type ArrowProps, type ElementId, type SceneData, type SceneElement } from './scene';
-import { labelPoint, middlesAlong, pathOf, positionAlong } from './arrows';
+import { labelSpot, middlesAlong, pathOf, positionAlong } from './arrows';
 import { smoothPoints } from './curves';
 import { duplicate, withDescendants } from './edit';
 import {
   anchorFor,
+  nearestMiddle,
+  spotOn,
   BINDING_GAP,
   BINDING_REACH_MIN,
   bindingsOf,
@@ -144,6 +146,18 @@ export type PointerHandlerOptions = {
    * chosen (`current-style.ts`). None when not given.
    */
   newStyle?: (type: SceneElement['type']) => Record<string, unknown>;
+  /**
+   * Whether an arrow's ends attach to shapes (Settings ▸ Canvas, on by
+   * default); Cmd/Ctrl turns it over for a drag, as Excalidraw's.
+   */
+  bindingEnabled?: () => boolean;
+  /** Whether an end snaps to a side's middle (Settings ▸ Canvas, on by default). */
+  midpointSnap?: () => boolean;
+  /**
+   * How far an arrow's label is dragged before it slides, in scene units:
+   * Excalidraw's 10 screen px (`--size-label-drag`) over the zoom.
+   */
+  labelDrag?: () => number;
   /** How a code block is measured: the mono advance, line height and padding. */
   codeMetrics?: () => CodeMetrics;
 };
@@ -277,6 +291,11 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   const minLinear = options.minLinear ?? (() => 20);
   const confirmDistance = options.confirmDistance ?? (() => 8);
   const newStyle = options.newStyle ?? (() => ({}));
+  const bindingEnabled = options.bindingEnabled ?? (() => true);
+  const labelDrag = options.labelDrag ?? (() => 10);
+  const midpointSnap = options.midpointSnap ?? (() => true);
+  /** Whether an end being placed attaches: the setting, turned over by Cmd/Ctrl. */
+  const attaching = (held = mod) => bindingEnabled() !== held;
   /** Whether a new arrow would be an elbow, by the style it would take. */
   const drawsElbow = () => (newStyle('arrow') as { arrowType?: unknown }).arrowType === 'elbow';
 
@@ -310,6 +329,12 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       if (isLocked(e)) return false;
       if (!isLinear(e.type)) return containsPoint(e, point);
       if (nearElement(e, point, tolerance) || insideFilledLine(e, point)) return true;
+      // An arrow's label is part of it where it reaches past the line
+      // (Excalidraw's `App.tsx:6844-6852`).
+      if (e.type === 'arrow' && 'label' in e && e.label) {
+        const box = options.labelBounds?.(e.id);
+        if (box && point.x >= box.x && point.x <= box.x + box.w && point.y >= box.y && point.y <= box.y + box.h) return true;
+      }
       // Selected alone and showing a box (a bent line), it is hit anywhere in
       // the box as drawn, its padding included (Excalidraw's `App.tsx:6824-6842`).
       if (selection.ids.length !== 1 || !selection.has(e.id)) return false;
@@ -341,6 +366,21 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const { start, end } = bindingsOf(e);
       return start === undefined || end === undefined || (ids.has(start) && ids.has(end));
     });
+  }
+
+  /**
+   * What moves with a drag, plus every arrow with both ends on one shape
+   * that moves: its bends go with it (Excalidraw's
+   * `linearElementEditor.ts:1706-1713`).
+   */
+  function withLoops(targets: SceneElement[]): SceneElement[] {
+    const ids = new Set(targets.map((e) => e.id));
+    const loops = history.current.elements.filter((e) => {
+      if (e.type !== 'arrow' || ids.has(e.id)) return false;
+      const { start, end } = bindingsOf(e);
+      return start !== undefined && start === end && ids.has(start);
+    });
+    return [...targets, ...loops];
   }
 
   /** What a resize acts on: the selection, with groups expanded but not frames. */
@@ -382,6 +422,14 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       return drag !== null;
     },
 
+    /**
+     * Whether undo and redo must wait: a drag is down or a line is being
+     * drawn by clicks (Excalidraw's `actions/actionHistory.tsx:26-45`).
+     */
+    get holdsHistory(): boolean {
+      return drag !== null || clicking !== null;
+    },
+
     /** Whether the drag in progress slides an arrow's label, for the cursor. */
     get draggingLabel(): boolean {
       return Boolean(drag?.label);
@@ -401,25 +449,25 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       // What each end would attach to: the start as the press left it, the
       // end as held now (Cmd/Ctrl frees an end).
       const both = (start: Point, end: Point, id: string) => {
-        const ids = [pressed.mod ? undefined : targetAt(history.current, start, id, reach())?.id, mod ? undefined : targetAt(history.current, end, id, reach())?.id];
+        const ids = [attaching(pressed.mod) ? targetAt(history.current, start, id, reach())?.id : undefined, attaching() ? targetAt(history.current, end, id, reach())?.id : undefined];
         return ids.filter((found, i) => found !== undefined && ids.indexOf(found) === i) as ElementId[];
       };
       // A clicked arrow shows what its first point and the pointer would attach to.
       if (clicking?.type === 'arrow') return both(clicking.points[0], lastPoint, clicking.id);
       // With the Arrow tool, before any press: the shape a press would start on.
       if (!drag) {
-        if (tools.active !== 'arrow' || mod) return [];
+        if (tools.active !== 'arrow' || !attaching()) return [];
         const under = targetAt(history.current, lastPoint, '', reach());
         return under ? [under.id] : [];
       }
-      if (mod && drag.endpoint) return [];
+      if (!attaching() && drag.endpoint) return [];
       // An end of an existing arrow being dragged: what it would attach to,
-      // by the rule the release uses (the other end's shape is refused).
+      // by the rule the release uses (with Shift, under the pointer).
       if (drag.endpoint) {
-        const { id, index, original } = drag.endpoint;
-        const other = (original as SceneElement & Record<string, string | undefined>)[index === 0 ? 'endBinding' : 'startBinding'];
-        const target = targetAt(history.current, endAim ?? lastPoint, id, reach());
-        return target && target.id !== other && farEnough(drag.origin, lastPoint) ? [target.id] : [];
+        const { id, at } = drag.endpoint;
+        const grabbed = { x: lastPoint.x + at.x - drag.origin.x, y: lastPoint.y + at.y - drag.origin.y };
+        const target = targetAt(history.current, shift ? grabbed : (endAim ?? lastPoint), id, reach());
+        return target && farEnough(drag.origin, lastPoint) ? [target.id] : [];
       }
       if (tools.active !== 'arrow') return [];
       // The same endpoint the release would bind, Shift snapping included, so
@@ -433,10 +481,20 @@ export function createPointerHandler(options: PointerHandlerOptions) {
      * Empty for any other drag.
      */
     get snapSpots(): Point[] {
-      if (!drag?.endpoint || !isElbow(drag.endpoint.original)) return [];
+      if (!midpointSnap() || shift) return [];
+      const elbowEnd = Boolean(drag?.endpoint && isElbow(drag.endpoint.original));
+      // An elbow shows every middle it can snap to; a straight or curved
+      // arrow the nearest, once the end is within twice the reach of it and
+      // outside the shape (Excalidraw's `interactiveScene.ts:503-529`).
+      const end = drag?.endpoint ? (endAim ?? lastPoint) : drag && tools.active === 'arrow' ? lastPoint : null;
+      if (!end) return [];
       return this.bindingCandidates.flatMap((id) => {
         const shape = history.current.elements.find((e) => e.id === id);
-        return shape ? elbowSnapSpots(shape) : [];
+        if (!shape) return [];
+        if (elbowEnd) return elbowSnapSpots(shape);
+        if (isInside(shape, end)) return [];
+        const middle = nearestMiddle(shape, end, reach() * 2);
+        return middle ? [middle.at] : [];
       });
     },
 
@@ -556,7 +614,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       }
 
       const drags = tools.active === 'select' && (hits.length > 0 || insideSelection);
-      const targets = drags ? movable(dragTargets()) : [];
+      const targets = drags ? withLoops(movable(dragTargets())) : [];
       const moving = targets.map((e) => e.id);
       const originals = new Map<ElementId, { x: number; y: number }>();
       for (const element of targets) {
@@ -996,7 +1054,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         }
         // An arrow clicked just outside a shape attaches there and finishes
         // (Excalidraw's `App.tsx:10221-10255`); inside one it is a point.
-        if (clicking.type === 'arrow' && !mod) {
+        if (clicking.type === 'arrow' && attaching()) {
           const target = targetAt(history.current, next, clicking.id, reach());
           if (target && !isInside(target, next)) finishClicking();
         }
@@ -1126,10 +1184,11 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           ? normalise(snapDegrees(angleOfElement(only) + turn) - angleOfElement(only))
           : snapDegrees(turn);
       const turned = new Map(rotateElements(elements, centre, degrees).map((e) => [e.id, e]));
+      const kept = new Set(originals.keys());
       return (scene) => {
         for (let i = 0; i < scene.elements.length; i += 1) {
           const replacement = turned.get(scene.elements[i].id);
-          if (replacement) scene.elements[i] = replacement;
+          if (replacement) scene.elements[i] = letGoOutside(replacement, kept);
         }
       };
     }
@@ -1191,13 +1250,14 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
     if (started.label) {
       const { id, original } = started.label;
-      if (!farEnough(started.origin, point)) return null;
+      // A label slides only once dragged a little way, as Excalidraw's.
+      if (Math.hypot(point.x - started.origin.x, point.y - started.origin.y) <= labelDrag()) return null;
       const props = original as SceneElement & ArrowProps;
       // The path as drawn, which the stage centres the label on.
       const routed = smoothPoints(pathOf((('points' in original ? original.points : []) as number[]), props.arrowType), tensionOf(original));
       // The label moves with the pointer, kept on the path: where it was, moved
       // by the drag, then brought to the nearest point along the arrow.
-      const from = labelPoint(routed, props.labelPosition);
+      const from = labelSpot(original, tensionOf(original), routed);
       // The drag in the arrow's own frame, a turn undone, as its points are.
       const centre = centreOf(original);
       const turn = -angleOfElement(original);
@@ -1215,10 +1275,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const { id, side, original, offset } = started.focus;
       if (!farEnough(started.origin, point)) return null;
       const aimed = { x: point.x - offset.x, y: point.y - offset.y };
-      const record = original as unknown as Record<string, unknown>;
-      const other = record[side === 'start' ? 'endBinding' : 'startBinding'];
-      const candidate = mod ? undefined : targetAt(history.current, aimed, id, reach());
-      const target = candidate && candidate.id === other ? undefined : candidate;
+      // The other end's shape too: both ends may be on one (B16).
+      const target = attaching() ? targetAt(history.current, aimed, id, reach()) : undefined;
       const [key, anchorKey, modeKey] = [`${side}Binding`, `${side}Anchor`, `${side}Mode`];
       // Off every shape, the end itself goes there, free.
       const base = unturned(original);
@@ -1237,6 +1295,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           if (alt) bound[modeKey] = 'inside';
           else delete bound[modeKey];
           scene.elements[i] = bound as unknown as SceneElement;
+          raiseAbove(scene.elements, id, target.id);
           return;
         }
         const loose = settledAround(base, points) as unknown as Record<string, unknown>;
@@ -1312,24 +1371,34 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const key = index === 0 ? 'startBinding' : 'endBinding';
       const anchorKey = index === 0 ? 'startAnchor' : 'endAnchor';
       const modeKey = index === 0 ? 'startMode' : 'endMode';
-      const otherKey = index === 0 ? 'endBinding' : 'startBinding';
-      const other = (original as SceneElement & Record<string, string | undefined>)[otherKey];
-      // Dropped on a shape it attaches, on empty canvas it lets go, and Alt
-      // holds it free either way. Both ends on one shape would leave the arrow
-      // with nowhere to run, so that target is refused.
+      const record = original as SceneElement & Record<string, unknown>;
+      const [otherKey, otherAnchorKey, otherModeKey] = index === 0 ? ['endBinding', 'endAnchor', 'endMode'] : ['startBinding', 'startAnchor', 'startMode'];
+      const other = record[otherKey] as string | undefined;
+      const elbow = isElbow(original);
+      // Dropped on a shape it attaches, on empty canvas it lets go, and
+      // Cmd/Ctrl holds it free (or, with attaching off, attaches it).
       const last = points.length - 2;
       const at = index === 0 ? 0 : last;
+      const otherAt = index === 0 ? last : 0;
       const next = index === 0 ? 2 : last - 2;
       // Where the end goes: kept at its grab offset, snapped with Shift about
-      // its neighbour; the target is looked for there.
-      const aimed = aimedPoint(point, started, started.endpoint.at, {
-        x: original.x + points[next],
-        y: original.y + points[next + 1],
-      });
+      // its neighbour.
+      const neighbour = { x: original.x + points[next], y: original.y + points[next + 1] };
+      const aimed = aimedPoint(point, started, started.endpoint.at, neighbour);
       endAim = aimed;
-      // Cmd/Ctrl leaves the end free (06.13; Alt used to).
-      const candidate = mod ? undefined : targetAt(history.current, aimed, id, reach());
-      const target = candidate && candidate.id === other ? undefined : candidate;
+      // With Shift the shape is the one under the pointer, not under the
+      // snapped end, and the side-middle snap is off (Excalidraw's
+      // `element/src/binding.ts:733-749`).
+      const grabbed = { x: point.x + started.endpoint.at.x - started.origin.x, y: point.y + started.endpoint.at.y - started.origin.y };
+      const target = attaching() ? targetAt(history.current, shift ? grabbed : aimed, id, reach()) : undefined;
+      // Both ends on one shape: allowed, both pinned where they are
+      // (Excalidraw's `element/src/binding.ts:777-828`); an elbow routes round it.
+      const sameShape = Boolean(target) && target!.id === other && !elbow;
+      // The other end, which the edge anchor is carried from: its own anchor
+      // on a two-point arrow attached there, else the neighbouring point.
+      const otherShape = other !== undefined ? history.current.elements.find((e) => e.id === other) : undefined;
+      const from = points.length === 4 && otherShape ? spotOn(otherShape, record[otherAnchorKey] as [number, number] | undefined) : neighbour;
+      const otherPoint = { x: original.x + points[otherAt], y: original.y + points[otherAt + 1] };
       points[at] = aimed.x - original.x;
       points[at + 1] = aimed.y - original.y;
       return (scene) => {
@@ -1339,16 +1408,21 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         const bound = scene.elements[i] as SceneElement & Record<string, unknown>;
         // The binding and where on the target it aims go together.
         // Inside the shape, or anywhere on it with Alt, the end is pinned.
-        const inside = Boolean(target) && pinnedAt(target!, aimed, original);
+        const inside = Boolean(target) && (sameShape || pinnedAt(target!, aimed, original));
         if (target) {
           bound[key] = target.id;
-          bound[anchorKey] = anchorFor(target, aimed, reach(), inside, isElbow(original));
+          bound[anchorKey] = anchorFor(target, aimed, reach(), inside, elbow, from, !shift && midpointSnap());
+          raiseAbove(scene.elements, id, target.id);
         } else {
           delete bound[key];
           delete bound[anchorKey];
         }
         if (inside) bound[modeKey] = 'inside';
         else delete bound[modeKey];
+        if (sameShape && record[otherModeKey] !== 'inside') {
+          bound[otherAnchorKey] = anchorFor(target!, otherPoint, reach(), true);
+          bound[otherModeKey] = 'inside';
+        }
       };
     }
 
@@ -1371,7 +1445,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           // member there scales through its drawn bounds instead.
           const member = original as SceneElement & { points?: number[] };
           const scaled = angle === 0 ? scaleRotatedInto(member, bounds, next) : scaleInto(member, bounds, next);
-          scene.elements[i] = scaled.type === 'code' ? codeResized(scaled) : scaled;
+          scene.elements[i] = letGoOutside(scaled.type === 'code' ? codeResized(scaled) : scaled, new Set(originals.keys()));
         }
       };
     }
@@ -1405,6 +1479,15 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       if (started.moving.length === 0) return null;
       // Under the threshold a press is a click, in the preview as on release.
       if (!farEnough(started.origin, point)) return null;
+      // A lone attached arrow needs a real drag before it lets go of its
+      // shapes: a nudge while selecting it would (Excalidraw's
+      // `dragElements.ts:130-158`).
+      if (started.moving.length === 1) {
+        const only = history.current.elements.find((e) => e.id === started.moving[0]);
+        const { start, end } = only?.type === 'arrow' ? bindingsOf(only) : {};
+        const offset = Math.max(Math.abs(point.x - started.origin.x), Math.abs(point.y - started.origin.y));
+        if ((start !== undefined || end !== undefined) && offset <= LONE_ARROW_DRAG) return null;
+      }
       let dx = point.x - started.origin.x;
       let dy = point.y - started.origin.y;
       // Shift keeps the move on the axis it mostly travels along.
@@ -1872,26 +1955,70 @@ export function createPointerHandler(options: PointerHandlerOptions) {
    * held now. Cmd/Ctrl leaves that end free; Alt pins it.
    */
   function bindingsFor(from: Point, to: Point, id: string): Record<string, unknown> {
-    const start = pressed.mod ? undefined : targetAt(history.current, from, id, reach());
-    const end = mod ? undefined : targetAt(history.current, to, id, reach());
+    const start = attaching(pressed.mod) ? targetAt(history.current, from, id, reach()) : undefined;
+    const end = attaching(mod) ? targetAt(history.current, to, id, reach()) : undefined;
     // An elbow end snaps by the elbow's rule and is never pinned.
     const elbow = drawsElbow();
-    const startInside = Boolean(start) && !elbow && pinnedAt(start!, from, undefined, pressed.alt);
-    const endInside = Boolean(end) && !elbow && pinnedAt(end!, to, undefined, alt);
+    // Both ends on one shape: both pinned where they are (B16); an elbow
+    // routes round it.
+    const same = Boolean(start && end && start.id === end.id);
+    const startInside = Boolean(start) && !elbow && (same || pinnedAt(start!, from, undefined, pressed.alt));
+    const endInside = Boolean(end) && !elbow && (same || pinnedAt(end!, to, undefined, alt));
+    const snap = !shift && midpointSnap();
+    const startAnchor = start ? anchorFor(start, from, reach(), startInside, elbow, to, snap) : undefined;
+    // The end's edge anchor is carried from the start's anchor when attached.
+    const towards = start ? spotOn(start, startAnchor) : from;
     return {
-      ...(start ? { startBinding: start.id, startAnchor: anchorFor(start, from, reach(), startInside, elbow) } : {}),
+      ...(start ? { startBinding: start.id, startAnchor } : {}),
       ...(startInside ? { startMode: 'inside' } : {}),
-      ...(end && end.id !== start?.id ? { endBinding: end.id, endAnchor: anchorFor(end, to, reach(), endInside, elbow) } : {}),
-      ...(end && end.id !== start?.id && endInside ? { endMode: 'inside' } : {}),
+      ...(end ? { endBinding: end.id, endAnchor: anchorFor(end, to, reach(), endInside, elbow, towards, snap) } : {}),
+      ...(end && endInside ? { endMode: 'inside' } : {}),
     };
   }
 }
+
+/**
+ * An arrow resized or turned lets go of every shape not transformed with it
+ * (Excalidraw's `resizeElements.ts:241-252`, `:464-475`, `:930-945`): alone,
+ * of both; its binding, anchor and mode go together.
+ */
+function letGoOutside(element: SceneElement, kept: Set<ElementId>): SceneElement {
+  if (element.type !== 'arrow') return element;
+  const record = { ...element } as unknown as Record<string, unknown>;
+  let changed = false;
+  for (const side of ['start', 'end'] as const) {
+    const target = record[`${side}Binding`] as ElementId | undefined;
+    if (target === undefined || kept.has(target)) continue;
+    delete record[`${side}Binding`];
+    delete record[`${side}Anchor`];
+    delete record[`${side}Mode`];
+    changed = true;
+  }
+  return changed ? (record as unknown as SceneElement) : element;
+}
+
+/** How far a lone attached arrow is dragged before it moves, in scene units (Excalidraw's 10). */
+const LONE_ARROW_DRAG = 10;
 
 /**
  * How far Duplicate puts the copy of a line's last point, in scene units
  * (Excalidraw's 30, 30, `linearElementEditor.ts:1500-1574`).
  */
 const DUPLICATE_POINT_OFFSET = 30;
+
+/**
+ * Put an arrow just above the shape it attaches to when it is below it, as
+ * Excalidraw's `moveArrowAboveBindable` (`element/src/zindex.ts:153-187`):
+ * whatever sat above the shape moves up one to make room.
+ */
+function raiseAbove(elements: SceneElement[], id: ElementId, targetId: ElementId): void {
+  const arrow = elements.find((e) => e.id === id);
+  const target = elements.find((e) => e.id === targetId);
+  if (!arrow || !target || arrow.z > target.z) return;
+  const z = target.z + 1;
+  for (const element of elements) if (element.id !== id && element.z >= z) element.z += 1;
+  arrow.z = z;
+}
 
 /** The highest z in use, so a new element is drawn above everything. */
 function topZ(elements: { z: number }[]): number {

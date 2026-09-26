@@ -65,3 +65,37 @@ describe('OptionPicker', () => {
     unmount(chosen.app);
   });
 });
+
+// 06.16 H1: the crow's-foot heads sit behind a More row, as Excalidraw's.
+describe("OptionPicker's More row", () => {
+  const heads = PROPERTY_OPTIONS.endArrowhead;
+  const items = () => document.querySelectorAll('[data-part="item"]').length;
+  const main = heads.options.filter((o) => !o.more).length;
+
+  function open(current: string) {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const app = flushSync(() =>
+      mount(OptionPicker, { target, props: { label: t(heads.labelKey), options: heads.options, current, icon: heads.icon, onSelect: vi.fn() } as never }),
+    );
+    flushSync(() => target.querySelector('button')!.click());
+    return app;
+  }
+
+  it('shows the rest once More is pressed', async () => {
+    const app = open('arrow');
+    await vi.waitFor(() => expect(items()).toBe(main));
+    const more = [...document.querySelectorAll('button')].find((b) => b.textContent?.includes(t('option.more'))) as HTMLElement;
+    flushSync(() => more.click());
+    await vi.waitFor(() => expect(items()).toBe(heads.options.length));
+    // Focus goes to the first revealed choice, not the page (review of 06.16).
+    await vi.waitFor(() => expect((document.activeElement as HTMLInputElement | null)?.value).toBe('one'));
+    unmount(app);
+  });
+
+  it('shows the rest at once when the current value is among them', async () => {
+    const app = open('zeroOrMany');
+    await vi.waitFor(() => expect(items()).toBe(heads.options.length));
+    unmount(app);
+  });
+});

@@ -5,7 +5,8 @@
  * its children and covers them; its children keep their own coordinates, so
  * ungrouping is removal of the wrapper rather than an inverse transform.
  */
-import type { ElementId, GroupElement, Scene, SceneElement } from './scene';
+import type { ElementId, GroupElement, Scene, SceneData, SceneElement } from './scene';
+import { carriedWith } from './containment';
 import type { Box } from './selection';
 import { angleOfElement, normalise, rotatedBounds } from './rotate';
 import { remapReferences } from './references';
@@ -195,6 +196,28 @@ export function duplicate(
  * screen, and its lean mirrors with it.
  */
 export function flip(scene: Scene, selection: SceneElement[], axis: 'horizontal' | 'vertical'): void {
+  // A selection of attached arrows only swaps their heads, as Excalidraw's
+  // (`actionFlip.ts:116-129`): mirroring would only pull them off their shapes.
+  const attachedArrows =
+    selection.length > 0 &&
+    selection.every((e) => {
+      const bound = e as { startBinding?: string; endBinding?: string };
+      return e.type === 'arrow' && (bound.startBinding !== undefined || bound.endBinding !== undefined);
+    });
+  if (attachedArrows) {
+    for (const element of selection) {
+      const heads = element as { startArrowhead?: string; endArrowhead?: string };
+      // Absent means none at the start and an arrow at the end.
+      const start = heads.endArrowhead ?? 'arrow';
+      const end = heads.startArrowhead ?? 'none';
+      // A default is written as nothing, as the toolbar writes it.
+      const swapped = { ...element, startArrowhead: start, endArrowhead: end } as SceneElement & Record<string, unknown>;
+      if (start === 'none') delete swapped.startArrowhead;
+      if (end === 'arrow') delete swapped.endArrowhead;
+      scene.replace(element.id, swapped);
+    }
+    return;
+  }
   const bounds = drawnBoundsOf(selection);
   for (const element of withContents(scene, selection)) {
     // A mirrored element leans the other way; which axis it was mirrored
@@ -293,5 +316,20 @@ export function steppedOrder(scene: Scene, selectedIds: ElementId[], direction: 
   }
   placeReadyGroups();
   return result;
+}
+
+/**
+ * What arrow keys move of `ids`: an attached arrow whose shape is not moving
+ * with it stays where it is (Excalidraw's `App.tsx:5812-5835`).
+ */
+export function nudged(scene: SceneData, ids: ElementId[]): ElementId[] {
+  // What really moves: frames with their contents, groups with their children.
+  const moving = new Set(carriedWith(scene, ids).map((e) => e.id));
+  return ids.filter((id) => {
+    const element = scene.elements.find((e) => e.id === id);
+    if (element?.type !== 'arrow') return true;
+    const { startBinding, endBinding } = element as { startBinding?: ElementId; endBinding?: ElementId };
+    return (startBinding === undefined || moving.has(startBinding)) && (endBinding === undefined || moving.has(endBinding));
+  });
 }
 

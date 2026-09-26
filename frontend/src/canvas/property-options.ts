@@ -16,7 +16,7 @@ import { LANGUAGES } from './code/languages';
  * locale translates: a language is called JavaScript everywhere, and putting
  * twelve of those in `messages.ts` would invite someone to translate them.
  */
-export type PropertyOption = { value: PropertyValue; icon: IconId } & (
+export type PropertyOption = { value: PropertyValue; icon: IconId; more?: boolean } & (
   | { labelKey: MessageKey; label?: never }
   | { label: string; labelKey?: never }
 );
@@ -38,6 +38,13 @@ const HEADS: PropertyOption[] = [
   { value: 'circle-outline', labelKey: 'option.circle-outline', icon: 'headCircle' },
   { value: 'diamond', labelKey: 'option.diamond', icon: 'headDiamond' },
   { value: 'diamond-outline', labelKey: 'option.diamond-outline', icon: 'headDiamond' },
+  // The entity-relation heads, behind More as Excalidraw's (06.16).
+  { value: 'one', labelKey: 'option.one', icon: 'headBar', more: true },
+  { value: 'many', labelKey: 'option.many', icon: 'headMany', more: true },
+  { value: 'oneOrMany', labelKey: 'option.oneOrMany', icon: 'headMany', more: true },
+  { value: 'exactlyOne', labelKey: 'option.exactlyOne', icon: 'headExactlyOne', more: true },
+  { value: 'zeroOrOne', labelKey: 'option.zeroOrOne', icon: 'headZero', more: true },
+  { value: 'zeroOrMany', labelKey: 'option.zeroOrMany', icon: 'headZero', more: true },
 ];
 
 export const PROPERTY_OPTIONS: Record<PropertyKey, PropertyControl> = {
@@ -110,6 +117,8 @@ export const PROPERTY_OPTIONS: Record<PropertyKey, PropertyControl> = {
       { value: 'straight', labelKey: 'option.straight', icon: 'arrowStraight' },
       { value: 'elbow', labelKey: 'option.elbow', icon: 'arrowElbow' },
       { value: 'arc', labelKey: 'option.arc', icon: 'arrowArc' },
+      // A line: an arrow becomes one, and a line shows as one (06.16, X11).
+      { value: 'line', labelKey: 'option.line', icon: 'line' },
     ],
   },
   startArrowhead: { labelKey: 'style.startArrowhead', icon: 'headCircle', options: HEADS },

@@ -499,6 +499,24 @@ func TestRoundTripClosedFilledLine(t *testing.T) {
       "z": 1
     },
     {
+      "endArrowhead": "zeroOrMany",
+      "fontSize": 28,
+      "h": 0,
+      "id": "crowfoot",
+      "label": "has",
+      "points": [
+        0,
+        0,
+        40,
+        0
+      ],
+      "type": "arrow",
+      "w": 40,
+      "x": 0,
+      "y": 80,
+      "z": 3
+    },
+    {
       "arrowType": "arc",
       "h": 0,
       "id": "curved",

@@ -17,7 +17,7 @@ const light: Record<string, string> = {
   '--color-canvas-bg': '#fbfbfa', '--swatch-blue-fill': '#d0ebff', '--swatch-blue-stroke': '#1971c2',
   '--swatch-blue-text': '#1864ab', '--swatch-red-fill': '#ffe3e3', '--swatch-red-stroke': '#e03131',
   '--swatch-red-text': '#c92a2a',
-  '--size-dash': '6px', '--size-dot': '2px', '--size-arrowhead': '10px', '--radius-shape-round': '32px',
+  '--radius-shape-round': '32px',
   '--size-label-inset': '8px', '--color-code-surface': '#f7f7f5', '--size-code-padding': '8px',
   '--radius-md': '6px', '--font-mono': 'Geist Mono', '--text-code': '13px', '--leading-code': '1.5',
   '--syntax-keyword': '#8250df', '--syntax-string': '#0a7a4a', '--syntax-name': '#1f2933',

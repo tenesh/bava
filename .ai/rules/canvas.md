@@ -367,3 +367,17 @@ pointer (`newStyle`) for every new element. It starts with arrows curved and
 lines round, writes only what differs from an absent key, and is never
 stored: not in the file, not in browser storage.
 
+## Targets are found front to back
+`targetAt` searches from the top of the stack down, as Excalidraw's: a shape
+or code block holding the point hides everything behind it (locked ones too,
+though they never attach), a frame is attached to from outside only, and the
+nearest outline wins over the smallest shape. The gap an end keeps is
+`gapOf(shape)`, 5 plus half its stroke width, never a fixed number.
+
+## Heads are sized by kind, in scene units
+`drawHead` in `arrows.ts` is the one head geometry, for the stage and the
+exporter alike: Excalidraw's size and angle per kind, capped by the last
+segment, returning how the head is filled (the line's colour, the canvas's
+for an outline head). Dash patterns come from `dashFor(style, width)`, not
+tokens: they are scene units that scale with the stroke.
+

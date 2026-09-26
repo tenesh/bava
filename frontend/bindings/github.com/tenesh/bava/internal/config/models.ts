@@ -36,4 +36,16 @@ export interface Settings {
      * a problem. Off by default; the log never holds content at any level.
      */
     "verboseLogging": boolean;
+
+    /**
+     * ArrowBinding is whether an arrow's ends attach to the shapes they are
+     * dropped on; Cmd/Ctrl turns it over for one drag. On by default.
+     */
+    "arrowBinding": boolean;
+
+    /**
+     * MidpointSnap is whether an arrow end snaps to a side's middle. On by
+     * default.
+     */
+    "midpointSnap": boolean;
 }

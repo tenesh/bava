@@ -6,6 +6,7 @@
  * is what lets an arrow re-route when Milestone 6.5 attaches it to a shape.
  */
 import type { PathSink } from './shapes';
+import type { SceneElement } from './scene';
 import { SEGMENT_SAMPLES, smoothPoints } from './curves';
 import { LINE_TENSION } from './paint';
 
@@ -99,47 +100,166 @@ export function headAt(points: number[], end: 'start' | 'end'): { x: number; y: 
   return { x, y, angle };
 }
 
+/** How a head is filled: with the line's colour, the canvas's, or not at all. */
+export type HeadFill = 'stroke' | 'surface' | 'none';
+
 /**
- * Draw an arrowhead of `size` into a sink, pointing along +x with its tip at
- * the origin, as `shapes.ts` draws an outline. Returns whether the head is
- * filled; an outline head is stroked instead.
+ * How big each head is, in scene units, and the half-angle of its barbs, as
+ * Excalidraw's `getArrowheadSize` and `getArrowheadAngle`
+ * (`element/src/bounds.ts:710-744`).
  */
-export function drawHead(sink: PathSink, kind: string | undefined, size: number): boolean {
-  const half = size / 2;
+function headSize(kind: string): number {
   switch (kind) {
-    case 'none':
-      return false;
-    case 'bar':
-      sink.moveTo(0, -half);
-      sink.lineTo(0, half);
-      return false;
-    case 'triangle':
-    case 'triangle-outline':
-      sink.moveTo(0, 0);
-      sink.lineTo(-size, -half);
-      sink.lineTo(-size, half);
-      sink.closePath();
-      return kind === 'triangle';
-    case 'circle':
-    case 'circle-outline':
-      circle(sink, -half, 0, half);
-      return kind === 'circle';
+    case 'arrow':
+      return 25;
     case 'diamond':
     case 'diamond-outline':
-      sink.moveTo(0, 0);
-      sink.lineTo(-half, -half);
-      sink.lineTo(-size, 0);
-      sink.lineTo(-half, half);
-      sink.closePath();
-      return kind === 'diamond';
+      return 12;
+    case 'many':
+    case 'oneOrMany':
+    case 'zeroOrMany':
+      return 15;
+    case 'one':
+    case 'exactlyOne':
+    case 'zeroOrOne':
+      return 20;
     default:
-      // The default head, and anything a newer Bava names: two strokes back
-      // from the tip, the shape an arrow has always had here.
-      sink.moveTo(-size, -half);
-      sink.lineTo(0, 0);
-      sink.lineTo(-size, half);
-      return false;
+      return 15;
   }
+}
+
+function headAngle(kind: string): number {
+  if (kind === 'bar') return 90;
+  if (kind === 'arrow') return 20;
+  return 25;
+}
+
+/** The names a file may give a head; anything else draws as the arrow. */
+const KNOWN_HEADS = new Set([
+  'arrow', 'bar', 'triangle', 'triangle-outline', 'circle', 'circle-outline', 'diamond', 'diamond-outline',
+  'one', 'many', 'oneOrMany', 'exactlyOne', 'zeroOrOne', 'zeroOrMany',
+]);
+
+/**
+ * Draw an arrowhead into a sink, pointing along +x with its tip at the
+ * origin, as Excalidraw draws it (`element/src/shape.ts:290-575`): sized by
+ * kind, never more than half the last segment (a quarter for a diamond), a
+ * circle growing with the stroke width. Returns how it is filled.
+ */
+export function drawHead(sink: PathSink, kind: string | undefined, segment: number, strokeWidth: number): HeadFill {
+  if (kind === 'none') return 'none';
+  const name = kind !== undefined && KNOWN_HEADS.has(kind) ? kind : 'arrow';
+  // Where a head of `as` sits, `offset` of its size back from the tip, and its
+  // barbs' ends (x3, x4): Excalidraw's `getArrowheadPoints`.
+  const place = (as: string, offset = 0) => {
+    const multiplier = as === 'diamond' || as === 'diamond-outline' ? 0.25 : 0.5;
+    const size = Math.min(headSize(as), segment * multiplier);
+    const tip = -size * offset;
+    const back = tip - size;
+    const turn = (headAngle(as) * Math.PI) / 180;
+    // Rotating the back point about the tip by ± the angle.
+    const barb = (sign: number) => ({ x: tip - size * Math.cos(turn), y: sign * size * Math.sin(turn) });
+    return { size, tip, back, turn, a: barb(-1), b: barb(1) };
+  };
+  const line = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+    sink.moveTo(a.x, a.y);
+    sink.lineTo(b.x, b.y);
+  };
+  const toTip = (as: string, offset = 0) => {
+    const { tip, a, b } = place(as, offset);
+    line(a, { x: tip, y: 0 });
+    line(b, { x: tip, y: 0 });
+  };
+  // Crossing the line: the marker for one.
+  const one = (offset = 0) => {
+    const { a, b } = place('one', offset);
+    line(a, b);
+  };
+  // A crow's foot: from `size` back, spreading towards the tip.
+  const many = () => {
+    const { size, back, turn } = place('many');
+    const spread = (sign: number) => ({ x: back + size * Math.cos(turn), y: sign * size * Math.sin(turn) });
+    line(spread(-1), { x: back, y: 0 });
+    line(spread(1), { x: back, y: 0 });
+  };
+  const ring = (as: string, offset: number, scale: number) => {
+    const { size, tip } = place(as, offset);
+    const diameter = (size + strokeWidth - 2) * scale;
+    circle(sink, tip, 0, diameter / 2);
+  };
+  switch (name) {
+    case 'circle':
+    case 'circle-outline':
+      ring(name, 0, 1);
+      return name === 'circle' ? 'stroke' : 'surface';
+    case 'triangle':
+    case 'triangle-outline': {
+      const { tip, a, b } = place(name);
+      sink.moveTo(tip, 0);
+      sink.lineTo(a.x, a.y);
+      sink.lineTo(b.x, b.y);
+      sink.closePath();
+      return name === 'triangle' ? 'stroke' : 'surface';
+    }
+    case 'diamond':
+    case 'diamond-outline': {
+      const { size, tip, a, b } = place(name);
+      sink.moveTo(tip, 0);
+      sink.lineTo(a.x, a.y);
+      sink.lineTo(tip - size * 2, 0);
+      sink.lineTo(b.x, b.y);
+      sink.closePath();
+      return name === 'diamond' ? 'stroke' : 'surface';
+    }
+    case 'one':
+      one();
+      return 'none';
+    case 'many':
+      many();
+      return 'none';
+    case 'oneOrMany':
+      many();
+      one(-0.25);
+      return 'none';
+    case 'exactlyOne':
+      one(-0.5);
+      one();
+      return 'none';
+    case 'zeroOrOne':
+      ring('circle-outline', 1.5, 0.8);
+      one(-0.5);
+      return 'surface';
+    case 'zeroOrMany':
+      many();
+      ring('circle-outline', 1.5, 0.8);
+      return 'surface';
+    default:
+      // The arrow and the bar: two strokes to the tip.
+      toTip(name);
+      return 'none';
+  }
+}
+
+/** The length of a route's last segment at one end, which caps its head's size. */
+export function endSegment(route: number[], end: 'start' | 'end'): number {
+  if (route.length < 4) return 0;
+  const [x1, y1, x2, y2] = end === 'start' ? route.slice(0, 4) : route.slice(-4);
+  return Math.hypot(x2 - x1, y2 - y1);
+}
+
+/**
+ * A head's dash: solid, except a stroke-only head on a dotted line, dotted a
+ * little tighter than the line (Excalidraw's `getArrowheadLineOptions`,
+ * `element/src/shape.ts:326-343`).
+ */
+export function headDash(kind: string | undefined, strokeStyle: string | undefined, width: number): number[] {
+  if (strokeStyle !== 'dotted' || !headIsStrokes(kind)) return [];
+  return [1.5, 4 + width];
+}
+
+/** Whether a head is drawn in open strokes only, which a dotted line dots too. */
+export function headIsStrokes(kind: string | undefined): boolean {
+  return kind === undefined || !KNOWN_HEADS.has(kind) || ['arrow', 'bar', 'one', 'many', 'oneOrMany', 'exactlyOne'].includes(kind);
 }
 
 // Cubic Bézier approximation of a quarter circle, as in shapes.ts.
@@ -162,6 +282,45 @@ export function pathLength(points: number[]): number {
     total += Math.hypot(points[i + 2] - points[i], points[i + 3] - points[i + 1]);
   }
   return total;
+}
+
+/**
+ * Where an arrow's label is centred, in the arrow's own coordinates: where
+ * the user slid it (`labelPosition`, along the drawn path's length), or else
+ * the middle point, the middle one of an odd number of points or the middle
+ * of the middle segment, on the curve for a curved arrow (Excalidraw's
+ * `linearElementEditor.ts:1942-1961`; 06.12 decision 16). `tension` is the
+ * line's smoothing (`hit.ts`, `tensionOf`).
+ */
+export function labelSpot(element: SceneElement, tension: number, drawn?: number[]): { x: number; y: number } {
+  const props = element as SceneElement & { points?: number[]; arrowType?: string; labelPosition?: number };
+  const stored = props.points ?? [];
+  if (props.labelPosition !== undefined) return labelPoint(drawn ?? pathOf(stored, props.arrowType), props.labelPosition);
+  // An elbow's points are its route, so its middle is the route's.
+  const points = stored;
+  const count = points.length / 2;
+  if (count < 2) return { x: points[0] ?? 0, y: points[1] ?? 0 };
+  if (count % 2 === 1) {
+    const mid = (count - 1) / 2;
+    return { x: points[mid * 2], y: points[mid * 2 + 1] };
+  }
+  const segment = count / 2 - 1;
+  const middles = middlesAlong(points, props.arrowType === 'elbow' ? 'straight' : props.arrowType, tension);
+  return middles[segment] ?? labelPoint(points);
+}
+
+/**
+ * How far round an arrow's label its line is hidden, in scene units
+ * (Excalidraw's `ARROW_LABEL_CLEARANCE`, `common/src/constants.ts:418`).
+ */
+export const LABEL_CLEARANCE = 5;
+
+/**
+ * How wide an arrow's label wraps: 0.7 of the arrow's width or 11 times the
+ * font size, the wider (Excalidraw's `textElement.ts:511-521`).
+ */
+export function labelWrapWidth(element: SceneElement, fontSize: number): number {
+  return Math.max(0.7 * element.w, fontSize * 11);
 }
 
 /**

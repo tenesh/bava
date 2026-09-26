@@ -191,6 +191,7 @@ check both before building either by hand.
 | `FileTree` ✓ | Workspace listing. Emits a path on activation; opens nothing itself. |
 | `ConfirmDialog` ✓ | A question with fixed answers. Dismissing it is a cancel, never an accident. |
 | `CanvasControls` ✓ | The zoom readout and its buttons. |
+| `CanvasSection` ✓ | Settings ▸ Canvas: attach arrows to shapes, snap ends to side middles (`settings/`). |
 | `ToolRail` ✓ | The canvas tool rail: grouped icon buttons, a key letter in each corner, a tooltip naming each; the tool lock (`Q`) on top. Layout in `canvas/rail.ts`. |
 | `InsertPanel` ✓ | Search, category rows (right chevron clear of the text), a category's tile grid, footer hint. State in `shell/insert.svelte.ts`. |
 | `SelectionToolbar` ✓ | Bottom-centre toolbar for a selection: `StyleBar` pickers, line actions (Edit points, Close or Open line; Done alone while a line is drawn by clicks), align and distribute, More. Model in `canvas/toolbar.ts`. |
@@ -207,7 +208,7 @@ check both before building either by hand.
 | `ErrorDialog` ✓ | An unexpected failure: one sentence, collapsed details, Copy details, Open logs folder. Never a stack. |
 | `PanelBoundary` ✓ | `<svelte:boundary>` around each shell region; a crash shows "This panel hit a problem" and Reload panel. |
 | `StyleBar` ✓ | Fill, border and text pickers as swatch chips, named by their tooltip, wrapping Ark's Popover and RadioGroup. Each popover holds the swatches and a `#rrggbb` field for any other colour. A group inside `SelectionToolbar`, which draws the surface. |
-| `OptionPicker` ✓ | One property from a few icon choices (stroke width, line style, edges, text size, alignment, arrow type, arrowheads): a chip opening a popover of radio options. Generic over its value; options in `canvas/property-options.ts`. |
+| `OptionPicker` ✓ | One property from a few icon choices (stroke width, line style, edges, text size, alignment, arrow type, arrowheads): a chip opening a popover of radio options; options marked `more` wait behind a More row unless one is current (the crow's-foot heads). Generic over its value; options in `canvas/property-options.ts`. |
 | `OpacityPicker` ✓ | Opacity on a slider in steps of ten, in a popover, wrapping Ark's Slider. |
 | `DiagramDialog` ✓ | Write D2, see it, insert it: a `LayoutEnginePicker` above a `SourcePane` editor beside a live preview, diagnostics beneath, Insert disabled while it does not compile. The editor is created when the portalled host appears, not at mount. Uses the wide `Dialog`. |
 | `Dialog` ✓ | Wraps Ark's Dialog. `size="wide"` gives the content `--size-dialog-wide`; by default it is as wide as what it holds, which suits a question with buttons but shrinks side-by-side panes to nothing. |

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createScene, type SceneElement } from './scene';
-import { boundsOf, duplicate, flip, group, paste, ungroup, PASTE_OFFSET } from './edit';
+import { boundsOf, duplicate, flip, group, nudged, paste, ungroup, PASTE_OFFSET } from './edit';
 
 function threeRects() {
   const scene = createScene();
@@ -243,5 +243,64 @@ describe('duplicate with an offset and names', () => {
     const scene = createScene({ elements: [{ id: 'a', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1 }] as never });
     const [copy] = duplicate(scene, [scene.get('a')!], { name: () => 'a' });
     expect(copy.id).not.toBe('a');
+  });
+});
+
+// 06.16 B21: arrow keys leave an attached arrow alone unless its shapes move
+// too (Excalidraw's `App.tsx:5812-5835`).
+describe('what arrow keys move', () => {
+  it('leaves out an arrow whose shape is not moving with it', () => {
+    const scene = {
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1 },
+        { id: 'b', type: 'rect', x: 50, y: 0, w: 10, h: 10, z: 2 },
+        { id: 'r', type: 'arrow', x: 10, y: 5, w: 40, h: 0, z: 3, points: [0, 0, 40, 0], startBinding: 'a', endBinding: 'b' },
+        { id: 'free', type: 'arrow', x: 0, y: 50, w: 40, h: 0, z: 4, points: [0, 0, 40, 0] },
+      ],
+    } as never;
+    expect(nudged(scene, ['r', 'free'])).toEqual(['free']);
+    expect(nudged(scene, ['r', 'a', 'b']).sort()).toEqual(['a', 'b', 'r']);
+  });
+});
+
+// 06.16 H8, X5: flipping as Excalidraw's `actionFlip.ts:110-195`.
+describe('flipping, as Excalidraw', () => {
+  it('swaps the heads of a selection of attached arrows only, moving nothing', () => {
+    const scene = createScene({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 },
+        { id: 'r', type: 'arrow', x: 66, y: 30, w: 100, h: 0, z: 2, points: [0, 0, 100, 0], startBinding: 'a', startArrowhead: 'circle', endArrowhead: 'triangle' },
+      ] as never[],
+    });
+    flip(scene, [scene.get('r')!], 'horizontal');
+    expect(scene.get('r')).toMatchObject({ x: 66, startArrowhead: 'triangle', endArrowhead: 'circle' });
+  });
+
+  it('comes back where it was after two flips', () => {
+    const scene = createScene({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 },
+        { id: 'b', type: 'ellipse', x: 200, y: 100, w: 80, h: 40, z: 2 },
+        { id: 'l', type: 'line', x: 20, y: 150, w: 100, h: 40, z: 3, points: [0, 40, 50, 0, 100, 40] },
+      ] as never[],
+    });
+    const before = scene.ordered().map((e) => [e.x, e.y]);
+    const all = scene.ordered();
+    flip(scene, all, 'horizontal');
+    flip(scene, scene.ordered(), 'horizontal');
+    expect(scene.ordered().map((e) => [e.x, e.y])).toEqual(before);
+  });
+});
+
+describe('what arrow keys move, with frames (review of 06.16)', () => {
+  it('moves an arrow whose shape moves inside a selected frame', () => {
+    const scene = {
+      elements: [
+        { id: 'f', type: 'frame', x: 0, y: 0, w: 200, h: 200, z: 1 },
+        { id: 's', type: 'rect', x: 10, y: 10, w: 20, h: 20, z: 2, frame: 'f' },
+        { id: 'r', type: 'arrow', x: 30, y: 20, w: 300, h: 0, z: 3, points: [0, 0, 300, 0], startBinding: 's' },
+      ],
+    } as never;
+    expect(nudged(scene, ['f', 'r']).sort()).toEqual(['f', 'r']);
   });
 });

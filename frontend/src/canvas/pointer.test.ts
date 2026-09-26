@@ -883,7 +883,8 @@ describe('dragging an arrow endpoint', () => {
 
   it('lets an end go when it is dropped on empty canvas', () => {
     const { handler, arrow } = withArrow({ endBinding: 'b' });
-    handler.down(at(196, 30));
+    // The end sits a gap (6) clear of B's left side.
+    handler.down(at(194, 30));
     handler.move(at(400, 300));
     handler.up(at(400, 300));
     expect(arrow().endBinding).toBeUndefined();
@@ -1049,15 +1050,16 @@ describe('guards on the endpoint drag', () => {
     expect(history.current.elements).toHaveLength(0);
   });
 
-  // Both ends on one shape leaves the arrow with nowhere to go: it collapsed
-  // to a zero-size point at the shape's centre.
-  it('refuses to bind both ends to the same shape', () => {
+  // Since 06.16 (B16), as Excalidraw: both ends may attach to one shape,
+  // both pinned where they are, so the arrow never collapses to its centre.
+  it('binds both ends to the same shape, pinned, without collapsing', () => {
     const { handler, arrow } = bound();
     const points = arrow().points as number[];
     handler.down({ x: (arrow().x as number) + points[2], y: (arrow().y as number) + points[3] });
     handler.move(at(30, 30));
     handler.up(at(30, 30));
-    expect(arrow().endBinding).toBeUndefined();
+    expect(arrow()).toMatchObject({ endMode: 'inside', startMode: 'inside' });
+    expect(arrow().endBinding).toBe(arrow().startBinding);
     expect(arrow().w).toBeGreaterThan(0);
   });
 });
@@ -2551,17 +2553,17 @@ describe("dragging an elbow's segments", () => {
           id: 'e',
           type: 'arrow',
           arrowType: 'elbow',
-          x: 104,
+          x: 106,
           y: 50,
-          w: 192,
+          w: 188,
           h: 200,
           z: 3,
-          points: [0, 0, 126, 0, 126, 200, 192, 200],
+          points: [0, 0, 124, 0, 124, 200, 188, 200],
           startBinding: 'a',
           startAnchor: [1, 0.5],
           endBinding: 'b',
           endAnchor: [0, 0.5],
-          fixedSegments: [{ index: 2, start: [126, 0], end: [126, 200] }],
+          fixedSegments: [{ index: 2, start: [124, 0], end: [124, 200] }],
           label: 'label',
         } as never,
       );
@@ -2577,11 +2579,11 @@ describe("dragging an elbow's segments", () => {
 
   it('moves a middle segment across itself and keeps it fixed', () => {
     const { handler, world, arrow } = shaped();
-    expect(world()).toEqual([104, 50, 230, 50, 230, 250, 296, 250]);
+    expect(world()).toEqual([106, 50, 230, 50, 230, 250, 294, 250]);
     handler.down(at(230, 150));
     handler.move(at(262, 170));
     handler.up(at(262, 170));
-    expect(world()).toEqual([104, 50, 262, 50, 262, 250, 296, 250]);
+    expect(world()).toEqual([106, 50, 262, 50, 262, 250, 294, 250]);
     expect((arrow().fixedSegments as { index: number }[]).map((f) => f.index)).toEqual([2]);
   });
 
@@ -2590,7 +2592,7 @@ describe("dragging an elbow's segments", () => {
     handler.down(at(167, 50));
     handler.move(at(167, 20));
     handler.up(at(167, 20));
-    expect(world().slice(0, 8)).toEqual([104, 50, 144, 50, 144, 20, 230, 20]);
+    expect(world().slice(0, 8)).toEqual([106, 50, 146, 50, 146, 20, 230, 20]);
   });
 
   it('changes nothing on a click', () => {
@@ -2645,12 +2647,12 @@ describe('dragging a bound elbow by its body', () => {
           id: 'e',
           type: 'arrow',
           arrowType: 'elbow',
-          x: 104,
+          x: 106,
           y: 50,
-          w: 192,
+          w: 188,
           h: 200,
           z: 3,
-          points: [0, 0, 126, 0, 126, 200, 192, 200],
+          points: [0, 0, 124, 0, 124, 200, 188, 200],
           startBinding: 'a',
           startAnchor: [1, 0.5],
           endBinding: 'b',
@@ -2833,17 +2835,17 @@ describe('what the cursor is over', () => {
           id: 'e',
           type: 'arrow',
           arrowType: 'elbow',
-          x: 104,
+          x: 106,
           y: 50,
-          w: 192,
+          w: 188,
           h: 200,
           z: 3,
-          points: [0, 0, 126, 0, 126, 200, 192, 200],
+          points: [0, 0, 124, 0, 124, 200, 188, 200],
           startBinding: 'a',
           startAnchor: [1, 0.5],
           endBinding: 'b',
           endAnchor: [0, 0.5],
-          fixedSegments: [{ index: 2, start: [126, 0], end: [126, 200] }],
+          fixedSegments: [{ index: 2, start: [124, 0], end: [124, 200] }],
         } as never,
       );
     });
@@ -3354,3 +3356,263 @@ describe('the style of a pen stroke and a code block', () => {
   });
 });
 
+
+// 06.16 B25: an end dropped on a shape raises the arrow just above it.
+describe('an arrow attached to a shape above it', () => {
+  it('is raised above that shape', () => {
+    const { handler, history, selection } = harness('select');
+    history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'arrow', type: 'arrow', x: 0, y: 0, w: 100, h: 0, z: 1, points: [0, 0, 100, 0] } as never,
+        { id: 'b', type: 'rect', x: 200, y: -50, w: 100, h: 100, z: 5 } as never,
+        { id: 'top', type: 'rect', x: 600, y: 0, w: 10, h: 10, z: 6 } as never,
+      );
+    });
+    selection.click('arrow');
+    handler.down(at(100, 0));
+    handler.move(at(196, 0));
+    handler.up(at(196, 0));
+    const z = (id: string) => history.current.elements.find((e) => e.id === id)!.z;
+    expect(z('arrow')).toBeGreaterThan(z('b'));
+    expect(z('arrow')).toBeLessThan(z('top'));
+  });
+});
+
+// 06.16 B12, B15, B16: where an end attaches, as Excalidraw.
+describe('attaching an end, as Excalidraw', () => {
+  function withArrow(bindings: Record<string, unknown> = {}) {
+    const kit = harness('select');
+    kit.history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 } as never,
+        { id: 'b', type: 'rect', x: 200, y: 0, w: 100, h: 100, z: 2, strokeWidth: 4 } as never,
+        { id: 'arrow', type: 'arrow', x: 100, y: 30, w: 60, h: 0, z: 3, points: [0, 0, 60, 0], ...bindings } as never,
+      );
+    });
+    kit.selection.click('arrow');
+    const arrow = () => kit.history.current.elements.find((e) => e.id === 'arrow') as Record<string, unknown>;
+    return { ...kit, arrow };
+  }
+
+  it('snaps to a side middle within reach plus half the stroke width', () => {
+    const { handler, arrow } = withArrow();
+    // 14 from B's edge, 16 from its left middle (reach 15, plus 2 for its
+    // width of 4).
+    handler.down(at(160, 30));
+    handler.move(at(186, 58));
+    handler.up(at(186, 58));
+    expect(arrow()).toMatchObject({ endBinding: 'b', endAnchor: [0, 0.5] });
+  });
+
+  it('shows the nearest middle as a dot while an end is dragged near it', () => {
+    const { handler } = withArrow();
+    handler.down(at(160, 30));
+    handler.move(at(190, 40));
+    expect(handler.snapSpots).toEqual([{ x: 200, y: 50 }]);
+    handler.move(at(250, 250));
+    expect(handler.snapSpots).toEqual([]);
+  });
+
+  it('does not snap to a middle with Shift, and finds the shape under the pointer', () => {
+    const { handler, arrow } = withArrow();
+    handler.down(at(160, 30));
+    handler.move(at(196, 48), { shift: true });
+    handler.up(at(196, 48), { shift: true });
+    expect(arrow()).toMatchObject({ endBinding: 'b' });
+    expect(arrow().endAnchor).not.toEqual([0, 0.5]);
+  });
+
+  it('lets both ends attach to one shape, both pinned where they were dropped', () => {
+    const { handler, arrow } = withArrow({ startBinding: 'b', startAnchor: [0.2, 0.3], startMode: 'inside' });
+    handler.down(at(160, 30));
+    handler.move(at(260, 80));
+    handler.up(at(260, 80));
+    expect(arrow()).toMatchObject({ startBinding: 'b', endBinding: 'b', endMode: 'inside', startMode: 'inside', endAnchor: [0.6, 0.8] });
+  });
+});
+
+// 06.16 B16: an arrow with both ends on one shape moves whole with it.
+describe('an arrow with both ends on one shape', () => {
+  it('moves with the shape, bends and all', () => {
+    const { handler, history, selection } = harness('select');
+    history.mutate((scene) => {
+      scene.elements.push(
+        { id: 's', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 } as never,
+        {
+          id: 'r', type: 'arrow', x: 20, y: -60, w: 60, h: 80, z: 2, points: [0, 80, 30, 0, 60, 80],
+          startBinding: 's', startAnchor: [0.2, 0.2], startMode: 'inside', endBinding: 's', endAnchor: [0.8, 0.2], endMode: 'inside',
+        } as never,
+      );
+    });
+    selection.click('s');
+    handler.down(at(50, 50));
+    handler.move(at(100, 50));
+    handler.up(at(100, 50));
+    const r = history.current.elements.find((e) => e.id === 'r') as unknown as { x: number; y: number; points: number[] };
+    expect([r.x + r.points[2], r.y + r.points[3]]).toEqual([100, -60]);
+  });
+});
+
+// 06.16 B8, B12: the two canvas settings.
+describe('the canvas settings, as the pointer reads them', () => {
+  function kit(options: { bindingEnabled?: () => boolean; midpointSnap?: () => boolean }) {
+    const history = createHistory({ elements: [] });
+    const tools = createTools();
+    tools.activate('arrow');
+    const handler = createPointerHandler({ history, selection: createSelection(), tools, ...options });
+    history.mutate((scene) => {
+      scene.elements.push({ id: 'b', type: 'rect', x: 200, y: 0, w: 100, h: 100, z: 1 } as never);
+    });
+    const drawn = () => history.current.elements.find((e) => e.type === 'arrow') as Record<string, unknown>;
+    return { handler, drawn };
+  }
+
+  it('leaves ends free with attaching off, and Cmd/Ctrl attaches them', () => {
+    const off = kit({ bindingEnabled: () => false });
+    off.handler.down(at(0, 50));
+    off.handler.move(at(196, 50));
+    off.handler.up(at(196, 50));
+    expect(off.drawn()).not.toHaveProperty('endBinding');
+    const held = kit({ bindingEnabled: () => false });
+    held.handler.down(at(0, 50));
+    held.handler.move(at(196, 50), { mod: true });
+    held.handler.up(at(196, 50), { mod: true });
+    expect(held.drawn()).toMatchObject({ endBinding: 'b' });
+  });
+
+  it('does not snap to a side middle with snapping off', () => {
+    const { handler, drawn } = kit({ midpointSnap: () => false });
+    handler.down(at(0, 48));
+    handler.move(at(196, 48));
+    handler.up(at(196, 48));
+    expect(drawn()).toMatchObject({ endBinding: 'b' });
+    expect(drawn().endAnchor).not.toEqual([0, 0.5]);
+  });
+});
+
+// 06.16 B19, B20: a lone attached arrow, dragged, turned or resized.
+describe('a lone attached arrow, as Excalidraw', () => {
+  function attached(points = [0, 0, 100, 0], h = 0) {
+    const kit = harness('select');
+    kit.history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'a', type: 'rect', x: -100, y: -50, w: 94, h: 100, z: 1 } as never,
+        { id: 'r', type: 'arrow', x: 0, y: 0, w: 100, h, z: 2, points, startBinding: 'a', startAnchor: [1, 0.5] } as never,
+      );
+    });
+    kit.selection.click('r');
+    const arrow = () => kit.history.current.elements.find((e) => e.id === 'r') as Record<string, unknown>;
+    return { ...kit, arrow };
+  }
+
+  it('stays put and attached for a drag of its body under 10', () => {
+    const { handler, history, arrow } = attached();
+    const before = history.current;
+    // On the body, clear of its ends and middle.
+    handler.down(at(25, 0));
+    handler.move(at(33, 0));
+    handler.up(at(33, 0));
+    expect(history.current).toBe(before);
+    expect(arrow()).toMatchObject({ startBinding: 'a' });
+  });
+
+  it('moves and lets go past 10', () => {
+    const { handler, arrow } = attached();
+    handler.down(at(25, 0));
+    handler.move(at(25, 40));
+    handler.up(at(25, 40));
+    expect(arrow()).not.toHaveProperty('startBinding');
+    expect(arrow()).toMatchObject({ y: 40 });
+  });
+
+  it('lets go of its shapes when turned, and keeps the turn', () => {
+    const { handler, arrow, history } = attached([0, 0, 50, 60, 100, 0], 60);
+    // The rotate handle sits above the padded box (10) by the gap (16).
+    handler.down(at(50, -26));
+    handler.move(at(120, 30));
+    handler.up(at(120, 30));
+    expect(arrow()).not.toHaveProperty('startBinding');
+    expect((history.current.elements[1] as { angle?: number }).angle ?? 0).not.toBe(0);
+  });
+
+  it('lets go of its shapes when resized', () => {
+    const { handler, arrow } = attached([0, 0, 50, 60, 100, 0], 60);
+    handler.down(at(110, 70));
+    handler.move(at(150, 110));
+    handler.up(at(150, 110));
+    expect(arrow()).not.toHaveProperty('startBinding');
+    // Resized, not moved (review of 06.16).
+    expect(arrow().w as number).toBeGreaterThan(100);
+  });
+});
+
+// 06.16 L4, L5: grabbing an arrow's label, as Excalidraw
+// (`App.arrowText.ts:255-305`).
+describe("grabbing an arrow's label", () => {
+  function labelled() {
+    const history = createHistory({
+      elements: [{ id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, points: [0, 0, 200, 0], label: 'x' }] as never,
+    });
+    const selection = createSelection();
+    const tools = createTools();
+    tools.activate('select');
+    const handler = createPointerHandler({
+      history, selection, tools, handleSize: () => 4, labelDrag: () => 10, labelBounds: () => ({ x: 60, y: -20, w: 80, h: 40 }),
+    });
+    return { history, selection, handler };
+  }
+
+  it('selects the arrow on a click on its label, off its line', () => {
+    const { handler, selection } = labelled();
+    handler.down(at(70, 15));
+    handler.up(at(70, 15));
+    expect(selection.ids).toEqual(['a']);
+  });
+
+  it('slides the label only past 10', () => {
+    const { handler, history, selection } = labelled();
+    selection.click('a');
+    const before = history.current;
+    handler.down(at(70, 15));
+    handler.move(at(78, 15));
+    handler.up(at(78, 15));
+    expect(history.current).toBe(before);
+    handler.down(at(70, 15));
+    handler.move(at(120, 15));
+    handler.up(at(120, 15));
+    expect((history.current.elements[0] as { labelPosition?: number }).labelPosition).toBeDefined();
+  });
+});
+
+// 06.16 O1: undo and redo wait while a gesture is under way, a line drawn by
+// clicks included (Excalidraw's `actions/actionHistory.tsx:26-45`).
+describe('undo during a gesture', () => {
+  it('is held while a line is drawn by clicks or a drag is down', () => {
+    const { handler } = harness('line');
+    expect(handler.holdsHistory).toBe(false);
+    handler.down(at(0, 0));
+    expect(handler.holdsHistory).toBe(true);
+    handler.up(at(0, 0));
+    expect(handler.holdsHistory).toBe(true);
+    handler.finishPoints();
+    expect(handler.holdsHistory).toBe(false);
+  });
+});
+
+// Review of 06.16: one rule for an elbow's two ends on one shape, drawn or
+// dragged: both attach, and the route goes round it.
+describe('an elbow drawn from a shape back onto it', () => {
+  it('attaches both ends', () => {
+    const history = createHistory({ elements: [] });
+    const tools = createTools();
+    tools.activate('arrow');
+    const handler = createPointerHandler({ history, selection: createSelection(), tools, newStyle: () => ({ arrowType: 'elbow' }) });
+    history.mutate((scene) => {
+      scene.elements.push({ id: 's', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 } as never);
+    });
+    handler.down(at(104, 30));
+    handler.move(at(104, 70));
+    handler.up(at(104, 70));
+    expect(history.current.elements.find((e) => e.type === 'arrow')).toMatchObject({ startBinding: 's', endBinding: 's' });
+  });
+});

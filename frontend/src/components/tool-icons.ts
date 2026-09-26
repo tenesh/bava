@@ -28,6 +28,9 @@ import Circle from '@lucide/svelte/icons/circle';
 import Cloud from '@lucide/svelte/icons/cloud';
 import Copy from '@lucide/svelte/icons/copy';
 import Check from '@lucide/svelte/icons/check';
+import Split from '@lucide/svelte/icons/split';
+import Equal from '@lucide/svelte/icons/equal';
+import CircleDot from '@lucide/svelte/icons/circle-dot';
 import Lock from '@lucide/svelte/icons/lock';
 import LockOpen from '@lucide/svelte/icons/lock-open';
 import PencilLine from '@lucide/svelte/icons/pencil-line';
@@ -129,6 +132,9 @@ export const LUCIDE_ICONS = {
   headTriangle: Triangle,
   headCircle: CircleSmall,
   headDiamond: Diamond,
+  headMany: Split,
+  headExactlyOne: Equal,
+  headZero: CircleDot,
   // Milestone 6.15's line actions and the tool lock.
   finishLine: Check,
   editPoints: PencilLine,

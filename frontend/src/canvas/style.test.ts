@@ -64,11 +64,12 @@ describe('currentStyle', () => {
 // each copied key to every selected element that takes it, in one step.
 describe('copying and pasting a style', () => {
   it('copies the keys an element takes, a default as null', () => {
+    // Since 06.16 (X10) the other style keys too, not only colours.
     const copied = copyStyle({ id: 'r', type: 'rect', x: 0, y: 0, w: 1, h: 1, z: 1, fill: 'blue' } as never);
-    expect(copied).toEqual({ fill: 'blue', stroke: null, color: null });
-    expect(copyStyle({ id: 'l', type: 'line', x: 0, y: 0, w: 1, h: 1, z: 1, points: [], stroke: 'red' } as never)).toEqual({
-      stroke: 'red',
-    });
+    expect(copied).toMatchObject({ fill: 'blue', stroke: null, color: null, strokeWidth: null, opacity: null });
+    const line = copyStyle({ id: 'l', type: 'line', x: 0, y: 0, w: 1, h: 1, z: 1, points: [], stroke: 'red' } as never);
+    expect(line).toMatchObject({ stroke: 'red', strokeWidth: null });
+    expect(line).not.toHaveProperty('fill');
   });
 
   it('pastes onto every selected element, skipping keys it does not take, as one step', () => {
@@ -177,5 +178,68 @@ describe('the fill of a closed line', () => {
     expect(history.current.elements[0]).toMatchObject({ fill: 'blue' });
     expect(history.current.elements[1]).not.toHaveProperty('fill');
     expect(currentStyle(history.current, ['open'], 'fill')).toBe('unavailable');
+  });
+});
+
+describe('the properties an arrow takes', () => {
+  it('include a font size, for its label (06.16, L8)', () => {
+    expect(propertyKeysFor('arrow')).toContain('fontSize');
+  });
+});
+
+// 06.16 X10: Copy and Paste Styles carry what Excalidraw's do
+// (`actions/actionStyles.ts:118-186`): colours, width, line style, opacity,
+// edges, text size and, arrow to arrow, both heads.
+describe('copying and pasting a style, as Excalidraw', () => {
+  it('carries widths, line style, opacity, edges and heads', () => {
+    const history = createHistory({
+      elements: [
+        { id: 'src', type: 'arrow', x: 0, y: 0, w: 10, h: 0, z: 1, points: [0, 0, 10, 0], stroke: 'red', strokeWidth: 4, strokeStyle: 'dashed', opacity: 50, endArrowhead: 'triangle' },
+        { id: 'arrow', type: 'arrow', x: 0, y: 0, w: 10, h: 0, z: 2, points: [0, 0, 10, 0] },
+        { id: 'rect', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 3, edges: 'round' },
+      ] as never,
+    });
+    const copied = copyStyle(history.current.elements[0]);
+    pasteStyle(history, ['arrow', 'rect'], copied);
+    expect(history.current.elements[1]).toMatchObject({ stroke: 'red', strokeWidth: 4, strokeStyle: 'dashed', opacity: 50, endArrowhead: 'triangle' });
+    expect(history.current.elements[2]).toMatchObject({ stroke: 'red', strokeWidth: 4, strokeStyle: 'dashed', opacity: 50 });
+    expect(history.current.elements[2]).not.toHaveProperty('endArrowhead');
+    // An arrow takes no edges, so the rectangle keeps its own.
+    expect(history.current.elements[2]).toMatchObject({ edges: 'round' });
+  });
+});
+
+// 06.16 X11: the kind picker turns a line into an arrow and back, keeping
+// its points (Excalidraw's `ConvertElementTypePopup.tsx:529-601`).
+describe('turning a line into an arrow and back', () => {
+  it('makes a line an arrow of the chosen kind, its points kept', () => {
+    const history = createHistory({
+      elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 100, h: 50, z: 1, points: [0, 0, 50, 50, 100, 0], edges: 'round', closed: true, fill: 'blue' }] as never,
+    });
+    setProperty(history, ['l'], 'arrowType', 'arc');
+    const arrow = history.current.elements[0] as unknown as Record<string, unknown>;
+    expect(arrow).toMatchObject({ type: 'arrow', arrowType: 'arc', points: [0, 0, 50, 50, 100, 0] });
+    expect(arrow).not.toHaveProperty('edges');
+    expect(arrow).not.toHaveProperty('closed');
+    expect(arrow).not.toHaveProperty('fill');
+  });
+
+  it('makes an arrow a line, letting go of its shapes and heads', () => {
+    const history = createHistory({
+      elements: [
+        { id: 'a', type: 'rect', x: -100, y: -50, w: 94, h: 100, z: 1 },
+        { id: 'r', type: 'arrow', x: 0, y: 0, w: 100, h: 0, z: 2, points: [0, 0, 100, 0], arrowType: 'arc', startBinding: 'a', startAnchor: [1, 0.5], endArrowhead: 'triangle', label: 'x', labelPosition: 0.3, fontSize: 28 },
+      ] as never,
+    });
+    setProperty(history, ['r'], 'arrowType', 'line');
+    const line = history.current.elements[1] as unknown as Record<string, unknown>;
+    expect(line).toMatchObject({ type: 'line', points: [0, 0, 100, 0], edges: 'round' });
+    // A line has no label: nothing of one is left hidden in the file (review).
+    for (const key of ['arrowType', 'startBinding', 'startAnchor', 'endArrowhead', 'label', 'labelPosition', 'fontSize']) expect(line).not.toHaveProperty(key);
+  });
+
+  it('shows a line as Line in the kind picker', () => {
+    const scene = { elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 1, h: 1, z: 1, points: [0, 0, 1, 1] }] } as never;
+    expect(currentProperty(scene, ['l'], 'arrowType')).toBe('line');
   });
 });

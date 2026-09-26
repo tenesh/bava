@@ -13,7 +13,7 @@
   import { createInsert } from './shell/insert.svelte';
   import ContextMenu from './components/ContextMenu.svelte';
   import { contextMenuFor, contextSelection, overflowMenu, parseOverflowId, type MenuNode } from './canvas/context-menu';
-  import { topLevel } from './canvas/edit';
+  import { nudged, topLevel } from './canvas/edit';
   import { createScene, isLocked } from './canvas/scene';
   import { carriedWith } from './canvas/containment';
   import { angleOfElement } from './canvas/rotate';
@@ -39,6 +39,7 @@
   import { createPointerHandler } from './canvas/pointer';
   import { cursorFor } from './canvas/cursor';
   import { createCurrentStyle } from './canvas/current-style';
+  import { endTextPlacement, freeEndAt, insertTextAtEnd } from './canvas/arrow-text';
   import { frameThrottle } from './canvas/frame-throttle';
   import { bindingReach } from './canvas/binding';
   import { paintFor } from './canvas/paint';
@@ -67,6 +68,7 @@
   import { createErrorPolicy, type GoError, type GoNotice } from './shell/errors.svelte';
   import FilesSection from './settings/FilesSection.svelte';
   import AdvancedSection from './settings/AdvancedSection.svelte';
+  import CanvasSection from './settings/CanvasSection.svelte';
   import { createSettings } from './settings/settings.svelte';
   import { createRecents } from './files/recents.svelte';
   import { createAutosave } from './files/autosave.svelte';
@@ -114,6 +116,8 @@
     selection,
     tools,
     newStyle: (type) => newElementStyle.for(type),
+    bindingEnabled: () => settingsState.arrowBinding,
+    midpointSnap: () => settingsState.midpointSnap,
     // Half a handle's on-screen side, in scene units at the current zoom.
     handleSize: () => (parseFloat(readRootVariable('--size-selection-handle')) || 0) / 2 / viewport.zoom,
     // Half the trail's on-screen width, in scene units: what the trail visibly covers.
@@ -129,6 +133,7 @@
     segmentMin: () => (parseFloat(readRootVariable('--size-point-handle')) || 0) / 2 / viewport.zoom,
     pointHandle: () => (parseFloat(readRootVariable('--size-point-handle')) || 0) / viewport.zoom,
     bentBoxPadding: () => (parseFloat(readRootVariable('--size-bent-box-padding')) || 0) / viewport.zoom,
+    labelDrag: () => (parseFloat(readRootVariable('--size-label-drag')) || 0) / viewport.zoom,
     bendInsertDistance: () => (parseFloat(readRootVariable('--size-bend-insert')) || 0) / viewport.zoom,
     minLinear: () => (parseFloat(readRootVariable('--size-min-linear')) || 0) / viewport.zoom,
     confirmDistance: () => (parseFloat(readRootVariable('--size-line-confirm')) || 0) / viewport.zoom,
@@ -623,9 +628,20 @@
   /** Place new text: nothing enters history until something is typed. */
   function placeText(point: { x: number; y: number }) {
     if (!labelEditor) return;
-    const screen = viewport.sceneToScreen(point);
     const measure = measurerFor(null);
     const paint = paintFor({ type: 'text' } as SceneElement, readRootVariable);
+    // By a free arrow end, decided now, so the field opens where the text
+    // will land: its side the arrow points at on the tip (06.16, B29).
+    const end = freeEndAt(history.current, point, (parseFloat(readRootVariable('--size-point-hit')) || 0) / viewport.zoom);
+    const placement = end ? endTextPlacement(history.current, end) : null;
+    const line = paint.font.size * paint.font.lineHeight;
+    const start = placement
+      ? // The field grows rightward as it is typed into, so only its
+        // vertical anchor can be honoured while typing; the text settles on
+        // commit.
+        { x: placement.at.x, y: placement.at.y - placement.anchor[1] * line }
+      : point;
+    const screen = viewport.sceneToScreen(start);
     labelEditor.open({
       value: '',
       rect: { x: screen.x, y: screen.y, width: 0, height: 0 },
@@ -633,7 +649,10 @@
       font: paint.font,
       zoom: viewport.zoom,
       onCommit: (value) => {
-        if (insertText(history, point, value, measure)) commit();
+        // By a free arrow end, the text is that end's, and the end attaches
+        // to it (06.16, B29); anywhere else, free text where it was clicked.
+        const placed = end ? insertTextAtEnd(history, end, value, measure) : insertText(history, point, value, measure);
+        if (placed) commit();
       },
     });
   }
@@ -779,14 +798,19 @@
         source: () => focusedSource().undo(),
         code: () => codeEditor?.undo(),
         field: fieldCommand('undo'),
-        canvas: canvasEdit(canvasCommands.undo),
+        // Not mid-gesture, a line drawn by clicks included (06.16, O1).
+        canvas: () => {
+          if (!pointer.holdsHistory) canvasEdit(canvasCommands.undo)();
+        },
       }),
     'edit.redo': () =>
       routeEdit({
         source: () => focusedSource().redo(),
         code: () => codeEditor?.redo(),
         field: fieldCommand('redo'),
-        canvas: canvasEdit(canvasCommands.redo),
+        canvas: () => {
+          if (!pointer.holdsHistory) canvasEdit(canvasCommands.redo)();
+        },
       }),
     'edit.cut': clipboardHandlers.cut,
     'edit.copy': clipboardHandlers.copy,
@@ -1212,7 +1236,8 @@
         nudge: (dx, dy) => {
           // A frame carries its contents and a group its children, by keyboard
           // exactly as by mouse.
-          const ids = new Set(carriedWith(history.current, selection.ids).map((element) => element.id));
+          // An attached arrow whose shape is not selected stays put (06.16, B21).
+          const ids = new Set(carriedWith(history.current, nudged(history.current, selection.ids)).map((element) => element.id));
           if (ids.size === 0) return;
           history.mutate((draft) => {
             for (const element of draft.elements) {
@@ -1409,6 +1434,12 @@
       delayMs={settingsState.autosaveDelayMs}
       onModeChange={(mode) => void settingsState.setAutosave(mode).then(reportSettingsError)}
       onDelayChange={(ms) => void settingsState.setAutosaveDelay(ms).then(reportSettingsError)}
+    />
+    <CanvasSection
+      arrowBinding={settingsState.arrowBinding}
+      midpointSnap={settingsState.midpointSnap}
+      onArrowBindingChange={(on) => void settingsState.setArrowBinding(on).then(reportSettingsError)}
+      onMidpointSnapChange={(on) => void settingsState.setMidpointSnap(on).then(reportSettingsError)}
     />
     <AdvancedSection
       verbose={settingsState.verboseLogging}

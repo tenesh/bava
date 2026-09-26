@@ -126,7 +126,7 @@ them beyond handing the parse to `internal/format`.
 | `ChooseFileToOpen()` | `DialogResult`: a path, or empty when cancelled |
 | `ChooseFileToSave(suggestedName)` | `DialogResult`: a path, or empty when cancelled |
 | `ListWorkspace(dir)` | `ListResult`: folders then `.md`/`.d2` files, hidden entries skipped |
-| `Settings()` | the user's preferences, defaults when unreadable |
+| `Settings()` | the user's preferences, defaults when unreadable; since 06.16 they include `arrowBinding` and `midpointSnap`, both on by default (an older file omits them and reads as on) |
 | `SaveSettings(settings)` | an error string, empty on success |
 
 ## ExportService
