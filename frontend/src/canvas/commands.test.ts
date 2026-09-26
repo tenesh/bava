@@ -3,6 +3,7 @@ import { createHistory } from './history';
 import { createSelection } from './selection';
 import { createCanvasCommands } from './commands';
 import type { SceneData } from './scene';
+import { isDetached } from './binding';
 
 function setup() {
   const initial: SceneData = {
@@ -431,6 +432,51 @@ describe('deleting a frame', () => {
     expect(ids).not.toContain('f');
     expect(ids).toContain('in');
     expect(history.current.elements.find((e) => e.id === 'in')).not.toHaveProperty('frame');
+  });
+});
+
+// Milestone 7's exit criterion: deleting a shape never deletes the arrows
+// attached to it. They freeze where they were and say they are detached, and
+// one undo brings the shape back with the arrows attached to it again.
+describe('deleting an attached shape', () => {
+  function attached() {
+    const fixture = setup();
+    fixture.history.mutate((scene) => {
+      scene.elements.push({
+        id: 'arrow', type: 'arrow', x: 10, y: 5, w: 10, h: 0, z: 4, points: [0, 0, 10, 0],
+        startBinding: 'a', endBinding: 'b',
+      } as never);
+    });
+    return fixture;
+  }
+  const arrowIn = (data: SceneData) => data.elements.find((e) => e.id === 'arrow')!;
+
+  it('detaches its arrows rather than deleting them', () => {
+    const { history, selection, commands } = attached();
+    const drawn = arrowIn(history.current);
+    selection.click('b');
+    commands.deleteSelection();
+
+    const arrow = arrowIn(history.current);
+    expect(arrow).toBeDefined();
+    expect(isDetached(arrow, history.current)).toBe(true);
+    expect({ x: arrow.x, y: arrow.y, points: (arrow as { points: number[] }).points }).toEqual({
+      x: drawn.x, y: drawn.y, points: (drawn as { points: number[] }).points,
+    });
+  });
+
+  it('is attached again after undo', () => {
+    const { history, selection, commands } = attached();
+    const drawn = arrowIn(history.current);
+    selection.click('b');
+    commands.deleteSelection();
+    commands.undo();
+
+    expect(ids(history.current)).toContain('b');
+    const arrow = arrowIn(history.current);
+    expect(isDetached(arrow, history.current)).toBe(false);
+    expect((arrow as { endBinding?: string }).endBinding).toBe('b');
+    expect(arrow).toEqual(drawn);
   });
 });
 

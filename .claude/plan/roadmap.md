@@ -568,6 +568,10 @@ attached element is deleted, the arrow stays, freezes at its last position and
 is marked detached, never deleted, because the user drew it. Hit-testing at
 scale with a spatial index if measured need arrives. Also carried from
 Milestone 6: rotation, and stroke width and dash options.
+Most of this was built early (6.5 to 6.16); what remained, built in plan 07
+(`.claude/work/plans/07-snapping.md`), is the exit tests and Excalidraw's
+object snapping (the user's request, 2026-09-27). No spatial index: measured,
+not needed.
 
 **Exit criterion:**
 

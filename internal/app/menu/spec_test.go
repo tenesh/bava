@@ -288,6 +288,8 @@ func TestOnlyTheKeptShortcutsAreBound(t *testing.T) {
 		"canvas.flipHorizontal": true, "canvas.flipVertical": true, "canvas.duplicate": true, "canvas.lock": true,
 		// 06.15: the user asked for it (06.12 decision 14).
 		"canvas.editPoints": true,
+		// Milestone 7: the user chose Excalidraw's Alt+S (2026-09-27).
+		"canvas.snapToObjects": true,
 	}
 	bound := map[string]bool{}
 	for _, item := range load(t).AllItems() {

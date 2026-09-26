@@ -49,6 +49,8 @@ $swatches-dark: (
   --color-selection-handle: #2f6ba3;
   // The shape an arrow end would attach to, outlined (Excalidraw's blue).
   --color-binding-highlight: #4a47b1;
+  // The guides drawn while a shape snaps to others (Excalidraw's red).
+  --color-snap-guide: #ff6b6b;
 }
 
 :root[data-theme='dark'] {
@@ -59,4 +61,5 @@ $swatches-dark: (
   --color-shape-text: #dcdcd8;
   --color-selection-handle: #7fabd9;
   --color-binding-highlight: #8f8cf0;
+  --color-snap-guide: #ff9090;
 }

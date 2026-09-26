@@ -208,3 +208,35 @@ func TestArrowSettingsDefaultOn(t *testing.T) {
 		t.Errorf("turned off: ArrowBinding=%v MidpointSnap=%v, want both off", off.ArrowBinding, off.MidpointSnap)
 	}
 }
+
+// Milestone 7: snapping to objects is off unless the user turns it on
+// (Excalidraw's default), including for a settings file written before it
+// existed, and it survives a save.
+func TestObjectSnapDefaultOff(t *testing.T) {
+	if config.Defaults().ObjectSnap {
+		t.Fatal("defaults: ObjectSnap is on, want off")
+	}
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"arrowBinding": true}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	older, err := config.LoadFrom(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if older.ObjectSnap {
+		t.Error("an older file: ObjectSnap is on, want off")
+	}
+	on := config.Defaults()
+	on.ObjectSnap = true
+	if err := config.SaveTo(path, on); err != nil {
+		t.Fatal(err)
+	}
+	got, err := config.LoadFrom(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.ObjectSnap {
+		t.Error("ObjectSnap did not survive a save")
+	}
+}

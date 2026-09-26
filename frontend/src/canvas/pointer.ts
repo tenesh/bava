@@ -16,7 +16,7 @@ import { produce } from 'immer';
 import { createScene, isLocked, type ArrowProps, type ElementId, type SceneData, type SceneElement } from './scene';
 import { labelSpot, middlesAlong, pathOf, positionAlong } from './arrows';
 import { smoothPoints } from './curves';
-import { duplicate, withDescendants } from './edit';
+import { drawnBoundsOf, duplicate, withDescendants } from './edit';
 import {
   anchorFor,
   nearestMiddle,
@@ -45,6 +45,17 @@ import { chromeFor, elbowSegmentHandles, focusSpots, grown, offersMiddles } from
 import type { CursorTarget } from './cursor';
 import { simplify } from './stroke';
 import { ANGLE_STEP, snapAngle, squareBox } from './constrain';
+import {
+  guidesFor,
+  movingPoints,
+  resizedPoints,
+  snapCorners,
+  snapMove,
+  snapPointer,
+  snapReferences,
+  type Guide,
+  type References,
+} from './snapping';
 import { erasableAlong, eraseSet } from './eraser';
 import { handleAt, isRotateHandle, resizeBox, scaleInto, tidy, type Handle } from './resize';
 import {
@@ -160,10 +171,28 @@ export type PointerHandlerOptions = {
   labelDrag?: () => number;
   /** How a code block is measured: the mono advance, line height and padding. */
   codeMetrics?: (element?: SceneElement) => CodeMetrics;
+  /**
+   * Whether a moved, resized or drawn shape snaps to other elements
+   * (Settings ▸ Canvas, off by default); Cmd/Ctrl turns it over for a drag,
+   * as Excalidraw's.
+   */
+  objectSnap?: () => boolean;
+  /** How near an alignment snaps, in scene units: `--size-snap-distance` over the zoom. */
+  snapDistance?: () => number;
+  /** The part of the scene on screen, in scene units: only what is there is snapped to. */
+  visibleBox?: () => Box | null;
 };
+
+/** What a drag snaps to, and the points and box it offers, as they were at the press. */
+type SnapSource = { refs: References; points: Point[]; box: Box };
 
 type Drag = {
   origin: Point;
+  /**
+   * Where the press landed, when a box tool snapped `origin` away from it:
+   * whether the pointer travelled far enough to draw is measured from here.
+   */
+  press?: Point;
   /** Ids captured at press time, so a moving selection is stable mid-drag. */
   moving: ElementId[];
   /** Geometry at press time, so a move is applied from the original position. */
@@ -220,7 +249,16 @@ type Drag = {
   pendingClick?: { id: ElementId; additive: boolean };
   /** A press in empty space inside a selection of several: a click clears it. */
   pendingClear?: boolean;
+  /**
+   * Snapping to objects, gathered at the first move that needs it and kept
+   * for the drag (Excalidraw's cache): for a move, for an Alt-copy (whose
+   * originals stay put, so they are targets), and for a resize or drawing.
+   */
+  snap?: { move?: SnapSource; copy?: SnapSource; corners?: References };
 };
+
+/** The tools that place a box: shapes, frames, code and text snap where they start. */
+const BOX_TOOLS = new Set<ToolId>(['rect', 'ellipse', 'diamond', 'cylinder', 'hexagon', 'parallelogram', 'document', 'person', 'cloud', 'frame', 'code', 'text']);
 
 function boxBetween(a: Point, b: Point): Box {
   return {
@@ -296,6 +334,17 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   const midpointSnap = options.midpointSnap ?? (() => true);
   /** Whether an end being placed attaches: the setting, turned over by Cmd/Ctrl. */
   const attaching = (held = mod) => bindingEnabled() !== held;
+  const objectSnap = options.objectSnap ?? (() => false);
+  // The token's value at zoom 1, as the others.
+  const snapDistance = options.snapDistance ?? (() => 8);
+  const visibleBox = options.visibleBox ?? (() => null);
+  /** Whether a move snaps to objects: the setting, turned over by Cmd/Ctrl. */
+  const snapping = (held = mod) => objectSnap() !== held;
+  // The guides of the last drag frame, or of the pointer hovering with a tool
+  // that draws a box.
+  let guides: Guide[] = [];
+  /** Whether a tool places a box, whose corner snaps (Excalidraw's shape, frame and text tools). */
+  const placesBox = (tool: ToolId) => BOX_TOOLS.has(tool);
   /** Whether a new arrow would be an elbow, by the style it would take. */
   const drawsElbow = () => (newStyle('arrow') as { arrowType?: unknown }).arrowType === 'elbow';
 
@@ -476,6 +525,23 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     },
 
     /**
+     * The guides for the snap the pointer made, for the stage to draw: while
+     * a drag snaps, or while a tool that places a box hovers. Empty otherwise.
+     */
+    get snapGuides(): Guide[] {
+      if (!drag && !placesBox(tools.active)) return [];
+      return guides;
+    },
+
+    /**
+     * Where a click with the text tool places text: snapped to other
+     * elements' points, as the start of a drawn shape is.
+     */
+    snapPlacement(point: Point, options: { mod?: boolean } = {}): Point {
+      return snappedStart(point, Boolean(options.mod)).point;
+    },
+
+    /**
      * The spots an elbow end being dragged can snap to on the shape it would
      * attach to, for the stage to show as dots (Excalidraw's elbow midpoints).
      * Empty for any other drag.
@@ -514,6 +580,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       alt = false;
       mod = false;
       lastPoint = point;
+      guides = [];
       if (tools.active === 'eraser') {
         erasing = new Set();
         trailEnd = point;
@@ -621,8 +688,14 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         originals.set(element.id, { x: element.x, y: element.y });
       }
 
+      // A box tool starts where the pointer snapped while hovering (Excalidraw's
+      // `originSnapOffset`); Cmd/Ctrl as pressed decides it.
+      const start = tools.active !== 'select' && placesBox(tools.active) ? snappedStart(point, Boolean(options.mod)) : null;
+      const origin = start?.point ?? point;
+      guides = start?.guides ?? [];
       drag = {
-        origin: point,
+        origin,
+        press: origin === point ? undefined : point,
         moving,
         originals,
         strokePoints: [point.x, point.y],
@@ -644,7 +717,11 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       alt = Boolean(options.alt);
       mod = Boolean(options.mod);
       lastPoint = point;
-      if (!drag) return;
+      if (!drag) {
+        // Before a box is drawn, where its start would snap (Excalidraw's).
+        guides = placesBox(tools.active) ? snappedStart(point, mod).guides : [];
+        return;
+      }
       shift = Boolean(options.shift);
       alt = Boolean(options.alt);
       mod = Boolean(options.mod);
@@ -997,6 +1074,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const started = drag;
       drag = null;
       marquee = null;
+      guides = [];
 
       // A box dragged in point editing selects the points inside it (Shift
       // adds); a click there instead leaves the mode, as a click on empty
@@ -1138,6 +1216,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       }
       const recipe = changeFor(started, point);
       if (recipe) history.mutate(recipe);
+      // Worked out once more by the release: nothing snaps once it is let go.
+      guides = [];
       if (copied.length > 0) {
         selection.clear();
         copied.forEach((id, i) => selection.click(id, { additive: i > 0 }));
@@ -1435,7 +1515,18 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       // A rotated element resizes along its own axes: the drag is read in its
       // frame, and the result is put back where that frame leaves it.
       const local = deltaInFrame(dx, dy, angle);
+      // An upright resize snaps the corners its handle moves, before Shift
+      // keeps the ratio; a single turned element never snaps (Excalidraw's).
+      if (angle === 0 && snapping()) {
+        started.snap ??= {};
+        started.snap.corners ??= snapReferences(history.current, [...originals.keys()], visibleBox(), false);
+        const moved = resizedPoints(resizeBox(bounds, handle, local.x, local.y), handle);
+        const { offset } = snapCorners(started.snap.corners, moved.points, snapDistance());
+        if (moved.x) local.x += offset.x;
+        if (moved.y) local.y += offset.y;
+      }
       const next = placeResized(bounds, resizeBox(bounds, handle, local.x, local.y, { keepAspect: shift }), angle);
+      guides = angle === 0 && snapping() && started.snap?.corners ? guidesFor(started.snap.corners, next) : [];
       return (scene) => {
         for (let i = 0; i < scene.elements.length; i += 1) {
           const original = originals.get(scene.elements[i].id);
@@ -1495,6 +1586,21 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       if (shift) {
         if (Math.abs(dx) >= Math.abs(dy)) dy = 0;
         else dx = 0;
+      }
+      // Snapping adds its offset after the Shift lock, on both axes, so a
+      // locked drag can still settle into line (Excalidraw's).
+      guides = [];
+      if (snapping()) {
+        const source = snapSource(started, alt);
+        const { offset, guides: found } = snapMove(
+          source.refs,
+          source.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+          { ...source.box, x: source.box.x + dx, y: source.box.y + dy },
+          snapDistance(),
+        );
+        dx += offset.x;
+        dy += offset.y;
+        guides = found;
       }
       // Alt copies instead: the originals stay, copies land where the drag
       // is. Each copy is named from the drag and its original, so every
@@ -1563,19 +1669,31 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       };
     }
 
-    // A shape tool. A click is not a shape.
-    if (!farEnough(started.origin, point)) return null;
+    // A shape tool. A click is not a shape, measured from where it landed.
+    if (!farEnough(started.press ?? started.origin, point)) return null;
 
     const type = tools.active;
     const linear = type === 'line' || type === 'arrow';
+    // A box's dragged corner snaps to other elements' points (Excalidraw's).
+    let corner = point;
+    guides = [];
+    if (!linear && placesBox(type) && snapping()) {
+      started.snap ??= {};
+      started.snap.corners ??= snapReferences(history.current, [], visibleBox(), false);
+      const { offset } = snapCorners(started.snap.corners, [point], snapDistance());
+      corner = { x: point.x + offset.x, y: point.y + offset.y };
+    }
     // Shift constrains: a square box, or an angle in 15° steps.
-    const end = shift && linear ? snapAngle(started.origin, point) : point;
+    const end = shift && linear ? snapAngle(started.origin, point) : corner;
     // Under the minimum length it is still drawn (Excalidraw's, from the
     // first move): released there, `up` goes on drawing it click by click.
-    const raw = shift && !linear ? squareBox(started.origin, point) : boxBetween(started.origin, end);
+    const raw = shift && !linear ? squareBox(started.origin, corner) : boxBetween(started.origin, end);
     // Tidy: a zoom or fractional pan leaves 83.33333333333333, written into
     // the user's file otherwise.
     const box = { x: tidy(raw.x), y: tidy(raw.y), w: tidy(raw.w), h: tidy(raw.h) };
+    // Snapped flat against its start, a box has nothing to see or select.
+    if (!linear && (box.w === 0 || box.h === 0)) return null;
+    if (started.snap?.corners && !linear && snapping()) guides = guidesFor(started.snap.corners, box);
     // Text is typed, not dragged: its tool is handled with the label editor.
     if (type === 'text') return null;
     const extra = linear
@@ -1598,6 +1716,42 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         ...extra,
       } as SceneElement);
     };
+  }
+
+  /**
+   * What a moving selection snaps to and offers, gathered once per drag. An
+   * Alt-copy leaves the originals where they are, so they are targets for it.
+   */
+  function snapSource(started: Drag, copying: boolean): SnapSource {
+    started.snap ??= {};
+    const cached = copying ? started.snap.copy : started.snap.move;
+    if (cached) return cached;
+    // The drawn elements that move: a group wrapper draws nothing, and an
+    // arrow carried because it is attached to what moves (a self-loop) is
+    // not what the user is placing.
+    const moving = history.current.elements.filter((e) => {
+      if (!started.originals.has(e.id) || e.type === 'group') return false;
+      const { start, end } = e.type === 'arrow' ? bindingsOf(e) : {};
+      return !((start && started.originals.has(start)) || (end && started.originals.has(end)));
+    });
+    const source: SnapSource = {
+      refs: snapReferences(history.current, copying ? [] : started.moving, visibleBox()),
+      points: movingPoints(moving),
+      box: drawnBoundsOf(moving),
+    };
+    if (copying) started.snap.copy = source;
+    else started.snap.move = source;
+    return source;
+  }
+
+  /**
+   * Where a box would start from a point: snapped to the nearest element
+   * point on each axis unless snapping is off (Cmd/Ctrl turning it over),
+   * with the guides that show it.
+   */
+  function snappedStart(point: Point, held: boolean): { point: Point; guides: Guide[] } {
+    if (!snapping(held)) return { point, guides: [] };
+    return snapPointer(snapReferences(history.current, [], visibleBox(), false), point, snapDistance());
   }
 
   /**

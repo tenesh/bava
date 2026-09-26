@@ -35,6 +35,7 @@ export const SETTINGS_DEFAULTS: Settings = {
   verboseLogging: false,
   arrowBinding: true,
   midpointSnap: true,
+  objectSnap: false,
 };
 
 function isMode(value: string): value is AutosaveMode {
@@ -74,6 +75,10 @@ export function createSettings(io: SettingsIO = overIPC) {
     get midpointSnap(): boolean {
       return values.midpointSnap;
     },
+    /** Whether a moved, resized or drawn shape snaps to other elements (Cmd/Ctrl turns it over for a drag). */
+    get objectSnap(): boolean {
+      return values.objectSnap === true;
+    },
     /** The engine the Diagram from Code dialog opens with; one it does not know reads as TALA. */
     get layoutEngine(): LayoutEngine {
       return isLayoutEngine(values.layoutEngine) ? values.layoutEngine : 'tala';
@@ -89,6 +94,7 @@ export function createSettings(io: SettingsIO = overIPC) {
     setLayoutEngine: (engine: LayoutEngine) => update({ layoutEngine: engine }),
     setArrowBinding: (on: boolean) => update({ arrowBinding: on }),
     setMidpointSnap: (on: boolean) => update({ midpointSnap: on }),
+    setObjectSnap: (on: boolean) => update({ objectSnap: on }),
 
     /**
      * Go owns this one: it changes the live log level too. Saving it here as

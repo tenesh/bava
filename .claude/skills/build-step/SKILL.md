@@ -631,6 +631,17 @@ deliberately at `5.24.2` or later.
   (ArrowDown, Enter); RadioGroup items accept a click. Popovers render closed
   content unless `lazyMount`.
 
+### Milestone 7 findings (snapping), 2026-09-27
+
+- **Gates green; not seen at a running window.** Plan
+  `.claude/work/plans/07-snapping.md`. The exit tests (delete detaches, undo
+  re-attaches) are in `commands.test.ts`.
+- New setting `objectSnap` (off) in `internal/config`, and `objectSnap` on
+  `menu.State`; bindings regenerated. Canvas ▸ Snap to Objects, `⌥S`, is a
+  canvas-scoped checkbox. `canvas/snapping.ts` holds the rules;
+  `canvas/scale.bench.test.ts` is a timing test, skipped unless `BAVA_BENCH`
+  names a file for its numbers.
+
 ### Milestone 6.17 findings (code blocks, arrow labels, two bugs), 2026-09-27
 
 - **Gates green; not seen at a running window.** Plan

@@ -75,6 +75,7 @@ Shortcuts) lists the rest.
 | Canvas | Duplicate | `⌘D` | `Ctrl+D` |
 | Canvas | Edit Points | `⌘Enter` | `Ctrl+Enter` |
 | Canvas | Lock | `⇧⌘L` | `Ctrl+Shift+L` |
+| Canvas | Snap to Objects | `⌥S` | `Alt+S` |
 
 Undo, Redo, Cut, Copy, Paste, Select All and Delete go wherever focus is: the
 source editor with focus (the document's, or the one in Diagram from Code), a
@@ -158,6 +159,7 @@ In the insert panel, opened from the rail's +: `↑↓←→` move, `Enter` inse
 | `⇧`-click | Add to or remove from the selection; a selected element is removed on release, so a `⇧`-drag still moves the selection |
 | Drag on empty space | Marquee select |
 | Drag a selection | Move every selected element, from any of them or from empty space inside the selection; hold `⇧` to keep to one axis |
+| Drag, resize or draw a shape, with Snap to Objects on (`⌥S`, Settings ▸ Canvas) | Snap to other elements' edges, side middles and centres, and to equal spacing (drags only), within 8 px on screen, with red guides; hold `⌘` / `Ctrl` to move freely (with it off, `⌘` / `Ctrl` snaps). A text click snaps too; a selected line or arrow dragged by its body snaps as a box. Drawing a line or arrow, dragging points, bends or segments, rotating and nudging never snap, nor does resizing a single turned element |
 | `⌥`-drag a selection | Move a copy and leave the originals; the copy is selected after |
 | Drag with Draw | Freehand stroke |
 | Drag with Eraser | Fade what the trail crosses, delete it on release; `⌥` while dragging restores |

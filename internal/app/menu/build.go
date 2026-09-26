@@ -31,8 +31,10 @@ type State struct {
 	// HasDocument reports a file open, which is what Export needs.
 	HasDocument bool `json:"hasDocument"`
 	// ShowsCanvas reports the canvas visible, which is where a diagram goes.
-	ShowsCanvas bool     `json:"showsCanvas"`
-	Recents     []string `json:"recents"`
+	ShowsCanvas bool `json:"showsCanvas"`
+	// ObjectSnap reports snapping to objects on, which ticks its menu item.
+	ObjectSnap bool     `json:"objectSnap"`
+	Recents    []string `json:"recents"`
 }
 
 // Built is a constructed menu bar and handles to the items state changes.
@@ -196,6 +198,7 @@ func (b *Built) Apply(state State) bool {
 	}
 	check("view.files", state.ShowsFiles)
 	check("view.ai", state.ShowsAI)
+	check("canvas.snapToObjects", state.ObjectSnap)
 	for _, theme := range []string{"light", "dark", "system"} {
 		check("view.theme."+theme, state.Theme == theme)
 	}

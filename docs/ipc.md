@@ -126,7 +126,7 @@ them beyond handing the parse to `internal/format`.
 | `ChooseFileToOpen()` | `DialogResult`: a path, or empty when cancelled |
 | `ChooseFileToSave(suggestedName)` | `DialogResult`: a path, or empty when cancelled |
 | `ListWorkspace(dir)` | `ListResult`: folders then `.md`/`.d2` files, hidden entries skipped |
-| `Settings()` | the user's preferences, defaults when unreadable; since 06.16 they include `arrowBinding` and `midpointSnap`, both on by default (an older file omits them and reads as on) |
+| `Settings()` | the user's preferences, defaults when unreadable; since 06.16 they include `arrowBinding` and `midpointSnap`, both on by default (an older file omits them and reads as on), and since Milestone 7 `objectSnap`, off by default |
 | `SaveSettings(settings)` | an error string, empty on success |
 
 ## ExportService
@@ -222,6 +222,7 @@ never guesses:
 | `theme` | Appearance radio |
 | `tool` | Tools radio |
 | `hasSelection` | enables Group, Ungroup, Bring to Front, Send to Back |
+| `objectSnap` | ticks Canvas ▸ Snap to Objects (Milestone 7) |
 | `recents` | rebuilds Open Recent; empty shows a disabled placeholder |
 
 Checks and enabled state are set on the native items directly. The menu is
