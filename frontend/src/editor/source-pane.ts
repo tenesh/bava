@@ -25,8 +25,23 @@ export type SourcePaneOptions = {
   isReserved?: (binding: KeyBinding) => boolean;
 };
 
+/** Every mounted pane, by its editor's root element. */
+const mounted = new WeakMap<Element, SourcePane>();
+
 export class SourcePane {
   #view: EditorView | null = null;
+
+  /**
+   * The pane whose editor contains `element`, or null. Edit commands arrive
+   * from the native menu and must reach the editor with focus: more than one
+   * pane can be on screen (the document's, and the Diagram from Code
+   * dialog's), and sending them all to one pasted into an editor nobody was
+   * looking at.
+   */
+  static containing(element: Element | null): SourcePane | null {
+    const root = element?.closest('.cm-editor');
+    return root ? (mounted.get(root) ?? null) : null;
+  }
 
   mount(host: HTMLElement, options: SourcePaneOptions): void {
     const extensions: Extension[] = [
@@ -47,6 +62,7 @@ export class SourcePane {
       state: EditorState.create({ doc: options.doc, extensions }),
       parent: host,
     });
+    mounted.set(this.#view.dom, this);
   }
 
   /** The current document, for feeding the render client. */
@@ -112,6 +128,7 @@ export class SourcePane {
 
   /** Call from the component's cleanup return. */
   destroy(): void {
+    if (this.#view) mounted.delete(this.#view.dom);
     this.#view?.destroy();
     this.#view = null;
   }

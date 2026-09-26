@@ -603,6 +603,15 @@
    * wherever focus is: the source editor, a text field, or the canvas; and
    * nowhere when the canvas is hidden or a dialog has focus.
    */
+  /**
+   * The source editor with focus: the document's pane, or another source pane
+   * (the Diagram from Code dialog's). An edit command acts on the one the user
+   * is typing in, never on one they cannot see.
+   */
+  function focusedSource(): SourcePane {
+    return SourcePane.containing(document.activeElement) ?? pane;
+  }
+
   async function routeEdit(actions: {
     source: () => void | Promise<void>;
     field: () => void | Promise<void>;
@@ -624,7 +633,7 @@
   const clipboardHandlers = {
     copy: () =>
       routeEdit({
-        source: () => Clipboard.SetText(pane.selectedText()).then(() => {}),
+        source: () => Clipboard.SetText(focusedSource().selectedText()).then(() => {}),
         code: () => Clipboard.SetText(codeEditor?.selectedText() ?? '').then(() => {}),
         field: () => Clipboard.SetText(fieldSelection(document.activeElement)).then(() => {}),
         canvas: () => void canvasCommands.copy(),
@@ -632,8 +641,9 @@
     cut: () =>
       routeEdit({
         source: async () => {
-          await Clipboard.SetText(pane.selectedText());
-          pane.replaceSelection('');
+          const editor = focusedSource();
+          await Clipboard.SetText(editor.selectedText());
+          editor.replaceSelection('');
         },
         code: async () => {
           await Clipboard.SetText(codeEditor?.selectedText() ?? '');
@@ -649,7 +659,11 @@
       }),
     paste: () =>
       routeEdit({
-        source: async () => pane.replaceSelection(await Clipboard.Text()),
+        source: async () => {
+          // Chosen before the await: focus can move while the clipboard is read.
+          const editor = focusedSource();
+          editor.replaceSelection(await Clipboard.Text());
+        },
         code: async () => codeEditor?.replaceSelection(await Clipboard.Text()),
         field: async () => void document.execCommand('insertText', false, await Clipboard.Text()),
         canvas: () => {
@@ -695,14 +709,14 @@
 
     'edit.undo': () =>
       routeEdit({
-        source: () => pane.undo(),
+        source: () => focusedSource().undo(),
         code: () => codeEditor?.undo(),
         field: fieldCommand('undo'),
         canvas: canvasEdit(canvasCommands.undo),
       }),
     'edit.redo': () =>
       routeEdit({
-        source: () => pane.redo(),
+        source: () => focusedSource().redo(),
         code: () => codeEditor?.redo(),
         field: fieldCommand('redo'),
         canvas: canvasEdit(canvasCommands.redo),
@@ -712,7 +726,7 @@
     'edit.paste': clipboardHandlers.paste,
     'edit.selectAll': () =>
       routeEdit({
-        source: () => pane.selectAll(),
+        source: () => focusedSource().selectAll(),
         code: () => codeEditor?.selectAll(),
         field: fieldCommand('selectAll'),
         canvas: () => {
@@ -1331,6 +1345,7 @@
   direction={diagramDialog.direction}
   onEngine={(next) => diagramDialog.setEngine(next)}
   onDirection={(next) => diagramDialog.setDirection(next)}
+  isReserved={reservedByMenu(menuSpec as MenuSpec, platform)}
   onSource={(next) => diagramDialog.setSource(next)}
   onInsert={insertDiagram}
   onOpenChange={(next) => {
