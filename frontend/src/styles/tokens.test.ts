@@ -255,3 +255,20 @@ describe('the attach highlight tokens', () => {
     expect(css).toMatch(/prefers-reduced-motion[\s\S]*--duration-pulse:\s*0ms/);
   });
 });
+
+// Milestone 7: snapping to objects, Excalidraw's values.
+describe('the snapping tokens', () => {
+  const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+  it.each([
+    ['--size-snap-distance', 8],
+    ['--size-snap-guide', 1],
+    ['--size-snap-cross', 4],
+    ['--size-snap-gap-tick', 16],
+    ['--size-snap-gap-mark', 8],
+  ])('%s is %ipx', (name, px) => {
+    expect(css).toMatch(new RegExp(`${name}:\\s*${px}px`));
+  });
+  it('has a guide colour in each theme', () => {
+    expect((css.match(/--color-snap-guide:/g) ?? []).length).toBe(2);
+  });
+});

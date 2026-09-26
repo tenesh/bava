@@ -40,6 +40,10 @@ type Settings struct {
 	// MidpointSnap is whether an arrow end snaps to a side's middle. On by
 	// default.
 	MidpointSnap bool `json:"midpointSnap"`
+	// ObjectSnap is whether a moved, resized or drawn shape snaps to other
+	// elements' edges, centres and spacing; Cmd/Ctrl turns it over for one
+	// drag. Off by default, as Excalidraw's.
+	ObjectSnap bool `json:"objectSnap"`
 }
 
 // Autosave modes.
@@ -67,6 +71,8 @@ func Defaults() Settings {
 		// As Excalidraw's: arrows attach, and ends snap to side middles.
 		ArrowBinding: true,
 		MidpointSnap: true,
+		// Off, as Excalidraw's: shapes move freely unless asked to snap.
+		ObjectSnap: false,
 	}
 }
 

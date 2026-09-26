@@ -94,6 +94,19 @@ func TestPaneTogglesReflectState(t *testing.T) {
 	}
 }
 
+// Milestone 7: Canvas ▸ Snap to Objects is ticked when the setting is on.
+func TestSnapToObjectsReflectsState(t *testing.T) {
+	built, _ := build(t, "darwin")
+	built.Apply(menu.State{ObjectSnap: true})
+	if item := built.Item("canvas.snapToObjects"); item == nil || !item.Checked() {
+		t.Fatal("Snap to Objects is not ticked with the setting on")
+	}
+	built.Apply(menu.State{ObjectSnap: false})
+	if built.Item("canvas.snapToObjects").Checked() {
+		t.Error("Snap to Objects is ticked with the setting off")
+	}
+}
+
 // Menus are never inspected by a test runner's click, so emission is checked
 // by applying recents and asserting Apply does not panic on repeated calls;
 // the recents submenu is cleared and rebuilt each time.

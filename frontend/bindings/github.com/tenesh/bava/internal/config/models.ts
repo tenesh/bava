@@ -48,4 +48,11 @@ export interface Settings {
      * default.
      */
     "midpointSnap": boolean;
+
+    /**
+     * ObjectSnap is whether a moved, resized or drawn shape snaps to other
+     * elements' edges, centres and spacing; Cmd/Ctrl turns it over for one
+     * drag. Off by default, as Excalidraw's.
+     */
+    "objectSnap": boolean;
 }

@@ -115,6 +115,15 @@ describe('canvas-scoped shortcuts', () => {
     expect(press('Enter', { metaKey: true })).toBe('canvas.editPoints');
   });
 
+  // Milestone 7: Alt+S turns snapping to objects on and off, on the canvas
+  // only (in a text field, macOS's Option+S types ß). Matched by the key's
+  // place, so the ß it reports on macOS does not matter.
+  it.each(['darwin', 'windows', 'linux'] as const)('match Alt+S on %s, on the canvas only', (platform) => {
+    const match = matchShortcut(spec as MenuSpec, platform);
+    expect(match(key({ code: 'KeyS', key: platform === 'darwin' ? 'ß' : 's', altKey: true }))).toBe('canvas.snapToObjects');
+    expect(canvasScoped(spec as MenuSpec).has('canvas.snapToObjects')).toBe(true);
+  });
+
   // Dropped in 06.12 (decision 6): their commands stay in the menus, keyless.
   it('no longer match the keys that were dropped', () => {
     const match = matchShortcut(spec as MenuSpec, 'darwin');

@@ -36,6 +36,7 @@ import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
 import { handleCentre, rotateHandleCentre } from './resize';
 import { chromeFor, elbowSegmentHandles, focusSpots, grown, offersMiddles } from './selection-chrome';
 import { angleOfElement, centreOf, selectionFrame } from './rotate';
+import type { Guide } from './snapping';
 
 export type CanvasStageOptions = {
   /** Reads a CSS custom property. Injected so tests need no stylesheet. */
@@ -136,6 +137,9 @@ export class CanvasStage {
   /** Tokenised code per block, handed in by the caller. */
   #codeRuns = new Map<ElementId, Run[][]>();
   #marquee: Konva.Rect | null = null;
+  /** The guides snapping to objects draws (Milestone 7), and their lines. */
+  #snapGuides: Guide[] = [];
+  #snapGuideLines: Konva.Line[] = [];
   #trail: Konva.Line | null = null;
   #markedForErase = new Set<ElementId>();
   #zoom = 1;
@@ -713,6 +717,70 @@ export class CanvasStage {
   }
 
   /**
+   * Draw the guides a snap made, or clear them with an empty list:
+   * Excalidraw's, solid, screen-sized at every zoom. Aligned points get a
+   * line through them and a cross at each; a pointer snap a cross at its
+   * target and a line to the pointer; equal spacing a line along each gap
+   * with a tick at each end and two marks at its middle.
+   */
+  setSnapGuides(guides: Guide[]): void {
+    // Hovering asks every frame; nothing to nothing draws nothing.
+    if (guides.length === 0 && this.#snapGuides.length === 0) return;
+    this.#snapGuides = guides;
+    this.#drawSnapGuides(cached(this.#read));
+  }
+
+  /** The snap guides' lines, for tests: what was drawn. */
+  snapGuideLines(): Konva.Line[] {
+    return this.#snapGuideLines;
+  }
+
+  #drawSnapGuides(read: ReadVariable): void {
+    for (const line of this.#snapGuideLines) line.destroy();
+    this.#snapGuideLines = [];
+    if (!this.#overlay) return;
+    const scale = 1 / this.#zoom;
+    const colour = read('--color-snap-guide').trim();
+    const width = number(read, '--size-snap-guide') * scale;
+    const cross = (number(read, '--size-snap-cross') / 2) * scale;
+    const tick = (number(read, '--size-snap-gap-tick') / 2) * scale;
+    const mark = (number(read, '--size-snap-gap-mark') / 2) * scale;
+    const segments: number[][] = [];
+    const crossAt = (p: Point) => {
+      segments.push([p.x - cross, p.y - cross, p.x + cross, p.y + cross], [p.x - cross, p.y + cross, p.x + cross, p.y - cross]);
+    };
+    for (const guide of this.#snapGuides) {
+      if (guide.kind === 'points') {
+        const first = guide.points[0];
+        const last = guide.points[guide.points.length - 1];
+        if (first && last && (first.x !== last.x || first.y !== last.y)) segments.push([first.x, first.y, last.x, last.y]);
+        guide.points.forEach(crossAt);
+      } else if (guide.kind === 'pointer') {
+        segments.push([guide.from.x, guide.from.y, guide.to.x, guide.to.y]);
+        crossAt(guide.from);
+      } else {
+        const { from, to } = guide;
+        segments.push([from.x, from.y, to.x, to.y]);
+        // Across the gap: a tick at each end, and two marks either side of the middle.
+        const across = (at: Point, reach: number) =>
+          guide.axis === 'x' ? [at.x, at.y - reach, at.x, at.y + reach] : [at.x - reach, at.y, at.x + reach, at.y];
+        segments.push(across(from, tick), across(to, tick));
+        const middle = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+        // The marks sit half their own reach either side of the middle.
+        const apart = mark / 2;
+        const along = (by: number) => (guide.axis === 'x' ? { x: middle.x + by, y: middle.y } : { x: middle.x, y: middle.y + by });
+        segments.push(across(along(-apart), mark), across(along(apart), mark));
+      }
+    }
+    for (const points of segments) {
+      const line = new Konva.Line({ points, stroke: colour, strokeWidth: width, listening: false });
+      this.#overlay.add(line);
+      this.#snapGuideLines.push(line);
+    }
+    this.#overlay.batchDraw();
+  }
+
+  /**
    * Fade the elements the eraser has marked and draw its trail (scene
    * coordinates, flat x,y pairs). An empty set and trail clear both.
    */
@@ -766,6 +834,8 @@ export class CanvasStage {
   /** Show the scene at a zoom and pan, as the viewport computes them. */
   setViewport(view: { zoom: number; pan: { x: number; y: number } }): void {
     this.#zoom = view.zoom;
+    // Guides are screen-sized: a zoom while hovering redraws them.
+    if (this.#snapGuides.length > 0) this.#drawSnapGuides(cached(this.#read));
     this.#stage?.scale({ x: view.zoom, y: view.zoom });
     this.#stage?.position(view.pan);
     this.#stage?.batchDraw();
@@ -810,6 +880,7 @@ export class CanvasStage {
     }
     this.#layer?.batchDraw();
     this.#drawSelection(read);
+    if (this.#snapGuides.length > 0) this.#drawSnapGuides(read);
   }
 
   /** The Konva group for an element, positioned at its `x, y`. */

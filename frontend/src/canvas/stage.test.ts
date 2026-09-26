@@ -248,6 +248,83 @@ describe('CanvasStage', () => {
     stage.destroy();
   });
 
+  // Milestone 7: the guides snapping draws, Excalidraw's, screen-sized.
+  describe('snap guides', () => {
+    const guideTheme = reader({
+      '--color-snap-guide': 'tomato',
+      '--size-snap-guide': '1px',
+      '--size-snap-cross': '4px',
+      '--size-snap-gap-tick': '16px',
+      '--size-snap-gap-mark': '8px',
+    });
+
+    it('draws a line through aligned points with a cross at each, in the guide colour, over the zoom', () => {
+      const stage = new CanvasStage({ read: guideTheme });
+      stage.mount(host());
+      stage.setViewport({ zoom: 2, pan: { x: 0, y: 0 } });
+      stage.setSnapGuides([{ kind: 'points', points: [{ x: 10, y: 0 }, { x: 10, y: 100 }] }]);
+      const lines = stage.snapGuideLines();
+      expect(lines.map((line) => line.points())).toEqual([
+        [10, 0, 10, 100],
+        // Each cross: two diagonals reaching 2 screen px (1 scene unit at zoom 2) each way.
+        [9, -1, 11, 1],
+        [9, 1, 11, -1],
+        [9, 99, 11, 101],
+        [9, 101, 11, 99],
+      ]);
+      expect(lines.every((line) => line.stroke() === 'tomato' && line.strokeWidth() === 0.5)).toBe(true);
+      stage.destroy();
+    });
+
+    it('draws a spacing guide with end ticks and two middle marks', () => {
+      const stage = new CanvasStage({ read: guideTheme });
+      stage.mount(host());
+      stage.setSnapGuides([{ kind: 'gap', axis: 'x', from: { x: 40, y: 20 }, to: { x: 80, y: 20 } }]);
+      expect(stage.snapGuideLines().map((line) => line.points())).toEqual([
+        [40, 20, 80, 20],
+        [40, 12, 40, 28],
+        [80, 12, 80, 28],
+        [58, 16, 58, 24],
+        [62, 16, 62, 24],
+      ]);
+      stage.destroy();
+    });
+
+    it('draws a pointer guide as a cross and a line to the pointer', () => {
+      const stage = new CanvasStage({ read: guideTheme });
+      stage.mount(host());
+      stage.setSnapGuides([{ kind: 'pointer', from: { x: 50, y: 50 }, to: { x: 50, y: 200 } }]);
+      expect(stage.snapGuideLines().map((line) => line.points())).toEqual([
+        [50, 50, 50, 200],
+        [48, 48, 52, 52],
+        [48, 52, 52, 48],
+      ]);
+      stage.destroy();
+    });
+
+    it('redraws them at the new size when the zoom changes', () => {
+      const stage = new CanvasStage({ read: guideTheme });
+      stage.mount(host());
+      stage.setSnapGuides([{ kind: 'points', points: [{ x: 0, y: 0 }, { x: 0, y: 10 }] }]);
+      stage.setViewport({ zoom: 4, pan: { x: 0, y: 0 } });
+      expect(stage.snapGuideLines()[0].strokeWidth()).toBe(0.25);
+      stage.destroy();
+    });
+
+    it('clears them, and re-reads the colour on a theme change', () => {
+      let colour = 'tomato';
+      const stage = new CanvasStage({ read: (name) => (name === '--color-snap-guide' ? colour : guideTheme(name)) });
+      stage.mount(host());
+      stage.setSnapGuides([{ kind: 'points', points: [{ x: 0, y: 0 }, { x: 0, y: 10 }] }]);
+      colour = 'salmon';
+      stage.restyle();
+      expect(stage.snapGuideLines()[0].stroke()).toBe('salmon');
+      stage.setSnapGuides([]);
+      expect(stage.snapGuideLines()).toEqual([]);
+      stage.destroy();
+    });
+  });
+
   it('fades elements the eraser has marked, draws its trail, and clears both', () => {
     const stage = new CanvasStage({
       read: reader({ '--opacity-erasing': '0.2', '--color-text-faint': 'gray', '--size-eraser-trail': '6px' }),

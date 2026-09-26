@@ -165,6 +165,8 @@
         { "kind": "command", "id": "canvas.lock", "label": "Lock", "shortcut": "Shift+CmdOrCtrl+L", "scope": "canvas" },
         { "kind": "command", "id": "canvas.unlockAll", "label": "Unlock All" },
         { "kind": "separator" },
+        { "kind": "checkbox", "id": "canvas.snapToObjects", "label": "Snap to Objects", "shortcut": "OptionOrAlt+S", "scope": "canvas" },
+        { "kind": "separator" },
         {
           "kind": "submenu",
           "id": "canvas.copyAs",

@@ -394,3 +394,12 @@ same step. A size crosses between text and code by its step (`fontSizeFor`).
 the exporter and the label editor's field (`labelField`) all use it, and the
 line's gap is its turned box (`labelCorners`).
 
+## Snapping to objects is pure, and gathered once per drag
+`snapping.ts` decides every snap from scene data: the box rule (every element
+offers its box's nine points, turned with it), per-axis nearest within
+`--size-snap-distance` over the zoom, equal spacing between neighbours only,
+and guides from exact alignments alone. The pointer gathers the targets at
+the first move that needs them and keeps them for the drag (`Drag.snap`),
+since gathering is the expensive part; the stage only draws `snapGuides`.
+Targets are kept sorted by x and y (`References.lines`): comparing every
+moving point with every target point took 8 ms a move on 2,000 shapes.

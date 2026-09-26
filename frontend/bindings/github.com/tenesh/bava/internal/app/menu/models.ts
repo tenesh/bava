@@ -31,5 +31,10 @@ export interface State {
      * ShowsCanvas reports the canvas visible, which is where a diagram goes.
      */
     "showsCanvas": boolean;
+
+    /**
+     * ObjectSnap reports snapping to objects on, which ticks its menu item.
+     */
+    "objectSnap": boolean;
     "recents": string[] | null;
 }

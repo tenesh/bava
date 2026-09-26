@@ -3668,3 +3668,177 @@ describe('resizing a code block at its own size (review of 06.17)', () => {
     expect(history.current.elements[0]).toMatchObject({ h: 150 });
   });
 });
+
+// Milestone 7: snapping to objects, as Excalidraw's, read by the pointer.
+describe('snapping to objects', () => {
+  function kit(tool: Parameters<ReturnType<typeof createTools>['activate']>[0], objectSnap: boolean, extra: Record<string, unknown> = {}) {
+    const history = createHistory({ elements: [] });
+    const selection = createSelection();
+    const tools = createTools();
+    tools.activate(tool);
+    const handler = createPointerHandler({ history, selection, tools, objectSnap: () => objectSnap, snapDistance: () => 8 });
+    history.mutate((scene) => {
+      scene.elements.push(
+        { id: 't', type: 'rect', x: 200, y: 0, w: 100, h: 100, z: 1 } as never,
+        { id: 'm', type: 'rect', x: 0, y: 0, w: 50, h: 50, z: 2, ...extra } as never,
+      );
+    });
+    const element = (id: string) => history.current.elements.find((e) => e.id === id)!;
+    return { history, selection, tools, handler, element };
+  }
+
+  // A drag of (147, 3) leaves m 3 short of t's left edge and 3 below its top.
+  function dragM(handler: ReturnType<typeof kit>['handler'], options: { mod?: boolean; shift?: boolean } = {}) {
+    handler.down(at(25, 25));
+    handler.move(at(172, 28), options);
+    return handler.up(at(172, 28), options);
+  }
+
+  it('lands a dragged shape flush with the setting on', () => {
+    const { handler, element } = kit('select', true);
+    dragM(handler);
+    expect(element('m')).toMatchObject({ x: 150, y: 0 });
+  });
+
+  it('moves freely with the setting on and Cmd/Ctrl held', () => {
+    const { handler, element } = kit('select', true);
+    dragM(handler, { mod: true });
+    expect(element('m')).toMatchObject({ x: 147, y: 3 });
+  });
+
+  it('snaps with the setting off and Cmd/Ctrl held, and not without', () => {
+    const held = kit('select', false);
+    dragM(held.handler, { mod: true });
+    expect(held.element('m')).toMatchObject({ x: 150, y: 0 });
+    const free = kit('select', false);
+    dragM(free.handler);
+    expect(free.element('m')).toMatchObject({ x: 147, y: 3 });
+  });
+
+  it('snaps an Alt-copy, the original staying where it was', () => {
+    const { history, handler, element } = kit('select', true);
+    handler.down(at(25, 25));
+    handler.move(at(172, 28), { alt: true });
+    handler.up(at(172, 28), { alt: true });
+    expect(element('m')).toMatchObject({ x: 0, y: 0 });
+    expect(history.current.elements.at(-1)).toMatchObject({ x: 150, y: 0, w: 50 });
+  });
+
+  // Shift drops the smaller move, but the snap still moves m off that axis to
+  // line up (Excalidraw's): from y 3, the locked drag leaves it at 3, and the
+  // snap takes it to t's top.
+  it('still snaps a Shift-locked drag, off its axis too', () => {
+    const { handler, element } = kit('select', true, { y: 3 });
+    handler.down(at(25, 28));
+    handler.move(at(172, 29), { shift: true });
+    handler.up(at(172, 29), { shift: true });
+    expect(element('m')).toMatchObject({ x: 150, y: 0 });
+  });
+
+  // Review finding: the press snapped the start, so a click near an element
+  // measured as a drag from there and wrote an invisible 0-by-0 shape.
+  it('adds nothing for a click with a box tool near an element', () => {
+    const { history, handler } = kit('rect', true);
+    const before = history.current.elements.length;
+    handler.move(at(205, 53));
+    handler.down(at(205, 53));
+    handler.up(at(205, 53));
+    expect(history.current.elements).toHaveLength(before);
+  });
+
+  it('clears its guides on release, the tool staying on', () => {
+    const { handler, tools } = kit('rect', true);
+    tools.toggleLock();
+    handler.down(at(203, 103));
+    handler.move(at(297, 197));
+    handler.preview(at(297, 197));
+    expect(handler.snapGuides.length).toBeGreaterThan(0);
+    handler.up(at(297, 197));
+    expect(tools.active).toBe('rect');
+    expect(handler.snapGuides).toEqual([]);
+  });
+
+  // Review finding: a shape's self-loop arrow is carried with it, and made it
+  // offer the box around shape and loop instead of its own points.
+  it('snaps a shape by its own box, not its loop arrow\'s', () => {
+    const { history, handler, element } = kit('select', true);
+    // t lowered so m lines up with it by its own centre (28 to t's top, 25)
+    // and by nothing on the box around m and its loop.
+    history.mutate((scene) => {
+      const t = scene.elements.find((e) => e.id === 't')!;
+      t.y = 25;
+    });
+    history.mutate((scene) => {
+      scene.elements.push({
+        id: 'loop', type: 'arrow', x: 0, y: -40, w: 50, h: 40, z: 3, points: [10, 40, 25, 0, 40, 40],
+        startBinding: 'm', endBinding: 'm',
+      } as never);
+    });
+    // Pressed in m's lower corner, clear of the loop drawn over it.
+    handler.down(at(3, 47));
+    handler.move(at(150, 50));
+    handler.up(at(150, 50));
+    expect(history.current.elements.find((e) => e.id === 'loop')).toBeDefined();
+    expect(element('m')).toMatchObject({ x: 150, y: 0 });
+  });
+
+  it('previews what the release commits, with guides until the release', () => {
+    const { handler, element } = kit('select', true);
+    handler.down(at(25, 25));
+    handler.move(at(172, 28));
+    const preview = handler.preview(at(172, 28))!.elements.find((e) => e.id === 'm');
+    expect(handler.snapGuides.length).toBeGreaterThan(0);
+    handler.up(at(172, 28));
+    expect(element('m')).toEqual(preview);
+    expect(handler.snapGuides).toEqual([]);
+  });
+
+  it('snaps the corner an upright resize moves', () => {
+    const { handler, selection, element } = kit('select', true);
+    selection.click('m');
+    handler.down(at(50, 50));
+    handler.move(at(197, 53));
+    handler.up(at(197, 53));
+    expect(element('m')).toMatchObject({ x: 0, y: 0, w: 200, h: 50 });
+  });
+
+  it('never snaps the resize of a single turned element', () => {
+    const resize = (objectSnap: boolean) => {
+      // Turned half round, the drag reads (-147, -3) in its own frame: the
+      // moved corner would be 3 off the target's top if it snapped.
+      const { handler, selection, element } = kit('select', objectSnap, { angle: 180 });
+      selection.click('m');
+      handler.down(at(50, 50));
+      handler.move(at(197, 53));
+      handler.up(at(197, 53));
+      return element('m');
+    };
+    expect(resize(true)).toEqual(resize(false));
+  });
+
+  it('snaps a drawn shape\'s start and its dragged corner', () => {
+    const { history, handler } = kit('rect', true);
+    handler.move(at(203, 103));
+    expect(handler.snapGuides.some((g) => g.kind === 'pointer')).toBe(true);
+    handler.down(at(203, 103));
+    handler.move(at(297, 197));
+    handler.up(at(297, 197));
+    expect(history.current.elements.at(-1)).toMatchObject({ type: 'rect', x: 200, y: 100, w: 100, h: 97 });
+  });
+
+  it('snaps where the text tool places text, unless Cmd/Ctrl is held', () => {
+    const { handler } = kit('text', true);
+    expect(handler.snapPlacement(at(203, 150))).toEqual({ x: 200, y: 150 });
+    expect(handler.snapPlacement(at(203, 150), { mod: true })).toEqual({ x: 203, y: 150 });
+  });
+
+  it('never snaps a line being drawn', () => {
+    const { history, handler } = kit('line', true);
+    handler.down(at(0, 300));
+    handler.move(at(203, 203));
+    handler.up(at(203, 203));
+    const line = history.current.elements.at(-1) as unknown as { x: number; y: number; points: number[] };
+    expect([line.x + line.points[2], line.y + line.points[3]]).toEqual([203, 203]);
+    expect(handler.snapGuides).toEqual([]);
+  });
+});

@@ -47,6 +47,16 @@
   // The spots an elbow end snaps to, shown while one is dragged: Excalidraw's
   // 4 px radius (this is the diameter).
   --size-snap-dot: 8px;
+  // Snapping to objects (Milestone 7), Excalidraw's values: the reach,
+  // 8 px on screen at any zoom; a guide line's width; the cross at each
+  // aligned point, 2 px each way (this is end to end); and a spacing
+  // guide's end ticks, 8 px each way, and its two middle marks, 4 px each
+  // way and 4 px apart.
+  --size-snap-distance: 8px;
+  --size-snap-guide: 1px;
+  --size-snap-cross: 4px;
+  --size-snap-gap-tick: 16px;
+  --size-snap-gap-mark: 8px;
   // The translucent disc under the handle the pointer is over: Excalidraw's
   // 10 px radius.
   --size-point-hover: 20px;

@@ -121,6 +121,16 @@
     newStyle: (type) => newElementStyle.for(type),
     bindingEnabled: () => settingsState.arrowBinding,
     midpointSnap: () => settingsState.midpointSnap,
+    // Snapping to objects (Milestone 7): its reach is 8 screen px at any zoom,
+    // and only what is on screen is snapped to.
+    objectSnap: () => settingsState.objectSnap,
+    snapDistance: () => (parseFloat(readRootVariable('--size-snap-distance')) || 0) / viewport.zoom,
+    visibleBox: () => {
+      const { width, height } = canvas.size();
+      if (!width || !height) return null;
+      const corner = viewport.screenToScene({ x: 0, y: 0 });
+      return { x: corner.x, y: corner.y, w: width / viewport.zoom, h: height / viewport.zoom };
+    },
     // Half a handle's on-screen side, in scene units at the current zoom.
     handleSize: () => (parseFloat(readRootVariable('--size-selection-handle')) || 0) / 2 / viewport.zoom,
     // Half the trail's on-screen width, in scene units: what the trail visibly covers.
@@ -426,6 +436,8 @@
   let drawingWith = tools.active;
   $effect(() => {
     const tool = tools.active;
+    // Guides belong to the tool that drew them.
+    if (tool !== drawingWith) canvas.setSnapGuides([]);
     if (tool !== drawingWith && pointer.drawingPoints) {
       pointer.finishPoints({ keepTool: true });
       canvas.setBindingCandidates([]);
@@ -914,6 +926,8 @@
     },
     'canvas.lock': canvasEdit(canvasCommands.lock),
     'canvas.unlockAll': canvasEdit(canvasCommands.unlockAll),
+    // Alt+S, or Canvas ▸ Snap to Objects: the setting, saved (Milestone 7).
+    'canvas.snapToObjects': () => void settingsState.setObjectSnap(!settingsState.objectSnap).then(reportSettingsError),
     'canvas.copyPng': () => {
       if (canvasShown()) void exporter.copyFromMenu('png');
     },
@@ -1053,6 +1067,7 @@
       // scene as it is when the drag would change nothing.
       canvas.render(pointer.preview(point, { shift, alt, mod }) ?? history.current);
       canvas.setMarquee(pointer.marquee);
+      canvas.setSnapGuides(pointer.snapGuides);
       // The shapes this arrow would attach to, shown while it is drawn.
       canvas.setBindingCandidates(pointer.bindingCandidates, pointer.snapSpots);
     });
@@ -1066,6 +1081,8 @@
       updateCursor();
       // With the Arrow tool, the shape a press would start on (06.15, C18).
       if (!pointer.dragging && !pointer.drawingPoints) canvas.setBindingCandidates(pointer.bindingCandidates);
+      // With a tool that places a box, where its start would snap (Milestone 7).
+      if (!pointer.dragging) canvas.setSnapGuides(pointer.snapGuides);
     });
     const drawClicking = frameThrottle((point: { x: number; y: number }, shift: boolean) => {
       canvas.render(pointer.pointsPreview(point, { shift }) ?? history.current);
@@ -1109,7 +1126,9 @@
         return;
       }
       if (tools.active === 'text') {
-        const point = scenePoint(event);
+        // Placed where the click snaps, as a drawn box starts (Milestone 7).
+        const point = pointer.snapPlacement(scenePoint(event), { mod: event.metaKey || event.ctrlKey });
+        canvas.setSnapGuides([]);
         tools.escape();
         // After the release, so the click's own focus change cannot close it.
         queueMicrotask(() => placeText(point));
@@ -1123,6 +1142,7 @@
         if (element) queueMicrotask(() => editCode(element));
       }
       canvas.setMarquee(null);
+      canvas.setSnapGuides([]);
       canvas.setErasing(new Set(), []);
       canvas.setBindingCandidates([]);
       commit();
@@ -1410,6 +1430,7 @@
       hasLocked: published.elements.some(isLocked),
       hasDocument: doc.path !== null || published.elements.length > 0,
       showsCanvas: view.showsCanvas,
+      objectSnap: settingsState.objectSnap,
       recents: recents.paths,
     };
     void MenuService.SetState(state).catch(() => {
@@ -1464,8 +1485,10 @@
     <CanvasSection
       arrowBinding={settingsState.arrowBinding}
       midpointSnap={settingsState.midpointSnap}
+      objectSnap={settingsState.objectSnap}
       onArrowBindingChange={(on) => void settingsState.setArrowBinding(on).then(reportSettingsError)}
       onMidpointSnapChange={(on) => void settingsState.setMidpointSnap(on).then(reportSettingsError)}
+      onObjectSnapChange={(on) => void settingsState.setObjectSnap(on).then(reportSettingsError)}
     />
     <AdvancedSection
       verbose={settingsState.verboseLogging}

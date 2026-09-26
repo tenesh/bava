@@ -111,6 +111,8 @@ export const messages = {
   'settings.arrowBinding': 'Attach arrows to shapes',
   'settings.arrowBinding.hint': 'Hold ⌘ or Ctrl while dragging an end to do the opposite.',
   'settings.midpointSnap': 'Snap arrow ends to side middles',
+  'settings.objectSnap': 'Snap to objects',
+  'settings.objectSnap.hint': 'Hold ⌘ or Ctrl while dragging to do the opposite.',
   'toolbar.editPoints': 'Edit points',
   'toolbar.closeLine': 'Close line',
   'toolbar.openLine': 'Open line',

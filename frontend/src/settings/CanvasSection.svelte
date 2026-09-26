@@ -1,7 +1,8 @@
 <script lang="ts">
   /**
-   * Settings ▸ Canvas: whether arrow ends attach to shapes, and whether they
-   * snap to a side's middle (Excalidraw's two toggles, 06.16).
+   * Settings ▸ Canvas: whether arrow ends attach to shapes, whether they
+   * snap to a side's middle (Excalidraw's two toggles, 06.16), and whether
+   * shapes snap to other objects (Milestone 7).
    *
    * Presentational. The caller holds the values and persists changes.
    */
@@ -11,11 +12,20 @@
   type Props = {
     arrowBinding: boolean;
     midpointSnap: boolean;
+    objectSnap: boolean;
     onArrowBindingChange: (on: boolean) => void;
     onMidpointSnapChange: (on: boolean) => void;
+    onObjectSnapChange: (on: boolean) => void;
   };
 
-  let { arrowBinding, midpointSnap, onArrowBindingChange, onMidpointSnapChange }: Props = $props();
+  let {
+    arrowBinding,
+    midpointSnap,
+    objectSnap,
+    onArrowBindingChange,
+    onMidpointSnapChange,
+    onObjectSnapChange,
+  }: Props = $props();
 
   const options: { value: 'off' | 'on'; label: string }[] = [
     { value: 'off', label: t('settings.off') },
@@ -44,6 +54,16 @@
       onValueChange={(value) => onMidpointSnapChange(value === 'on')}
     />
   </div>
+  <div class="row">
+    <span class="label">{t('settings.objectSnap')}</span>
+    <Segments
+      value={objectSnap ? 'on' : 'off'}
+      {options}
+      label={t('settings.objectSnap')}
+      onValueChange={(value) => onObjectSnapChange(value === 'on')}
+    />
+  </div>
+  <p class="hint">{t('settings.objectSnap.hint')}</p>
 </section>
 
 <style>

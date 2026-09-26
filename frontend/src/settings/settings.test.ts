@@ -11,6 +11,7 @@ const defaults = {
   verboseLogging: false,
   arrowBinding: true,
   midpointSnap: true,
+  objectSnap: false,
 };
 
 function io(over: Partial<SettingsIO> = {}): SettingsIO {
@@ -89,6 +90,7 @@ describe('settings', () => {
     expect(go).toContain(`DebounceMS:   ${SETTINGS_DEFAULTS.debounceMs},`);
     expect(go).toContain(`ArrowBinding: ${SETTINGS_DEFAULTS.arrowBinding},`);
     expect(go).toContain(`MidpointSnap: ${SETTINGS_DEFAULTS.midpointSnap},`);
+    expect(go).toContain(`ObjectSnap: ${SETTINGS_DEFAULTS.objectSnap},`);
   });
 
   // Go owns the verbose flag: it changes the live log level as well as the
@@ -146,3 +148,24 @@ describe('the canvas settings', () => {
   });
 });
 
+
+// Milestone 7: snapping to objects is off until the user turns it on.
+describe('snapping to objects', () => {
+  it('is off by default, and saves a change', async () => {
+    const stored = io();
+    const settings = createSettings(stored);
+    await settings.load();
+    expect(settings.objectSnap).toBe(false);
+    await settings.setObjectSnap(true);
+    expect(settings.objectSnap).toBe(true);
+    expect(stored.save).toHaveBeenLastCalledWith({ ...defaults, objectSnap: true });
+  });
+
+  it('reads a settings file without it as off', async () => {
+    const older: Partial<typeof defaults> = { ...defaults };
+    delete older.objectSnap;
+    const settings = createSettings(io({ load: vi.fn().mockResolvedValue(older) }));
+    await settings.load();
+    expect(settings.objectSnap).toBe(false);
+  });
+});
