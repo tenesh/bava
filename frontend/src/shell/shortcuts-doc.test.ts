@@ -32,4 +32,14 @@ describe('docs/shortcuts.md', () => {
     const missing = expectedRows().filter((row) => !doc.includes(row));
     expect(missing).toEqual([]);
   });
+
+  // And nothing more: a row for a key the menu no longer binds is a promise
+  // the app does not keep (06.12 dropped nineteen).
+  it('lists no menu shortcut the menu does not bind', () => {
+    const doc = readFileSync(resolve(__dirname, '../../../docs/shortcuts.md'), 'utf8');
+    const table = doc.slice(doc.indexOf('| Menu | Item |'), doc.indexOf('\n\n', doc.indexOf('| Menu | Item |')));
+    const rows = table.split('\n').slice(2);
+    const expected = new Set(expectedRows());
+    expect(rows.filter((row) => !expected.has(row))).toEqual([]);
+  });
 });

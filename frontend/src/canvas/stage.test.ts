@@ -546,7 +546,8 @@ describe('the rotate handle and what cannot rotate', () => {
     stage.render(one({ type: 'arrow', x: 0, y: 0, w: 40, h: 20, points: [0, 0, 40, 20], arrowType: 'elbow' }));
     stage.setSelection(['e1']);
     expect(stage.rotateHandle()).toBeNull();
-    expect(stage.selectionHandleCount()).toBe(8);
+    // No box handles either since 06.12: an elbow shows only its ends.
+    expect(stage.selectionHandleCount()).toBe(0);
     stage.destroy();
   });
 });
@@ -699,6 +700,18 @@ describe('drawing a code block', () => {
     stage.mount(host());
     stage.render(block());
     expect(stage.bodyFor('e1')!.fill()).toBe('whitesmoke');
+    stage.destroy();
+  });
+
+  // A block's width is the user's; a line longer than it continues below.
+  it('wraps a line longer than the block onto more rows', () => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    // jsdom measures a character as one unit: 24 wide, padded 8, holds 8.
+    stage.render(block({ w: 24 }));
+    stage.setCodeRuns('e1', [[{ text: 'a very long line of code that cannot fit', kind: 'plain' }]]);
+    const rows = new Set(stage.codeRuns('e1').map((node) => node.y()));
+    expect(rows.size).toBeGreaterThan(1);
     stage.destroy();
   });
 
@@ -993,6 +1006,70 @@ describe('the middle handle under a label', () => {
     stage.render(one({ type: 'arrow', x: 0, y: 0, w: 200, h: 0, points: [0, 0, 200, 0], label: 'sends' }));
     stage.setSelection(['e1']);
     expect(stage.middleHandles()).toHaveLength(0);
+    stage.destroy();
+  });
+});
+
+// Decision 3 of 06.12, as Excalidraw shows it (transformHandles.ts:328-354): a
+// two-point line or arrow, or an elbow, has no box; a bent one has the box
+// with four corners and the rotate handle.
+describe('what a selected line or arrow shows', () => {
+  const read = reader({
+    '--color-selection-handle': 'dodgerblue',
+    '--size-selection-handle': '8px',
+    '--size-rotate-gap': '16px',
+    '--size-bend-min-segment': '40px',
+    '--size-point-handle': '10px',
+  });
+  const selected = (element: Record<string, unknown>) => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.render(one(element as never));
+    stage.setSelection(['e1']);
+    return stage;
+  };
+
+  it('shows a straight arrow its points only, no box or rotate handle', () => {
+    const stage = selected({ type: 'arrow', x: 0, y: 0, w: 200, h: 50, points: [0, 0, 200, 50] });
+    expect(stage.selectionOutline()).toBeNull();
+    expect(stage.selectionHandleCount()).toBe(0);
+    expect(stage.rotateHandle()).toBeNull();
+    expect(stage.endpointHandles()).toHaveLength(2);
+    stage.destroy();
+  });
+
+  it('shows an elbow its ends only', () => {
+    const stage = selected({ type: 'arrow', arrowType: 'elbow', x: 0, y: 0, w: 200, h: 50, points: [0, 0, 100, 0, 100, 50, 200, 50] });
+    expect(stage.selectionOutline()).toBeNull();
+    expect(stage.selectionHandleCount()).toBe(0);
+    expect(stage.endpointHandles()).toHaveLength(2);
+    stage.destroy();
+  });
+
+  it('shows a bent line the box, four corners and the rotate handle', () => {
+    const stage = selected({ type: 'line', x: 0, y: 0, w: 200, h: 80, points: [0, 0, 100, 80, 200, 0] });
+    expect(stage.selectionOutline()).not.toBeNull();
+    expect(stage.selectionHandleCount()).toBe(4);
+    expect(stage.rotateHandle()).not.toBeNull();
+    stage.destroy();
+  });
+
+  it('draws point handles 5 px in radius on screen', () => {
+    const stage = selected({ type: 'line', x: 0, y: 0, w: 200, h: 0, points: [0, 0, 200, 0] });
+    expect(stage.endpointHandles()[0].radius()).toBe(5);
+    stage.destroy();
+  });
+});
+
+// Review of 06.12: a code block's height is its code's, so it has no top or
+// bottom handles, and none that would move its top.
+describe('the handles of a selected code block', () => {
+  it('are its sides and its bottom corners', () => {
+    const stage = new CanvasStage({ read: reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px', '--size-rotate-gap': '16px' }) });
+    stage.mount(host());
+    stage.render(one({ type: 'code', x: 0, y: 0, w: 200, h: 60, code: 'x', measuredWidth: 200, measuredHeight: 60 } as never));
+    stage.setSelection(['e1']);
+    expect(stage.selectionHandleCount()).toBe(4);
     stage.destroy();
   });
 });

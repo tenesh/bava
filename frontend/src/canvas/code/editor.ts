@@ -11,8 +11,8 @@
  * is what every other editor in Bava does.
  */
 import { EditorState, type Extension } from '@codemirror/state';
-import { EditorView, keymap } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap, redo, selectAll, undo } from '@codemirror/commands';
+import { EditorView, keymap, type KeyBinding } from '@codemirror/view';
+import { defaultKeymap, history, historyKeymap, indentWithTab, redo, selectAll, undo } from '@codemirror/commands';
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
 import { loadLanguageSupport } from './languages';
 import { measureCode, type CodeMetrics } from './measure';
@@ -32,7 +32,8 @@ export function commitCode(history: History, id: ElementId, code: string, metric
     const element = draft.elements.find((e) => e.id === id) as (SceneElement & CodeFields) | undefined;
     if (!element || element.type !== 'code') return;
     if (element.code === code) return;
-    const size = measureCode(code, metrics);
+    // The width is the user's; the height follows the code wrapped to it.
+    const size = measureCode(code, metrics, element.w);
     element.code = code;
     element.w = size.width;
     element.h = size.height;
@@ -58,6 +59,11 @@ export type CodeEditorRequest = {
    * clipped before the edit commits and the block itself is resized.
    */
   measure?: (code: string) => { width: number; height: number };
+  /**
+   * Bindings the native menu owns, dropped as the source pane drops them, so
+   * one key press has one meaning.
+   */
+  isReserved?: (binding: KeyBinding) => boolean;
   onCommit: (code: string) => void;
 };
 
@@ -114,7 +120,11 @@ export class CodeEditor {
       history(),
       syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
       ...(support ? [support] : []),
-      keymap.of([...defaultKeymap, ...historyKeymap]),
+      // Tab indents, as in any code editor, rather than moving focus away
+      // (which would close the block's editor).
+      keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab].filter((binding) => !request.isReserved?.(binding))),
+      // Lines wrap at the block's width, as the block draws them.
+      EditorView.lineWrapping,
       EditorView.domEventHandlers({
         keydown: (event) => {
           // Enter is a new line here; Escape is how you leave.

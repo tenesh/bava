@@ -69,3 +69,17 @@ describe('code that is not ASCII', () => {
     expect(columnsIn('é')).toBe(1);
   });
 });
+
+// With a width, the block is that wide and as tall as its wrapped lines.
+describe('a block of a chosen width', () => {
+  const metrics = { advance: 6, lineHeight: 20, padding: 8 };
+
+  it('keeps the width it is given', () => {
+    expect(measureCode('a', metrics, 200).width).toBe(200);
+  });
+
+  it('is as tall as its wrapped lines', () => {
+    // 10 columns fit in 76 (76 - 16 = 60, / 6): 'abcdefghijklmnop' is 2 lines, 'x' 1.
+    expect(measureCode('abcdefghijklmnop\nx', metrics, 76).height).toBe(3 * 20 + 16);
+  });
+});

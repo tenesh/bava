@@ -22,6 +22,8 @@ type SpecItem = {
   /** "canvas": the shortcut acts only when the canvas has the keyboard. */
   scope?: string;
   hint?: string;
+  /** A native role's name, for `kind: "role"`. */
+  role?: string;
   platforms?: string[];
   items?: SpecItem[];
 };
@@ -188,15 +190,45 @@ function parseEditorKey(name: string, platform: Platform): Combo {
 }
 
 /**
+ * The keys Wails binds on a native role itself, which `spec.json` never
+ * names. A copy of `RoleAccelerators` in `internal/app/menu/spec.go`; a test
+ * keeps the two the same.
+ */
+export const ROLE_ACCELERATORS: Record<string, string> = {
+  Hide: 'CmdOrCtrl+h',
+  HideOthers: 'CmdOrCtrl+OptionOrAlt+h',
+  Quit: 'CmdOrCtrl+q',
+  CloseWindow: 'CmdOrCtrl+w',
+  ToggleFullscreen: 'Ctrl+Command+F',
+  Minimise: 'CmdOrCtrl+M',
+  ServicesMenu: '',
+  ShowAll: '',
+  Zoom: '',
+  BringAllToFront: '',
+};
+
+/**
+ * A role's key on `platform`. Full screen's `Ctrl+Command+F` is a macOS key;
+ * read elsewhere it would lose `Command` and claim plain Ctrl+F.
+ */
+function roleKey(role: string, platform: Platform): string | undefined {
+  if (role === 'ToggleFullscreen' && platform !== 'darwin') return undefined;
+  return ROLE_ACCELERATORS[role];
+}
+
+/**
  * Whether a source-editor key binding collides with anything the menu owns,
  * native accelerator or frontend shortcut. The editor drops those bindings so
  * one key press has one meaning.
  */
 export function reservedByMenu(spec: MenuSpec, platform: Platform) {
-  const claimed = itemsOn(spec, platform)
+  const items = itemsOn(spec, platform);
+  const claimed = items
     // A canvas-scoped key is the editor's while the editor has focus.
     .filter((item) => item.scope !== 'canvas')
     .map((item) => item.accelerator ?? item.shortcut)
+    // The window's own items (Minimise, Hide, Quit...) bind keys too.
+    .concat(items.map((item) => (item.kind === 'role' && item.role ? roleKey(item.role, platform) : undefined)))
     .filter((combo): combo is string => Boolean(combo))
     .map((combo) => parseAccelerator(combo, platform));
   const field = platform === 'darwin' ? 'mac' : platform === 'windows' ? 'win' : 'linux';

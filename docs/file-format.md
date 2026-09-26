@@ -222,10 +222,14 @@ the pen recorded. They take `stroke`, and never `fill`.
 
 **The kind decides how bends are drawn.** A straight arrow or a line runs
 through its points with sharp corners. An arc curves smoothly through them
-(with no bends, it bows once, as it always has). An elbow routes itself from
-the first point to the last and does not draw its bends; they are kept, and
-drawn again if the arrow becomes straight or an arc. Switching kinds never
-loses a bend.
+(with no bends, it bows once, as it always has). An elbow's `points` are its
+route: right-angled, leaving each attached shape from the side its end is on
+and going around both shapes, recomputed whenever either moves. Switching an
+arrow to elbow replaces its bends with the route; switching away keeps only
+its two ends. An elbow written before this rule is routed when the file is
+opened: one with only its two ends gains its route, and one that kept bends
+from being switched (06.10 and 06.11 kept them) has those replaced by its
+route, which the next save writes.
 
 ### Attachment and containment
 An `arrow` may carry `startBinding` and `endBinding`: the `id` of the element
@@ -235,8 +239,9 @@ the centre, `[0, 0.5]` the middle of its left side), turned with it when it
 rotates. A bound end is drawn where the line from its anchor towards its
 neighbour (the next bend, or else the other end) leaves the target's outline,
 a fixed gap clear of it, so moving either end or the target re-aims the arrow.
-No anchor means the centre. An elbow aims across the arrow, since it draws
-none of its bends. A bent attached arrow written before bends existed (one
+No anchor means the centre. An elbow does not aim: its end stays on the side
+its anchor is on, where the anchor meets the outline, a gap clear, and its
+route goes around. A bent attached arrow written before bends existed (one
 inserted from D2, for instance) re-aims each end at its nearest bend, not
 across the arrow, the first time it is drawn by a Bava that has them. An
 anchor without its binding means nothing and is kept as written. The stored
@@ -264,10 +269,12 @@ A `code` element carries `code` (the text as typed, with its own line breaks),
 text) and the `measuredWidth`/`measuredHeight` every text-bearing element
 stores.
 
-**Its size comes from its code.** The block is as wide as its longest line,
-and never narrower than 20 columns, and as tall as its line count, so nothing
-it holds is ever hidden and an empty block has room to be typed into; it is
-the one element with no resize handles.
+**Its width is the user's; its height comes from its code.** The block is as
+wide as the user makes it (a new one starts 20 columns wide), and each line
+that does not fit wraps onto the next, at its last space or, for a word too
+long, at the edge. Its height is the wrapped line count, rewritten on every
+edit, so nothing it holds is ever hidden. A block written before this rule was
+sized to fit its longest line, so it draws unchanged.
 
 **An unknown `language` is kept and drawn as plain text.** A file written by a
 later Bava, or by hand, names a language this build may not bundle: losing the

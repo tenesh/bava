@@ -136,8 +136,10 @@ describe('routing through bends', () => {
     expect(path.slice(-2)).toEqual([100, 0]);
   });
 
-  it('routes an elbow from end to end, ignoring its bends', () => {
-    expect(routePoints(bent, 'elbow')).toEqual(routePoints([0, 0, 100, 0], 'elbow'));
+  // An elbow's points are its stored route (06.12, `elbow.ts`): drawn as they are.
+  it('draws an elbow\'s stored route as it is', () => {
+    const route = [0, 0, 50, 0, 50, 100, 100, 100];
+    expect(routePoints(route, 'elbow')).toEqual(route);
   });
 });
 

@@ -28,9 +28,9 @@
         { "kind": "command", "id": "file.save", "label": "Save", "accelerator": "CmdOrCtrl+S" },
         { "kind": "command", "id": "file.saveAs", "label": "Save As…", "accelerator": "Shift+CmdOrCtrl+S" },
         { "kind": "separator" },
-        { "kind": "command", "id": "file.export", "label": "Export…", "accelerator": "Shift+CmdOrCtrl+E" },
+        { "kind": "command", "id": "file.export", "label": "Export…" },
         { "kind": "separator" },
-        { "kind": "command", "id": "insert.diagram", "label": "Diagram from Code…", "accelerator": "Shift+CmdOrCtrl+D" },
+        { "kind": "command", "id": "insert.diagram", "label": "Diagram from Code…" },
         { "kind": "separator", "platforms": ["windows", "linux"] },
         {
           "kind": "submenu",
@@ -67,8 +67,8 @@
         { "kind": "radio", "id": "view.both", "group": "view.mode", "label": "Both", "accelerator": "CmdOrCtrl+2" },
         { "kind": "radio", "id": "view.canvas", "group": "view.mode", "label": "Canvas", "accelerator": "CmdOrCtrl+3" },
         { "kind": "separator" },
-        { "kind": "checkbox", "id": "view.files", "label": "Files", "accelerator": "OptionOrAlt+CmdOrCtrl+1" },
-        { "kind": "checkbox", "id": "view.ai", "label": "AI Pane", "accelerator": "OptionOrAlt+CmdOrCtrl+I" },
+        { "kind": "checkbox", "id": "view.files", "label": "Files" },
+        { "kind": "checkbox", "id": "view.ai", "label": "AI Pane" },
         { "kind": "separator" },
         { "kind": "command", "id": "view.zoomIn", "label": "Zoom In", "shortcut": "CmdOrCtrl+=", "nativeOn": ["darwin"] },
         { "kind": "command", "id": "view.zoomOut", "label": "Zoom Out", "shortcut": "CmdOrCtrl+-", "nativeOn": ["darwin"] },
@@ -126,10 +126,10 @@
           "id": "canvas.arrange",
           "label": "Arrange",
           "items": [
-            { "kind": "command", "id": "canvas.bringToFront", "label": "Bring to Front", "shortcut": "OptionOrAlt+CmdOrCtrl+]", "scope": "canvas" },
+            { "kind": "command", "id": "canvas.bringToFront", "label": "Bring to Front" },
             { "kind": "command", "id": "canvas.bringForward", "label": "Bring Forward", "shortcut": "CmdOrCtrl+]", "scope": "canvas" },
             { "kind": "command", "id": "canvas.sendBackward", "label": "Send Backward", "shortcut": "CmdOrCtrl+[", "scope": "canvas" },
-            { "kind": "command", "id": "canvas.sendToBack", "label": "Send to Back", "shortcut": "OptionOrAlt+CmdOrCtrl+[", "scope": "canvas" }
+            { "kind": "command", "id": "canvas.sendToBack", "label": "Send to Back" }
           ]
         },
         {
@@ -137,16 +137,16 @@
           "id": "canvas.align",
           "label": "Align",
           "items": [
-            { "kind": "command", "id": "canvas.alignLeft", "label": "Align Left", "shortcut": "Shift+CmdOrCtrl+Left", "scope": "canvas" },
+            { "kind": "command", "id": "canvas.alignLeft", "label": "Align Left" },
             { "kind": "command", "id": "canvas.alignCenter", "label": "Centre Horizontally" },
-            { "kind": "command", "id": "canvas.alignRight", "label": "Align Right", "shortcut": "Shift+CmdOrCtrl+Right", "scope": "canvas" },
+            { "kind": "command", "id": "canvas.alignRight", "label": "Align Right" },
             { "kind": "separator" },
-            { "kind": "command", "id": "canvas.alignTop", "label": "Align Top", "shortcut": "Shift+CmdOrCtrl+Up", "scope": "canvas" },
+            { "kind": "command", "id": "canvas.alignTop", "label": "Align Top" },
             { "kind": "command", "id": "canvas.alignMiddle", "label": "Centre Vertically" },
-            { "kind": "command", "id": "canvas.alignBottom", "label": "Align Bottom", "shortcut": "Shift+CmdOrCtrl+Down", "scope": "canvas" },
+            { "kind": "command", "id": "canvas.alignBottom", "label": "Align Bottom" },
             { "kind": "separator" },
-            { "kind": "command", "id": "canvas.distributeHorizontal", "label": "Distribute Horizontally", "shortcut": "OptionOrAlt+H", "scope": "canvas" },
-            { "kind": "command", "id": "canvas.distributeVertical", "label": "Distribute Vertically", "shortcut": "OptionOrAlt+V", "scope": "canvas" }
+            { "kind": "command", "id": "canvas.distributeHorizontal", "label": "Distribute Horizontally" },
+            { "kind": "command", "id": "canvas.distributeVertical", "label": "Distribute Vertically" }
           ]
         },
         {
@@ -162,21 +162,21 @@
         { "kind": "command", "id": "canvas.duplicate", "label": "Duplicate", "shortcut": "CmdOrCtrl+D", "scope": "canvas" },
         { "kind": "separator" },
         { "kind": "command", "id": "canvas.lock", "label": "Lock", "shortcut": "Shift+CmdOrCtrl+L", "scope": "canvas" },
-        { "kind": "command", "id": "canvas.unlockAll", "label": "Unlock All", "scope": "canvas", "shortcut": "OptionOrAlt+Shift+CmdOrCtrl+L" },
+        { "kind": "command", "id": "canvas.unlockAll", "label": "Unlock All" },
         { "kind": "separator" },
         {
           "kind": "submenu",
           "id": "canvas.copyAs",
           "label": "Copy as",
           "items": [
-            { "kind": "command", "id": "canvas.copyPng", "label": "PNG", "shortcut": "Shift+OptionOrAlt+C", "scope": "canvas" },
+            { "kind": "command", "id": "canvas.copyPng", "label": "PNG" },
             { "kind": "command", "id": "canvas.copySvg", "label": "SVG" }
           ]
         },
         { "kind": "command", "id": "canvas.exportSelection", "label": "Export Selection…" },
         { "kind": "separator" },
-        { "kind": "command", "id": "canvas.copyStyles", "label": "Copy Styles", "shortcut": "OptionOrAlt+CmdOrCtrl+C", "scope": "canvas" },
-        { "kind": "command", "id": "canvas.pasteStyles", "label": "Paste Styles", "shortcut": "OptionOrAlt+CmdOrCtrl+V", "scope": "canvas" }
+        { "kind": "command", "id": "canvas.copyStyles", "label": "Copy Styles" },
+        { "kind": "command", "id": "canvas.pasteStyles", "label": "Paste Styles" }
       ]
     },
     {
@@ -193,7 +193,7 @@
       "id": "help",
       "label": "Help",
       "items": [
-        { "kind": "command", "id": "help.shortcuts", "label": "Keyboard Shortcuts", "shortcut": "CmdOrCtrl+/", "nativeOn": ["darwin"] },
+        { "kind": "command", "id": "help.shortcuts", "label": "Keyboard Shortcuts" },
         { "kind": "separator" },
         { "kind": "command", "id": "help.openLogs", "label": "Open Logs Folder" },
         { "kind": "command", "id": "help.copyDiagnostics", "label": "Copy Diagnostics" },

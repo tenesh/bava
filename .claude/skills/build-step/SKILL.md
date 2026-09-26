@@ -631,6 +631,21 @@ deliberately at `5.24.2` or later.
   (ArrowDown, Enter); RadioGroup items accept a click. Popovers render closed
   content unless `lazyMount`.
 
+### Milestone 6.12 findings (arrows like Excalidraw, resizable code), 2026-09-26
+
+- **Gates green; not seen at a running window.** Plan
+  `.claude/work/plans/06.12-arrows-and-code.md`, decisions in
+  `.claude/work/specs/06.12-arrows-and-code.md`.
+- Code blocks are resized and wrap (`code/wrap.ts`); a selected straight line
+  or arrow or an elbow shows no box (`selection-chrome.ts`); point handles are
+  5 px and hit within 11; elbows route around shapes (`elbow.ts`) with the
+  route stored in `points`; 19 shortcuts dropped, Tab and `/` included.
+- **Edit commands used to go to the document's source pane whatever had
+  focus**: Paste in the Diagram from Code dialog went into the document,
+  unseen. `SourcePane.containing` finds the focused pane.
+- Checked in Excalidraw's code: its straight arrows also put an end on the
+  facing side; only elbows keep the side it was dropped on.
+
 ### Milestone 6.11 findings (Diagram from Code dialog), 2026-09-26
 
 - **Gates green; not seen at a running window.** Plan

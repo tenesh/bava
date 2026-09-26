@@ -18,8 +18,9 @@ import { labelPoint, middlesAlong, positionAlong, routePoints } from './arrows';
 import { duplicate, withDescendants } from './edit';
 import { anchorFor, BINDING_REACH_MIN, drawnPoints, reroute, settledAround, targetAt, unturned } from './binding';
 import { carriedWith, releaseFrames } from './containment';
-import { measureCode, type CodeMetrics } from './code/measure';
+import { measureCode, MIN_RESIZE_COLUMNS, type CodeMetrics } from './code/measure';
 import { isLinear, nearElement, tensionOf } from './hit';
+import { chromeFor } from './selection-chrome';
 import { simplify } from './stroke';
 import { snapAngle, squareBox } from './constrain';
 import { erasableAlong, eraseSet } from './eraser';
@@ -81,6 +82,22 @@ export type PointerHandlerOptions = {
    * zoom.
    */
   bendMinSegment?: () => number;
+  /**
+   * How near a press must come to a line's or arrow's point to take it, in
+   * scene units: Excalidraw's 11 screen px (`linearElementEditor.ts:1433-1458`),
+   * which the caller divides by the zoom.
+   */
+  pointHit?: () => number;
+  /**
+   * How far a segment's middle must be dragged before it adds a bend, in
+   * scene units: Excalidraw's 10 screen px, divided by the zoom.
+   */
+  bendInsertDistance?: () => number;
+  /**
+   * The shortest line or arrow a drag draws, in scene units: Excalidraw's
+   * 20 screen px (`MINIMUM_ARROW_SIZE`), divided by the zoom.
+   */
+  minLinear?: () => number;
   /** An arrow's label box in scene space, as the stage draws it, for sliding it. */
   labelBounds?: (id: ElementId) => Box | null;
   /** How a code block is measured: the mono advance, line height and padding. */
@@ -99,14 +116,14 @@ type Drag = {
   /** Set when the press landed on the rotate handle. */
   rotate: { centre: Point; startAngle: number; originals: Map<ElementId, SceneElement> } | null;
   /** Set when the press landed on one end of a selected arrow. */
-  endpoint: { id: ElementId; index: number; original: SceneElement } | null;
+  endpoint: { id: ElementId; index: number; original: SceneElement; at: Point } | null;
   /**
    * Set when the press landed on a point of a selected line or arrow that is
    * not an attachable end (a bend, or a line's end), or on the middle of a
    * segment, which inserts a point there (`insert`). `index` is the point's
    * position in the list.
    */
-  bend?: { id: ElementId; index: number; insert: boolean; original: SceneElement };
+  bend?: { id: ElementId; index: number; insert: boolean; original: SceneElement; at: Point };
   /** Set when the press landed on the selected arrow's label, which slides along it. */
   label?: { id: ElementId; original: SceneElement };
   /** The id a drawn element gets, fixed for the drag so previews update one node. */
@@ -148,6 +165,9 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   let lastPoint: Point = { x: 0, y: 0 };
   // The copies an Alt-drag made, selected once it is released.
   let copied: ElementId[] = [];
+  // Where a dragged arrow end is aimed, grab offset and snap included, so the
+  // highlight names the shape the release would attach to.
+  let endAim: Point | null = null;
   // Half a handle's side, in scene units: the caller divides the on-screen size
   // by the zoom. The zone matches the drawn handle, no larger.
   const handleSize = options.handleSize ?? (() => 4);
@@ -162,6 +182,19 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   const reach = options.bindingReach ?? (() => BINDING_REACH_MIN);
   // The token's value at zoom 1, as the others.
   const bendMinSegment = options.bendMinSegment ?? (() => 40);
+  const pointHit = options.pointHit ?? (() => 11);
+  const bendInsertDistance = options.bendInsertDistance ?? (() => 10);
+  const minLinear = options.minLinear ?? (() => 20);
+
+  /**
+   * Where a dragged point goes: the pointer, plus the offset from where the
+   * point was grabbed, so it does not jump to the cursor; with Shift, snapped
+   * to 15° steps about its neighbouring point.
+   */
+  function aimedPoint(point: Point, drag: Drag, at: Point, neighbour: Point | null): Point {
+    const aimed = { x: point.x + at.x - drag.origin.x, y: point.y + at.y - drag.origin.y };
+    return shift && neighbour ? snapAngle(neighbour, aimed) : aimed;
+  }
 
   function farEnough(a: Point, b: Point): boolean {
     const threshold = dragThreshold();
@@ -247,7 +280,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       if (drag.endpoint) {
         const { id, index, original } = drag.endpoint;
         const other = (original as SceneElement & Record<string, string | undefined>)[index === 0 ? 'endBinding' : 'startBinding'];
-        const target = targetAt(history.current, lastPoint, id, reach());
+        const target = targetAt(history.current, endAim ?? lastPoint, id, reach());
         return target && target.id !== other && farEnough(drag.origin, lastPoint) ? [target.id] : [];
       }
       if (tools.active !== 'arrow') return [];
@@ -260,6 +293,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
     down(point: Point, options: { additive?: boolean; shift?: boolean } = {}): void {
       shift = Boolean(options.shift);
+      endAim = null;
       alt = false;
       lastPoint = point;
       if (tools.active === 'eraser') {
@@ -305,12 +339,14 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         const { frame, selected } = frameFor();
         const bounds = { x: frame.x, y: frame.y, w: frame.w, h: frame.h };
         const size = handleSize();
+        // Only the handles the stage draws for this selection can be pressed.
+        const chrome = chromeFor(history.current.elements.filter((e) => selection.has(e.id)));
         // Handles are drawn on the frame, so a press is read in its space.
         const local = pointInFrame(point, frame);
         // A gap of zero would put the rotate zone on the top handle and make
         // that handle unreachable; no gap means no rotate handle.
         const gap = rotateGap();
-        if (gap > 0 && isRotateHandle(local, bounds, size, gap) && selected.some(canRotate)) {
+        if (gap > 0 && chrome.rotate && isRotateHandle(local, bounds, size, gap) && selected.some(canRotate)) {
           const centre = centreOf(bounds);
           drag = {
             origin: point,
@@ -324,9 +360,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           };
           return;
         }
-        // A code block's size comes from its code, so it has no handles: a
-        // selection made only of them is dragged, never resized.
-        const handle = selected.every((element) => element.type === 'code') ? null : handleAt(local, bounds, size);
+        const handle = handleAt(local, bounds, size, chrome.handles);
         // A selection only a few handles across is covered by its handles;
         // pressing inside it moves it, and the handles' outer halves resize.
         const inside = local.x > bounds.x && local.x < bounds.x + bounds.w && local.y > bounds.y && local.y < bounds.y + bounds.h;
@@ -613,14 +647,20 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     }
 
     if (started.bend) {
-      const { id, index, insert, original } = started.bend;
+      const { id, index, insert, original, at } = started.bend;
       // A click on a handle is not a drag: it neither moves nor adds a point.
       if (!farEnough(started.origin, point)) return null;
+      // A middle adds a bend only once dragged a little way, as Excalidraw's.
+      if (insert && Math.hypot(point.x - started.origin.x, point.y - started.origin.y) < bendInsertDistance()) return null;
       // A turned line has its turn written into its points first, so the
       // edit is in scene space and nothing else it draws moves.
       const base = unturned(original);
       const points = [...(('points' in base ? base.points : []) as number[])];
-      const local = [point.x - base.x, point.y - base.y];
+      // Its neighbour is the point before it (after it, for a line's start).
+      const before = insert ? index - 1 : index === 0 ? 1 : index - 1;
+      const neighbour = { x: base.x + points[before * 2], y: base.y + points[before * 2 + 1] };
+      const target = aimedPoint(point, started, at, neighbour);
+      const local = [target.x - base.x, target.y - base.y];
       if (insert) points.splice(index * 2, 0, ...local);
       else points.splice(index * 2, 2, ...local);
       return (scene) => {
@@ -648,12 +688,20 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       // Dropped on a shape it attaches, on empty canvas it lets go, and Alt
       // holds it free either way. Both ends on one shape would leave the arrow
       // with nowhere to run, so that target is refused.
-      const candidate = alt ? undefined : targetAt(history.current, point, id, reach());
-      const target = candidate && candidate.id === other ? undefined : candidate;
       const last = points.length - 2;
       const at = index === 0 ? 0 : last;
-      points[at] = point.x - original.x;
-      points[at + 1] = point.y - original.y;
+      const next = index === 0 ? 2 : last - 2;
+      // Where the end goes: kept at its grab offset, snapped with Shift about
+      // its neighbour; the target is looked for there.
+      const aimed = aimedPoint(point, started, started.endpoint.at, {
+        x: original.x + points[next],
+        y: original.y + points[next + 1],
+      });
+      endAim = aimed;
+      const candidate = alt ? undefined : targetAt(history.current, aimed, id, reach());
+      const target = candidate && candidate.id === other ? undefined : candidate;
+      points[at] = aimed.x - original.x;
+      points[at + 1] = aimed.y - original.y;
       return (scene) => {
         const i = scene.elements.findIndex((e) => e.id === id);
         if (i < 0) return;
@@ -662,7 +710,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         // The binding and where on the target it aims go together.
         if (target) {
           bound[key] = target.id;
-          bound[anchorKey] = anchorFor(target, point, reach());
+          bound[anchorKey] = anchorFor(target, aimed, reach());
         } else {
           delete bound[key];
           delete bound[anchorKey];
@@ -688,7 +736,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           // several elements is the box around them as drawn, so a rotated
           // member there scales through its drawn bounds instead.
           const member = original as SceneElement & { points?: number[] };
-          scene.elements[i] = angle === 0 ? scaleRotatedInto(member, bounds, next) : scaleInto(member, bounds, next);
+          const scaled = angle === 0 ? scaleRotatedInto(member, bounds, next) : scaleInto(member, bounds, next);
+          scene.elements[i] = scaled.type === 'code' ? codeResized(scaled) : scaled;
         }
       };
     }
@@ -800,6 +849,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     const linear = type === 'line' || type === 'arrow';
     // Shift constrains: a square box, or an angle in 15° steps.
     const end = shift && linear ? snapAngle(started.origin, point) : point;
+    // A line or arrow shorter than this is a slip, not a drawing (Excalidraw's).
+    if (linear && Math.hypot(end.x - started.origin.x, end.y - started.origin.y) < minLinear()) return null;
     const raw = shift && !linear ? squareBox(started.origin, point) : boxBetween(started.origin, end);
     // Tidy: a zoom or fractional pan leaves 83.33333333333333, written into
     // the user's file otherwise.
@@ -830,21 +881,34 @@ export function createPointerHandler(options: PointerHandlerOptions) {
    * The end of the selected arrow under a point, if any. Ends are handles the
    * same size as the box handles, drawn where the arrow is drawn.
    */
-  function endpointAt(point: Point): { id: ElementId; index: number; original: SceneElement } | null {
+  function endpointAt(point: Point): { id: ElementId; index: number; original: SceneElement; at: Point } | null {
     const [id] = selection.ids;
     const element = history.current.elements.find((e) => e.id === id);
     if (!element || element.type !== 'arrow' || isLocked(element)) return null;
     const points = drawnPoints(element);
     if (points.length < 4) return null;
-    const size = handleSize();
+    const reach = pointHit();
     for (const index of [0, points.length - 2]) {
       const x = points[index];
       const y = points[index + 1];
-      if (Math.abs(point.x - x) <= size && Math.abs(point.y - y) <= size) {
-        return { id, index: index === 0 ? 0 : 1, original: element };
+      if (Math.hypot(point.x - x, point.y - y) <= reach) {
+        return { id, index: index === 0 ? 0 : 1, original: element, at: { x, y } };
       }
     }
     return null;
+  }
+
+  /**
+   * A code block after a resize: the width is the user's (never narrower
+   * than a few columns), and the height is its code wrapped to that width
+   * (`docs/file-format.md`, "Code blocks").
+   */
+  function codeResized(element: SceneElement): SceneElement {
+    const metrics = codeMetrics();
+    const block = element as SceneElement & { code: string };
+    const w = Math.max(element.w, MIN_RESIZE_COLUMNS * metrics.advance + metrics.padding * 2);
+    const size = measureCode(block.code, metrics, w);
+    return { ...element, w: size.width, h: size.height, measuredWidth: size.width, measuredHeight: size.height } as SceneElement;
   }
 
   /** The one selected line or arrow that can be bent, with its points. */
@@ -869,21 +933,21 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     const { element } = found;
     // Where the points are drawn, a turn included: handles sit there.
     const drawn = drawnPoints(element);
-    const size = handleSize();
-    const near = (x: number, y: number) => Math.abs(point.x - x) <= size && Math.abs(point.y - y) <= size;
+    const reach = pointHit();
+    const near = (x: number, y: number) => Math.hypot(point.x - x, point.y - y) <= reach;
     const count = drawn.length / 2;
     for (let i = 0; i < count; i += 1) {
       const isEnd = i === 0 || i === count - 1;
       if (element.type === 'arrow' && isEnd) continue;
       if (near(drawn[i * 2], drawn[i * 2 + 1])) {
-        return { id: element.id, index: i, insert: false, original: element };
+        return { id: element.id, index: i, insert: false, original: element, at: { x: drawn[i * 2], y: drawn[i * 2 + 1] } };
       }
     }
     const middles = segmentMiddles(element);
     for (let i = 0; i < middles.length; i += 1) {
       const middle = middles[i];
       if (middle && near(middle.x, middle.y)) {
-        return { id: element.id, index: i + 1, insert: true, original: element };
+        return { id: element.id, index: i + 1, insert: true, original: element, at: middle };
       }
     }
     return null;

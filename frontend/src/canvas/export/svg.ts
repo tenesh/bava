@@ -17,6 +17,7 @@ import type { ExportArea } from './area';
 import { svgPathSink } from './path-sink';
 import { monoAdvance } from '../code/advance';
 import { columnsIn } from '../code/measure';
+import { columnsFor, wrapRuns } from '../code/wrap';
 import type { Run } from '../code/highlight';
 import { wrapLines } from '../text-layout';
 import { canvasLineWidth } from '../text-measure';
@@ -198,7 +199,8 @@ function codeRuns(element: SceneElement, paint: Paint, options: SvgOptions): str
   const lineHeight = paint.font.size * paint.font.lineHeight;
   const advance = options.monoAdvance ?? monoAdvance(paint.font.size, paint.font.family);
 
-  return runs
+  // Wrapped to the block's width, as the stage wraps it (`code/wrap.ts`).
+  return wrapRuns(runs, columnsFor(element.w, { advance, lineHeight, padding }))
     .map((line, row) =>
       line
         .map((run, index) => {

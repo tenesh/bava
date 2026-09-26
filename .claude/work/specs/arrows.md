@@ -21,7 +21,9 @@ Excalidraw references: `.claude/work/specs/excalidraw-comparison.md`, section
    today's single bow). Elbow: routes itself and shows no bend handles; bends
    already made stay in the file and return when switched back. Switching
    kinds never loses anything. A line's `edges: round` smooths through its
-   bends as an arc does.
+   bends as an arc does. **Amended 2026-09-26 (06.12, decision 5):** an
+   elbow's route is stored in its points, so switching to elbow replaces
+   bends and switching away keeps only the ends, as Excalidraw does.
 
 4. **An attached end aims at the spot it was dropped on: Excalidraw's edge
    mode** (2026-09-26). Each attached end remembers a spot on its shape, as a

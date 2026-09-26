@@ -209,6 +209,16 @@ describe('exporting a code block', () => {
     expect(svg).toContain('fill="black"');
   });
 
+  // The same wrap the canvas uses: 76 wide, padding 8, advance 6 holds ten
+  // columns, so sixteen letters take two rows.
+  it('wraps a line to the block width, as the canvas does', () => {
+    const narrow = { ...block, w: 76 };
+    const long = { c: [[{ text: 'abcdefghijklmnop', kind: 'plain' as const }]] };
+    const svg = toSvg(exportArea({ elements: [narrow] as never[] }, []), { read: codeRead, codeRuns: long, monoAdvance: 6 });
+    expect(svg).toContain('>abcdefghij<');
+    expect(svg).toContain('>klmnop<');
+  });
+
   it('keeps the mono font, so the columns line up', () => {
     const svg = toSvg(exportArea({ elements: [block] as never[] }, []), { read: codeRead, codeRuns: runs });
     expect(svg).toContain('font-family="Geist Mono"');

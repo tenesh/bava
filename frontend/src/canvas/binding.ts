@@ -14,6 +14,8 @@ import { isOutlineShape, drawOutline, type PathSink } from './shapes';
 import type { ElementId, SceneData, SceneElement } from './scene';
 import { drawnPathOf, pathBounds } from './hit';
 import { tidy } from './resize';
+import { headingOf, routeElbow, sideOf, type ElbowEnd, type Heading } from './elbow';
+import { routePoints } from './arrows';
 
 export type Point = { x: number; y: number };
 
@@ -164,6 +166,7 @@ export function routeFor(arrow: SceneElement, scene: SceneData): number[] {
   const find = (id?: string) => (id === undefined ? undefined : scene.elements.find((e) => e.id === id));
   const startShape = find(start);
   const endShape = find(end);
+  if ((arrow as SceneElement & { arrowType?: string }).arrowType === 'elbow') return elbowRoute(arrow, points, startShape, endShape);
   if (!startShape && !endShape) return points;
 
   // Each end aims through its anchor (its shape's centre without one) at its
@@ -172,8 +175,7 @@ export function routeFor(arrow: SceneElement, scene: SceneData): number[] {
   const bound = arrow as SceneElement & { startAnchor?: [number, number]; endAnchor?: [number, number] };
   const world = (index: number): Point => ({ x: arrow.x + points[index], y: arrow.y + points[index + 1] });
   const last = points.length - 2;
-  // An elbow draws none of its kept bends, so its ends aim across the arrow.
-  const bent = points.length > 4 && (arrow as SceneElement & { arrowType?: string }).arrowType !== 'elbow';
+  const bent = points.length > 4;
   const startSpot = startShape ? spotOn(startShape, bound.startAnchor) : world(0);
   const endSpot = endShape ? spotOn(endShape, bound.endAnchor) : world(last);
   const startTarget = bent ? world(2) : endSpot;
@@ -207,6 +209,67 @@ export function bindingReach(zoom: number): number {
   const scale = zoom > 0 && zoom < 1 ? zoom : 1;
   return Math.min(BINDING_REACH_MAX, Math.max(BINDING_REACH_MIN, BINDING_REACH_MIN / (scale * 1.5)));
 }
+
+/**
+ * An elbow arrow's route, relative to the arrow as the file stores points
+ * (`docs/file-format.md`): each attached end stays on the side its anchor is
+ * on, where the anchor meets the outline a gap clear, and leaves outward from
+ * it; a free end stays where it is and faces the other end. The route goes
+ * around both shapes (`elbow.ts`). Where none exists, today's plain Z.
+ */
+function elbowRoute(arrow: SceneElement, points: number[], startShape?: SceneElement, endShape?: SceneElement): number[] {
+  const bound = arrow as SceneElement & { startAnchor?: [number, number]; endAnchor?: [number, number] };
+  const last = points.length - 2;
+  const freeStart = { x: arrow.x + points[0], y: arrow.y + points[1] };
+  const freeEnd = { x: arrow.x + points[last], y: arrow.y + points[last + 1] };
+  // Where each end is aimed from: its shape's anchor spot, or the free point.
+  const startSpot = startShape ? spotOn(startShape, bound.startAnchor) : freeStart;
+  const endSpot = endShape ? spotOn(endShape, bound.endAnchor) : freeEnd;
+
+  const end = (shape: SceneElement | undefined, anchor: [number, number] | undefined, spot: Point, other: Point, free: Point): ElbowEnd => {
+    if (!shape) return { point: free, heading: headingOf(other.x - free.x, other.y - free.y) };
+    // The side the anchor is on, in the shape's own frame, turned with the
+    // shape to face where it is drawn; the centre (no anchor) faces the other
+    // end. The route leaves along the nearest screen axis.
+    const side = sideOf(anchor ?? [0.5, 0.5]);
+    const outward = side
+      ? rotatePoint(ELBOW_DIRECTION[side], { x: 0, y: 0 }, angleOfElement(shape))
+      : { x: other.x - spot.x, y: other.y - spot.y };
+    const heading = headingOf(outward.x, outward.y);
+    const out = { x: spot.x + outward.x * 1e5, y: spot.y + outward.y * 1e5 };
+    return { point: anchorOn(shape, out, spot), heading, box: rotatedBounds(shape) };
+  };
+  const from = end(startShape, bound.startAnchor, startSpot, endSpot, freeStart);
+  const to = end(endShape, bound.endAnchor, endSpot, startSpot, freeEnd);
+  // Re-aiming runs on every change and every preview frame, for every elbow;
+  // a route is only worked out again when what it depends on moved.
+  const key = JSON.stringify([from, to]);
+  let route = routed.get(key);
+  if (!route) {
+    route = routeElbow(from, to, { gap: BINDING_GAP }) ?? zRoute(from.point, to.point);
+    if (routed.size >= ROUTE_CACHE_SIZE) routed.clear();
+    routed.set(key, route);
+  }
+  return route.map((value, i) => value - (i % 2 === 0 ? arrow.x : arrow.y));
+}
+
+/** Routes already worked out, by their ends, headings and shapes' boxes. */
+const routed = new Map<string, number[]>();
+
+/** Enough for every elbow in a large scene, twice over; cleared when full. */
+const ROUTE_CACHE_SIZE = 2000;
+
+/** The plain Z an elbow falls back on: along the longer axis, turning at the middle. */
+function zRoute(a: Point, b: Point): number[] {
+  return routePoints([a.x, a.y, b.x, b.y], 'elbow');
+}
+
+const ELBOW_DIRECTION: Record<Heading, Point> = {
+  up: { x: 0, y: -1 },
+  right: { x: 1, y: 0 },
+  down: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+};
 
 /**
  * The element an arrow end dropped at `point` should attach to, if any.

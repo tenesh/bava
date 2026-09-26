@@ -82,8 +82,8 @@ describe('typing in a code block', () => {
   });
 });
 
-// Committing a code block writes the code and the size it implies, in one
-// step: its size comes from its code (docs/file-format.md).
+// Committing a code block writes the code and the height it implies, in one
+// step: its width is the user's and its height follows (docs/file-format.md).
 describe('committing a code block', () => {
   it('writes the code and the new measurement together', () => {
     const history = createHistory({
@@ -97,8 +97,8 @@ describe('committing a code block', () => {
     const block = history.current.elements[0] as unknown as Record<string, number | string>;
     expect(block.code).toBe('a\nbb\nccc');
     expect(block.h).toBe(3 * 20 + 16);
-    // Three columns is under the 20-column floor.
-    expect(block.w).toBe(20 * 6 + 16);
+    // The width is the user's, kept through an edit (06.12).
+    expect(block.w).toBe(50);
     expect(block.measuredWidth).toBe(block.w);
     expect(block.measuredHeight).toBe(block.h);
   });
@@ -204,6 +204,71 @@ describe('the editor growing with what is typed', () => {
     view.dispatch({ changes: { from: 2, insert: 'cdef\nx' } });
     expect(wrapper.style.width).toBe('60px');
     expect(wrapper.style.height).toBe('40px');
+    editor.destroy();
+  });
+});
+
+// An edit keeps the width the user gave the block; the height follows.
+describe('committing code to a block of a chosen width', () => {
+  it('keeps the width and wraps to it', () => {
+    const metrics = { advance: 6, lineHeight: 20, padding: 8 };
+    const history = createHistory({
+      elements: [{ id: 'c', type: 'code', x: 0, y: 0, w: 76, h: 36, z: 1, code: 'x', measuredWidth: 76, measuredHeight: 36 }] as never,
+    });
+    commitCode(history, 'c', 'abcdefghijklmnop', metrics);
+    expect(history.current.elements[0]).toMatchObject({ w: 76, h: 56 });
+  });
+
+  it('wraps lines in the editor, as the block does', async () => {
+    const h = host();
+    const editor = new CodeEditor(h);
+    await editor.open({ code: 'x', rect: { x: 0, y: 0, width: 100, height: 40 }, onCommit: vi.fn() });
+    expect(h.querySelector('.cm-lineWrapping')).not.toBeNull();
+    editor.destroy();
+  });
+});
+
+// From the shortcut audit (06.12): the code block editor drops the keys the
+// menu owns, as the source pane does, and Tab indents rather than leaving.
+describe('keys in the code block editor', () => {
+  it('drops a key the menu reserves', async () => {
+    const h = host();
+    const editor = new CodeEditor(h);
+    await editor.open({ code: 'x', rect: { x: 0, y: 0, width: 100, height: 40 }, isReserved: (b) => b.key === 'Mod-z', onCommit: vi.fn() });
+    const view = EditorView.findFromDOM(h.querySelector('.cm-editor') as HTMLElement)!;
+    view.dispatch({ changes: { from: 1, insert: '!' } });
+    view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', keyCode: 90, ctrlKey: true, bubbles: true, cancelable: true }));
+    expect(view.state.doc.toString()).toBe('x!');
+    editor.destroy();
+  });
+
+  it('indents with Tab instead of leaving', async () => {
+    const h = host();
+    const onCommit = vi.fn();
+    const editor = new CodeEditor(h);
+    await editor.open({ code: 'x', rect: { x: 0, y: 0, width: 100, height: 40 }, onCommit });
+    const view = EditorView.findFromDOM(h.querySelector('.cm-editor') as HTMLElement)!;
+    view.dispatch({ selection: { anchor: 0 } });
+    view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', keyCode: 9, bubbles: true, cancelable: true }));
+    expect(view.state.doc.toString()).not.toBe('x');
+    expect(onCommit).not.toHaveBeenCalled();
+    editor.destroy();
+  });
+});
+
+// The app's own reservation, not one the test makes up: the menu's Undo key on
+// Windows and Linux is dropped by the code block's editor.
+describe('the code editor on the app path', () => {
+  it('drops Ctrl+Z given the menu spec', async () => {
+    const { reservedByMenu } = await import('../../shell/shortcuts');
+    const spec = (await import('../../../../internal/app/menu/spec.json')).default;
+    const h = host();
+    const editor = new CodeEditor(h);
+    await editor.open({ code: 'x', rect: { x: 0, y: 0, width: 100, height: 40 }, isReserved: reservedByMenu(spec as never, 'linux'), onCommit: vi.fn() });
+    const view = EditorView.findFromDOM(h.querySelector('.cm-editor') as HTMLElement)!;
+    view.dispatch({ changes: { from: 1, insert: '!' } });
+    view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', keyCode: 90, ctrlKey: true, bubbles: true, cancelable: true }));
+    expect(view.state.doc.toString()).toBe('x!');
     editor.destroy();
   });
 });

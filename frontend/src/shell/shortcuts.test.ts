@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import spec from '../../../internal/app/menu/spec.json';
-import { canvasScoped, formatAccelerator, keysFor, matchShortcut, reservedByMenu, shortcutGroups, type MenuSpec } from './shortcuts';
+import { canvasScoped, formatAccelerator, keysFor, matchShortcut, reservedByMenu, ROLE_ACCELERATORS, shortcutGroups, type MenuSpec } from './shortcuts';
 
 describe('formatAccelerator', () => {
   it('uses symbols on macOS, in the platform order', () => {
@@ -60,8 +60,8 @@ describe('matchShortcut', () => {
   const windows = matchShortcut(spec as MenuSpec, 'windows');
 
   it('matches a shortcut by physical key, whatever Shift turns it into', () => {
-    // Option+] reports key "‘" on a US Mac layout; the code is what the user pressed.
-    expect(mac(key({ key: '‘', code: 'BracketRight', metaKey: true, altKey: true }))).toBe('canvas.bringToFront');
+    // Shift+H reports key "H"; the code is what the user pressed.
+    expect(mac(key({ key: 'H', code: 'KeyH', shiftKey: true }))).toBe('canvas.flipHorizontal');
     expect(windows(key({ key: '=', code: 'Equal', ctrlKey: true }))).toBe('view.zoomIn');
     expect(windows(key({ key: ',', code: 'Comma', ctrlKey: true }))).toBe('file.settings');
   });
@@ -109,11 +109,19 @@ describe('canvas-scoped shortcuts', () => {
     const press = (code: string, mods: Partial<KeyboardEvent>) =>
       match(key({ code, key: code.replace(/^Key/, '').toLowerCase(), ...mods }));
     expect(press('BracketRight', { metaKey: true })).toBe('canvas.bringForward');
-    expect(press('BracketRight', { metaKey: true, altKey: true })).toBe('canvas.bringToFront');
     expect(press('KeyH', { shiftKey: true })).toBe('canvas.flipHorizontal');
     expect(press('KeyD', { metaKey: true })).toBe('canvas.duplicate');
-    expect(match(key({ key: 'ArrowLeft', code: 'ArrowLeft', metaKey: true, shiftKey: true }))).toBe('canvas.alignLeft');
-    expect(press('KeyH', { altKey: true })).toBe('canvas.distributeHorizontal');
+  });
+
+  // Dropped in 06.12 (decision 6): their commands stay in the menus, keyless.
+  it('no longer match the keys that were dropped', () => {
+    const match = matchShortcut(spec as MenuSpec, 'darwin');
+    const press = (code: string, mods: Partial<KeyboardEvent>) =>
+      match(key({ code, key: code.replace(/^Key/, '').toLowerCase(), ...mods }));
+    expect(press('BracketRight', { metaKey: true, altKey: true })).toBeUndefined();
+    expect(match(key({ key: 'ArrowLeft', code: 'ArrowLeft', metaKey: true, shiftKey: true }))).toBeUndefined();
+    expect(press('KeyH', { altKey: true })).toBeUndefined();
+    expect(press('Slash', { metaKey: true })).toBeUndefined();
   });
 });
 
@@ -128,14 +136,37 @@ describe('reservedByMenu', () => {
     expect(mac({ key: 'Mod-Shift-z' })).toBe(true);
     expect(mac({ key: 'Shift-Mod-z' })).toBe(true);
     expect(mac({ key: 'Mod-a' })).toBe(true);
-    expect(mac({ key: 'Mod-/' })).toBe(true);
     expect(linux({ key: 'Mod-y', mac: 'Mod-Shift-z' })).toBe(false);
     expect(mac({ key: 'Mod-y', mac: 'Mod-Shift-z' })).toBe(true);
   });
 
+  // The window's own items (Minimise, Hide, Quit...) bind keys the spec never
+  // names; an editor that kept them would act twice (06.12, from the audit).
+  it('claims the keys the window menu binds too', () => {
+    expect(linux({ key: 'Ctrl-m' })).toBe(true);
+    // Full screen's Ctrl+Command+F is a macOS key; elsewhere it is not Ctrl+F.
+    expect(linux({ key: 'Ctrl-f' })).toBe(false);
+    expect(mac({ key: 'Mod-m' })).toBe(true);
+    expect(mac({ key: 'Mod-h' })).toBe(true);
+  });
+
   it('leaves the editor its own keys', () => {
+    // Help lost its key (06.12), so toggle comment is the editor's again.
+    expect(mac({ key: 'Mod-/' })).toBe(false);
     expect(mac({ key: 'Enter' })).toBe(false);
     expect(mac({ key: 'Mod-Enter' })).toBe(false);
     expect(mac({ key: 'Alt-ArrowUp' })).toBe(false);
+  });
+});
+
+// The frontend's copy of the role keys must be Go's (`RoleAccelerators`).
+describe('the window menu keys', () => {
+  it('mirror internal/app/menu/spec.go', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    const go = readFileSync(resolve(__dirname, '../../../internal/app/menu/spec.go'), 'utf8');
+    const block = go.slice(go.indexOf('var RoleAccelerators'), go.indexOf('}', go.indexOf('var RoleAccelerators')));
+    const fromGo = Object.fromEntries([...block.matchAll(/"(\w+)":\s*"([^"]*)"/g)].map((m) => [m[1], m[2]]));
+    expect(ROLE_ACCELERATORS).toEqual(fromGo);
   });
 });
