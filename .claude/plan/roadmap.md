@@ -405,20 +405,33 @@ automatic upload: never.
 
 ---
 
-## Milestone 6: Shapes that look right *(gated; awaiting the window check in both themes)*
+## Milestone 6: Canvas *(built in parts 6 to 6.17, all committed; window checks owed)*
 
-**Goal:** Everything drawn on the canvas is visible, styled and selectable,
-with the shape set diagrams need.
+**Goal:** A free-placement canvas that draws, styles, connects, exports and
+edits everything a diagram needs, and behaves as Excalidraw does.
 
-**Scope:** The rendering the Milestone 5.5 window check found missing: shapes
-draw with no stroke or fill, lines and arrows have no points, selection is not
-shown, and zoom does not reach the stage. The shape set shared by D2 and
-Eraser as canvas shapes and drawing tools: rectangle, ellipse, diamond,
-cylinder, hexagon, parallelogram, document, person, cloud. A text label inside
-any shape. Per-shape fill, border and text colour from a palette of named
-swatches, each resolving to a light and a dark value; the file stores the
-swatch name. A selection outline with resize handles, and a way to recolour a
-selection. The file format specifies all of it before anything writes it.
+**Plans:** one file, `.claude/work/plans/06-canvas.md`: an overview table,
+then each part's plan, as built and spec review in full. Decisions in
+`.claude/work/specs/06.12-arrows-and-code.md` (1 to 16), `canvas-toolbar.md`,
+`diagrams-as-shapes.md`, `launch.md` and `docs/decisions.md`.
+
+**Scope, as built.** Milestone 6 started as "shapes that look right" and grew,
+at the user's direction, into the whole canvas. Parts keep their numbers, so
+references elsewhere ("Milestone 6.5") still name them:
+
+| Part | What it delivered |
+|---|---|
+| 6 | The shape set diagrams need (rectangle, ellipse, diamond, cylinder, hexagon, parallelogram, document, person, cloud), labels, swatch colours, selection; shipped data loss on save fixed |
+| 6.1 | The first window check's defects; launch into a splash and a no-file state |
+| 6.2, 6.2.1 | Icon rail and eraser, insert panel, selection toolbar, right-click menu, align and distribute; constrained drags, colour chips |
+| 6.3 | Style keys, any colour, locking, rotation |
+| 6.4 | Export and copy as PNG or SVG, drawn by the canvas's own code *(moved forward from Milestone 15)* |
+| 6.5 | Arrows attached by element id that re-aim as shapes move; frames that own their contents; arrow labels |
+| 6.6, 6.11 | Diagram from code: D2 typed in a dialog, previewed and inserted as ordinary shapes; the dialog's engines and direction |
+| 6.7, 6.9 | Code blocks: highlighted, in Geist Mono, edited in place *(moved forward from Milestone 15)* |
+| 6.8 | Feel fixes: styles at their size, tools that let go, zoom-steady distances |
+| 6.10, 6.12 to 6.16 | Every line and arrow behaviour in `.claude/work/specs/excalidraw-lines-inventory.md` (90 rows): bends, elbows, pinned ends, point editing, click-by-click lines, heads, labels, attaching settings |
+| 6.17 | A code block's language and font size; arrow labels typed in place and along the arrow; the false "changed on disk" prompt and the right-click Reload fixed |
 
 **Exit criterion:**
 
@@ -427,151 +440,25 @@ go test ./internal/format -run RoundTrip && go test ./internal/... . \
   && (cd frontend && npm run check && npm run lint && npm test)
 ```
 
-green, with tests that inspect the Konva nodes actually created (stroke,
-fill, points, label) rather than only the scene data, a round trip of every
-shape with label and colours, and a human look at a running window in both
-themes.
+green (it is, for every part), plus the hand check each part's plan
+describes, at a running window in both themes. That check is what remains.
 
 **Depends on:** Milestone 5.8.
 
 ---
 
-## Milestone 6.1: Window check and launch *(gated; awaiting a human look in both themes)*
+## Milestone 7: Snapping and detached arrows *(complete, 2026-09-27)*
 
-**Goal:** Fix what Milestone 6's first window check found, and launch into a
-splash and a no-file state. Plan `.claude/work/plans/06.1-window-check-and-launch.md`;
-decisions `.claude/work/specs/launch.md`.
+**Goal:** Arrows drawn by hand attach to shapes as naturally as generated
+ones, and shapes line up with each other.
 
-**Depends on:** Milestone 6.
-
----
-
-## Milestone 6.2: Canvas interface
-
-**Goal:** A canvas that responds live and reads like a tool: icon rail with
-eraser, insert panel, a selection toolbar, a grouped right-click menu, align
-and distribute, and the window-check fixes. No file format change.
-
-**Scope and decisions:** `.claude/work/specs/canvas-toolbar.md` (Sequencing,
-06.2 row).
-
-**Exit criterion:** `go test ./internal/... .` and `(cd frontend && npm run
-check && npm run lint && npm test)` green, plus a look at a running window.
-
-**Depends on:** Milestone 6.1.
-
----
-
-## Milestone 6.3: Styles and rotation
-
-**Goal:** The style properties of the adapted Excalidraw baseline, and
-rotation, each specified in `docs/file-format.md` before anything writes it.
-
-**Scope and decisions:** `.claude/work/specs/canvas-toolbar.md` (Adapted
-baseline, Rotation).
-
-**Exit criterion:** `go test ./internal/format -run RoundTrip && go test
-./internal/... .` and the frontend gates green, with a round trip of every new
-field and a look at a running window.
-
-**Depends on:** Milestone 6.2.
-
----
-
-## Milestone 6.4: Export *(moved forward from Milestone 15, 2026-09-18)*
-
-**Goal:** Copy a selection as PNG or SVG, and export through a settings dialog.
-
-**Scope:** Canvas elements. Diagram elements join through the existing
-`Render` path in Milestone 6.6, never a second renderer. Dialog settings in
-`.claude/work/specs/canvas-toolbar.md`.
-
-**Depends on:** Milestone 6.3.
-
----
-
-## Milestone 6.5: Connections and containers
-
-**Goal:** Arrows that stay attached as things move, and containers that carry
-their contents.
-
-**Scope:** An arrow attached to its start and end elements; moving either
-re-routes it. Attachment is stored by element id, never coordinates.
-Containers (the `frame` element) own the elements inside them: dragging a
-container moves its contents, dragging an element out removes it, dropping one
-in adds it. Arrow labels.
-
-**Exit criterion:**
-
-```sh
-go test ./internal/format -run RoundTrip \
-  && (cd frontend && npm run check && npm run lint && npm test)
-```
-
-green, with tests that an attached arrow follows its endpoints through a move
-and through undo, that moving a container moves its contents in one history
-step, and a round trip of attachments and containment.
-
-**Depends on:** Milestone 6.4. Arrow types and arrowheads exist from 6.3;
-this milestone adds attachment and routing that follows moves.
-
----
-
-## Milestone 6.6: Diagram from code
-
-**Goal:** Type or paste D2, and it lands on the canvas as free shapes.
-
-**Scope:** Insert ▸ Diagram from code: a dialog with a D2 editor and a live
-preview, using the 250ms debounce, stale-response dropping and diagnostics.
-**`Render` gains layout geometry**: each node's shape, position, size,
-colours, label and container, and each connection's endpoints, route and
-label. Conversion, in the frontend, maps that onto canvas elements: D2 shapes
-onto the canvas shape set (queue, page, package, step, callout, stored data
-and C4 person become rectangles keeping their label), colours onto the nearest
-swatch, containers onto frames, connections onto attached arrows. The inserted
-diagram is one undoable step. The D2 is not kept. SQL tables, UML classes and
-code blocks are deferred to Milestone 15.
-
-**Exit criterion:**
-
-```sh
-go test ./internal/... . && go test ./internal/render -run Golden \
-  && (cd frontend && npm run check && npm run lint && npm test)
-```
-
-green, with a Go test that every node and connection in a layout fixture
-appears in the geometry, a frontend test converting that fixture into the
-expected elements, and a test that one undo removes an inserted diagram.
-
-**Depends on:** Milestone 6.5, Milestone 1 (the pipeline).
-
----
-
-## Milestone 6.7: Code block *(moved forward from Milestone 15, 2026-09-18)*
-
-**Goal:** A code element with a chosen language and syntax highlighting, in
-Geist Mono, using CodeMirror's language support. Specified in
-`docs/file-format.md` first.
-
-**Depends on:** Milestone 6.6.
-
----
-
-## Milestone 7: Snapping and detached arrows
-
-**Goal:** Arrows drawn by hand attach to shapes as naturally as generated ones.
-
-**Scope:** Attachment moved to Milestone 6.5; this milestone is the rest.
-Drawing or dragging an arrow end onto a shape snaps and attaches it, with a
-visible target. Choosing the side it attaches to. The detached state: when an
-attached element is deleted, the arrow stays, freezes at its last position and
-is marked detached, never deleted, because the user drew it. Hit-testing at
-scale with a spatial index if measured need arrives. Also carried from
-Milestone 6: rotation, and stroke width and dash options.
-Most of this was built early (6.5 to 6.16); what remained, built in plan 07
-(`.claude/work/plans/07-snapping.md`), is the exit tests and Excalidraw's
-object snapping (the user's request, 2026-09-27). No spatial index: measured,
-not needed.
+**Scope, as built.** Attaching, choosing the side, the detached state,
+rotation, stroke width and dash were built early, in 6.3 to 6.16. Plan
+`.claude/work/plans/07-snapping.md` added the exit tests and Excalidraw's
+object snapping (the user's request): off by default, `⌥S`, every element
+snapping by its box, equal spacing between neighbours. No spatial index:
+measured on 2,000 shapes and not needed (`docs/decisions.md`). Checked at a
+running window by the user.
 
 **Exit criterion:**
 
@@ -587,7 +474,12 @@ restores the attachment.
 
 ---
 
-## Milestone 8: Documents
+## Milestone 8: Documents *(next; to be discussed with the user before planning)*
+
+**The user has new features to decide for this milestone (2026-09-27).** The
+scope below is the starting point for that discussion, not a settled plan:
+it is re-planned from what is agreed, with decisions recorded in
+`.claude/work/specs/` as they are made.
 
 **Goal:** Prose alongside the canvas, with parts of the canvas embedded in the
 text.
