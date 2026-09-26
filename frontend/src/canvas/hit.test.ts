@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { drawnPathOf, nearElement, pathBounds } from './hit';
+import { drawnPathOf, insideFilledLine, nearElement, pathBounds } from './hit';
 import type { SceneElement } from './scene';
 import { pathOf } from './arrows';
 
@@ -49,15 +49,26 @@ describe('hitting a line by its path', () => {
 });
 
 describe('the box around what is drawn', () => {
-  // An arc bows away from the straight line between its ends: the stored box
-  // has to hold the curve, or selection and export cut it off.
-  it('covers an arc bow', () => {
-    const straight = pathBounds(drawnPathOf(arrow({ points: [0, 0, 100, 0], h: 0 })));
-    const arced = pathBounds(drawnPathOf(arrow({ points: [0, 0, 100, 0], h: 0, arrowType: 'arc' })));
-    expect(arced.h).toBeGreaterThan(straight.h);
+  // An arc curves away from its points: the box has to hold the curve, or
+  // selection and export cut it off. Since 06.15 (V2) a two-point arc is
+  // straight, so its box is flat.
+  it('covers an arc curve, and nothing more for a two-point one', () => {
+    const bent = pathBounds(drawnPathOf(arrow({ points: [0, 0, 50, 40, 100, 0], h: 40, arrowType: 'arc' })));
+    const cornered = pathBounds(drawnPathOf(arrow({ points: [0, 0, 50, 40, 100, 0], h: 40 })));
+    expect(bent.h).toBeGreaterThanOrEqual(cornered.h);
+    expect(pathBounds(drawnPathOf(arrow({ points: [0, 0, 100, 0], h: 0, arrowType: 'arc' }))).h).toBe(0);
   });
 
   it('is empty for an empty path', () => {
     expect(pathBounds([])).toEqual({ x: 0, y: 0, w: 0, h: 0 });
+  });
+});
+
+// 06.15 P21: a filled closed line is grabbed from inside, as a shape is.
+describe('inside a closed line', () => {
+  it('counts as on it when filled, not when hollow', () => {
+    const loop = { id: 'l', type: 'line', x: 0, y: 0, w: 100, h: 100, z: 1, points: [0, 0, 100, 0, 100, 100, 0, 100, 0, 0], closed: true } as never as SceneElement;
+    expect(insideFilledLine({ ...loop, fill: 'blue' } as SceneElement, { x: 50, y: 50 })).toBe(true);
+    expect(insideFilledLine(loop, { x: 50, y: 50 })).toBe(false);
   });
 });

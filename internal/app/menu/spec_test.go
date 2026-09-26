@@ -286,6 +286,8 @@ func TestOnlyTheKeptShortcutsAreBound(t *testing.T) {
 		"view.zoomIn": true, "view.zoomOut": true, "view.actualSize": true,
 		"canvas.group": true, "canvas.ungroup": true, "canvas.bringForward": true, "canvas.sendBackward": true,
 		"canvas.flipHorizontal": true, "canvas.flipVertical": true, "canvas.duplicate": true, "canvas.lock": true,
+		// 06.15: the user asked for it (06.12 decision 14).
+		"canvas.editPoints": true,
 	}
 	bound := map[string]bool{}
 	for _, item := range load(t).AllItems() {

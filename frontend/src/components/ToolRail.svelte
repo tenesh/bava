@@ -16,9 +16,12 @@
     insertOpen: boolean;
     onSelect: (tool: ToolId) => void;
     onInsert: () => void;
+    /** Whether a drawing tool stays on after it draws (the lock, `Q`). */
+    locked?: boolean;
+    onLock?: () => void;
   };
 
-  let { active, insertOpen, onSelect, onInsert }: Props = $props();
+  let { active, insertOpen, onSelect, onInsert, locked = false, onLock = () => {} }: Props = $props();
 
   let rail: HTMLDivElement;
 
@@ -50,6 +53,21 @@
   bind:this={rail}
   onkeydown={onKeydown}
 >
+  <div class="group">
+    <Tooltip
+      label={t('rail.lock')}
+      keys="Q"
+      type="button"
+      class="bava-rail-button"
+      aria-label={t('rail.lock')}
+      aria-pressed={locked}
+      data-active={locked}
+      onclick={onLock}
+    >
+      <ToolIcon id={locked ? 'lock' : 'lockOpen'} />
+      <span class="key" aria-hidden="true">Q</span>
+    </Tooltip>
+  </div>
   {#each RAIL_GROUPS as group, i (i)}
     <div class="group">
       {#each group as item (item.id)}

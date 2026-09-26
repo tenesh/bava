@@ -201,6 +201,7 @@ Optional on the element types listed, and absent means the default:
 | `startMode` | `inside`: the start is pinned at its anchor, inside the element | on the element's edge | `arrow`, with `startBinding` |
 | `endMode` | as above, for the other end | on the element's edge | `arrow`, with `endBinding` |
 | `fixedSegments` | a list of `{ "index": n, "start": [x, y], "end": [x, y] }`: the middle segments of an elbow the user dragged, in the arrow's own coordinates | fully routed | `arrow` with `arrowType: "elbow"` |
+| `closed` | `true`: the line is a loop, its last point on its first, and stays one when either is moved or deleted | open | `line` |
 | `labelPosition` | 0 to 1: where the label sits, as a share of the drawn path's length | 0.5, the middle | `arrow` with a `label` |
 | `frame` | the `id` of the `frame` that owns this element | not in a frame | every element |
 | `language` | the language a code block is highlighted as | plain text | `code` |
@@ -221,11 +222,19 @@ appearance.
 `line`, `arrow` and `stroke` carry `points`: a flat list `[x1, y1, x2, y2,
 ...]` relative to the element's `x, y`. `line` and `arrow` have two points
 when drawn and one more for each bend the user adds; `stroke` has as many as
-the pen recorded. They take `stroke`, and never `fill`.
+the pen recorded. They take `stroke`. Only a closed `line` (`closed: true`)
+takes `fill`, drawn while it is closed; opening it removes the fill. On a
+closed line an absent `fill` means none, not the theme's shape fill.
+
+**A new line or arrow is written with its kind.** Bava draws new arrows
+curved (`arrowType: "arc"`) and new lines round (`edges: "round"`), as
+Excalidraw does, and writes the key into each new element: an absent key
+still means straight and sharp, so older files draw as they always have.
 
 **The kind decides how bends are drawn.** A straight arrow or a line runs
-through its points with sharp corners. An arc curves smoothly through them
-(with no bends, it bows once, as it always has). An elbow's `points` are its
+through its points with sharp corners. An arc curves smoothly through them;
+with no bends it is straight, as Excalidraw's (it bowed once before 06.15, so
+an older two-point arc now draws straight). An elbow's `points` are its
 route: right-angled, leaving each attached shape from the side its end is on
 and going around both shapes, recomputed whenever either moves. Switching an
 arrow to elbow replaces its bends with the route; switching away keeps only

@@ -131,3 +131,16 @@ describe('SelectionToolbar controls', () => {
     unmount(app);
   });
 });
+
+// 06.15 C10, P3, P19: a button for each line action, reported by name.
+describe("SelectionToolbar's line actions", () => {
+  it('shows each one it is given and reports it when pressed', () => {
+    const onLine = vi.fn();
+    const { app, button } = render({ lineActions: ['finishLine', 'closeLine'], onLine });
+    button('Done')!.click();
+    button('Close line')!.click();
+    expect(onLine.mock.calls.map((call) => call[0])).toEqual(['finishLine', 'closeLine']);
+    expect(button('Edit points')).toBeUndefined();
+    unmount(app);
+  });
+});

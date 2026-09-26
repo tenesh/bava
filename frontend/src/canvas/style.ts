@@ -32,6 +32,15 @@ export function styleKeysFor(type: string): StyleKey[] {
 }
 
 /**
+ * The colour keys an element takes: its type's, and a fill on a closed line
+ * (`docs/file-format.md`, "Lines, arrows and strokes").
+ */
+export function styleKeysOf(element: SceneElement): StyleKey[] {
+  const keys = styleKeysFor(element.type);
+  return element.type === 'line' && (element as { closed?: boolean }).closed === true ? ['fill', ...keys] : keys;
+}
+
+/**
  * Set `key` to a swatch on every selected element that takes it, or clear it
  * back to the theme default with `null`. One undo step.
  */
@@ -39,7 +48,7 @@ export function applyStyle(history: History, ids: ElementId[], key: StyleKey, sw
   const selected = new Set(ids);
   history.mutate((draft) => {
     for (const element of draft.elements) {
-      if (!selected.has(element.id) || !styleKeysFor(element.type).includes(key)) continue;
+      if (!selected.has(element.id) || !styleKeysOf(element).includes(key)) continue;
       const styled = element as typeof element & Partial<Record<StyleKey, string>>;
       if (swatch === null) {
         if (key in styled) delete styled[key];
@@ -58,7 +67,7 @@ export function applyStyle(history: History, ids: ElementId[], key: StyleKey, sw
 export function currentStyle(scene: SceneData, ids: ElementId[], key: StyleKey): string | null | 'mixed' | 'unavailable' {
   const selected = new Set(ids);
   const values = scene.elements
-    .filter((e) => selected.has(e.id) && styleKeysFor(e.type).includes(key))
+    .filter((e) => selected.has(e.id) && styleKeysOf(e).includes(key))
     .map((e) => (e as typeof e & Partial<Record<StyleKey, string>>)[key] ?? null);
   if (values.length === 0) return 'unavailable';
   return values.every((value) => value === values[0]) ? values[0] : 'mixed';
@@ -70,7 +79,7 @@ export type CopiedStyle = Partial<Record<StyleKey, string | null>>;
 /** The style of one element, for Paste Styles. */
 export function copyStyle(element: SceneElement): CopiedStyle {
   const styled = element as SceneElement & Partial<Record<StyleKey, string>>;
-  return Object.fromEntries(styleKeysFor(element.type).map((key) => [key, styled[key] ?? null]));
+  return Object.fromEntries(styleKeysOf(element).map((key) => [key, styled[key] ?? null]));
 }
 
 /**
@@ -83,7 +92,7 @@ export function pasteStyle(history: History, ids: ElementId[], style: CopiedStyl
     for (const element of draft.elements) {
       if (!selected.has(element.id)) continue;
       const styled = element as typeof element & Partial<Record<StyleKey, string>>;
-      for (const key of styleKeysFor(element.type)) {
+      for (const key of styleKeysOf(element)) {
         if (!(key in style)) continue;
         const value = style[key];
         if (value === null || value === undefined) {

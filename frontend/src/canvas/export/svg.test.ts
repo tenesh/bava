@@ -262,3 +262,11 @@ describe('the heads of a dashed arrow', () => {
     expect(head).not.toContain('stroke-dasharray');
   });
 });
+
+// 06.15 P21: a closed line's fill travels into the export.
+describe('exporting a closed line', () => {
+  it('fills it', () => {
+    const svg = svgOf([{ id: 'l', type: 'line', x: 0, y: 0, w: 10, h: 10, z: 1, points: [0, 0, 10, 0, 10, 10, 0, 0], closed: true, fill: 'blue' }]);
+    expect(svg).toMatch(/<polyline[^>]*fill="lightblue"/);
+  });
+});

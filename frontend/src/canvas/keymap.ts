@@ -21,6 +21,8 @@ export type KeymapActions = {
   activateTool(tool: ToolId): void;
   /** Type into the selected shape's label or text. */
   editSelection(): void;
+  /** Keep the drawing tool on after it draws, or stop keeping it (`Q`). */
+  toggleLock(): void;
 };
 
 export function handleKey(
@@ -66,6 +68,10 @@ export function handleKey(
   // A tool is its bare letter. Shift or Option with a letter is something
   // else: ⇧H flips.
   if (event.shiftKey || event.altKey) return false;
+  if (event.key.toLowerCase() === 'q') {
+    actions.toggleLock();
+    return true;
+  }
   const tool = toolForKey(event.key);
   if (tool) {
     actions.activateTool(tool);

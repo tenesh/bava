@@ -97,7 +97,8 @@ export type ShapeElement = Base & Styled & StyleProps & { type: ShapeType };
 export type RectElement = ShapeElement & { type: 'rect' };
 export type EllipseElement = ShapeElement & { type: 'ellipse' };
 /** `points` are relative to the element's `x` and `y`. */
-export type LineElement = Base & StyleProps & { type: 'line'; points: number[]; stroke?: string };
+/** `closed`: a loop, its last point on its first; only then does `fill` draw (06.15). */
+export type LineElement = Base & StyleProps & { type: 'line'; points: number[]; stroke?: string; fill?: string; closed?: boolean };
 export type ArrowElement = Base & StyleProps & ArrowProps & { type: 'arrow'; points: number[]; stroke?: string };
 export type FrameElement = Base & StyleProps & { type: 'frame'; label?: string; stroke?: string; color?: string };
 export type GroupElement = Base & StyleProps & { type: 'group'; label?: string; children: ElementId[] };

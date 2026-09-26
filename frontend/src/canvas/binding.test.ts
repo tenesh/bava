@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { anchorFor, anchorOn, BINDING_GAP, bindingReach, elbowSnapSpots, isDetached, reroute, routeFor, targetAt } from './binding';
 import type { SceneData, SceneElement } from './scene';
+import { drawnPathOf, pathBounds } from './hit';
 
 const el = (over: Record<string, unknown>): SceneElement =>
   ({ id: 'e', type: 'rect', x: 0, y: 0, w: 100, h: 60, z: 1, ...over }) as SceneElement;
@@ -177,17 +178,19 @@ describe('re-routing after a change', () => {
   // An unbound arrow keeps its points, but its box is still settled around
   // what it draws: that is how an arc's bow gets inside its own bounds, which
   // selection, the marquee, the eraser and the export all test.
-  it('settles an unbound arc box around its bow, keeping the points', () => {
+  // Since 06.15 (V2) a two-point arc is straight, so the curve is a bent one.
+  it('settles an unbound arc box around its curve, keeping the points', () => {
     const data: SceneData = {
       elements: [
-        { id: 'arc', type: 'arrow', x: 0, y: 0, w: 100, h: 0, z: 1, points: [0, 0, 100, 0], arrowType: 'arc' } as never,
+        { id: 'arc', type: 'arrow', x: 0, y: 0, w: 100, h: 0, z: 1, points: [0, 0, 50, -40, 100, 0], arrowType: 'arc' } as never,
       ],
     };
     reroute(data);
     const arrow = data.elements[0] as SceneElement & { points: number[] };
-    expect(arrow.h).toBeGreaterThan(0);
-    expect(arrow.points[0]).toBe(0);
-    expect(arrow.points[2]).toBe(100);
+    const drawn = pathBounds(drawnPathOf(arrow));
+    expect(arrow.y).toBeLessThanOrEqual(drawn.y);
+    expect(arrow.y + arrow.h).toBeGreaterThanOrEqual(drawn.y + drawn.h);
+    expect(arrow.points.filter((_, i) => i % 2 === 0)).toEqual([0, 50, 100]);
   });
 });
 

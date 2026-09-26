@@ -13,7 +13,7 @@
   import Tooltip from './Tooltip.svelte';
   import ToolIcon from './ToolIcon.svelte';
   import type { IconId } from './tool-icons';
-  import { splitForWidth, type ToolbarControl } from '../canvas/toolbar';
+  import { splitForWidth, type LineAction, type ToolbarControl } from '../canvas/toolbar';
   import { PROPERTY_OPTIONS } from '../canvas/property-options';
   import type { PropertyKey, PropertyValue, StyleKey } from '../canvas/style';
   import type { MessageKey } from '../i18n/messages';
@@ -37,6 +37,11 @@
     onCommand: (id: string) => void;
     /** Viewport point above the More button, where its menu opens. */
     onMore: (anchor: { x: number; y: number }, overflow: ToolbarControl[]) => void;
+    /** Actions on a line or arrow: Done, Edit points, Close or Open line. */
+    lineActions?: LineAction[];
+    onLine?: (action: LineAction) => void;
+    /** Whether the More button shows: not on the Done bar of a line being drawn. */
+    showMore?: boolean;
   };
 
   let {
@@ -51,6 +56,9 @@
     onProperty,
     onCommand,
     onMore,
+    lineActions = [],
+    onLine = () => {},
+    showMore = true,
   }: Props = $props();
 
   type Action = { id: string; icon: IconId; labelKey: MessageKey };
@@ -116,6 +124,22 @@
     {/if}
   {/each}
 
+  {#if lineActions.length > 0}
+    <span class="divider" aria-hidden="true"></span>
+    {#each lineActions as action (action)}
+      <Tooltip
+        label={t(`toolbar.${action}`)}
+        placement="top"
+        type="button"
+        class="bava-toolbar-button"
+        aria-label={t(`toolbar.${action}`)}
+        onclick={() => onLine(action)}
+      >
+        <ToolIcon id={action} />
+      </Tooltip>
+    {/each}
+  {/if}
+
   {#if actions.length > 0}
     <span class="divider" aria-hidden="true"></span>
     {#each actions as action (action.id)}
@@ -133,6 +157,7 @@
     {/each}
   {/if}
 
+{#if showMore}
   <span class="divider" aria-hidden="true"></span>
   <Tooltip
     label={t('toolbar.more')}
@@ -144,6 +169,7 @@
   >
     <ToolIcon id="more" />
   </Tooltip>
+{/if}
 </div>
 
 <style>

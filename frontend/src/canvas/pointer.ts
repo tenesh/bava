@@ -34,14 +34,15 @@ import {
   withFixed,
 } from './binding';
 import { routeElbow } from './elbow';
+import { isClosed, keepLoop, removeFromLoop } from './closed';
 import { moveSegment, releaseSegment } from './elbow-segments';
 import { carriedWith, releaseFrames } from './containment';
 import { measureCode, MIN_RESIZE_COLUMNS, type CodeMetrics } from './code/measure';
-import { isLinear, nearElement, tensionOf } from './hit';
+import { insideFilledLine, isLinear, nearElement, tensionOf } from './hit';
 import { chromeFor, elbowSegmentHandles, focusSpots, grown, offersMiddles } from './selection-chrome';
 import type { CursorTarget } from './cursor';
 import { simplify } from './stroke';
-import { snapAngle, squareBox } from './constrain';
+import { ANGLE_STEP, snapAngle, squareBox } from './constrain';
 import { erasableAlong, eraseSet } from './eraser';
 import { handleAt, isRotateHandle, resizeBox, scaleInto, tidy, type Handle } from './resize';
 import {
@@ -64,7 +65,7 @@ import {
 
 export type Point = { x: number; y: number };
 
-type Tools = { readonly active: ToolId; escape(): void };
+type Tools = { readonly active: ToolId; readonly locked?: boolean; escape(): void };
 
 export type PointerHandlerOptions = {
   history: History;
@@ -138,6 +139,11 @@ export type PointerHandlerOptions = {
   confirmDistance?: () => number;
   /** An arrow's label box in scene space, as the stage draws it, for sliding it. */
   labelBounds?: (id: ElementId) => Box | null;
+  /**
+   * The style keys a new element of a kind is written with: the style last
+   * chosen (`current-style.ts`). None when not given.
+   */
+  newStyle?: (type: SceneElement['type']) => Record<string, unknown>;
   /** How a code block is measured: the mono advance, line height and padding. */
   codeMetrics?: () => CodeMetrics;
 };
@@ -175,12 +181,21 @@ type Drag = {
   focus?: { id: ElementId; side: 'start' | 'end'; original: SceneElement; offset: Point };
   /** Set when the press landed on the selected arrow's label, which slides along it. */
   label?: { id: ElementId; original: SceneElement };
-  /** Set in point editing when the press took points: they move together. */
-  points?: { id: ElementId; indices: number[]; original: SceneElement };
+  /**
+   * Set in point editing when the press took points: they move together.
+   * `deselect`: a Shift-press on a selected point, which drops it only if the
+   * press is released without a drag (Excalidraw's).
+   */
+  points?: { id: ElementId; indices: number[]; original: SceneElement; deselect?: number };
   /** Set in point editing for a press that changes nothing when dragged. */
   inert?: boolean;
-  /** Set in point editing by an Alt-press off the points: add one there on release. */
-  appendAt?: Point;
+  /**
+   * Set in point editing by an Alt-press: a point added there, after the last
+   * (before an attached end), which the same press drags. `index` is where.
+   */
+  append?: { id: ElementId; original: SceneElement; index: number; at: Point };
+  /** Set in point editing by a press off the line on empty canvas: a box that selects points. */
+  pointMarquee?: { additive: boolean };
   /** The id a drawn element gets, fixed for the drag so previews update one node. */
   newId: string;
   /**
@@ -218,6 +233,12 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   let alt = false;
   // Cmd/Ctrl, likewise: held while an arrow end is dropped, it stays free.
   let mod = false;
+  /**
+   * Alt and Cmd/Ctrl as they were at the press that started a line or arrow:
+   * they decide its start end (pinned, or free), as Excalidraw reads them
+   * (`App.tsx:10142-10148`, `:10404`); the release decides the other end.
+   */
+  let pressed = { alt: false, mod: false };
   // Point editing (06.13): the line or arrow whose points are being edited,
   // and which of them are selected, by index.
   let pointEditing: { id: ElementId; selected: number[] } | null = null;
@@ -255,6 +276,9 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   const bendInsertDistance = options.bendInsertDistance ?? (() => 10);
   const minLinear = options.minLinear ?? (() => 20);
   const confirmDistance = options.confirmDistance ?? (() => 8);
+  const newStyle = options.newStyle ?? (() => ({}));
+  /** Whether a new arrow would be an elbow, by the style it would take. */
+  const drawsElbow = () => (newStyle('arrow') as { arrowType?: unknown }).arrowType === 'elbow';
 
   /**
    * Where a dragged point goes: the pointer, plus the offset from where the
@@ -263,7 +287,10 @@ export function createPointerHandler(options: PointerHandlerOptions) {
    */
   function aimedPoint(point: Point, drag: Drag, at: Point, neighbour: Point | null): Point {
     const aimed = { x: point.x + at.x - drag.origin.x, y: point.y + at.y - drag.origin.y };
-    return shift && neighbour ? snapAngle(neighbour, aimed) : aimed;
+    if (!shift || !neighbour) return aimed;
+    // The angle the segment had at the press is a step of its own (C12).
+    const own = (Math.atan2(at.y - neighbour.y, at.x - neighbour.x) * 180) / Math.PI;
+    return snapAngle(neighbour, aimed, ANGLE_STEP, own);
   }
 
   function farEnough(a: Point, b: Point): boolean {
@@ -282,7 +309,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     return history.current.elements.filter((e) => {
       if (isLocked(e)) return false;
       if (!isLinear(e.type)) return containsPoint(e, point);
-      if (nearElement(e, point, tolerance)) return true;
+      if (nearElement(e, point, tolerance) || insideFilledLine(e, point)) return true;
       // Selected alone and showing a box (a bent line), it is hit anywhere in
       // the box as drawn, its padding included (Excalidraw's `App.tsx:6824-6842`).
       if (selection.ids.length !== 1 || !selection.has(e.id)) return false;
@@ -371,13 +398,21 @@ export function createPointerHandler(options: PointerHandlerOptions) {
      * neither end is over a shape.
      */
     get bindingCandidates(): ElementId[] {
-      if (mod) return [];
+      // What each end would attach to: the start as the press left it, the
+      // end as held now (Cmd/Ctrl frees an end).
+      const both = (start: Point, end: Point, id: string) => {
+        const ids = [pressed.mod ? undefined : targetAt(history.current, start, id, reach())?.id, mod ? undefined : targetAt(history.current, end, id, reach())?.id];
+        return ids.filter((found, i) => found !== undefined && ids.indexOf(found) === i) as ElementId[];
+      };
       // A clicked arrow shows what its first point and the pointer would attach to.
-      if (clicking?.type === 'arrow') {
-        const ids = [clicking.points[0], lastPoint].map((end) => targetAt(history.current, end, clicking!.id, reach())?.id);
-        return ids.filter((id, i) => id !== undefined && ids.indexOf(id) === i) as ElementId[];
+      if (clicking?.type === 'arrow') return both(clicking.points[0], lastPoint, clicking.id);
+      // With the Arrow tool, before any press: the shape a press would start on.
+      if (!drag) {
+        if (tools.active !== 'arrow' || mod) return [];
+        const under = targetAt(history.current, lastPoint, '', reach());
+        return under ? [under.id] : [];
       }
-      if (!drag) return [];
+      if (mod && drag.endpoint) return [];
       // An end of an existing arrow being dragged: what it would attach to,
       // by the rule the release uses (the other end's shape is refused).
       if (drag.endpoint) {
@@ -389,9 +424,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       if (tools.active !== 'arrow') return [];
       // The same endpoint the release would bind, Shift snapping included, so
       // the highlight cannot name a shape the drop would miss.
-      const ends = [drag.origin, shift ? snapAngle(drag.origin, lastPoint) : lastPoint];
-      const ids = ends.map((end) => targetAt(history.current, end, drag!.newId, reach())?.id);
-      return ids.filter((id, i) => id !== undefined && ids.indexOf(id) === i) as ElementId[];
+      return both(drag.origin, shift ? snapAngle(drag.origin, lastPoint) : lastPoint, drag.newId);
     },
 
     /**
@@ -407,8 +440,10 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       });
     },
 
-    down(point: Point, options: { additive?: boolean; alt?: boolean; shift?: boolean } = {}): void {
+    down(point: Point, options: { additive?: boolean; alt?: boolean; mod?: boolean; shift?: boolean } = {}): void {
       shift = Boolean(options.shift);
+      // A clicked line keeps what its first press held for its start.
+      if (!clicking) pressed = { alt: Boolean(options.alt), mod: Boolean(options.mod) };
       endAim = null;
       justFinishedClicking = false;
       // While a line is drawn click by click, a press is the next click: it
@@ -569,7 +604,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
       // A resize is a select-tool drag that moves nothing; the marquee belongs
       // to dragging empty space, not to it.
-      if (tools.active === 'select' && !drag.resize && !drag.rotate && !drag.endpoint && !drag.bend && !drag.segment && !drag.focus && !drag.label && !drag.points && !drag.inert && drag.moving.length === 0) {
+      if (tools.active === 'select' && !drag.resize && !drag.rotate && !drag.endpoint && !drag.bend && !drag.segment && !drag.focus && !drag.append && !drag.label && !drag.points && !drag.inert && drag.moving.length === 0) {
         marquee = boxBetween(drag.origin, point);
       }
     },
@@ -580,11 +615,40 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     },
 
     /** The scene with the line being drawn click by click, running to `point`. */
-    pointsPreview(point: Point): SceneData | null {
+    pointsPreview(point: Point, options: { shift?: boolean } = {}): SceneData | null {
       if (!clicking) return null;
-      const element = linearFrom(clicking.type, clicking.id, [...clicking.points, point]);
+      const last = clicking.points[clicking.points.length - 1];
+      // Back on the last point, the next segment is not drawn: a click there
+      // finishes (Excalidraw's `App.tsx:8066-8101`). Shift snaps it to 15°.
+      const onLast = Math.hypot(point.x - last.x, point.y - last.y) <= confirmDistance();
+      const next = options.shift ? snapAngle(last, point) : point;
+      const points = onLast ? clicking.points : [...clicking.points, next];
+      if (points.length < 2) return history.current;
+      const element = linearFrom(clicking.type, clicking.id, points);
       return produce(history.current, (draft: SceneData) => {
         draft.elements.push(element as never);
+      });
+    },
+
+    /**
+     * While Alt is held in point editing, the line with the point an
+     * Alt-click would add, running to `point` (Shift snaps it); null
+     * otherwise (Excalidraw's `linearElementEditor.ts:1099-1140`).
+     */
+    appendPreview(point: Point, options: { shift?: boolean } = {}): SceneData | null {
+      const editing = currentEditing();
+      if (!editing || drag) return null;
+      const element = history.current.elements.find((e) => e.id === editing.id)!;
+      const base = unturned(element);
+      const points = [...(('points' in base ? base.points : []) as number[])];
+      const endBound = (element.type === 'arrow' && (element as SceneElement & ArrowProps).endBinding !== undefined) || isClosed(element);
+      const at = endBound ? points.length - 2 : points.length;
+      const previous = { x: base.x + points[at - 2], y: base.y + points[at - 1] };
+      const target = options.shift ? snapAngle(previous, point) : point;
+      points.splice(at, 0, tidy(target.x - base.x), tidy(target.y - base.y));
+      return produce(history.current, (draft: SceneData) => {
+        const i = draft.elements.findIndex((e) => e.id === editing.id);
+        if (i >= 0) draft.elements[i] = settledAround(base, points) as never;
       });
     },
 
@@ -624,10 +688,9 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     deletePoints(): boolean {
       const editing = currentEditing();
       if (!editing) return false;
-      if (editing.selected.length === 0) {
-        pointEditing = null;
-        return false;
-      }
+      // With none selected, nothing: deleting the line is most likely a
+      // mistake (Excalidraw's `actionDeleteSelected.tsx:225-231`).
+      if (editing.selected.length === 0) return true;
       this.removeSelectedPoints();
       return true;
     },
@@ -667,7 +730,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       pointEditing = null;
     },
 
-    /** Remove the selected points, as one step, never leaving fewer than two. */
+    /** Remove the selected points, as one step; a line left with fewer than two distinct points goes. */
     removeSelectedPoints(): boolean {
       const editing = currentEditing();
       if (!editing || editing.selected.length === 0) return false;
@@ -675,15 +738,80 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       if (!element) return false;
       const base = unturned(element);
       const all = ('points' in base ? base.points : []) as number[];
-      const keep = new Set(editing.selected);
-      if (all.length / 2 - keep.size < 2) return false;
-      const points = all.filter((_, i) => !keep.has(Math.floor(i / 2)));
+      const gone = new Set(editing.selected);
+      // A closed line loses its first and last together, and closes again.
+      const loop = isClosed(base) ? removeFromLoop(all, gone) : null;
+      // Fewer than two left is no line: it goes, as Excalidraw's
+      // (`actionDeleteSelected.tsx:233-251`).
+      // A loop counts its closing point once.
+      if ((loop ? loop.points.length / 2 - 1 : all.length / 2 - gone.size) < 2) {
+        history.mutate((scene) => {
+          scene.elements = scene.elements.filter((e) => e.id !== element.id);
+        });
+        pointEditing = null;
+        selection.clear();
+        return true;
+      }
+      const points = loop ? loop.points : all.filter((_, i) => !gone.has(Math.floor(i / 2)));
+      history.mutate((scene) => {
+        const i = scene.elements.findIndex((e) => e.id === element.id);
+        if (i < 0) return;
+        const settled = settledAround(base, points) as SceneElement & { closed?: boolean; fill?: string };
+        // Too few corners left for a loop: open, and its fill goes with it.
+        if (loop && !loop.closed) {
+          delete settled.closed;
+          delete settled.fill;
+        }
+        scene.elements[i] = settled;
+      });
+      // The point before the first one removed is selected, in the new numbering.
+      const kept = loop ? loop.kept : all.map((_, i) => i).filter((i) => i % 2 === 0 && !gone.has(i / 2)).map((i) => i / 2);
+      editing.selected = [Math.max(0, kept.indexOf(Math.min(...editing.selected) - 1))];
+      return true;
+    },
+
+    /**
+     * Duplicate the selected points, as one step: each gains a copy halfway
+     * to the next point, and the last one a copy 30, 30 away; the copies are
+     * selected (Excalidraw's `linearElementEditor.ts:1500-1574`). Returns
+     * whether it did, so `⌘`/`Ctrl`+`D` duplicates nothing else.
+     */
+    duplicatePoints(): boolean {
+      const editing = currentEditing();
+      if (!editing) return false;
+      // In the mode, Duplicate is the points', none selected or not.
+      if (editing.selected.length === 0) return true;
+      const element = history.current.elements.find((e) => e.id === editing.id);
+      if (!element) return true;
+      const base = unturned(element);
+      const points = [...(('points' in base ? base.points : []) as number[])];
+      // A loop's closing point is its first: its copy goes towards the second.
+      const closingIndex = isClosed(base) ? points.length / 2 - 1 : -1;
+      const chosen = [...new Set(editing.selected.map((i) => (i === closingIndex ? 0 : i)))].sort((a, b) => a - b);
+      const copies: number[] = [];
+      let added = 0;
+      for (const index of chosen) {
+        const at = index + added;
+        const last = at * 2 + 2 >= points.length;
+        const [x, y] = [points[at * 2], points[at * 2 + 1]];
+        const copy = last
+          ? [x + DUPLICATE_POINT_OFFSET, y + DUPLICATE_POINT_OFFSET]
+          : [(x + points[at * 2 + 2]) / 2, (y + points[at * 2 + 3]) / 2];
+        points.splice(at * 2 + 2, 0, ...copy.map(tidy));
+        copies.push(at + 1);
+        added += 1;
+      }
       history.mutate((scene) => {
         const i = scene.elements.findIndex((e) => e.id === element.id);
         if (i >= 0) scene.elements[i] = settledAround(base, points);
       });
-      editing.selected = [];
+      editing.selected = copies;
       return true;
+    },
+
+    /** Select All while editing points does nothing (Excalidraw's). Whether it took it. */
+    selectAll(): boolean {
+      return currentEditing() !== null;
     },
 
     /**
@@ -774,28 +902,6 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       return true;
     },
 
-    /**
-     * Remove the bend under a point, on the one selected line or arrow, as one
-     * step. The ends are not bends: a line or arrow keeps at least two points.
-     * Returns whether a bend was removed, so the caller skips its own
-     * double-click behaviour.
-     */
-    removeBendAt(point: Point): boolean {
-      const found = bendAt(point);
-      if (!found || found.insert) return false;
-      const count = ((('points' in found.original ? found.original.points : []) as number[]).length) / 2;
-      if (found.index === 0 || found.index === count - 1) return false;
-      const base = unturned(found.original);
-      const points = [...(base as SceneElement & { points: number[] }).points];
-      points.splice(found.index * 2, 2);
-      history.mutate((scene) => {
-        const i = scene.elements.findIndex((e) => e.id === found.id);
-        if (i >= 0) scene.elements[i] = settledAround(base, points);
-      });
-      // The points after it shift: a selection in point editing is not theirs.
-      if (pointEditing) pointEditing.selected = [];
-      return true;
-    },
 
     /**
      * The scene the drag would produce if released at `point`, for the canvas
@@ -834,10 +940,32 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       drag = null;
       marquee = null;
 
-      // An Alt-press off the points in point editing adds one there, read at
-      // the release as every modifier is.
-      if (started.appendAt) {
-        if (alt) appendPoint(point);
+      // A box dragged in point editing selects the points inside it (Shift
+      // adds); a click there instead leaves the mode, as a click on empty
+      // canvas clears the selection.
+      if (started.pointMarquee) {
+        const editing = currentEditing();
+        if (!editing) return null;
+        if (farEnough(started.origin, point)) {
+          const box = boxBetween(started.origin, point);
+          const element = history.current.elements.find((e) => e.id === editing.id)!;
+          const drawn = drawnPoints(element);
+          const inside: number[] = [];
+          for (let i = 0; i < drawn.length / 2; i += 1) {
+            const [x, y] = [drawn[i * 2], drawn[i * 2 + 1]];
+            if (x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h) inside.push(i);
+          }
+          editing.selected = [...new Set([...(started.pointMarquee.additive ? editing.selected : []), ...inside])].sort((a, b) => a - b);
+        } else {
+          pointEditing = null;
+          selection.clear();
+        }
+        return null;
+      }
+      // A Shift-press on a selected point that did not drag drops it.
+      if (started.points?.deselect !== undefined && !farEnough(started.origin, point)) {
+        const editing = currentEditing();
+        if (editing) editing.selected = editing.selected.filter((i) => i !== started.points!.deselect);
         return null;
       }
 
@@ -845,8 +973,33 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       // one finishes the line.
       if (clicking && (tools.active === 'line' || tools.active === 'arrow')) {
         const last = clicking.points[clicking.points.length - 1];
-        if (Math.hypot(point.x - last.x, point.y - last.y) <= confirmDistance()) finishClicking();
-        else clicking.points.push(point);
+        if (Math.hypot(point.x - last.x, point.y - last.y) <= confirmDistance()) {
+          finishClicking();
+          return null;
+        }
+        // Shift snaps the new segment to 15° about the last point.
+        const next = shift ? snapAngle(last, point) : point;
+        const first = clicking.points[0];
+        // A line clicked back on its first point finishes there, closed into a
+        // loop when it has a corner to go round (Excalidraw's `isPathALoop`).
+        if (clicking.type === 'line' && clicking.points.length >= 2 && Math.hypot(next.x - first.x, next.y - first.y) <= confirmDistance()) {
+          clicking.points.push({ ...first });
+          finishClicking({ closed: clicking.points.length >= 4 });
+          return null;
+        }
+        clicking.points.push(next);
+        // An elbow is only its two ends: the second click finishes it
+        // (Excalidraw's `App.tsx:10180-10191`).
+        if (clicking.type === 'arrow' && drawsElbow()) {
+          finishClicking();
+          return null;
+        }
+        // An arrow clicked just outside a shape attaches there and finishes
+        // (Excalidraw's `App.tsx:10221-10255`); inside one it is a point.
+        if (clicking.type === 'arrow' && !mod) {
+          const target = targetAt(history.current, next, clicking.id, reach());
+          if (target && !isInside(target, next)) finishClicking();
+        }
         return null;
       }
 
@@ -882,7 +1035,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         return null;
       }
 
-      if (tools.active === 'select' && !started.resize && !started.rotate && !started.endpoint && !started.bend && !started.segment && !started.focus && !started.label && !started.points && !started.inert && started.moving.length === 0) {
+      if (tools.active === 'select' && !started.resize && !started.rotate && !started.endpoint && !started.bend && !started.segment && !started.focus && !started.append && !started.label && !started.points && !started.inert && started.moving.length === 0) {
         if (farEnough(started.origin, point)) {
           selection.marquee(boxBetween(started.origin, point), history.current);
         }
@@ -910,6 +1063,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
             code: '',
             measuredWidth: size.width,
             measuredHeight: size.height,
+            ...newStyle('code'),
           } as SceneElement);
         });
         return id;
@@ -934,10 +1088,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       // selected, so the next press edits rather than drawing again. The pen
       // is used stroke after stroke, so it stays on.
       const drawn = tools.active !== 'select' && tools.active !== 'pen';
-      if (drawn && history.current.elements.some((e) => e.id === started.newId)) {
-        tools.escape();
-        selection.click(started.newId);
-      }
+      if (drawn && history.current.elements.some((e) => e.id === started.newId)) afterDraw(started.newId);
       return null;
     },
   };
@@ -985,11 +1136,44 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
     if (started.inert) return null;
 
+    if (started.append) {
+      // Added at the press, whether or not it is then dragged; Shift snaps
+      // it to 15° about the point before it.
+      const { id, original, index, at } = started.append;
+      const base = unturned(original);
+      const points = [...(('points' in base ? base.points : []) as number[])];
+      const previous = { x: base.x + points[index * 2 - 2], y: base.y + points[index * 2 - 1] };
+      // Shift snaps to 15° steps, as its preview did (no own angle: it is new).
+      const aimed = farEnough(started.origin, point) ? { x: point.x + at.x - started.origin.x, y: point.y + at.y - started.origin.y } : at;
+      const target = shift ? snapAngle(previous, aimed) : aimed;
+      points.splice(index * 2, 0, tidy(target.x - base.x), tidy(target.y - base.y));
+      return (scene) => {
+        const i = scene.elements.findIndex((e) => e.id === id);
+        if (i >= 0) scene.elements[i] = settledAround(base, points);
+      };
+    }
+
     if (started.points) {
       const { id, indices, original } = started.points;
       if (!farEnough(started.origin, point)) return null;
       const base = unturned(original);
       const points = [...(('points' in base ? base.points : []) as number[])];
+      // One point with Shift snaps to 15° about its neighbour, or to the angle
+      // it started at (Excalidraw's `linearElementEditor.ts:542-556`).
+      if (shift && indices.length === 1 && points.length >= 4) {
+        const index = indices[0];
+        const next = index === 0 ? 1 : index - 1;
+        const at = { x: base.x + points[index * 2], y: base.y + points[index * 2 + 1] };
+        const neighbour = { x: base.x + points[next * 2], y: base.y + points[next * 2 + 1] };
+        const target = aimedPoint(point, started, at, neighbour);
+        points[index * 2] = tidy(target.x - base.x);
+        points[index * 2 + 1] = tidy(target.y - base.y);
+        const settled = settleLine(base, points, indices);
+        return (scene) => {
+          const i = scene.elements.findIndex((e) => e.id === id);
+          if (i >= 0) scene.elements[i] = settled;
+        };
+      }
       const dx = point.x - started.origin.x;
       const dy = point.y - started.origin.y;
       for (const index of indices) {
@@ -998,9 +1182,10 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         points[index * 2] += dx;
         points[index * 2 + 1] += dy;
       }
+      const settled = settleLine(base, points, indices);
       return (scene) => {
         const i = scene.elements.findIndex((e) => e.id === id);
-        if (i >= 0) scene.elements[i] = settledAround(base, points);
+        if (i >= 0) scene.elements[i] = settled;
       };
     }
 
@@ -1092,7 +1277,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       // A click on a handle is not a drag: it neither moves nor adds a point.
       if (!farEnough(started.origin, point)) return null;
       // A middle adds a bend only once dragged a little way, as Excalidraw's.
-      if (insert && Math.hypot(point.x - started.origin.x, point.y - started.origin.y) < bendInsertDistance()) return null;
+      // In point editing it adds one at once (Excalidraw's).
+      if (insert && pointEditing?.id !== id && Math.hypot(point.x - started.origin.x, point.y - started.origin.y) < bendInsertDistance()) return null;
       // A turned line has its turn written into its points first, so the
       // edit is in scene space and nothing else it draws moves.
       const base = unturned(original);
@@ -1104,11 +1290,12 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const local = [target.x - base.x, target.y - base.y];
       if (insert) points.splice(index * 2, 0, ...local);
       else points.splice(index * 2, 2, ...local);
+      const settled = settleLine(base, points, insert ? [] : [index]);
       return (scene) => {
         const i = scene.elements.findIndex((e) => e.id === id);
         // The box is settled around the new points; an arrow's attached ends
         // re-aim in the same step (`reroute`).
-        if (i >= 0) scene.elements[i] = settledAround(base, points);
+        if (i >= 0) scene.elements[i] = settled;
       };
     }
 
@@ -1209,6 +1396,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           y: tidy(box.y),
           w: tidy(box.w),
           h: tidy(box.h),
+          ...newStyle('stroke'),
         } as SceneElement);
       };
     }
@@ -1298,8 +1486,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     const linear = type === 'line' || type === 'arrow';
     // Shift constrains: a square box, or an angle in 15° steps.
     const end = shift && linear ? snapAngle(started.origin, point) : point;
-    // A line or arrow shorter than this is a slip, not a drawing (Excalidraw's).
-    if (linear && Math.hypot(end.x - started.origin.x, end.y - started.origin.y) < minLinear()) return null;
+    // Under the minimum length it is still drawn (Excalidraw's, from the
+    // first move): released there, `up` goes on drawing it click by click.
     const raw = shift && !linear ? squareBox(started.origin, point) : boxBetween(started.origin, end);
     // Tidy: a zoom or fractional pan leaves 83.33333333333333, written into
     // the user's file otherwise.
@@ -1312,15 +1500,17 @@ export function createPointerHandler(options: PointerHandlerOptions) {
             points: [started.origin.x - box.x, started.origin.y - box.y, end.x - box.x, end.y - box.y].map(tidy),
             // An arrow is a connector: it attaches to what its ends land on,
             // unless Alt says otherwise. A line is geometry, and never binds.
-            ...(type === 'arrow' && !mod ? bindingsFor(started.origin, end, started.newId) : {}),
+            ...(type === 'arrow' ? bindingsFor(started.origin, end, started.newId) : {}),
           }
         : {};
+    const styled = newStyle(type as SceneElement['type']);
     return (scene) => {
       scene.elements.push({
         id: started.newId,
         z: topZ(scene.elements) + 1,
         type,
         ...box,
+        ...styled,
         ...extra,
       } as SceneElement);
     };
@@ -1375,6 +1565,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       w: tidy(box.w),
       h: tidy(box.h),
       points: flat.map((value, i) => tidy(value - (i % 2 === 0 ? box.x : box.y))),
+      ...newStyle(type),
     } as SceneElement;
   }
 
@@ -1383,7 +1574,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
    * two points; an arrow attaches its first and last points as a dragged one
    * does. Then, as after any draw, the select tool with the line selected.
    */
-  function finishClicking(options: { keepTool?: boolean } = {}): void {
+  function finishClicking(options: { keepTool?: boolean; closed?: boolean } = {}): void {
     const drawing = clicking;
     clicking = null;
     if (!drawing) return;
@@ -1395,14 +1586,32 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     justFinishedClicking = true;
     const first = drawing.points[0];
     const last = drawing.points[drawing.points.length - 1];
-    const bindings = drawing.type === 'arrow' && !mod ? bindingsFor(first, last, drawing.id) : {};
-    const element = { ...linearFrom(drawing.type, drawing.id, drawing.points), ...bindings } as SceneElement;
+    const bindings = drawing.type === 'arrow' ? bindingsFor(first, last, drawing.id) : {};
+    const element = {
+      ...linearFrom(drawing.type, drawing.id, drawing.points),
+      ...bindings,
+      ...(options.closed ? { closed: true } : {}),
+    } as SceneElement;
     history.mutate((scene) => {
       scene.elements.push(element);
     });
     // A tool chosen mid-line is kept; otherwise, as after any draw, Select.
-    if (!options.keepTool) tools.escape();
-    selection.click(drawing.id);
+    if (options.keepTool) selection.click(drawing.id);
+    else afterDraw(drawing.id);
+  }
+
+  /**
+   * After a draw: back to Select with the new element selected; with the tool
+   * locked, the tool stays and nothing is selected, so the next press draws
+   * again (Excalidraw's `App.tsx:11791-11817`).
+   */
+  function afterDraw(id: ElementId): void {
+    if (tools.locked) {
+      selection.clear();
+      return;
+    }
+    tools.escape();
+    selection.click(id);
   }
 
   /**
@@ -1418,29 +1627,32 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       return null;
     }
     const count = drawnPoints(element).length / 2;
-    pointEditing.selected = pointEditing.selected.filter((i) => i < count);
+    // A point an Alt-press is adding is selected before it exists.
+    const adding = drag?.append?.index;
+    pointEditing.selected = pointEditing.selected.filter((i) => i < count || i === adding);
     return pointEditing;
   }
 
   /**
-   * Add a point where Alt was clicked in point editing, after the last; on an
-   * arrow whose end is attached, before that end, which stays on its shape.
+   * A line or arrow settled around points some of which moved: a closed line
+   * keeps its first and last together; a line's end dropped within the
+   * closing distance of its other end snaps onto it and closes the line
+   * (Excalidraw's `linearElementEditor.ts:738-775`).
    */
-  function appendPoint(point: Point): void {
-    const editing = currentEditing();
-    if (!editing) return;
-    const element = history.current.elements.find((e) => e.id === editing.id)!;
-    const base = unturned(element);
-    const points = [...(('points' in base ? base.points : []) as number[])];
-    const added = [tidy(point.x - base.x), tidy(point.y - base.y)];
-    const endBound = element.type === 'arrow' && (element as SceneElement & ArrowProps).endBinding !== undefined;
-    const at = endBound ? points.length - 2 : points.length;
-    points.splice(at, 0, ...added);
-    history.mutate((scene) => {
-      const i = scene.elements.findIndex((e) => e.id === element.id);
-      if (i >= 0) scene.elements[i] = settledAround(base, points);
-    });
-    editing.selected = [at / 2];
+  function settleLine(base: SceneElement, points: number[], moved: number[]): SceneElement {
+    if (isClosed(base)) return settledAround(base, keepLoop(points, moved));
+    const last = points.length / 2 - 1;
+    const end = moved.length === 1 && (moved[0] === 0 || moved[0] === last) ? moved[0] : -1;
+    if (base.type === 'line' && end >= 0 && last >= 2) {
+      const other = end === 0 ? last : 0;
+      const gap = Math.hypot(points[end * 2] - points[other * 2], points[end * 2 + 1] - points[other * 2 + 1]);
+      if (gap <= confirmDistance()) {
+        const closed = [...points];
+        closed.splice(end * 2, 2, points[other * 2], points[other * 2 + 1]);
+        return { ...settledAround(base, closed), closed: true } as SceneElement;
+      }
+    }
+    return settledAround(base, points);
   }
 
   /** An empty drag: a press that selects or adds, and moves nothing. */
@@ -1449,12 +1661,13 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   }
 
   /**
-   * A press while editing points. On a point: select it (Shift toggles) and
-   * drag the selection. On a segment's middle: the ordinary bend drag. With
-   * Alt anywhere: add a point after the last (before an attached end), on
-   * release. On the line itself: clear the
-   * point selection. Anywhere else: leave the mode, and the press goes on as
-   * any other. Returns whether the press was taken.
+   * A press while editing points. On a point: select it (Shift adds, or drops
+   * a selected one if not dragged) and drag the selection. On a segment's
+   * middle: a point added at once. With Alt anywhere: a point added there,
+   * after the last (before an attached end), dragged by the same press. On the
+   * line itself: the whole line moves. On empty canvas: a box that selects
+   * points. On another element: leave the mode, and the press goes on as any
+   * other. Returns whether the press was taken.
    */
   function pressInPointEditing(point: Point, options: { additive?: boolean; alt?: boolean }): boolean {
     const editing = pointEditing!;
@@ -1471,12 +1684,16 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         drag = { ...inertDrag(point), inert: false, endpoint: { id: element.id, index: i === 0 ? 0 : 1, original: element, at } };
         return true;
       }
+      // Shift adds a point; on a selected one it drops it, but only if the
+      // press is not a drag (then the selection moves as it is).
+      let deselect: number | undefined;
       if (options.additive) {
-        editing.selected = editing.selected.includes(i) ? editing.selected.filter((j) => j !== i) : [...editing.selected, i].sort((a, b) => a - b);
+        if (editing.selected.includes(i)) deselect = i;
+        else editing.selected = [...editing.selected, i].sort((a, b) => a - b);
       } else if (!editing.selected.includes(i)) {
         editing.selected = [i];
       }
-      drag = { ...inertDrag(point), inert: false, points: { id: element.id, indices: [...editing.selected], original: element } };
+      drag = { ...inertDrag(point), inert: false, points: { id: element.id, indices: [...editing.selected], original: element, deselect } };
       return true;
     }
     const middle = bendAt(point);
@@ -1487,12 +1704,25 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       return true;
     }
     if (options.alt) {
-      drag = { ...inertDrag(point), appendAt: point };
+      // After the last point, or before an attached end; selected, and the
+      // same press drags it (Excalidraw's `linearElementEditor.ts:1258-1335`).
+      const count = drawn.length / 2;
+      // Before an attached end, or a closed line's closing point, which stay.
+      const endBound = (element.type === 'arrow' && (element as SceneElement & ArrowProps).endBinding !== undefined) || isClosed(element);
+      const index = endBound ? count - 1 : count;
+      editing.selected = [index];
+      drag = { ...inertDrag(point), inert: false, append: { id: element.id, original: element, index, at: point } };
       return true;
     }
     if (nearElement(element, point, hitTolerance())) {
+      // The line itself: a drag moves it whole, and the mode stays.
       editing.selected = [];
-      drag = inertDrag(point);
+      drag = { ...inertDrag(point), inert: false, moving: [element.id], originals: new Map([[element.id, { x: element.x, y: element.y }]]) };
+      return true;
+    }
+    // Empty canvas: a box that selects points; anything else ends the mode.
+    if (elementsAt(point).every((e) => e.id === element.id)) {
+      drag = { ...inertDrag(point), inert: false, pointMarquee: { additive: Boolean(options.additive) } };
       return true;
     }
     pointEditing = null;
@@ -1631,25 +1861,37 @@ export function createPointerHandler(options: PointerHandlerOptions) {
    * inside its drawn outline, or anywhere on it with Alt (Excalidraw's
    * "inside" mode). An elbow end never is: it keeps to a side.
    */
-  function pinnedAt(target: SceneElement, point: Point, arrow?: SceneElement): boolean {
+  function pinnedAt(target: SceneElement, point: Point, arrow?: SceneElement, held = alt): boolean {
     if (arrow && isElbow(arrow)) return false;
-    return alt || isInside(target, point);
+    return held || isInside(target, point);
   }
 
-  /** What each end of a drawn arrow lands on, and where, as keys for the element. */
+  /**
+   * What each end of a drawn arrow lands on, and where, as keys for the
+   * element: the start by what was held at the press, the end by what is
+   * held now. Cmd/Ctrl leaves that end free; Alt pins it.
+   */
   function bindingsFor(from: Point, to: Point, id: string): Record<string, unknown> {
-    const start = targetAt(history.current, from, id, reach());
-    const end = targetAt(history.current, to, id, reach());
-    const startInside = Boolean(start) && pinnedAt(start!, from);
-    const endInside = Boolean(end) && pinnedAt(end!, to);
+    const start = pressed.mod ? undefined : targetAt(history.current, from, id, reach());
+    const end = mod ? undefined : targetAt(history.current, to, id, reach());
+    // An elbow end snaps by the elbow's rule and is never pinned.
+    const elbow = drawsElbow();
+    const startInside = Boolean(start) && !elbow && pinnedAt(start!, from, undefined, pressed.alt);
+    const endInside = Boolean(end) && !elbow && pinnedAt(end!, to, undefined, alt);
     return {
-      ...(start ? { startBinding: start.id, startAnchor: anchorFor(start, from, reach(), startInside) } : {}),
+      ...(start ? { startBinding: start.id, startAnchor: anchorFor(start, from, reach(), startInside, elbow) } : {}),
       ...(startInside ? { startMode: 'inside' } : {}),
-      ...(end && end.id !== start?.id ? { endBinding: end.id, endAnchor: anchorFor(end, to, reach(), endInside) } : {}),
+      ...(end && end.id !== start?.id ? { endBinding: end.id, endAnchor: anchorFor(end, to, reach(), endInside, elbow) } : {}),
       ...(end && end.id !== start?.id && endInside ? { endMode: 'inside' } : {}),
     };
   }
 }
+
+/**
+ * How far Duplicate puts the copy of a line's last point, in scene units
+ * (Excalidraw's 30, 30, `linearElementEditor.ts:1500-1574`).
+ */
+const DUPLICATE_POINT_OFFSET = 30;
 
 /** The highest z in use, so a new element is drawn above everything. */
 function topZ(elements: { z: number }[]): number {

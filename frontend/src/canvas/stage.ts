@@ -1054,6 +1054,8 @@ export class CanvasStage {
 
     body.stroke(paint.stroke);
     body.fill(element.type === 'text' ? paint.font.colour : paint.fill);
+    // A closed line with a fill is drawn as a filled loop (06.15).
+    if (element.type === 'line') (body as Konva.Line).closed(paint.fill !== '');
     body.strokeWidth(paint.strokeWidth);
 
     if (body instanceof Konva.Text && element.type === 'text') {

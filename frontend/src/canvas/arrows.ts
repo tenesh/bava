@@ -9,12 +9,6 @@ import type { PathSink } from './shapes';
 import { SEGMENT_SAMPLES, smoothPoints } from './curves';
 import { LINE_TENSION } from './paint';
 
-/** Points on the curve an arc is drawn as. More is smoother and slower. */
-const ARC_STEPS = 12;
-
-/** How far an arc bows from the straight line, as a share of its length. */
-const ARC_BOW = 0.2;
-
 export type ArrowType = 'straight' | 'elbow' | 'arc';
 
 /** An elbow's corners are drawn round, at most this radius (Excalidraw's 16). */
@@ -89,27 +83,7 @@ export function routePoints(points: number[], type: string | undefined): number[
       : [x1, y1, x1, (y1 + y2) / 2, x2, (y1 + y2) / 2, x2, y2];
   }
 
-  if (type === 'arc') {
-    const midX = (x1 + x2) / 2;
-    const midY = (y1 + y2) / 2;
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const length = Math.hypot(dx, dy) || 1;
-    // The control point sits perpendicular to the line, to its left.
-    const controlX = midX - (dy / length) * length * ARC_BOW;
-    const controlY = midY + (dx / length) * length * ARC_BOW;
-    const path: number[] = [];
-    for (let step = 0; step <= ARC_STEPS; step += 1) {
-      const t = step / ARC_STEPS;
-      const inverse = 1 - t;
-      path.push(
-        inverse * inverse * x1 + 2 * inverse * t * controlX + t * t * x2,
-        inverse * inverse * y1 + 2 * inverse * t * controlY + t * t * y2,
-      );
-    }
-    return path;
-  }
-
+  // A curve through two points is straight, as Excalidraw's (06.15, V2).
   return points;
 }
 
@@ -261,7 +235,6 @@ export function positionAlong(points: number[], point: { x: number; y: number })
 export function middlesAlong(points: number[], type: string | undefined, tension: number): { x: number; y: number }[] {
   const count = points.length / 2;
   if (count < 2 || type === 'elbow') return [];
-  if (type === 'arc' && count === 2) return [labelPoint(routePoints(points, 'arc'))];
   const bend = type === 'arc' ? LINE_TENSION : tension;
   if (bend <= 0 || count < 3) {
     return Array.from({ length: count - 1 }, (_, i) => ({

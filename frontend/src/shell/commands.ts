@@ -61,6 +61,7 @@ export const COMMAND_IDS = [
   'canvas.flipHorizontal',
   'canvas.flipVertical',
   'canvas.duplicate',
+  'canvas.editPoints',
   'canvas.alignLeft',
   'canvas.alignCenter',
   'canvas.alignRight',

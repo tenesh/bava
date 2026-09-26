@@ -8,7 +8,7 @@
  */
 import { topLevel } from './edit';
 import { createScene, type ElementId, type SceneData } from './scene';
-import { propertyKeysFor, styleKeysFor, type PropertyKey, type StyleKey } from './style';
+import { propertyKeysFor, styleKeysOf, type PropertyKey, type StyleKey } from './style';
 
 export type ControlGroup = 'colour' | 'stroke' | 'label' | 'arrow' | 'code';
 
@@ -21,8 +21,15 @@ export type ToolbarControl = {
   kind: ControlKind;
 };
 
+/**
+ * What the toolbar offers a line or arrow: finish one drawn by clicks (the
+ * Done button), edit its points, close a line into a loop or open it again.
+ */
+export type LineAction = 'finishLine' | 'editPoints' | 'closeLine' | 'openLine';
+
 export type ToolbarModel = {
   visible: boolean;
+  lineActions: LineAction[];
   /** The controls this selection takes, in the order the row shows them. */
   controls: ToolbarControl[];
   styles: StyleKey[];
@@ -50,16 +57,22 @@ const ORDERED: ToolbarControl[] = [
   { id: 'endArrowhead', group: 'arrow', kind: 'options' },
 ];
 
-export function toolbarFor(scene: SceneData, ids: ElementId[]): ToolbarModel {
+/**
+ * `drawing`: a line is being drawn by clicks, and the toolbar is its Done
+ * button alone. `editing`: the id of the line or arrow in point editing.
+ */
+export function toolbarFor(scene: SceneData, ids: ElementId[], context: { drawing?: boolean; editing?: string | null } = {}): ToolbarModel {
+  if (context.drawing) return { visible: true, lineActions: ['finishLine'], controls: [], styles: [], align: false, distribute: false };
   const selected = new Set(ids);
   const elements = scene.elements.filter((e) => selected.has(e.id));
   const takes = new Set<string>(
-    elements.flatMap((e) => [...styleKeysFor(e.type), ...propertyKeysFor(e.type)] as string[]),
+    elements.flatMap((e) => [...styleKeysOf(e), ...propertyKeysFor(e.type)] as string[]),
   );
   // A group selected with its children is one unit, as align treats it.
   const units = topLevel(createScene(scene), elements).length;
   return {
     visible: elements.length > 0,
+    lineActions: lineActionsFor(elements, context.editing ?? null),
     controls: ORDERED.filter((control) => takes.has(control.id)),
     styles: COLOURS.filter((key) => takes.has(key)),
     align: units >= 2,
@@ -77,3 +90,20 @@ export function splitForWidth<T>(controls: T[], capacity: number): { shown: T[];
   const room = Math.max(1, capacity - 1);
   return { shown: controls.slice(0, room), overflow: controls.slice(room) };
 }
+
+function lineActionsFor(elements: SceneData['elements'], editing: string | null): LineAction[] {
+  if (elements.length !== 1) return [];
+  const [element] = elements;
+  if (element.type !== 'line' && element.type !== 'arrow') return [];
+  const actions: LineAction[] = [];
+  const elbow = (element as { arrowType?: string }).arrowType === 'elbow';
+  if (!elbow && editing !== element.id) actions.push('editPoints');
+  // A loop needs a corner to go round: a line of three points or more.
+  const points = ('points' in element ? element.points : []) as number[];
+  if (element.type === 'line') {
+    if ((element as { closed?: boolean }).closed) actions.push('openLine');
+    else if (points.length >= 6) actions.push('closeLine');
+  }
+  return actions;
+}
+

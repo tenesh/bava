@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { snapAngle, squareBox } from './constrain';
+import { ANGLE_STEP, snapAngle, squareBox } from './constrain';
 
 describe('squareBox', () => {
   it('squares a wide drag by its longer side, keeping the origin corner', () => {
@@ -51,5 +51,27 @@ describe('squareBox in the mixed quadrants', () => {
 
   it('grows down and to the left', () => {
     expect(squareBox({ x: 100, y: 0 }, { x: 60, y: 90 })).toEqual({ x: 10, y: 0, w: 90, h: 90 });
+  });
+});
+
+// 06.15 C12: Shift on a dragged point also snaps to the angle its segment
+// started at, within 2.5°, splitting its 15° step there
+// (Excalidraw's `getLockedLinearCursorAlignSize`).
+describe('snapping to the angle a segment started at', () => {
+  const at = (degrees: number) => ({ x: Math.cos((degrees * Math.PI) / 180) * 100, y: Math.sin((degrees * Math.PI) / 180) * 100 });
+  const angle = (p: { x: number; y: number }) => Math.round((Math.atan2(p.y, p.x) * 180) / Math.PI);
+  const origin = { x: 0, y: 0 };
+
+  it('takes its own angle within 2.5°', () => {
+    expect(angle(snapAngle(origin, at(38), ANGLE_STEP, 40))).toBe(40);
+  });
+
+  it('takes the step on its side of its own angle beyond that', () => {
+    expect(angle(snapAngle(origin, at(37), ANGLE_STEP, 40))).toBe(30);
+    expect(angle(snapAngle(origin, at(43), ANGLE_STEP, 40))).toBe(45);
+  });
+
+  it('rounds as ever outside its own step', () => {
+    expect(angle(snapAngle(origin, at(52), ANGLE_STEP, 40))).toBe(45);
   });
 });

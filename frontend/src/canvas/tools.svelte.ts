@@ -64,10 +64,21 @@ export function toolForKey(key: string): ToolId | undefined {
 
 export function createTools() {
   let active = $state.raw<ToolId>('select');
+  // Kept on after a draw, with nothing selected, as Excalidraw's tool lock.
+  let locked = $state(false);
 
   return {
     get active(): ToolId {
       return active;
+    },
+
+    /** Whether a drawing tool stays on after it has drawn (`Q`, or the rail's lock). */
+    get locked(): boolean {
+      return locked;
+    },
+
+    toggleLock(): void {
+      locked = !locked;
     },
 
     activate(id: ToolId): void {

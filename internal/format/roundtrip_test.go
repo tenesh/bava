@@ -469,3 +469,65 @@ func TestRoundTripBentArrowWithAnchorsAndLabelPosition(t *testing.T) {
 		t.Errorf("bends, anchors or a label position changed on the way through.\nwant:\n%s\ngot:\n%s", source, written)
 	}
 }
+
+// A closed, filled line and the kind a new element is written with (06.15):
+// plain JSON the frontend writes, kept verbatim (docs/file-format.md, "Lines,
+// arrows and strokes").
+func TestRoundTripClosedFilledLine(t *testing.T) {
+	source := "# Loop\n\n```bava-canvas\n" + `{
+  "elements": [
+    {
+      "closed": true,
+      "edges": "round",
+      "fill": "blue",
+      "h": 10,
+      "id": "loop",
+      "points": [
+        0,
+        0,
+        10,
+        0,
+        10,
+        10,
+        0,
+        0
+      ],
+      "type": "line",
+      "w": 10,
+      "x": 0,
+      "y": 0,
+      "z": 1
+    },
+    {
+      "arrowType": "arc",
+      "h": 0,
+      "id": "curved",
+      "points": [
+        0,
+        0,
+        40,
+        0
+      ],
+      "type": "arrow",
+      "w": 40,
+      "x": 0,
+      "y": 40,
+      "z": 2
+    }
+  ],
+  "version": 1
+}
+` + "```\n"
+
+	file, err := format.Read(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	written, err := format.Write(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written != source {
+		t.Errorf("a closed line changed on the way through.\nwant:\n%s\ngot:\n%s", source, written)
+	}
+}

@@ -27,6 +27,12 @@ import Contrast from '@lucide/svelte/icons/contrast';
 import Circle from '@lucide/svelte/icons/circle';
 import Cloud from '@lucide/svelte/icons/cloud';
 import Copy from '@lucide/svelte/icons/copy';
+import Check from '@lucide/svelte/icons/check';
+import Lock from '@lucide/svelte/icons/lock';
+import LockOpen from '@lucide/svelte/icons/lock-open';
+import PencilLine from '@lucide/svelte/icons/pencil-line';
+import Pentagon from '@lucide/svelte/icons/pentagon';
+import Waypoints from '@lucide/svelte/icons/waypoints';
 import CopyPlus from '@lucide/svelte/icons/copy-plus';
 import Cylinder from '@lucide/svelte/icons/cylinder';
 import Diamond from '@lucide/svelte/icons/diamond';
@@ -123,6 +129,13 @@ export const LUCIDE_ICONS = {
   headTriangle: Triangle,
   headCircle: CircleSmall,
   headDiamond: Diamond,
+  // Milestone 6.15's line actions and the tool lock.
+  finishLine: Check,
+  editPoints: PencilLine,
+  closeLine: Pentagon,
+  openLine: Waypoints,
+  lock: Lock,
+  lockOpen: LockOpen,
 } satisfies Record<string, Component>;
 
 export type IconId = keyof typeof LUCIDE_ICONS | 'parallelogram';
