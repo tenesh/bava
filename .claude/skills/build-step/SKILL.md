@@ -631,6 +631,19 @@ deliberately at `5.24.2` or later.
   (ArrowDown, Enter); RadioGroup items accept a click. Popovers render closed
   content unless `lazyMount`.
 
+### Milestone 6.10 findings (arrows you can shape), 2026-09-26
+
+- **Gates green; not seen at a running window.** Plan
+  `.claude/work/plans/06.10-arrows-you-can-shape.md`, decisions in
+  `.claude/work/specs/arrows.md`.
+- **The file format gained three optional keys** (`startAnchor`, `endAnchor`,
+  `labelPosition`) and bent lines and arrows (more than two points). Absent
+  means the old behaviour; Go preserves them as it preserves any key.
+- Targets are found by outline distance within `bindingReach(zoom)`
+  (Excalidraw's 15 to 30 scene units); ends aim through their anchor at their
+  neighbour; dragging an attached arrow's body lets go of shapes that stay,
+  never of a detached id.
+
 ### Milestone 6.9 findings (code block and selection), 2026-09-26
 
 - **Gates green; not seen at a running window.** Plan

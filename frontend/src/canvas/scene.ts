@@ -61,6 +61,14 @@ export type ArrowProps = {
   endArrowhead?: string;
   startBinding?: string;
   endBinding?: string;
+  /**
+   * Where on the attached element each end aims through, as fractions of its
+   * upright box; absent is the centre (`docs/file-format.md`).
+   */
+  startAnchor?: [number, number];
+  endAnchor?: [number, number];
+  /** The label's place along the drawn path, 0 to 1; absent is the middle. */
+  labelPosition?: number;
 };
 
 /** The closed shapes: rectangle and ellipse, and the seven with outlines. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { drawHead, headAt, routePoints, labelPoint } from './arrows';
+import { drawHead, headAt, routePoints, labelPoint, positionAlong } from './arrows';
 
 const from = [0, 0, 100, 60];
 
@@ -37,9 +37,12 @@ describe('routePoints', () => {
     expect(offLine).toBe(true);
   });
 
-  it('leaves a stroke with many points alone, whatever the type', () => {
+  // Many points no longer means "a stroke": an arrow's bends are points too,
+  // and the kind decides how they are drawn (see 'routing through bends').
+  // A stroke never has a kind, so it is still drawn as recorded.
+  it('leaves many points alone when there is no kind', () => {
     const many = [0, 0, 10, 10, 20, 0, 30, 10];
-    expect(routePoints(many, 'elbow')).toEqual(many);
+    expect(routePoints(many, undefined)).toEqual(many);
   });
 });
 
@@ -110,5 +113,50 @@ describe('where an arrow label sits', () => {
 
   it('is the single point of a degenerate arrow', () => {
     expect(labelPoint([7, 9])).toEqual({ x: 7, y: 9 });
+  });
+});
+
+// Bends are points; the kind decides how they are drawn (docs/file-format.md,
+// "The kind decides how bends are drawn").
+describe('routing through bends', () => {
+  const bent = [0, 0, 50, 100, 100, 0];
+
+  it('draws a straight arrow through its bend with a corner', () => {
+    expect(routePoints(bent, 'straight')).toEqual(bent);
+    expect(routePoints(bent, undefined)).toEqual(bent);
+  });
+
+  it('curves an arc smoothly through its bend', () => {
+    const path = routePoints(bent, 'arc');
+    expect(path.length).toBeGreaterThan(bent.length);
+    // Through the bend, and from end to end.
+    const passes = path.some((v, i) => i % 2 === 0 && Math.abs(v - 50) < 1e-6 && Math.abs(path[i + 1] - 100) < 1e-6);
+    expect(passes).toBe(true);
+    expect(path.slice(0, 2)).toEqual([0, 0]);
+    expect(path.slice(-2)).toEqual([100, 0]);
+  });
+
+  it('routes an elbow from end to end, ignoring its bends', () => {
+    expect(routePoints(bent, 'elbow')).toEqual(routePoints([0, 0, 100, 0], 'elbow'));
+  });
+});
+
+// Decision 6: a label sits at a share of the drawn path's length, and a point
+// dragged near the path gives the share it is at.
+describe('a label placed along the path', () => {
+  const bent = [0, 0, 100, 0, 100, 100];
+
+  it('sits a quarter along at 0.25, following bends', () => {
+    expect(labelPoint(bent, 0.25)).toEqual({ x: 50, y: 0 });
+    expect(labelPoint(bent, 0.75)).toEqual({ x: 100, y: 50 });
+  });
+
+  it('sits at the middle without a position', () => {
+    expect(labelPoint(bent)).toEqual({ x: 100, y: 0 });
+  });
+
+  it('gives the share along the path nearest a point', () => {
+    expect(positionAlong(bent, { x: 40, y: 10 })).toBeCloseTo(0.2);
+    expect(positionAlong(bent, { x: 130, y: 150 })).toBe(1);
   });
 });

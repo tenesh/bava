@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anchorOn, BINDING_GAP, isDetached, reroute, routeFor } from './binding';
+import { anchorFor, anchorOn, BINDING_GAP, bindingReach, isDetached, reroute, routeFor, targetAt } from './binding';
 import type { SceneData, SceneElement } from './scene';
 
 const el = (over: Record<string, unknown>): SceneElement =>
@@ -231,5 +231,213 @@ describe('a rotated arrow that gets attached', () => {
     data.elements[2] = free;
     reroute(data);
     expect((data.elements[2] as { angle?: number }).angle).toBe(45);
+  });
+});
+
+// Re-aiming runs after every change; a bent, anchored arrow with a placed
+// label must come out of it with every key it went in with.
+describe('re-aiming a bent, anchored arrow', () => {
+  it('keeps its bends, anchors and label position', () => {
+    const scene = {
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 40, h: 40, z: 1 },
+        { id: 'b', type: 'rect', x: 200, y: 0, w: 40, h: 40, z: 2 },
+        {
+          id: 'arrow',
+          type: 'arrow',
+          x: 40,
+          y: 0,
+          w: 160,
+          h: 80,
+          z: 3,
+          points: [0, 20, 80, 80, 160, 20],
+          startBinding: 'a',
+          endBinding: 'b',
+          startAnchor: [0.5, 0.5],
+          endAnchor: [0.5, 0.5],
+          label: 'x',
+          labelPosition: 0.25,
+        },
+      ],
+    } as never as SceneData;
+    reroute(scene);
+    const arrow = scene.elements[2] as unknown as Record<string, unknown>;
+    expect((arrow.points as number[]).length).toBe(6);
+    expect(arrow).toMatchObject({ startAnchor: [0.5, 0.5], endAnchor: [0.5, 0.5], labelPosition: 0.25 });
+  });
+});
+
+// Decision 4 in .claude/work/specs/arrows.md: an end aims through the spot it
+// was dropped on, towards its neighbour, and stops on the outline.
+describe('an end with an anchor', () => {
+  const box = (over: Record<string, unknown>) => ({ type: 'rect', z: 1, ...over }) as never as SceneElement;
+  const world = (arrow: SceneElement, points: number[], index: number) => [
+    Math.round((arrow.x + points[index]) * 1000) / 1000,
+    Math.round((arrow.y + points[index + 1]) * 1000) / 1000,
+  ];
+
+  it('aims through its anchor, so an anchor near the top moves the end up the facing side', () => {
+    // a: 0..100 x 0..100; the other end is far to the right, level with a's centre.
+    const arrow = {
+      id: 'arrow', type: 'arrow', x: 100, y: 50, w: 400, h: 0, z: 2,
+      points: [0, 0, 400, 0], startBinding: 'a', startAnchor: [0.5, 0],
+    } as never as SceneElement;
+    const scene = { elements: [box({ id: 'a', x: 0, y: 0, w: 100, h: 100 }), arrow] } as SceneData;
+    const [x, y] = world(arrow, routeFor(arrow, scene), 0);
+    // Leaves through the right side, above the centre line: the line from
+    // (50, 0) to (500, 50) crosses x = 100 at y = 50 / 450 * 50.
+    expect(x).toBeCloseTo(100 + BINDING_GAP, 0);
+    expect(y).toBeLessThan(10);
+  });
+
+  it('aims from the centre when it has no anchor, as before', () => {
+    const arrow = {
+      id: 'arrow', type: 'arrow', x: 100, y: 50, w: 400, h: 0, z: 2, points: [0, 0, 400, 0], startBinding: 'a',
+    } as never as SceneElement;
+    const scene = { elements: [box({ id: 'a', x: 0, y: 0, w: 100, h: 100 }), arrow] } as SceneData;
+    expect(world(arrow, routeFor(arrow, scene), 0)).toEqual([100 + BINDING_GAP, 50]);
+  });
+
+  it('aims at its nearest bend, not across the arrow', () => {
+    // The bend is straight above a's centre; the far end is to the right.
+    const arrow = {
+      id: 'arrow', type: 'arrow', x: 0, y: -200, w: 400, h: 200, z: 2,
+      points: [50, 200, 50, 0, 400, 50], startBinding: 'a',
+    } as never as SceneElement;
+    const scene = { elements: [box({ id: 'a', x: 0, y: 0, w: 100, h: 100 }), arrow] } as SceneData;
+    expect(world(arrow, routeFor(arrow, scene), 0)).toEqual([50, -BINDING_GAP]);
+  });
+
+  it('turns its anchor with a rotated target', () => {
+    // Turned a half turn, the anchor on the top edge's middle is on the bottom.
+    const arrow = {
+      id: 'arrow', type: 'arrow', x: 50, y: 50, w: 0, h: 400, z: 2,
+      points: [0, 0, 0, 400], startBinding: 'a', startAnchor: [0.25, 0],
+    } as never as SceneElement;
+    const scene = { elements: [box({ id: 'a', x: 0, y: 0, w: 100, h: 100, angle: 180 }), arrow] } as SceneData;
+    const [x, y] = world(arrow, routeFor(arrow, scene), 0);
+    // (0.25, 0) turned half about (50, 50) is (75, 100): the end leaves the
+    // bottom side on the line from there towards (50, 450).
+    expect(y).toBeCloseTo(100 + BINDING_GAP, 0);
+    expect(x).toBeGreaterThan(70);
+  });
+});
+
+// Appendix A2 of the Excalidraw comparison: a target is found by how near its
+// outline is, from inside or out, within a reach that grows as the view zooms
+// out, rather than only by the pointer being strictly inside its box.
+describe('finding what an end attaches to', () => {
+  const shape = (over: Record<string, unknown>) => ({ type: 'rect', z: 1, ...over }) as never as SceneElement;
+  const two = {
+    elements: [shape({ id: 'left', x: 0, y: 0, w: 100, h: 100 }), shape({ id: 'right', x: 130, y: 0, w: 100, h: 100, z: 2 })],
+  } as SceneData;
+
+  it('finds a shape from just outside it', () => {
+    expect(targetAt(two, { x: 108, y: 50 }, 'x', 15)?.id).toBe('left');
+  });
+
+  it('takes the nearer of two outlines', () => {
+    expect(targetAt(two, { x: 118, y: 50 }, 'x', 15)?.id).toBe('right');
+  });
+
+  it('takes a small shape inside a big one when the point is inside both', () => {
+    const nested = {
+      elements: [shape({ id: 'big', x: 0, y: 0, w: 300, h: 300 }), shape({ id: 'small', x: 100, y: 100, w: 50, h: 50, z: 2 })],
+    } as SceneData;
+    expect(targetAt(nested, { x: 125, y: 125 }, 'x', 15)?.id).toBe('small');
+  });
+
+  it('finds nothing beyond reach', () => {
+    expect(targetAt(two, { x: 50, y: 140 }, 'x', 15)).toBeUndefined();
+  });
+
+  it('does not find an ellipse from the corner of its box', () => {
+    const round = { elements: [shape({ id: 'o', type: 'ellipse', x: 0, y: 0, w: 100, h: 100 })] } as SceneData;
+    expect(targetAt(round, { x: 2, y: 2 }, 'x', 1)).toBeUndefined();
+  });
+
+  it('reaches further as the view zooms out, within limits', () => {
+    expect(bindingReach(1)).toBe(15);
+    expect(bindingReach(2)).toBe(15);
+    expect(bindingReach(0.5)).toBe(20);
+    expect(bindingReach(0.1)).toBe(30);
+  });
+});
+
+// Review of 06.10: a spot outside the drawn outline (an ellipse's or a
+// diamond's box corner) must still leave the end on its shape as it moves.
+describe('an anchor near a curved or pointed shape', () => {
+  const round = (over: Record<string, unknown> = {}) =>
+    ({ id: 'o', type: 'ellipse', x: 0, y: 0, w: 100, h: 100, z: 1, ...over }) as never as SceneElement;
+
+  it('is taken onto the outline when dropped by a box corner', () => {
+    const [fx, fy] = anchorFor(round(), { x: 12, y: 12 }, 15);
+    // On the ellipse, towards the top-left: (50 - 35.36, 50 - 35.36) / 100.
+    expect(fx).toBeCloseTo(0.146, 2);
+    expect(fy).toBeCloseTo(0.146, 2);
+  });
+
+  it('keeps the end on the ellipse when it moves away', () => {
+    const arrow = {
+      id: 'arrow', type: 'arrow', x: -200, y: -200, w: 210, h: 210, z: 2,
+      points: [0, 0, 210, 210], endBinding: 'o', endAnchor: [0.12, 0.12],
+    } as never as SceneElement;
+    const moved = { elements: [round({ x: 50 }), arrow] } as SceneData;
+    const routed = routeFor(arrow, moved);
+    const end = { x: arrow.x + routed[2], y: arrow.y + routed[3] };
+    // Somewhere on the moved ellipse's outline, a gap clear: not frozen at (10, 10).
+    const d = Math.hypot((end.x - 100) / 50, (end.y - 50) / 50);
+    expect(d).toBeGreaterThan(0.95);
+    expect(d).toBeLessThan(1.15);
+  });
+
+  it('is taken onto a diamond when dropped by its box corner', () => {
+    const diamond = { id: 'd', type: 'diamond', x: 0, y: 0, w: 100, h: 100, z: 1 } as never as SceneElement;
+    const [fx, fy] = anchorFor(diamond, { x: 5, y: 5 }, 15);
+    // The nearest point on the top-left edge, from (0,50) to (50,0).
+    expect(fx + fy).toBeCloseTo(0.5, 2);
+  });
+});
+
+describe('review of 06.10: targets, snaps and kept bends', () => {
+  const shape = (over: Record<string, unknown>) => ({ type: 'rect', z: 1, ...over }) as never as SceneElement;
+
+  it('snaps to the nearest side middle, not the first within reach', () => {
+    const small = shape({ id: 's', x: 0, y: 0, w: 20, h: 20 });
+    expect(anchorFor(small, { x: 22, y: 8 }, 15)).toEqual([1, 0.5]);
+  });
+
+  it('finds a small shape inside a big one from just outside the small one', () => {
+    const nested = {
+      elements: [shape({ id: 'big', x: 0, y: 0, w: 300, h: 300 }), shape({ id: 'small', x: 100, y: 100, w: 50, h: 50, z: 2 })],
+    } as SceneData;
+    expect(targetAt(nested, { x: 155, y: 125 }, 'x', 15)?.id).toBe('small');
+  });
+
+  it('aims an attached elbow end to end, whatever bends it keeps', () => {
+    const arrow = {
+      id: 'arrow', type: 'arrow', arrowType: 'elbow', x: 100, y: -100, w: 300, h: 150, z: 2,
+      points: [0, 150, 100, 0, 300, 150], startBinding: 'a',
+    } as never as SceneElement;
+    const scene = { elements: [shape({ id: 'a', x: 0, y: 0, w: 100, h: 100 }), arrow] } as SceneData;
+    const routed = routeFor(arrow, scene);
+    // Towards the far end, level with a's centre: out of the right side.
+    expect([arrow.x + routed[0], arrow.y + routed[1]]).toEqual([100 + BINDING_GAP, 50]);
+  });
+
+  // Declared in docs/file-format.md: a bent attached arrow (a D2-inserted one
+  // among them) aims each end at its nearest bend, which moves its ends from
+  // where the old rule, aiming across the arrow, put them.
+  it('aims a D2-style three-point arrow at its middle point', () => {
+    const arrow = {
+      id: 'arrow', type: 'arrow', x: 50, y: 100, w: 250, h: 100, z: 3,
+      points: [0, 0, 0, 100, 250, 100], startBinding: 'a', endBinding: 'b',
+    } as never as SceneElement;
+    const scene = {
+      elements: [shape({ id: 'a', x: 0, y: 0, w: 100, h: 100 }), shape({ id: 'b', x: 300, y: 150, w: 100, h: 100, z: 2 }), arrow],
+    } as SceneData;
+    const routed = routeFor(arrow, scene);
+    expect([arrow.x + routed[0], arrow.y + routed[1]]).toEqual([50, 100 + BINDING_GAP]);
+    expect([arrow.x + routed[4], arrow.y + routed[5]]).toEqual([300 - BINDING_GAP, 200]);
   });
 });

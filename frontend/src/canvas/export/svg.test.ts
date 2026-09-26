@@ -220,3 +220,22 @@ describe('exporting a code block', () => {
     expect(svg).not.toContain('>const<');
   });
 });
+
+// The exporter places a label where the canvas does, position included.
+describe('an arrow label placed along its arrow', () => {
+  it('is exported where its position puts it', () => {
+    const svg = svgOf([{ id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, points: [0, 0, 200, 0], label: 'L', labelPosition: 0.25 }]);
+    expect(svg).toMatch(/<tspan x="50"/);
+  });
+});
+
+// The canvas draws heads solid on a dashed arrow (and Excalidraw does too); a
+// dashed head exported as broken strokes disagreed with it.
+describe('the heads of a dashed arrow', () => {
+  it('are exported solid, while the line stays dashed', () => {
+    const svg = svgOf([{ id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, points: [0, 0, 200, 0], strokeStyle: 'dashed' }]);
+    const head = svg.slice(svg.indexOf('data-head='));
+    expect(svg.slice(0, svg.indexOf('data-head='))).toContain('stroke-dasharray');
+    expect(head).not.toContain('stroke-dasharray');
+  });
+});

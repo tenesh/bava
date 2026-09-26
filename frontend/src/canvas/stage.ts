@@ -23,12 +23,13 @@ import { drawOutline, isOutlineShape } from './shapes';
 import { DEFAULT_STROKE_WIDTH, paintFor, ROUND_SHARE } from './paint';
 import { wrapLines } from './text-layout';
 import { smoothPoints } from './curves';
-import { bindingsOf, isDetached } from './binding';
+import { bindingsOf, drawnPoints, isDetached } from './binding';
+import { tensionOf } from './hit';
 import type { Run } from './code/highlight';
 import { monoAdvance } from './code/advance';
 import { columnsIn } from './code/measure';
 import { canvasLineWidth } from './text-measure';
-import { drawHead, headAt, labelPoint, pathLength, routePoints } from './arrows';
+import { drawHead, headAt, labelPoint, middlesAlong, pathLength, routePoints } from './arrows';
 import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
 import { HANDLES, handleCentre, rotateHandleCentre } from './resize';
 import { angleOfElement, canRotate, centreOf, rotatedBounds, selectionFrame } from './rotate';
@@ -56,6 +57,12 @@ function cached(read: ReadVariable): ReadVariable {
 }
 
 const number = (read: ReadVariable, name: string) => parseFloat(read(name)) || 0;
+
+/**
+ * How faint a segment's middle handle is beside the point handles: it offers
+ * a bend rather than marking one. A ratio, not a length or a colour.
+ */
+const MIDDLE_HANDLE_OPACITY = 0.6;
 
 type Entry = {
   group: Konva.Group;
@@ -89,6 +96,7 @@ export class CanvasStage {
   #rotate: Konva.Circle | null = null;
   /** Handles at the ends of a single selected arrow. */
   #endpoints: Konva.Circle[] = [];
+  #middles: Konva.Circle[] = [];
   /** Outlines on the shapes an arrow being drawn would attach to. */
   #candidates: Konva.Rect[] = [];
   #candidateIds: ElementId[] = [];
@@ -318,7 +326,24 @@ export class CanvasStage {
     return this.#rotate;
   }
 
-  /** The handles at the ends of a selected arrow. */
+  /**
+   * An arrow's label box in scene space, as drawn, for pressing on it to slide
+   * it; null when it has none.
+   */
+  labelBounds(id: ElementId): { x: number; y: number; w: number; h: number } | null {
+    const entry = this.#entries.get(id);
+    if (!entry?.label || entry.type !== 'arrow') return null;
+    // The box around it as drawn, a turn included, in the layer's (scene) space.
+    const box = entry.label.getClientRect({ relativeTo: this.#layer ?? undefined });
+    return { x: box.x, y: box.y, w: box.width, h: box.height };
+  }
+
+  /** The handles at the middles of a selected line's or arrow's segments. */
+  middleHandles(): Konva.Circle[] {
+    return this.#middles;
+  }
+
+  /** The handles on the points of a selected line or arrow: its ends and bends. */
   endpointHandles(): Konva.Circle[] {
     return this.#endpoints;
   }
@@ -329,6 +354,8 @@ export class CanvasStage {
     this.#handles.forEach((handle) => handle.destroy());
     this.#rotate?.destroy();
     this.#endpoints.forEach((end) => end.destroy());
+    this.#middles.forEach((middle) => middle.destroy());
+    this.#middles = [];
     this.#outline = null;
     this.#handles = [];
     this.#rotate = null;
@@ -381,25 +408,49 @@ export class CanvasStage {
       this.#overlay.add(square);
     }
 
-    // One selected arrow: a handle at each end, where the press zone is. For
-    // an elbow or an arc the box corners are nowhere near the ends, so the
-    // resize handles do not stand in for these.
-    if (selected.length === 1 && selected[0].type === 'arrow') {
-      const arrow = selected[0];
-      const points = ('points' in arrow ? arrow.points : []) as number[];
-      for (const index of [0, points.length - 2]) {
-        if (points.length < 4) break;
-        const end = new Konva.Circle({
-          x: arrow.x + points[index],
-          y: arrow.y + points[index + 1],
+    // One selected line or arrow: a handle on each end, where the press zone
+    // is, and on every bend; and a smaller, filled one at the middle of each
+    // segment long enough to bend. For an elbow or an arc the box corners are
+    // nowhere near the ends, so the resize handles do not stand in for these.
+    // An elbow routes itself: its ends only.
+    const linear = selected.length === 1 && (selected[0].type === 'arrow' || selected[0].type === 'line') ? selected[0] : null;
+    if (linear) {
+      // Where the points are drawn, a turn included, as the pointer tests them.
+      const drawn = drawnPoints(linear);
+      const elbow = (linear as SceneElement & ArrowProps).arrowType === 'elbow' && linear.type === 'arrow';
+      const count = drawn.length >= 4 ? drawn.length / 2 : 0;
+      for (let i = 0; i < count; i += 1) {
+        if (elbow && i !== 0 && i !== count - 1) continue;
+        const handle = new Konva.Circle({
+          x: drawn[i * 2],
+          y: drawn[i * 2 + 1],
           radius: size / 2,
           fill: surface,
           stroke: colour,
           strokeWidth: scale,
         });
-        this.#endpoints.push(end);
-        this.#overlay.add(end);
+        this.#endpoints.push(handle);
+        this.#overlay.add(handle);
       }
+      const shortest = number(read, '--size-bend-min-segment') * scale;
+      const middles = count >= 2 ? middlesAlong(drawn, (linear as SceneElement & ArrowProps).arrowType, tensionOf(linear)) : [];
+      // A middle under the label is not offered: a press there slides the label.
+      const label = this.labelBounds(linear.id);
+      const underLabel = (p: { x: number; y: number }) =>
+        label !== null && p.x >= label.x && p.x <= label.x + label.w && p.y >= label.y && p.y <= label.y + label.h;
+      middles.forEach((middle, i) => {
+        const [x1, y1, x2, y2] = drawn.slice(i * 2, i * 2 + 4);
+        if (Math.hypot(x2 - x1, y2 - y1) < shortest || underLabel(middle)) return;
+        const handle = new Konva.Circle({
+          x: middle.x,
+          y: middle.y,
+          radius: size / 3,
+          fill: colour,
+          opacity: MIDDLE_HANDLE_OPACITY,
+        });
+        this.#middles.push(handle);
+        this.#overlay?.add(handle);
+      });
     }
 
     // The rotate handle: a disc above the frame, clear of the top edge. Not
@@ -729,7 +780,7 @@ export class CanvasStage {
         // and wrapped to the path's length: the exporter wraps to the same
         // width, so a long label breaks identically in both.
         const routed = (body as Konva.Line).points();
-        const at = labelPoint(routed);
+        const at = labelPoint(routed, (element as SceneElement & ArrowProps).labelPosition);
         const paint = paintFor(element, read);
         const measure = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
         const lines = wrapLines(label, pathLength(routed), measure);

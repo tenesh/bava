@@ -3,6 +3,7 @@ import { createPointerHandler } from './pointer';
 import { createHistory } from './history';
 import { createSelection } from './selection';
 import { createTools } from './tools.svelte';
+import { labelPoint, routePoints } from './arrows';
 
 function harness(tool: Parameters<ReturnType<typeof createTools>['activate']>[0] = 'select', zoom = 1) {
   const history = createHistory({ elements: [] });
@@ -1512,5 +1513,345 @@ describe('a twitch on an element', () => {
     expect(handler.preview(at(11, 11))).toBeNull();
     handler.up(at(11, 11));
     expect(history.current.elements[0]).toMatchObject({ x: 0, y: 0 });
+  });
+});
+
+// Decision 4: a dropped end remembers where on the shape it landed, snapping
+// to a side's middle when dropped just outside it.
+describe('where a dropped end attaches', () => {
+  function withArrow(bindings: Record<string, unknown> = {}) {
+    const kit = harness('select');
+    kit.history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 } as never,
+        { id: 'b', type: 'rect', x: 200, y: 0, w: 100, h: 100, z: 2 } as never,
+        { id: 'arrow', type: 'arrow', x: 100, y: 30, w: 60, h: 0, z: 3, points: [0, 0, 60, 0], ...bindings } as never,
+      );
+    });
+    kit.selection.click('arrow');
+    const arrow = () => kit.history.current.elements.find((e) => e.id === 'arrow') as Record<string, unknown>;
+    return { ...kit, arrow };
+  }
+
+  it('records the spot on the shape it was dropped on', () => {
+    const { handler, arrow } = withArrow();
+    handler.down(at(160, 30));
+    handler.move(at(225, 80));
+    handler.up(at(225, 80));
+    expect(arrow()).toMatchObject({ endBinding: 'b', endAnchor: [0.25, 0.8] });
+  });
+
+  it('snaps to a side middle when dropped just outside it', () => {
+    const { handler, arrow } = withArrow();
+    handler.down(at(160, 30));
+    handler.move(at(195, 52));
+    handler.up(at(195, 52));
+    expect(arrow()).toMatchObject({ endBinding: 'b', endAnchor: [0, 0.5] });
+  });
+
+  it('does not snap when dropped inside', () => {
+    const { handler, arrow } = withArrow();
+    handler.down(at(160, 30));
+    handler.move(at(203, 52));
+    handler.up(at(203, 52));
+    expect(arrow().endAnchor).toEqual([0.03, 0.52]);
+  });
+
+  it('removes the spot with the binding when it lets go', () => {
+    const { handler, arrow } = withArrow({ endBinding: 'b', endAnchor: [0, 0.5] });
+    // The end sits on b's left side, level with its middle, a gap clear.
+    handler.down(at(196, 50));
+    handler.move(at(150, 300));
+    handler.up(at(150, 300));
+    expect(arrow()).not.toHaveProperty('endBinding');
+    expect(arrow()).not.toHaveProperty('endAnchor');
+  });
+
+  it('records spots when an arrow is drawn between shapes', () => {
+    const kit = harness('arrow');
+    kit.history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 } as never,
+        { id: 'b', type: 'rect', x: 200, y: 0, w: 100, h: 100, z: 2 } as never,
+      );
+    });
+    kit.handler.down(at(50, 50));
+    kit.handler.move(at(250, 20));
+    kit.handler.up(at(250, 20));
+    const drawn = kit.history.current.elements.find((e) => e.type === 'arrow') as Record<string, unknown>;
+    expect(drawn).toMatchObject({ startAnchor: [0.5, 0.5], endAnchor: [0.5, 0.2] });
+  });
+
+  it('highlights the shape an existing end would attach to while it is dragged', () => {
+    const { handler } = withArrow();
+    handler.down(at(160, 30));
+    handler.move(at(225, 80));
+    expect(handler.bindingCandidates).toEqual(['b']);
+  });
+});
+
+// Decisions 1 and 2: a selected line or arrow is bent by dragging the middle
+// of a segment, a bend is moved by dragging it and removed by double-clicking
+// it. An elbow routes itself and offers no bends.
+describe('bending a line or arrow', () => {
+  function selected(element: Record<string, unknown>) {
+    const history = createHistory({ elements: [{ id: 'l', z: 1, ...element }] as never });
+    const selection = createSelection();
+    selection.click('l');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), handleSize: () => 4, bendMinSegment: () => 40 });
+    const points = () => (history.current.elements[0] as unknown as { x: number; y: number; points: number[] });
+    const world = () => {
+      const e = points();
+      return e.points.map((v, i) => v + (i % 2 === 0 ? e.x : e.y));
+    };
+    return { history, handler, world };
+  }
+  const straight = { type: 'arrow', x: 0, y: 0, w: 200, h: 0, points: [0, 0, 200, 0] };
+
+  it('adds a bend where a segment middle is dragged to', () => {
+    const { handler, world } = selected(straight);
+    handler.down(at(100, 0));
+    handler.move(at(100, 80));
+    handler.up(at(100, 80));
+    expect(world()).toEqual([0, 0, 100, 80, 200, 0]);
+  });
+
+  it('moves a bend that is dragged', () => {
+    const { handler, world } = selected({ ...straight, h: 80, points: [0, 0, 100, 80, 200, 0] });
+    handler.down(at(100, 80));
+    handler.move(at(120, 60));
+    handler.up(at(120, 60));
+    expect(world()).toEqual([0, 0, 120, 60, 200, 0]);
+  });
+
+  it('removes a bend on double-click, but never an end', () => {
+    const { handler, world } = selected({ ...straight, h: 80, points: [0, 0, 100, 80, 200, 0] });
+    expect(handler.removeBendAt(at(0, 0))).toBe(false);
+    expect(handler.removeBendAt(at(101, 79))).toBe(true);
+    expect(world()).toEqual([0, 0, 200, 0]);
+  });
+
+  it('moves the end of a line that is dragged', () => {
+    const { handler, world } = selected({ type: 'line', x: 0, y: 0, w: 100, h: 0, points: [0, 0, 100, 0] });
+    handler.down(at(100, 0));
+    handler.move(at(100, 50));
+    handler.up(at(100, 50));
+    expect(world()).toEqual([0, 0, 100, 50]);
+  });
+
+  it('offers no bend on an elbow arrow', () => {
+    const { handler, history } = selected({ ...straight, h: 100, arrowType: 'elbow', points: [0, 0, 200, 100] });
+    handler.down(at(100, 50));
+    handler.move(at(100, 90));
+    handler.up(at(100, 90));
+    expect((history.current.elements[0] as unknown as { points: number[] }).points).toHaveLength(4);
+  });
+
+  it('offers no middle on a segment too short to bend', () => {
+    const { handler, history } = selected({ type: 'arrow', x: 0, y: 0, w: 30, h: 0, points: [0, 0, 30, 0] });
+    handler.down(at(15, 0));
+    handler.move(at(15, 40));
+    handler.up(at(15, 40));
+    expect((history.current.elements[0] as unknown as { points: number[] }).points).toHaveLength(4);
+  });
+});
+
+// Decision 5: an attached arrow dragged by its body lets go of every shape not
+// moving with it, as Excalidraw does; before, the drag was silently undone.
+describe('dragging an attached arrow by its body', () => {
+  function attached() {
+    const history = createHistory({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 },
+        { id: 'b', type: 'rect', x: 300, y: 0, w: 60, h: 60, z: 2 },
+        {
+          id: 'arrow', type: 'arrow', x: 64, y: 30, w: 232, h: 0, z: 3, points: [0, 0, 232, 0],
+          startBinding: 'a', endBinding: 'b', startAnchor: [0.5, 0.5], endAnchor: [0.5, 0.5],
+        },
+      ] as never,
+    });
+    const selection = createSelection();
+    const handler = createPointerHandler({ history, selection, tools: createTools() });
+    const arrow = () => history.current.elements.find((e) => e.id === 'arrow') as unknown as Record<string, unknown>;
+    return { history, selection, handler, arrow };
+  }
+
+  it('moves it and lets both ends go when dragged alone', () => {
+    const { handler, arrow } = attached();
+    handler.down(at(180, 30));
+    handler.move(at(180, 130));
+    handler.up(at(180, 130));
+    expect(arrow()).toMatchObject({ y: 130 });
+    for (const key of ['startBinding', 'endBinding', 'startAnchor', 'endAnchor']) expect(arrow()).not.toHaveProperty(key);
+  });
+
+  it('keeps it attached when dragged with both its shapes', () => {
+    const { handler, selection, arrow } = attached();
+    ['a', 'b', 'arrow'].forEach((id, i) => selection.click(id, { additive: i > 0 }));
+    handler.down(at(180, 30));
+    handler.move(at(180, 130));
+    handler.up(at(180, 130));
+    expect(arrow()).toMatchObject({ startBinding: 'a', endBinding: 'b', y: 130 });
+  });
+
+  // A binding whose target is gone is kept, never removed without the user
+  // choosing to (docs/file-format.md): the move lets go of shapes, not ids.
+  it('keeps a detached end detached rather than dropping its binding', () => {
+    const { history, handler, arrow } = attached();
+    history.mutate((scene) => {
+      scene.elements = scene.elements.filter((e) => e.id !== 'b');
+    });
+    handler.down(at(180, 30));
+    handler.move(at(180, 130));
+    handler.up(at(180, 130));
+    expect(arrow()).toMatchObject({ endBinding: 'b' });
+    expect(arrow()).not.toHaveProperty('startBinding');
+  });
+
+  it('lets go only of the end whose shape stays', () => {
+    const { handler, selection, arrow } = attached();
+    ['a', 'arrow'].forEach((id, i) => selection.click(id, { additive: i > 0 }));
+    handler.down(at(180, 30));
+    handler.move(at(180, 130));
+    handler.up(at(180, 130));
+    expect(arrow()).toMatchObject({ startBinding: 'a' });
+    expect(arrow()).not.toHaveProperty('endBinding');
+  });
+});
+
+// Decision 6: a selected arrow's label is dragged along it; where it ends up
+// is stored as a share of the path.
+describe('sliding a label along its arrow', () => {
+  it('stores where along the arrow it was dragged to', () => {
+    const history = createHistory({
+      elements: [{ id: 'arrow', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, points: [0, 0, 200, 0], label: 'sends' }] as never,
+    });
+    const selection = createSelection();
+    selection.click('arrow');
+    const handler = createPointerHandler({
+      history,
+      selection,
+      tools: createTools(),
+      handleSize: () => 4,
+      // The label's box as the stage draws it, centred on the middle.
+      labelBounds: () => ({ x: 70, y: -10, w: 60, h: 20 }),
+    });
+    handler.down(at(80, 5));
+    handler.move(at(150, 5));
+    handler.up(at(150, 5));
+    expect(history.current.elements[0]).toMatchObject({ labelPosition: 0.85, x: 0, y: 0 });
+  });
+});
+
+// Review of 06.10: a line or free arrow can be turned. Its handles are where
+// it is drawn, and bending it writes the turn into its points, so what is
+// drawn does not jump.
+describe('bending a turned line', () => {
+  function turned() {
+    // Drawn upright: from (50, -50) to (50, 50), a quarter turn about (50, 0).
+    const history = createHistory({
+      elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 100, h: 0, z: 1, angle: 90, points: [0, 0, 100, 0] }] as never,
+    });
+    const selection = createSelection();
+    selection.click('l');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), handleSize: () => 4, bendMinSegment: () => 40 });
+    const drawn = () => {
+      const e = history.current.elements[0] as unknown as { x: number; y: number; points: number[]; angle?: number };
+      return { angle: e.angle ?? 0, points: e.points.map((v, i) => Math.round(v + (i % 2 === 0 ? e.x : e.y))) };
+    };
+    return { handler, drawn };
+  }
+
+  it('bends where its middle is drawn, and keeps its ends where they were drawn', () => {
+    const { handler, drawn } = turned();
+    handler.down(at(50, 0));
+    handler.move(at(80, 0));
+    handler.up(at(80, 0));
+    expect(drawn()).toEqual({ angle: 0, points: [50, -50, 80, 0, 50, 50] });
+  });
+
+  it('moves an end from where it is drawn', () => {
+    const { handler, drawn } = turned();
+    handler.down(at(50, 50));
+    handler.move(at(50, 90));
+    handler.up(at(50, 90));
+    expect(drawn()).toEqual({ angle: 0, points: [50, -50, 50, 90] });
+  });
+});
+
+describe('review of 06.10: labels, copies and modifiers on arrows', () => {
+  it('slides the label of a turned arrow along the arrow as drawn', () => {
+    // Drawn upright from (100, -100) to (100, 100); the label starts at (100, 0).
+    const history = createHistory({
+      elements: [{ id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, angle: 90, points: [0, 0, 200, 0], label: 'x' }] as never,
+    });
+    const selection = createSelection();
+    selection.click('a');
+    const handler = createPointerHandler({
+      history, selection, tools: createTools(), handleSize: () => 4, labelBounds: () => ({ x: 90, y: -20, w: 20, h: 40 }),
+    });
+    handler.down(at(100, 10));
+    handler.move(at(100, 60));
+    handler.up(at(100, 60));
+    expect(history.current.elements[0]).toMatchObject({ labelPosition: 0.75 });
+  });
+
+  it('lets an alt-dragged copy of an attached arrow go of shapes not copied', () => {
+    const history = createHistory({
+      elements: [
+        { id: 's', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 },
+        { id: 'arrow', type: 'arrow', x: 64, y: 30, w: 200, h: 0, z: 2, points: [0, 0, 200, 0], startBinding: 's', startAnchor: [0.5, 0.5] },
+      ] as never,
+    });
+    const selection = createSelection();
+    const handler = createPointerHandler({ history, selection, tools: createTools() });
+    handler.down(at(160, 30));
+    handler.up(at(160, 130), { alt: true });
+    const copy = history.current.elements.find((e) => e.type === 'arrow' && e.id !== 'arrow') as unknown as Record<string, unknown>;
+    expect(copy).toMatchObject({ y: 130 });
+    expect(copy).not.toHaveProperty('startBinding');
+    expect(copy).not.toHaveProperty('startAnchor');
+    expect(history.current.elements.find((e) => e.id === 'arrow')).toMatchObject({ startBinding: 's' });
+  });
+
+  it('shift-clicks a selected arrow off the selection even on its handles', () => {
+    // Bent, so the first segment's middle (50, 40) is not also a box handle.
+    const history = createHistory({ elements: [{ id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 80, z: 1, points: [0, 0, 100, 80, 200, 0] }] as never });
+    const selection = createSelection();
+    selection.click('a');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), handleSize: () => 4, bendMinSegment: () => 40 });
+    handler.down(at(50, 40), { additive: true, shift: true });
+    handler.up(at(50, 40), { shift: true });
+    expect(selection.ids).toEqual([]);
+  });
+
+  it('gives a label priority over the middle handle it covers', () => {
+    const history = createHistory({
+      elements: [{ id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, points: [0, 0, 200, 0], label: 'x' }] as never,
+    });
+    const selection = createSelection();
+    selection.click('a');
+    const handler = createPointerHandler({
+      history, selection, tools: createTools(), handleSize: () => 4, bendMinSegment: () => 40, labelBounds: () => ({ x: 90, y: -10, w: 20, h: 20 }),
+    });
+    handler.down(at(100, 0));
+    handler.move(at(150, 0));
+    handler.up(at(150, 0));
+    const arrow = history.current.elements[0] as unknown as { points: number[]; labelPosition?: number };
+    expect(arrow.points).toHaveLength(4);
+    expect(arrow.labelPosition).toBe(0.75);
+  });
+
+  it('bends an arc from the middle of its curve, not of its chord', () => {
+    const history = createHistory({ elements: [{ id: 'a', type: 'arrow', arrowType: 'arc', x: 0, y: 0, w: 200, h: 0, z: 1, points: [0, 0, 200, 0] }] as never });
+    const selection = createSelection();
+    selection.click('a');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), handleSize: () => 4, bendMinSegment: () => 40 });
+    // The arc bows 0.2 of its length to the left of travel: up to y = 20 at its middle.
+    const middle = labelPoint(routePoints([0, 0, 200, 0], 'arc'));
+    handler.down(at(middle.x, middle.y));
+    handler.move(at(middle.x, middle.y + 40));
+    handler.up(at(middle.x, middle.y + 40));
+    expect((history.current.elements[0] as unknown as { points: number[] }).points).toHaveLength(6);
   });
 });
