@@ -52,6 +52,16 @@ describe('keymap', () => {
     expect(a.nudge).toHaveBeenCalledWith(0, -1);
   });
 
+  // Excalidraw's step: 1, or 5 with Shift, so moving far by keyboard is not
+  // a hundred presses.
+  it('nudges five with Shift held', () => {
+    const a = actions();
+    handleKey(key({ key: 'ArrowRight', shiftKey: true }), a, { typing: false });
+    expect(a.nudge).toHaveBeenCalledWith(5, 0);
+    handleKey(key({ key: 'ArrowUp', shiftKey: true }), a, { typing: false });
+    expect(a.nudge).toHaveBeenCalledWith(0, -5);
+  });
+
   it('activates a tool by its shortcut', () => {
     const a = actions();
     handleKey(key({ key: 'r' }), a, { typing: false });

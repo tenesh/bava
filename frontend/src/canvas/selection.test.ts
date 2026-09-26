@@ -146,4 +146,22 @@ describe('locked elements', () => {
     selection.selectAll(scene);
     expect(selection.ids).toEqual(['free']);
   });
+
+  it('are stepped over by Tab, both ways', () => {
+    const three: SceneData = {
+      elements: [...scene.elements, { id: 'last', type: 'rect', x: 60, y: 0, w: 20, h: 20, z: 3 }] as never,
+    };
+    const selection = createSelection();
+    selection.click('free');
+    selection.selectNext(three);
+    expect(selection.ids).toEqual(['last']);
+    selection.selectPrevious(three);
+    expect(selection.ids).toEqual(['free']);
+  });
+
+  it('leave Tab selecting nothing when every element is locked', () => {
+    const selection = createSelection();
+    selection.selectNext({ elements: [scene.elements[1]] });
+    expect(selection.ids).toEqual([]);
+  });
 });

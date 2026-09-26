@@ -198,3 +198,19 @@ describe('pasting a group', () => {
     expect(group.children!.sort()).toEqual(copies.sort());
   });
 });
+
+// An Alt-drag copies to where the drag is, and names each copy so every
+// preview patches the same node.
+describe('duplicate with an offset and names', () => {
+  it('places copies at the offset, under the names asked for', () => {
+    const scene = createScene({ elements: [{ id: 'a', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1 }] as never });
+    const [copy] = duplicate(scene, [scene.get('a')!], { dx: 5, dy: -3, name: () => 'named' });
+    expect(copy).toMatchObject({ id: 'named', x: 5, y: -3 });
+  });
+
+  it('falls back to a fresh id when the name is taken', () => {
+    const scene = createScene({ elements: [{ id: 'a', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1 }] as never });
+    const [copy] = duplicate(scene, [scene.get('a')!], { name: () => 'a' });
+    expect(copy.id).not.toBe('a');
+  });
+});

@@ -6,8 +6,18 @@ const metrics = { advance: 6, lineHeight: 20, padding: 8 };
 
 describe('the size of a code block', () => {
   it('is as wide as its longest line, plus padding', () => {
-    // 'second' is six characters: 36 wide, plus 8 either side.
-    expect(measureCode('a\nsecond\nc', metrics).width).toBe(6 * 6 + 16);
+    // 25 characters: 150 wide, plus 8 either side.
+    expect(measureCode(`a\n${'x'.repeat(25)}\nc`, metrics).width).toBe(25 * 6 + 16);
+  });
+
+  // Room to type into: a new block is empty, and one a column wide showed a
+  // single character of whatever was typed.
+  it('is 20 columns wide when it is empty', () => {
+    expect(measureCode('', metrics).width).toBe(20 * 6 + 16);
+  });
+
+  it('is 20 columns wide when its lines are shorter', () => {
+    expect(measureCode('fn()', metrics).width).toBe(20 * 6 + 16);
   });
 
   it('is as tall as its line count, plus padding', () => {
@@ -46,7 +56,8 @@ describe('code that is not ASCII', () => {
   });
 
   it('sizes a block by columns, not characters', () => {
-    expect(measureCode('日本語', metrics).width).toBe(6 * 6 + 16);
+    // Twelve glyphs, two columns each: 24 columns, past the 20-column floor.
+    expect(measureCode('日本語'.repeat(4), metrics).width).toBe(24 * 6 + 16);
   });
 
   // An emoji is a surrogate pair: one glyph, two code units, two columns.

@@ -125,6 +125,7 @@ or the source editor has it.
 | `Tab` | Select next element |
 | `⇧Tab` | Select previous element |
 | Arrow keys | Nudge the selection one unit |
+| `⇧` + arrow keys | Nudge the selection five units |
 | `Enter` | Type into the selected shape's label, or the selected text |
 | `Esc` | Back to Select, and clear the selection; while typing a label, finish typing |
 | `⌘Enter` / `Ctrl+Enter` | Finish typing a label (plain `Enter` is a new line) |
@@ -146,16 +147,17 @@ or the source editor has it.
 | Scroll | Pan |
 | `⌘` / `Ctrl` + scroll, or pinch | Zoom about the pointer |
 | Middle-button drag | Pan |
-| Click with Select | Select the topmost element |
-| `⇧`-click | Add to or remove from the selection |
+| Click with Select | Select the topmost element; on one of several selected, select only it |
+| `⇧`-click | Add to or remove from the selection; a selected element is removed on release, so a `⇧`-drag still moves the selection |
 | Drag on empty space | Marquee select |
-| Drag a selection | Move every selected element |
+| Drag a selection | Move every selected element, from any of them or from empty space inside the selection; hold `⇧` to keep to one axis |
+| `⌥`-drag a selection | Move a copy and leave the originals; the copy is selected after |
 | Drag with Draw | Freehand stroke |
 | Drag with Eraser | Fade what the trail crosses, delete it on release; `⌥` while dragging restores |
 | Click with Eraser | Delete the topmost element under the pointer |
 
-`⇧` is read while you drag: pressing or releasing it changes what you see at
-once, and the release commits exactly that.
+`⇧` and `⌥` are read while you drag: pressing or releasing either changes what
+you see at once, and the release commits exactly that.
 
 A drag, a resize or an erase is one undo step, however many pointer events it
 took. Shapes, strokes, moves and resizes draw live while you drag.

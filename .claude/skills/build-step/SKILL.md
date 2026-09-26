@@ -631,6 +631,24 @@ deliberately at `5.24.2` or later.
   (ArrowDown, Enter); RadioGroup items accept a click. Popovers render closed
   content unless `lazyMount`.
 
+### Milestone 6.9 findings (code block and selection), 2026-09-26
+
+- **Gates green; not seen at a running window.** Plan
+  `.claude/work/plans/06.9-code-block-and-selection.md`.
+- A code block is never narrower than 20 columns (`docs/file-format.md`), and
+  its editor grows as it is typed in: a new block used to clip everything
+  past its first column.
+- Selection changes on a press inside a selection wait for the release;
+  `⇧`-move keeps to one axis, `⌥`-move copies, `⇧`+arrow nudges 5; Tab skips
+  locked elements.
+- `withContents` is the one expansion for frames and groups (copy and paste
+  included); a frame resizes alone and lets go of what it no longer holds.
+  Between equally tight frames an element keeps the one it records, else the
+  top one: an unframed element moved into two equal frames used to join the
+  first in the file, which can surprise a hand test.
+- Movement under the drag threshold is a click from every press, in preview
+  and on release; before, a press on an unselected element committed it.
+
 ### Milestone 6.8 findings (feel fixes), 2026-09-26
 
 - **Gates green; not seen at a running window.** Plan

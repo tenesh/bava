@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { EditorView } from '@codemirror/view';
 import { CodeEditor, commitCode } from './editor';
 import { createHistory } from '../history';
 import { editTarget } from '../../shell/edit-target';
@@ -96,7 +97,8 @@ describe('committing a code block', () => {
     const block = history.current.elements[0] as unknown as Record<string, number | string>;
     expect(block.code).toBe('a\nbb\nccc');
     expect(block.h).toBe(3 * 20 + 16);
-    expect(block.w).toBe(3 * 6 + 16);
+    // Three columns is under the 20-column floor.
+    expect(block.w).toBe(20 * 6 + 16);
     expect(block.measuredWidth).toBe(block.w);
     expect(block.measuredHeight).toBe(block.h);
   });
@@ -183,5 +185,25 @@ describe('the edit commands inside a code editor', () => {
       editor.replaceSelection('x');
     }).not.toThrow();
     expect(editor.selectedText()).toBe('');
+  });
+});
+
+// The editor covers the block while it is typed in. Kept at the size it opened
+// with, it clipped everything past the first column of a new, empty block.
+describe('the editor growing with what is typed', () => {
+  it('widens for a longer line, and grows taller for a new one', async () => {
+    const h = host();
+    const editor = new CodeEditor(h);
+    const measure = (code: string) => {
+      const lines = code.split('\n');
+      return { width: Math.max(...lines.map((l) => l.length)) * 10, height: lines.length * 20 };
+    };
+    await editor.open({ code: 'ab', rect: { x: 0, y: 0, width: 20, height: 20 }, measure, onCommit: vi.fn() });
+    const wrapper = h.querySelector<HTMLElement>('.bava-code-editor')!;
+    const view = EditorView.findFromDOM(wrapper.querySelector('.cm-editor') as HTMLElement)!;
+    view.dispatch({ changes: { from: 2, insert: 'cdef\nx' } });
+    expect(wrapper.style.width).toBe('60px');
+    expect(wrapper.style.height).toBe('40px');
+    editor.destroy();
   });
 });

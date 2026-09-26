@@ -7,7 +7,7 @@
  * snapshot afterwards.
  */
 import { alignMoves, distributeMoves, type Alignment, type Move } from './align';
-import { duplicate, flip, group, paste, steppedOrder, topLevel, ungroup, withDescendants } from './edit';
+import { duplicate, flip, group, paste, steppedOrder, topLevel, ungroup, withContents } from './edit';
 import { tidy } from './resize';
 import { copyStyle, pasteStyle, type CopiedStyle } from './style';
 import { createScene, isLocked, type ElementId, type Scene, type SceneElement } from './scene';
@@ -47,6 +47,8 @@ export function createCanvasCommands(options: { history: History; selection: Sel
   // In-app only for now. The system clipboard carries text; a scene fragment
   // there is Milestone 15's export format, not an ad hoc JSON blob.
   let clipboard: SceneElement[] = [];
+  /** The ids that were selected when copying: their copies are selected on paste. */
+  let clipboardRoots = new Set<ElementId>();
   // Copy Styles keeps its own clipboard: copying a style must not replace
   // copied elements.
   let copiedStyle: CopiedStyle | null = null;
@@ -78,7 +80,10 @@ export function createCanvasCommands(options: { history: History; selection: Sel
   function copy(): boolean {
     const elements = selected();
     if (elements.length === 0) return false;
-    clipboard = elements;
+    // A group's children and a frame's contents are copied with it, in paint
+    // order, and paste selects the copies of what was selected.
+    clipboard = withContents(createScene(history.current), elements).sort((a, b) => a.z - b.z);
+    clipboardRoots = new Set(elements.map((e) => e.id));
     return true;
   }
 
@@ -111,14 +116,32 @@ export function createCanvasCommands(options: { history: History; selection: Sel
     const scene = createScene({ elements: [...history.current.elements] });
     // Align and distribute line up what is on screen, so a rotated element's
     // unit is the box around it as drawn.
-    const units = topLevel(scene, selected()).map((e) => ({ id: e.id, box: rotatedBounds(e) }));
+    // A member selected along with its frame goes with the frame, as a group's
+    // child goes with the group, rather than being a unit of its own.
+    const chosen = selected();
+    // Everything inside a selected frame, nested frames included, but not the
+    // selected frame itself.
+    const inChosenFrame = new Set(
+      chosen
+        .filter((e) => e.type === 'frame')
+        .flatMap((frame) => withContents(scene, [frame]).filter((e) => e.id !== frame.id))
+        .map((e) => e.id),
+    );
+    const units = topLevel(scene, chosen)
+      .filter((e) => !inChosenFrame.has(e.id))
+      .map((e) => ({ id: e.id, box: rotatedBounds(e) }));
     const moves = plan(units);
     if (moves.size === 0) return;
     edit((scene) => {
+      // A frame's contents move with it. Each element moves once, even when it
+      // is both selected and inside a selected frame.
+      const moved = new Set<ElementId>();
       for (const [id, move] of moves) {
         const element = scene.get(id);
         if (!element) continue;
-        for (const member of withDescendants(scene, [element])) {
+        for (const member of withContents(scene, [element])) {
+          if (moved.has(member.id)) continue;
+          moved.add(member.id);
           scene.update(member.id, { x: tidy(member.x + move.dx), y: tidy(member.y + move.dy) });
         }
       }
@@ -177,7 +200,8 @@ export function createCanvasCommands(options: { history: History; selection: Sel
     paste(): boolean {
       if (clipboard.length === 0) return false;
       const pasted = edit((scene) => paste(scene, clipboard));
-      select(pasted.map((e) => e.id));
+      // `paste` returns one copy per clipboard element, in the same order.
+      select(pasted.filter((_, i) => clipboardRoots.has(clipboard[i].id)).map((e) => e.id));
       return true;
     },
 
@@ -267,17 +291,22 @@ export function createCanvasCommands(options: { history: History; selection: Sel
       edit((scene) => flip(scene, elements, 'vertical'));
     },
 
+    // A group's children and a frame's contents go with it, in the order
+    // they already had: raised lowest first, lowered highest first.
     bringToFront(): void {
-      const ids = selection.ids;
-      if (ids.length === 0) return;
-      edit((scene) => ids.forEach((id) => scene.bringToFront(id)));
+      if (selection.ids.length === 0) return;
+      edit((scene) => {
+        const all = withContents(scene, selected()).sort((a, b) => a.z - b.z);
+        all.forEach((element) => scene.bringToFront(element.id));
+      });
     },
 
     sendToBack(): void {
-      // Reversed so the selection keeps its own relative order at the back.
-      const ids = [...selection.ids].reverse();
-      if (ids.length === 0) return;
-      edit((scene) => ids.forEach((id) => scene.sendToBack(id)));
+      if (selection.ids.length === 0) return;
+      edit((scene) => {
+        const all = withContents(scene, selected()).sort((a, b) => b.z - a.z);
+        all.forEach((element) => scene.sendToBack(element.id));
+      });
     },
   };
 }

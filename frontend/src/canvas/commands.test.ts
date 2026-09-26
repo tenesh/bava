@@ -505,3 +505,136 @@ describe('inserting a diagram', () => {
     expect(group.children).not.toContain('a');
   });
 });
+// A frame owns what records it, so whatever a command does to a frame it does
+// to its contents; and a group is its children. The bug table in
+// .claude/work/specs/excalidraw-comparison.md lists each of these.
+describe('frames and groups in commands', () => {
+  function framed() {
+    const initial: SceneData = {
+      elements: [
+        { id: 'f', type: 'frame', x: 0, y: 0, w: 100, h: 100, z: 1 },
+        { id: 'in', type: 'rect', x: 10, y: 10, w: 20, h: 20, z: 2, frame: 'f' },
+        { id: 'other', type: 'rect', x: 300, y: 300, w: 20, h: 20, z: 3 },
+        { id: 'x', type: 'rect', x: 500, y: 0, w: 10, h: 10, z: 4 },
+        { id: 'y', type: 'rect', x: 520, y: 0, w: 10, h: 10, z: 5 },
+        { id: 'g', type: 'group', x: 500, y: 0, w: 30, h: 10, z: 6, children: ['x', 'y'] },
+        { id: 'top', type: 'rect', x: 600, y: 0, w: 10, h: 10, z: 7 },
+      ] as never,
+    };
+    const history = createHistory(initial);
+    const selection = createSelection();
+    return { history, selection, commands: createCanvasCommands({ history, selection }) };
+  }
+  const at = (data: SceneData, id: string) => data.elements.find((e) => e.id === id)!;
+
+  it('moves a frame contents when aligning it', () => {
+    const { history, selection, commands } = framed();
+    selection.click('f');
+    selection.click('other', { additive: true });
+    commands.align('bottom');
+    expect(at(history.current, 'f').y).toBe(220);
+    expect(at(history.current, 'in').y).toBe(230);
+  });
+
+  it('mirrors a frame contents when flipping it', () => {
+    const { history, selection, commands } = framed();
+    selection.click('f');
+    commands.flipHorizontal();
+    expect(at(history.current, 'in').x).toBe(70);
+  });
+
+  it('copies a frame contents into the copy when duplicating it', () => {
+    const { history, selection, commands } = framed();
+    selection.click('f');
+    commands.duplicate();
+    const copy = history.current.elements.find((e) => e.type === 'frame' && e.id !== 'f')!;
+    const inside = history.current.elements.filter((e) => (e as { frame?: string }).frame === copy.id);
+    expect(inside).toHaveLength(1);
+    expect(inside[0]).toMatchObject({ type: 'rect', w: 20 });
+  });
+
+  it('raises a group children with it on Bring to Front', () => {
+    const { history, selection, commands } = framed();
+    selection.click('g');
+    commands.bringToFront();
+    const order = history.current.elements.map((e) => e.id);
+    expect(order.indexOf('x')).toBeGreaterThan(order.indexOf('top'));
+    expect(order.indexOf('y')).toBeGreaterThan(order.indexOf('x'));
+  });
+
+  it('raises a frame contents with it on Bring to Front', () => {
+    const { history, selection, commands } = framed();
+    selection.click('f');
+    commands.bringToFront();
+    const order = history.current.elements.map((e) => e.id);
+    expect(order.indexOf('in')).toBeGreaterThan(order.indexOf('f'));
+    expect(order.indexOf('f')).toBeGreaterThan(order.indexOf('top'));
+  });
+
+  it('lowers a frame contents with it on Send to Back', () => {
+    const { history, selection, commands } = framed();
+    selection.click('f');
+    commands.bringToFront();
+    commands.sendToBack();
+    const order = history.current.elements.map((e) => e.id);
+    expect(order.slice(0, 2)).toEqual(['f', 'in']);
+  });
+
+  it('keeps a frame below its contents when stepping it forward', () => {
+    const { history, selection, commands } = framed();
+    selection.click('f');
+    commands.bringForward();
+    const order = history.current.elements.map((e) => e.id);
+    expect(order.indexOf('in')).toBeGreaterThan(order.indexOf('f'));
+  });
+
+  it('pastes a frame with its contents, and selects the frame', () => {
+    const { history, selection, commands } = framed();
+    selection.click('f');
+    commands.copy();
+    commands.paste();
+    const copy = history.current.elements.find((e) => e.type === 'frame' && e.id !== 'f')!;
+    expect(history.current.elements.filter((e) => (e as { frame?: string }).frame === copy.id)).toHaveLength(1);
+    expect(selection.ids).toEqual([copy.id]);
+  });
+
+  it('pastes a group with its children, pointing at the copies', () => {
+    const { history, selection, commands } = framed();
+    selection.click('g');
+    commands.copy();
+    commands.paste();
+    const copy = history.current.elements.find((e) => e.type === 'group' && e.id !== 'g') as unknown as { id: string; children: string[] };
+    expect(copy.children.some((id) => id === 'x' || id === 'y')).toBe(false);
+    expect(history.current.elements.filter((e) => copy.children.includes(e.id))).toHaveLength(2);
+    expect(selection.ids).toEqual([copy.id]);
+  });
+
+  // A member selected with its frame goes with the frame, not as a unit of
+  // its own that would take part in the spacing.
+  it('aligns a frame and a frame inside it as one unit', () => {
+    const history = createHistory({
+      elements: [
+        // Inner first in paint order, so the result cannot depend on order.
+        { id: 'inner', type: 'frame', x: 20, y: 20, w: 100, h: 100, z: 1, frame: 'outer' },
+        { id: 'outer', type: 'frame', x: 0, y: 0, w: 200, h: 200, z: 2 },
+        { id: 'far', type: 'rect', x: 400, y: 400, w: 20, h: 20, z: 3 },
+      ] as never,
+    });
+    const selection = createSelection();
+    ['inner', 'outer', 'far'].forEach((id, i) => selection.click(id, { additive: i > 0 }));
+    createCanvasCommands({ history, selection }).align('bottom');
+    const outer = at(history.current, 'outer');
+    const inner = at(history.current, 'inner');
+    expect(outer.y).toBe(220);
+    expect(inner.y - outer.y).toBe(20);
+  });
+
+  it('distributes a frame and its member as one unit', () => {
+    const { history, selection, commands } = framed();
+    ['f', 'in', 'other', 'top'].forEach((id, i) => selection.click(id, { additive: i > 0 }));
+    commands.distribute('horizontal');
+    const f = at(history.current, 'f');
+    const inside = at(history.current, 'in');
+    expect(inside.x - f.x).toBe(10);
+  });
+});

@@ -10,7 +10,7 @@
  */
 import { rotatedBounds } from './rotate';
 import { createScene, type ElementId, type SceneData, type SceneElement } from './scene';
-import { withDescendants } from './edit';
+import { withContents } from './edit';
 
 /** Whether `inner` lies entirely within `outer`, as both are drawn. */
 function within(inner: SceneElement, outer: SceneElement): boolean {
@@ -28,7 +28,10 @@ export function frameAt(scene: SceneData, element: SceneElement): SceneElement |
   if (element.type === 'frame') return undefined;
   const holders = scene.elements.filter((other) => other.type === 'frame' && other.id !== element.id && within(element, other));
   // The innermost, so a frame inside a frame wins over the one around it.
-  return holders.sort((a, b) => a.w * a.h - b.w * b.h)[0];
+  // Between frames that hold it equally tightly (a duplicated frame over its
+  // original), the one it already records, then the one on top.
+  const recorded = (element as { frame?: string }).frame;
+  return holders.sort((a, b) => a.w * a.h - b.w * b.h || Number(b.id === recorded) - Number(a.id === recorded) || b.z - a.z)[0];
 }
 
 /** The elements that record `frame` as their owner. */
@@ -118,20 +121,20 @@ export function releaseFrames(scene: SceneData, removed: Set<ElementId>): void {
  */
 export function carriedWith(scene: SceneData, ids: ElementId[]): SceneElement[] {
   const chosen = scene.elements.filter((element) => ids.includes(element.id));
-  const carried = new Map(withDescendants(createScene(scene), chosen).map((element) => [element.id, element]));
+  return withContents(createScene(scene), chosen);
+}
 
-  // A queue, not one pass: a frame inside a frame carries its own contents,
-  // and a converted diagram nests as deeply as the D2 it came from. The map
-  // de-duplicates, so a frame that somehow records itself cannot loop.
-  const queue = [...carried.values()];
-  while (queue.length > 0) {
-    const element = queue.shift()!;
-    if (element.type !== 'frame') continue;
-    for (const member of framedBy(scene, element.id)) {
-      if (carried.has(member.id)) continue;
-      carried.set(member.id, member);
-      queue.push(member);
-    }
+/**
+ * The elements whose membership a change may have altered: those it moved or
+ * added, and the contents of any frame whose own box changed. A frame resized
+ * alone leaves its contents where they were, so a member it shrank away from
+ * must be let go; one it grew over is not adopted, as for a move.
+ */
+export function reconsidered(before: SceneData, after: SceneData): ElementId[] {
+  const ids = new Set(movedIds(before, after));
+  for (const element of after.elements) {
+    if (element.type !== 'frame' || !ids.has(element.id)) continue;
+    for (const member of framedBy(after, element.id)) ids.add(member.id);
   }
-  return [...carried.values()];
+  return [...ids];
 }

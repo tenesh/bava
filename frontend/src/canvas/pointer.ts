@@ -13,7 +13,8 @@ import type { History } from './history';
 import type { Selection, Box } from './selection';
 import type { ToolId } from './tools.svelte';
 import { produce } from 'immer';
-import { isLocked, type ElementId, type SceneData, type SceneElement } from './scene';
+import { createScene, isLocked, type ElementId, type SceneData, type SceneElement } from './scene';
+import { duplicate, withDescendants } from './edit';
 import { reroute, targetAt } from './binding';
 import { carriedWith, releaseFrames } from './containment';
 import { measureCode, type CodeMetrics } from './code/measure';
@@ -86,6 +87,14 @@ type Drag = {
   endpoint: { id: ElementId; index: number; original: SceneElement } | null;
   /** The id a drawn element gets, fixed for the drag so previews update one node. */
   newId: string;
+  /**
+   * A press on an element already selected, whose effect on the selection
+   * waits for the release: dragged, the selection moves as it is; clicked, a
+   * Shift-click removes the element and a plain click narrows to it.
+   */
+  pendingClick?: { id: ElementId; additive: boolean };
+  /** A press in empty space inside a selection of several: a click clears it. */
+  pendingClear?: boolean;
 };
 
 function boxBetween(a: Point, b: Point): Box {
@@ -113,6 +122,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   let alt = false;
   // Where the pointer last was, for what the stage draws mid-drag.
   let lastPoint: Point = { x: 0, y: 0 };
+  // The copies an Alt-drag made, selected once it is released.
+  let copied: ElementId[] = [];
   // Half a handle's side, in scene units: the caller divides the on-screen size
   // by the zoom. The zone matches the drawn handle, no larger.
   const handleSize = options.handleSize ?? (() => 4);
@@ -151,6 +162,19 @@ export function createPointerHandler(options: PointerHandlerOptions) {
    */
   function dragTargets(): SceneElement[] {
     return carriedWith(history.current, selection.ids);
+  }
+
+  /** What a resize acts on: the selection, with groups expanded but not frames. */
+  function resized(): SceneElement[] {
+    const scene = createScene(history.current);
+    return withDescendants(scene, history.current.elements.filter((e) => selection.has(e.id)));
+  }
+
+  /** Whether a point is inside the box the selection is drawn in. */
+  function withinSelection(point: Point): boolean {
+    const { frame } = frameFor();
+    const local = pointInFrame(point, frame);
+    return local.x >= frame.x && local.x <= frame.x + frame.w && local.y >= frame.y && local.y <= frame.y + frame.h;
   }
 
   /** The frame the handles are drawn on: the selection as it appears. */
@@ -266,7 +290,10 @@ export function createPointerHandler(options: PointerHandlerOptions) {
             moving: [],
             originals: new Map(),
             strokePoints: [],
-            resize: { handle, bounds, angle: frame.angle, originals: new Map(selected.map((e) => [e.id, e])) },
+            // A group resizes with its children; a frame alone, since what it
+            // holds keeps its own size and place (membership is re-checked
+            // after, as for any change).
+            resize: { handle, bounds, angle: frame.angle, originals: new Map(resized().map((e) => [e.id, e])) },
             rotate: null,
             endpoint: null,
             newId: '',
@@ -277,16 +304,23 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
       const hits = elementsAt(point);
 
+      let pendingClick: Drag['pendingClick'];
+      // Empty space between selected shapes is still the selection: a press
+      // there drags it (Excalidraw does the same), and a click clears it.
+      const insideSelection =
+        tools.active === 'select' && hits.length === 0 && !options.additive && selection.ids.length > 1 && withinSelection(point);
       if (tools.active === 'select' && hits.length > 0) {
         const top = hits[hits.length - 1];
         if (!selection.has(top.id)) selection.click(top.id, options);
-      } else if (tools.active === 'select') {
+        else pendingClick = { id: top.id, additive: Boolean(options.additive) };
+      } else if (tools.active === 'select' && !insideSelection) {
         if (!options.additive) selection.clear();
       }
 
-      const moving = tools.active === 'select' && hits.length > 0 ? dragTargets().map((e) => e.id) : [];
+      const drags = tools.active === 'select' && (hits.length > 0 || insideSelection);
+      const moving = drags ? dragTargets().map((e) => e.id) : [];
       const originals = new Map<ElementId, { x: number; y: number }>();
-      for (const element of tools.active === 'select' && hits.length > 0 ? dragTargets() : []) {
+      for (const element of drags ? dragTargets() : []) {
         originals.set(element.id, { x: element.x, y: element.y });
       }
 
@@ -299,6 +333,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         rotate: null,
         endpoint: null,
         newId: nextId(history.current.elements.length),
+        pendingClick,
+        pendingClear: insideSelection,
       };
     },
 
@@ -332,9 +368,11 @@ export function createPointerHandler(options: PointerHandlerOptions) {
      * preview and the release that follows cannot disagree. Null when there is
      * no drag or it would change nothing.
      */
-    preview(point: Point, options: { shift?: boolean } = {}): SceneData | null {
+    preview(point: Point, options: { alt?: boolean; shift?: boolean } = {}): SceneData | null {
       if (!drag) return null;
       shift = Boolean(options.shift);
+      // Alt, like Shift, can change with the pointer still: an Alt-move copies.
+      if (options.alt !== undefined) alt = options.alt;
       const recipe = changeFor(drag, point);
       if (!recipe) return null;
       // The preview re-aims attached arrows too, the same way `history.mutate`
@@ -378,6 +416,18 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         return null;
       }
 
+      if (started.pendingClear && !farEnough(started.origin, point)) {
+        selection.clear();
+        return null;
+      }
+      // A press on a selected element that never became a drag was a click.
+      if (started.pendingClick && !farEnough(started.origin, point)) {
+        const { id, additive } = started.pendingClick;
+        if (additive) selection.click(id, { additive: true });
+        else selection.click(id);
+        return null;
+      }
+
       if (tools.active === 'select' && !started.resize && !started.rotate && !started.endpoint && started.moving.length === 0) {
         if (farEnough(started.origin, point)) {
           selection.marquee(boxBetween(started.origin, point), history.current);
@@ -412,8 +462,14 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       }
 
       // One step for the whole gesture, however many move events it had.
+      copied = [];
       const recipe = changeFor(started, point);
       if (recipe) history.mutate(recipe);
+      if (copied.length > 0) {
+        selection.clear();
+        copied.forEach((id, i) => selection.click(id, { additive: i > 0 }));
+        copied = [];
+      }
       // A shape tool lets go once it has made something, with the new element
       // selected, so the next press edits rather than drawing again. The pen
       // is used stroke after stroke, so it stays on.
@@ -546,8 +602,33 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
     if (tools.active === 'select') {
       if (started.moving.length === 0) return null;
-      const dx = point.x - started.origin.x;
-      const dy = point.y - started.origin.y;
+      // Under the threshold a press is a click, in the preview as on release.
+      if (!farEnough(started.origin, point)) return null;
+      let dx = point.x - started.origin.x;
+      let dy = point.y - started.origin.y;
+      // Shift keeps the move on the axis it mostly travels along.
+      if (shift) {
+        if (Math.abs(dx) >= Math.abs(dy)) dy = 0;
+        else dx = 0;
+      }
+      // Alt copies instead: the originals stay, copies land where the drag
+      // is. Each copy is named from the drag and its original, so every
+      // preview patches the same nodes.
+      // Not on a click: a copy exactly on its original cannot be seen.
+      if (alt && farEnough(started.origin, point)) {
+        const scene = createScene(history.current);
+        const chosen = history.current.elements.filter((e) => selection.has(e.id));
+        // Named by position in a fixed order, not after the original: a copy
+        // of a copy would otherwise grow its id with every generation.
+        const order = new Map(history.current.elements.map((e, i) => [e.id, i]));
+        const made = duplicate(scene, chosen, { dx, dy, name: (original) => `${started.newId}-${order.get(original)}` });
+        copied = made.map((e) => e.id);
+        const next = scene.data().elements;
+        return (draft) => {
+          draft.elements = next as never;
+        };
+      }
+      copied = [];
       if (dx === 0 && dy === 0) return null;
       return (scene) => {
         for (const element of scene.elements) {

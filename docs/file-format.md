@@ -244,9 +244,10 @@ A `code` element carries `code` (the text as typed, with its own line breaks),
 text) and the `measuredWidth`/`measuredHeight` every text-bearing element
 stores.
 
-**Its size comes from its code.** The block is as wide as its longest line and
-as tall as its line count, so nothing it holds is ever hidden; it is the one
-element with no resize handles.
+**Its size comes from its code.** The block is as wide as its longest line,
+and never narrower than 20 columns, and as tall as its line count, so nothing
+it holds is ever hidden and an empty block has room to be typed into; it is
+the one element with no resize handles.
 
 **An unknown `language` is kept and drawn as plain text.** A file written by a
 later Bava, or by hand, names a language this build may not bundle: losing the
