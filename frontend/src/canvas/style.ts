@@ -167,6 +167,11 @@ export function applyProperty(
       const styled = element as unknown as Record<string, PropertyValue | undefined>;
       // An elbow's points are its route: an arrow that stops being one keeps
       // only its ends, as Excalidraw's does. Becoming one, `reroute` routes it.
+      // An elbow end is never pinned inside (`docs/file-format.md`).
+      if (key === 'arrowType' && value === 'elbow') {
+        delete styled.startMode;
+        delete styled.endMode;
+      }
       if (key === 'arrowType' && styled.arrowType === 'elbow' && value !== 'elbow' && 'points' in element) {
         const points = element.points as number[];
         if (points.length > 4) element.points = [points[0], points[1], points[points.length - 2], points[points.length - 1]];

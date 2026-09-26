@@ -776,19 +776,20 @@ describe('attaching an arrow while drawing it', () => {
     expect(drawn()).toMatchObject({ startBinding: 'a', endBinding: 'b' });
   });
 
-  it('binds nothing when Alt is held', () => {
+  // Cmd/Ctrl leaves the ends free since 06.13 (Alt now pins them inside).
+  it('binds nothing when Cmd/Ctrl is held', () => {
     const { handler, drawn } = withShapes();
     handler.down(at(30, 30));
-    handler.move(at(230, 30), { alt: true });
-    handler.up(at(230, 30), { alt: true });
+    handler.move(at(230, 30), { mod: true });
+    handler.up(at(230, 30), { mod: true });
     expect(drawn()!).not.toHaveProperty('startBinding');
     expect(drawn()!).not.toHaveProperty('endBinding');
   });
 
-  it('binds again when Alt is released before the end of the drag', () => {
+  it('binds again when Cmd/Ctrl is released before the end of the drag', () => {
     const { handler, drawn } = withShapes();
     handler.down(at(30, 30));
-    handler.move(at(230, 30), { alt: true });
+    handler.move(at(230, 30), { mod: true });
     handler.up(at(230, 30));
     expect(drawn()).toMatchObject({ startBinding: 'a', endBinding: 'b' });
   });
@@ -798,7 +799,7 @@ describe('attaching an arrow while drawing it', () => {
     handler.down(at(30, 30));
     handler.move(at(230, 30));
     expect(handler.bindingCandidates).toEqual(['a', 'b']);
-    handler.move(at(230, 30), { alt: true });
+    handler.move(at(230, 30), { mod: true });
     expect(handler.bindingCandidates).toEqual([]);
   });
 
@@ -894,11 +895,11 @@ describe('dragging an arrow endpoint', () => {
     expect(arrow().startBinding).toBe('a');
   });
 
-  it('does not bind while Alt is held', () => {
+  it('does not bind while Cmd/Ctrl is held', () => {
     const { handler, arrow } = withArrow();
     handler.down(at(160, 30));
-    handler.move(at(230, 30), { alt: true });
-    handler.up(at(230, 30), { alt: true });
+    handler.move(at(230, 30), { mod: true });
+    handler.up(at(230, 30), { mod: true });
     expect(arrow().endBinding).toBeUndefined();
   });
 });
@@ -1997,5 +1998,459 @@ describe('dragging an arrow end like Excalidraw', () => {
     handler.up(at(205, 55));
     const arrow = history.current.elements[0] as unknown as { x: number; y: number; points: number[] };
     expect([arrow.x + arrow.points[2], arrow.y + arrow.points[3]]).toEqual([200, 50]);
+  });
+});
+
+// Decision 7 (06.13): inside a shape pins the end, just outside attaches it to
+// the edge, Alt pins, Cmd/Ctrl leaves it free (Excalidraw binding.ts:830-860).
+describe('where a dropped end attaches, inside or at the edge', () => {
+  function withShape() {
+    const kit = harness('select');
+    kit.history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'b', type: 'rect', x: 200, y: 0, w: 100, h: 100, z: 1 } as never,
+        { id: 'arrow', type: 'arrow', x: 0, y: 50, w: 100, h: 0, z: 2, points: [0, 0, 100, 0] } as never,
+      );
+    });
+    kit.selection.click('arrow');
+    const arrow = () => kit.history.current.elements.find((e) => e.id === 'arrow') as Record<string, unknown>;
+    return { ...kit, arrow };
+  }
+
+  it('pins an end dropped inside the shape', () => {
+    const { handler, arrow } = withShape();
+    handler.down(at(100, 50));
+    handler.move(at(260, 30));
+    handler.up(at(260, 30));
+    expect(arrow()).toMatchObject({ endBinding: 'b', endMode: 'inside', endAnchor: [0.6, 0.3] });
+  });
+
+  it('attaches an end dropped just outside to the edge', () => {
+    const { handler, arrow } = withShape();
+    handler.down(at(100, 50));
+    handler.move(at(195, 30));
+    handler.up(at(195, 30));
+    expect(arrow()).toMatchObject({ endBinding: 'b' });
+    expect(arrow()).not.toHaveProperty('endMode');
+  });
+
+  it('pins with Alt, even just outside', () => {
+    const { handler, arrow } = withShape();
+    handler.down(at(100, 50));
+    handler.move(at(195, 30), { alt: true });
+    handler.up(at(195, 30), { alt: true });
+    expect(arrow()).toMatchObject({ endBinding: 'b', endMode: 'inside' });
+  });
+
+  it('leaves an end free with Cmd/Ctrl, even inside', () => {
+    const { handler, arrow } = withShape();
+    handler.down(at(100, 50));
+    handler.move(at(260, 30), { mod: true });
+    handler.up(at(260, 30), { mod: true });
+    expect(arrow()).not.toHaveProperty('endBinding');
+    expect(arrow()).not.toHaveProperty('endMode');
+  });
+
+  it('forgets a pin when the end moves to the edge', () => {
+    const { handler, arrow } = withShape();
+    handler.down(at(100, 50));
+    handler.move(at(260, 30));
+    handler.up(at(260, 30));
+    handler.down(at(260, 30));
+    handler.move(at(195, 30));
+    handler.up(at(195, 30));
+    expect(arrow()).not.toHaveProperty('endMode');
+  });
+});
+
+// Decision 8 (06.13): point-edit mode, as Excalidraw's linear editor.
+describe('editing the points of a line', () => {
+  function editing(points = [0, 0, 100, 0, 200, 0]) {
+    const history = createHistory({ elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 200, h: 0, z: 1, points }] as never });
+    const selection = createSelection();
+    selection.click('l');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), pointHit: () => 11, bendMinSegment: () => 40, bendInsertDistance: () => 10 });
+    handler.editPoints('l');
+    const world = () => {
+      const e = history.current.elements[0] as unknown as { x: number; y: number; points: number[] };
+      return e.points.map((v, i) => Math.round(v + (i % 2 === 0 ? e.x : e.y)));
+    };
+    return { handler, history, selection, world };
+  }
+
+  it('selects a point on click, and adds one with Shift', () => {
+    const { handler } = editing();
+    handler.down(at(100, 0));
+    handler.up(at(100, 0));
+    expect(handler.editingPoints).toEqual({ id: 'l', selected: [1] });
+    handler.down(at(200, 0), { additive: true, shift: true });
+    handler.up(at(200, 0), { shift: true });
+    expect(handler.editingPoints).toEqual({ id: 'l', selected: [1, 2] });
+  });
+
+  it('moves the selected points together', () => {
+    const { handler, world } = editing();
+    handler.down(at(100, 0));
+    handler.up(at(100, 0));
+    handler.down(at(200, 0), { additive: true, shift: true });
+    handler.up(at(200, 0), { shift: true });
+    handler.down(at(200, 0));
+    handler.move(at(200, 40));
+    handler.up(at(200, 40));
+    expect(world()).toEqual([0, 0, 100, 40, 200, 40]);
+  });
+
+  it('removes the selected points, but keeps two', () => {
+    const { handler, world } = editing();
+    handler.down(at(100, 0));
+    handler.up(at(100, 0));
+    expect(handler.removeSelectedPoints()).toBe(true);
+    expect(world()).toEqual([0, 0, 200, 0]);
+    handler.down(at(200, 0));
+    handler.up(at(200, 0));
+    expect(handler.removeSelectedPoints()).toBe(false);
+    expect(world()).toEqual([0, 0, 200, 0]);
+  });
+
+  it('adds a point after the last on Alt-click', () => {
+    const { handler, world } = editing();
+    handler.down(at(260, 80), { alt: true });
+    handler.up(at(260, 80), { alt: true });
+    expect(world()).toEqual([0, 0, 100, 0, 200, 0, 260, 80]);
+  });
+
+  it('offers every segment middle while editing', () => {
+    const { handler, world } = editing([0, 0, 100, 0, 200, 100]);
+    handler.down(at(50, 0));
+    handler.move(at(50, 60));
+    handler.up(at(50, 60));
+    expect(world()).toHaveLength(8);
+  });
+
+  it('ends with a press off the line, or when told to', () => {
+    const { handler } = editing();
+    handler.down(at(100, 300));
+    handler.up(at(100, 300));
+    expect(handler.editingPoints).toBeNull();
+    handler.editPoints('l');
+    handler.stopEditingPoints();
+    expect(handler.editingPoints).toBeNull();
+  });
+});
+
+// Outside the mode, only a two-point line or arrow offers its middle; a bent
+// one's bends are added in the mode (Excalidraw interactiveScene.ts:1206-1217).
+describe('a bent line outside point editing', () => {
+  it('offers no middle to bend', () => {
+    const history = createHistory({ elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 200, h: 100, z: 1, points: [0, 0, 100, 0, 200, 100] }] as never });
+    const selection = createSelection();
+    selection.click('l');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), pointHit: () => 11, bendMinSegment: () => 40, bendInsertDistance: () => 10 });
+    handler.down(at(50, 0));
+    handler.move(at(50, 60));
+    handler.up(at(50, 60));
+    expect((history.current.elements[0] as unknown as { points: number[] }).points).toHaveLength(6);
+  });
+});
+
+// Decision 9 (06.13): click-by-click drawing, as Excalidraw's multi-point
+// lines (App.tsx:10232-10256,11745-11781; LINE_CONFIRM_THRESHOLD 8).
+describe('drawing a line by clicks', () => {
+  function tool(kind: 'line' | 'arrow', elements: unknown[] = []) {
+    const history = createHistory({ elements: elements as never });
+    const tools = createTools();
+    tools.activate(kind);
+    const selection = createSelection();
+    const handler = createPointerHandler({ history, selection, tools, minLinear: () => 20, confirmDistance: () => 8 });
+    const click = (x: number, y: number) => {
+      handler.down(at(x, y));
+      handler.up(at(x, y));
+    };
+    const drawn = () => history.current.elements.find((e) => e.type === kind) as unknown as { x: number; y: number; points: number[] } & Record<string, unknown>;
+    const world = () => drawn().points.map((v, i) => v + (i % 2 === 0 ? drawn().x : drawn().y));
+    return { history, tools, selection, handler, click, drawn, world };
+  }
+
+  it('adds a point per click, and finishes on a click at the last point', () => {
+    const { handler, click, world, tools, history } = tool('line');
+    click(0, 0);
+    expect(handler.drawingPoints).toBe(true);
+    click(100, 0);
+    click(100, 100);
+    expect(history.current.elements).toHaveLength(0);
+    click(103, 102);
+    expect(handler.drawingPoints).toBe(false);
+    expect(world()).toEqual([0, 0, 100, 0, 100, 100]);
+    expect(tools.active).toBe('select');
+  });
+
+  it('finishes when told to (Enter or Escape)', () => {
+    const { handler, click, world } = tool('line');
+    click(0, 0);
+    click(100, 0);
+    handler.finishPoints();
+    expect(world()).toEqual([0, 0, 100, 0]);
+  });
+
+  it('makes nothing from a single click finished at once', () => {
+    const { handler, click, history } = tool('line');
+    click(0, 0);
+    handler.finishPoints();
+    expect(history.current.elements).toHaveLength(0);
+  });
+
+  it('previews the next segment following the pointer', () => {
+    const { handler, click } = tool('line');
+    click(0, 0);
+    click(100, 0);
+    const preview = handler.pointsPreview(at(150, 50))!;
+    const line = preview.elements.at(-1) as unknown as { x: number; y: number; points: number[] };
+    expect(line.points.map((v, i) => v + (i % 2 === 0 ? line.x : line.y))).toEqual([0, 0, 100, 0, 150, 50]);
+  });
+
+  it('attaches a clicked arrow by its first and last points', () => {
+    const shapes = [
+      { id: 'a', type: 'rect', x: -50, y: -50, w: 100, h: 100, z: 1 },
+      { id: 'b', type: 'rect', x: 250, y: -50, w: 100, h: 100, z: 2 },
+    ];
+    const { handler, click, drawn } = tool('arrow', shapes);
+    click(0, 0);
+    click(150, 120);
+    click(300, 0);
+    handler.finishPoints();
+    expect(drawn()).toMatchObject({ startBinding: 'a', endBinding: 'b' });
+  });
+
+  it('still draws a two-point line from a drag', () => {
+    const { handler, world } = tool('line');
+    handler.down(at(0, 0));
+    handler.move(at(100, 50));
+    handler.up(at(100, 50));
+    expect(handler.drawingPoints).toBe(false);
+    expect(world()).toEqual([0, 0, 100, 50]);
+  });
+});
+
+// The mode goes with the binding it qualifies: an arrow that lets go of a
+// shape by a body drag, or an Alt-copy of one, keeps no pin.
+describe('letting go of a pinned end', () => {
+  function pinned() {
+    const history = createHistory({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 },
+        { id: 'arrow', type: 'arrow', x: 30, y: 30, w: 200, h: 0, z: 2, points: [0, 0, 200, 0], startBinding: 'a', startAnchor: [0.5, 0.5], startMode: 'inside' },
+      ] as never,
+    });
+    const selection = createSelection();
+    const handler = createPointerHandler({ history, selection, tools: createTools() });
+    return { history, handler };
+  }
+
+  it('drops the mode with the binding on a body drag', () => {
+    const { history, handler } = pinned();
+    handler.down(at(150, 30));
+    handler.move(at(150, 130));
+    handler.up(at(150, 130));
+    const arrow = history.current.elements.find((e) => e.id === 'arrow')!;
+    expect(arrow).not.toHaveProperty('startBinding');
+    expect(arrow).not.toHaveProperty('startMode');
+  });
+
+  it('drops the mode on an Alt-copy', () => {
+    const { history, handler } = pinned();
+    handler.down(at(150, 30));
+    handler.up(at(150, 130), { alt: true });
+    const copy = history.current.elements.find((e) => e.type === 'arrow' && e.id !== 'arrow')!;
+    expect(copy).not.toHaveProperty('startMode');
+  });
+});
+
+// Review of 06.13.
+describe('review of 06.13: modes of the pointer', () => {
+  const line = (points = [0, 0, 100, 0, 200, 0]) =>
+    ({ id: 'l', type: 'line', x: 0, y: 0, w: 200, h: 0, z: 1, points }) as never;
+  function kit(elements: unknown[], tool: Parameters<ReturnType<typeof createTools>['activate']>[0] = 'select') {
+    const history = createHistory({ elements: elements as never });
+    const tools = createTools();
+    tools.activate(tool);
+    const selection = createSelection();
+    const handler = createPointerHandler({
+      history, selection, tools, pointHit: () => 11, bendMinSegment: () => 40, bendInsertDistance: () => 10, minLinear: () => 20, confirmDistance: () => 8,
+    });
+    return { history, tools, selection, handler };
+  }
+  const allFinite = (history: ReturnType<typeof createHistory>) =>
+    history.current.elements.every((e) => [e.x, e.y, e.w, e.h, ...(('points' in e ? e.points : []) as number[])].every(Number.isFinite));
+
+  // Blocker 2: a drag while drawing click by click previews what it releases.
+  it('previews a drag during click-by-click drawing as the line it extends', () => {
+    const { history, handler } = kit([], 'line');
+    handler.down(at(0, 0));
+    handler.up(at(0, 0));
+    handler.down(at(100, 0));
+    handler.move(at(100, 50));
+    // No separate line from the press: the drag previews nothing of its own,
+    // and the app draws the line being clicked, running to the pointer.
+    expect(handler.preview(at(100, 50))).toBeNull();
+    expect(handler.pointsPreview(at(100, 50))!.elements).toHaveLength(1);
+    handler.up(at(100, 50));
+    handler.finishPoints();
+    const drawn = history.current.elements[0] as unknown as { points: number[] };
+    expect(drawn.points).toHaveLength(4);
+  });
+
+  // Blocker 3: stale selected indices never reach the points.
+  it('never writes NaN after a point is added and undone', () => {
+    const { history, selection, handler } = kit([line()]);
+    selection.click('l');
+    handler.editPoints('l');
+    handler.down(at(260, 80), { alt: true });
+    handler.up(at(260, 80), { alt: true });
+    history.undo();
+    handler.down(at(100, 0), { additive: true, shift: true });
+    handler.move(at(100, 40), { shift: true });
+    handler.up(at(100, 40), { shift: true });
+    expect(allFinite(history)).toBe(true);
+    expect(handler.editingPoints!.selected.every((i) => i < 3)).toBe(true);
+  });
+
+  it('attaches, not just moves, an arrow end dragged in point editing', () => {
+    const { history, selection, handler } = kit([
+      { id: 'b', type: 'rect', x: 300, y: -50, w: 100, h: 100, z: 1 },
+      { id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 2, points: [0, 0, 100, 0, 200, 0] },
+    ]);
+    selection.click('a');
+    handler.editPoints('a');
+    handler.down(at(200, 0));
+    handler.move(at(295, 0));
+    handler.up(at(295, 0));
+    expect(history.current.elements.find((e) => e.id === 'a')).toMatchObject({ endBinding: 'b' });
+  });
+
+  it('leaves point editing when the selection is no longer that line', () => {
+    const { selection, handler } = kit([line(), { id: 'r', type: 'rect', x: 0, y: 100, w: 50, h: 50, z: 2 }]);
+    selection.click('l');
+    handler.editPoints('l');
+    selection.click('r');
+    expect(handler.editingPoints).toBeNull();
+  });
+
+  it('keeps the tool the user picks when that ends a click-by-click line', () => {
+    const { history, tools, handler } = kit([], 'line');
+    handler.down(at(0, 0));
+    handler.up(at(0, 0));
+    handler.down(at(100, 0));
+    handler.up(at(100, 0));
+    tools.activate('rect');
+    handler.finishPoints({ keepTool: true });
+    expect(tools.active).toBe('rect');
+    expect(history.current.elements).toHaveLength(1);
+  });
+
+  it('answers Escape: finish a line being clicked, else leave point editing', () => {
+    const { selection, handler } = kit([line()]);
+    selection.click('l');
+    handler.editPoints('l');
+    expect(handler.escape()).toBe(true);
+    expect(handler.editingPoints).toBeNull();
+    expect(handler.escape()).toBe(false);
+  });
+
+  it('answers Enter on a selected line by editing its points', () => {
+    const { selection, handler } = kit([line()]);
+    selection.click('l');
+    expect(handler.enter()).toBe(true);
+    expect(handler.editingPoints).toEqual({ id: 'l', selected: [] });
+  });
+
+  it('lets Delete remove the line itself when no point is selected', () => {
+    const { selection, handler } = kit([line()]);
+    selection.click('l');
+    handler.editPoints('l');
+    expect(handler.deletePoints()).toBe(false);
+    expect(handler.editingPoints).toBeNull();
+  });
+
+  it('enters point editing on a double-click: a line, or an arrow with Cmd/Ctrl, with Select only', () => {
+    const { selection, handler, tools } = kit([line(), { id: 'a', type: 'arrow', x: 0, y: 100, w: 200, h: 0, z: 2, points: [0, 0, 200, 0] }]);
+    expect(handler.doubleClick(at(100, 0))).toBe(true);
+    expect(selection.ids).toEqual(['l']);
+    handler.stopEditingPoints();
+    expect(handler.doubleClick(at(100, 100))).toBe(false);
+    expect(handler.doubleClick(at(100, 100), { mod: true })).toBe(true);
+    handler.stopEditingPoints();
+    tools.activate('line');
+    expect(handler.doubleClick(at(100, 0))).toBe(false);
+  });
+
+  it('does not enter point editing on the double-click that finished a clicked line', () => {
+    const { handler } = kit([], 'line');
+    handler.down(at(0, 0));
+    handler.up(at(0, 0));
+    handler.down(at(100, 0));
+    handler.up(at(100, 0));
+    handler.down(at(101, 0));
+    handler.up(at(101, 0));
+    expect(handler.doubleClick(at(101, 0))).toBe(false);
+  });
+
+  it('records a pin on a drawn arrow ending inside a shape', () => {
+    const { history, handler } = kit([{ id: 'b', type: 'rect', x: 200, y: -50, w: 100, h: 100, z: 1 }], 'arrow');
+    handler.down(at(0, 0));
+    handler.move(at(250, 0));
+    handler.up(at(250, 0));
+    expect(history.current.elements.find((e) => e.type === 'arrow')).toMatchObject({ endBinding: 'b', endMode: 'inside' });
+  });
+
+  it('leaves a drag free in preview when Cmd/Ctrl is pressed mid-drag', () => {
+    const { handler } = kit([{ id: 'b', type: 'rect', x: 200, y: -50, w: 100, h: 100, z: 1 }], 'arrow');
+    handler.down(at(0, 0));
+    handler.move(at(250, 0));
+    const free = handler.preview(at(250, 0), { mod: true })!.elements.find((e) => e.type === 'arrow')!;
+    expect(free).not.toHaveProperty('endBinding');
+  });
+});
+
+describe('review of 06.13, second pass', () => {
+  it('returns to Select on Escape after a single click with the line tool', () => {
+    const history = createHistory({ elements: [] });
+    const tools = createTools();
+    tools.activate('line');
+    const handler = createPointerHandler({ history, selection: createSelection(), tools, minLinear: () => 20 });
+    handler.down(at(0, 0));
+    handler.up(at(0, 0));
+    handler.escape();
+    expect(tools.active).toBe('select');
+    expect(history.current.elements).toHaveLength(0);
+  });
+
+  it('does not resize a bent line from a press that ends its point editing', () => {
+    const history = createHistory({ elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 200, h: 100, z: 1, points: [0, 0, 100, 100, 200, 0] }] as never });
+    const selection = createSelection();
+    selection.click('l');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), handleSize: () => 4, pointHit: () => 11 });
+    handler.editPoints('l');
+    // The top-right corner of its box: a handle only outside the mode.
+    handler.down(at(200, -40));
+    handler.move(at(260, -80));
+    handler.up(at(260, -80));
+    expect(history.current.elements[0]).toMatchObject({ w: 200, h: 100 });
+  });
+
+  it('drags an attached arrow end as an end, even with Shift', () => {
+    const history = createHistory({
+      elements: [
+        { id: 'b', type: 'rect', x: 300, y: -50, w: 100, h: 100, z: 1 },
+        { id: 'a', type: 'arrow', x: 0, y: 0, w: 296, h: 0, z: 2, points: [0, 0, 100, 0, 296, 0], endBinding: 'b', endAnchor: [0, 0.5] },
+      ] as never,
+    });
+    const selection = createSelection();
+    selection.click('a');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), pointHit: () => 11 });
+    handler.editPoints('a');
+    handler.down(at(296, 0), { additive: true, shift: true });
+    handler.move(at(150, 200), { shift: true });
+    handler.up(at(150, 200), { shift: true });
+    expect(history.current.elements.find((e) => e.id === 'a')).not.toHaveProperty('endBinding');
   });
 });

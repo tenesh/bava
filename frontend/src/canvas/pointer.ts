@@ -16,11 +16,11 @@ import { produce } from 'immer';
 import { createScene, isLocked, type ArrowProps, type ElementId, type SceneData, type SceneElement } from './scene';
 import { labelPoint, middlesAlong, positionAlong, routePoints } from './arrows';
 import { duplicate, withDescendants } from './edit';
-import { anchorFor, BINDING_REACH_MIN, drawnPoints, reroute, settledAround, targetAt, unturned } from './binding';
+import { anchorFor, BINDING_REACH_MIN, drawnPoints, isInside, reroute, settledAround, targetAt, unturned } from './binding';
 import { carriedWith, releaseFrames } from './containment';
 import { measureCode, MIN_RESIZE_COLUMNS, type CodeMetrics } from './code/measure';
 import { isLinear, nearElement, tensionOf } from './hit';
-import { chromeFor } from './selection-chrome';
+import { chromeFor, offersMiddles } from './selection-chrome';
 import { simplify } from './stroke';
 import { snapAngle, squareBox } from './constrain';
 import { erasableAlong, eraseSet } from './eraser';
@@ -98,6 +98,12 @@ export type PointerHandlerOptions = {
    * 20 screen px (`MINIMUM_ARROW_SIZE`), divided by the zoom.
    */
   minLinear?: () => number;
+  /**
+   * While drawing a line click by click, how near the last point a click
+   * finishes it, in scene units: Excalidraw's `LINE_CONFIRM_THRESHOLD`, 8
+   * screen px, divided by the zoom.
+   */
+  confirmDistance?: () => number;
   /** An arrow's label box in scene space, as the stage draws it, for sliding it. */
   labelBounds?: (id: ElementId) => Box | null;
   /** How a code block is measured: the mono advance, line height and padding. */
@@ -126,6 +132,12 @@ type Drag = {
   bend?: { id: ElementId; index: number; insert: boolean; original: SceneElement; at: Point };
   /** Set when the press landed on the selected arrow's label, which slides along it. */
   label?: { id: ElementId; original: SceneElement };
+  /** Set in point editing when the press took points: they move together. */
+  points?: { id: ElementId; indices: number[]; original: SceneElement };
+  /** Set in point editing for a press that changes nothing when dragged. */
+  inert?: boolean;
+  /** Set in point editing by an Alt-press off the points: add one there on release. */
+  appendAt?: Point;
   /** The id a drawn element gets, fixed for the drag so previews update one node. */
   newId: string;
   /**
@@ -161,6 +173,17 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   let shift = false;
   // Alt, likewise: held while drawing an arrow, it leaves the ends unattached.
   let alt = false;
+  // Cmd/Ctrl, likewise: held while an arrow end is dropped, it stays free.
+  let mod = false;
+  // Point editing (06.13): the line or arrow whose points are being edited,
+  // and which of them are selected, by index.
+  let pointEditing: { id: ElementId; selected: number[] } | null = null;
+  // Click-by-click drawing (06.13): the line or arrow being drawn, its points
+  // so far in scene space, and the id it will have.
+  let clicking: { type: 'line' | 'arrow'; points: Point[]; id: string } | null = null;
+  // Whether the last release finished a line drawn click by click: the
+  // double-click that did it must not then open that line's points.
+  let justFinishedClicking = false;
   // Where the pointer last was, for what the stage draws mid-drag.
   let lastPoint: Point = { x: 0, y: 0 };
   // The copies an Alt-drag made, selected once it is released.
@@ -185,6 +208,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   const pointHit = options.pointHit ?? (() => 11);
   const bendInsertDistance = options.bendInsertDistance ?? (() => 10);
   const minLinear = options.minLinear ?? (() => 20);
+  const confirmDistance = options.confirmDistance ?? (() => 8);
 
   /**
    * Where a dragged point goes: the pointer, plus the offset from where the
@@ -270,11 +294,17 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
     /**
      * The shapes the arrow being drawn would attach to, for the stage to
-     * highlight. Empty when nothing is being drawn, when Alt is held, or when
+     * highlight. Empty when nothing is being drawn, when Cmd/Ctrl is held, or when
      * neither end is over a shape.
      */
     get bindingCandidates(): ElementId[] {
-      if (!drag || alt) return [];
+      if (mod) return [];
+      // A clicked arrow shows what its first point and the pointer would attach to.
+      if (clicking?.type === 'arrow') {
+        const ids = [clicking.points[0], lastPoint].map((end) => targetAt(history.current, end, clicking!.id, reach())?.id);
+        return ids.filter((id, i) => id !== undefined && ids.indexOf(id) === i) as ElementId[];
+      }
+      if (!drag) return [];
       // An end of an existing arrow being dragged: what it would attach to,
       // by the rule the release uses (the other end's shape is refused).
       if (drag.endpoint) {
@@ -291,10 +321,19 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       return ids.filter((id, i) => id !== undefined && ids.indexOf(id) === i) as ElementId[];
     },
 
-    down(point: Point, options: { additive?: boolean; shift?: boolean } = {}): void {
+    down(point: Point, options: { additive?: boolean; alt?: boolean; shift?: boolean } = {}): void {
       shift = Boolean(options.shift);
       endAim = null;
+      justFinishedClicking = false;
+      // While a line is drawn click by click, a press is the next click: it
+      // draws nothing of its own, and its release adds the point.
+      if (clicking && (tools.active === 'line' || tools.active === 'arrow')) {
+        lastPoint = point;
+        drag = inertDrag(point);
+        return;
+      }
       alt = false;
+      mod = false;
       lastPoint = point;
       if (tools.active === 'eraser') {
         erasing = new Set();
@@ -303,6 +342,13 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         drag = { origin: point, moving: [], originals: new Map(), strokePoints: [], resize: null, rotate: null, endpoint: null, newId: '' };
         return;
       }
+
+      // Point editing takes a press first: on a point, on a middle, Alt-click
+      // to add one; anywhere off the line ends the mode.
+      // A press that ends the mode must not then take the box handles the mode
+      // hid: they were not drawn when it landed.
+      const wasEditing = currentEditing()?.id ?? null;
+      if (wasEditing && tools.active === 'select' && pressInPointEditing(point, options)) return;
 
       // One selected arrow: its ends are handles of their own, and they win
       // over the box handles, which sit on the same corners for a thin box.
@@ -340,7 +386,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         const bounds = { x: frame.x, y: frame.y, w: frame.w, h: frame.h };
         const size = handleSize();
         // Only the handles the stage draws for this selection can be pressed.
-        const chrome = chromeFor(history.current.elements.filter((e) => selection.has(e.id)));
+        const chrome = chromeFor(history.current.elements.filter((e) => selection.has(e.id)), wasEditing);
         // Handles are drawn on the frame, so a press is read in its space.
         const local = pointInFrame(point, frame);
         // A gap of zero would put the rotate zone on the top handle and make
@@ -419,10 +465,16 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       };
     },
 
-    move(point: Point, options: { alt?: boolean; shift?: boolean } = {}): void {
+    move(point: Point, options: { alt?: boolean; mod?: boolean; shift?: boolean } = {}): void {
+      // Read whether or not a press is down: a line drawn click by click has
+      // none between clicks, and its finish uses what is held then.
+      alt = Boolean(options.alt);
+      mod = Boolean(options.mod);
+      lastPoint = point;
       if (!drag) return;
       shift = Boolean(options.shift);
       alt = Boolean(options.alt);
+      mod = Boolean(options.mod);
       lastPoint = point;
 
       if (tools.active === 'eraser') {
@@ -437,9 +489,121 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
       // A resize is a select-tool drag that moves nothing; the marquee belongs
       // to dragging empty space, not to it.
-      if (tools.active === 'select' && !drag.resize && !drag.rotate && !drag.endpoint && !drag.bend && !drag.label && drag.moving.length === 0) {
+      if (tools.active === 'select' && !drag.resize && !drag.rotate && !drag.endpoint && !drag.bend && !drag.label && !drag.points && !drag.inert && drag.moving.length === 0) {
         marquee = boxBetween(drag.origin, point);
       }
+    },
+
+    /** Whether a line or arrow is being drawn click by click. */
+    get drawingPoints(): boolean {
+      return clicking !== null;
+    },
+
+    /** The scene with the line being drawn click by click, running to `point`. */
+    pointsPreview(point: Point): SceneData | null {
+      if (!clicking) return null;
+      const element = linearFrom(clicking.type, clicking.id, [...clicking.points, point]);
+      return produce(history.current, (draft: SceneData) => {
+        draft.elements.push(element as never);
+      });
+    },
+
+    /** Finish the line being drawn click by click (Enter, Escape). */
+    finishPoints(options: { keepTool?: boolean } = {}): void {
+      finishClicking(options);
+    },
+
+    /** Escape: finish a line being clicked, else leave point editing. Whether it did. */
+    escape(): boolean {
+      if (clicking) {
+        finishClicking();
+        return true;
+      }
+      if (currentEditing()) {
+        pointEditing = null;
+        return true;
+      }
+      return false;
+    },
+
+    /** Enter: finish a line being clicked, or edit the points of a selected line. */
+    enter(): boolean {
+      if (clicking) {
+        finishClicking();
+        return true;
+      }
+      const [only] = selection.ids;
+      const element = selection.ids.length === 1 ? history.current.elements.find((e) => e.id === only) : undefined;
+      return element?.type === 'line' && this.editPoints(element.id);
+    },
+
+    /**
+     * Delete in point editing: the selected points. With none selected the
+     * mode ends and the caller deletes the line itself. Whether it was taken.
+     */
+    deletePoints(): boolean {
+      const editing = currentEditing();
+      if (!editing) return false;
+      if (editing.selected.length === 0) {
+        pointEditing = null;
+        return false;
+      }
+      this.removeSelectedPoints();
+      return true;
+    },
+
+    /**
+     * A double-click with Select: on a line, or on an arrow with Cmd/Ctrl (a
+     * plain one types its label), edit its points and select it. Not on the
+     * double-click that finished a line drawn click by click.
+     */
+    doubleClick(point: Point, options: { mod?: boolean } = {}): boolean {
+      if (tools.active !== 'select' || justFinishedClicking) return false;
+      const hits = elementsAt(point);
+      const hit = hits[hits.length - 1];
+      if (!hit || !(hit.type === 'line' || (hit.type === 'arrow' && options.mod))) return false;
+      if (!this.editPoints(hit.id)) return false;
+      selection.clear();
+      selection.click(hit.id);
+      return true;
+    },
+
+    /** The line or arrow in point editing, and its selected points; or null. */
+    get editingPoints(): { id: ElementId; selected: number[] } | null {
+      const editing = currentEditing();
+      return editing ? { id: editing.id, selected: [...editing.selected] } : null;
+    },
+
+    /** Edit a line's or arrow's points (an elbow's route is its own). */
+    editPoints(id: ElementId): boolean {
+      const element = history.current.elements.find((e) => e.id === id);
+      if (!element || (element.type !== 'line' && element.type !== 'arrow') || isLocked(element)) return false;
+      if ((element as { arrowType?: string }).arrowType === 'elbow') return false;
+      pointEditing = { id, selected: [] };
+      return true;
+    },
+
+    stopEditingPoints(): void {
+      pointEditing = null;
+    },
+
+    /** Remove the selected points, as one step, never leaving fewer than two. */
+    removeSelectedPoints(): boolean {
+      const editing = currentEditing();
+      if (!editing || editing.selected.length === 0) return false;
+      const element = history.current.elements.find((e) => e.id === editing.id);
+      if (!element) return false;
+      const base = unturned(element);
+      const all = ('points' in base ? base.points : []) as number[];
+      const keep = new Set(editing.selected);
+      if (all.length / 2 - keep.size < 2) return false;
+      const points = all.filter((_, i) => !keep.has(Math.floor(i / 2)));
+      history.mutate((scene) => {
+        const i = scene.elements.findIndex((e) => e.id === element.id);
+        if (i >= 0) scene.elements[i] = settledAround(base, points);
+      });
+      editing.selected = [];
+      return true;
     },
 
     /**
@@ -460,6 +624,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         const i = scene.elements.findIndex((e) => e.id === found.id);
         if (i >= 0) scene.elements[i] = settledAround(base, points);
       });
+      // The points after it shift: a selection in point editing is not theirs.
+      if (pointEditing) pointEditing.selected = [];
       return true;
     },
 
@@ -470,11 +636,12 @@ export function createPointerHandler(options: PointerHandlerOptions) {
      * preview and the release that follows cannot disagree. Null when there is
      * no drag or it would change nothing.
      */
-    preview(point: Point, options: { alt?: boolean; shift?: boolean } = {}): SceneData | null {
+    preview(point: Point, options: { alt?: boolean; mod?: boolean; shift?: boolean } = {}): SceneData | null {
       if (!drag) return null;
       shift = Boolean(options.shift);
       // Alt, like Shift, can change with the pointer still: an Alt-move copies.
       if (options.alt !== undefined) alt = options.alt;
+      if (options.mod !== undefined) mod = options.mod;
       const recipe = changeFor(drag, point);
       if (!recipe) return null;
       // The preview re-aims attached arrows too, the same way `history.mutate`
@@ -490,13 +657,30 @@ export function createPointerHandler(options: PointerHandlerOptions) {
      * Finish a drag. Returns the id of an element that wants an editor opened
      * on it (a code block, which arrives empty), or null.
      */
-    up(point: Point, options: { alt?: boolean; shift?: boolean } = {}): ElementId | null {
+    up(point: Point, options: { alt?: boolean; mod?: boolean; shift?: boolean } = {}): ElementId | null {
       if (!drag) return null;
       shift = Boolean(options.shift);
       alt = Boolean(options.alt);
+      mod = Boolean(options.mod);
       const started = drag;
       drag = null;
       marquee = null;
+
+      // An Alt-press off the points in point editing adds one there, read at
+      // the release as every modifier is.
+      if (started.appendAt) {
+        if (alt) appendPoint(point);
+        return null;
+      }
+
+      // Drawing click by click: each click adds a point; a click on the last
+      // one finishes the line.
+      if (clicking && (tools.active === 'line' || tools.active === 'arrow')) {
+        const last = clicking.points[clicking.points.length - 1];
+        if (Math.hypot(point.x - last.x, point.y - last.y) <= confirmDistance()) finishClicking();
+        else clicking.points.push(point);
+        return null;
+      }
 
       if (tools.active === 'eraser') {
         extendTrail(point, Boolean(options.alt));
@@ -530,7 +714,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         return null;
       }
 
-      if (tools.active === 'select' && !started.resize && !started.rotate && !started.endpoint && !started.bend && !started.label && started.moving.length === 0) {
+      if (tools.active === 'select' && !started.resize && !started.rotate && !started.endpoint && !started.bend && !started.label && !started.points && !started.inert && started.moving.length === 0) {
         if (farEnough(started.origin, point)) {
           selection.marquee(boxBetween(started.origin, point), history.current);
         }
@@ -565,6 +749,12 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
       // One step for the whole gesture, however many move events it had.
       copied = [];
+      // A line or arrow press released before the minimum length starts one
+      // drawn click by click, from where the press was (Excalidraw's).
+      if ((tools.active === 'line' || tools.active === 'arrow') && Math.hypot(point.x - started.origin.x, point.y - started.origin.y) < minLinear()) {
+        clicking = { type: tools.active, points: [started.origin], id: started.newId };
+        return null;
+      }
       const recipe = changeFor(started, point);
       if (recipe) history.mutate(recipe);
       if (copied.length > 0) {
@@ -622,6 +812,27 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           const replacement = turned.get(scene.elements[i].id);
           if (replacement) scene.elements[i] = replacement;
         }
+      };
+    }
+
+    if (started.inert) return null;
+
+    if (started.points) {
+      const { id, indices, original } = started.points;
+      if (!farEnough(started.origin, point)) return null;
+      const base = unturned(original);
+      const points = [...(('points' in base ? base.points : []) as number[])];
+      const dx = point.x - started.origin.x;
+      const dy = point.y - started.origin.y;
+      for (const index of indices) {
+        // Never beyond the points there are: a stale index would write NaN.
+        if (index * 2 + 1 >= points.length) continue;
+        points[index * 2] += dx;
+        points[index * 2 + 1] += dy;
+      }
+      return (scene) => {
+        const i = scene.elements.findIndex((e) => e.id === id);
+        if (i >= 0) scene.elements[i] = settledAround(base, points);
       };
     }
 
@@ -683,6 +894,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       if (!farEnough(started.origin, point)) return null;
       const key = index === 0 ? 'startBinding' : 'endBinding';
       const anchorKey = index === 0 ? 'startAnchor' : 'endAnchor';
+      const modeKey = index === 0 ? 'startMode' : 'endMode';
       const otherKey = index === 0 ? 'endBinding' : 'startBinding';
       const other = (original as SceneElement & Record<string, string | undefined>)[otherKey];
       // Dropped on a shape it attaches, on empty canvas it lets go, and Alt
@@ -698,7 +910,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         y: original.y + points[next + 1],
       });
       endAim = aimed;
-      const candidate = alt ? undefined : targetAt(history.current, aimed, id, reach());
+      // Cmd/Ctrl leaves the end free (06.13; Alt used to).
+      const candidate = mod ? undefined : targetAt(history.current, aimed, id, reach());
       const target = candidate && candidate.id === other ? undefined : candidate;
       points[at] = aimed.x - original.x;
       points[at + 1] = aimed.y - original.y;
@@ -708,13 +921,17 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         scene.elements[i] = settledAround(original, points);
         const bound = scene.elements[i] as SceneElement & Record<string, unknown>;
         // The binding and where on the target it aims go together.
+        // Inside the shape, or anywhere on it with Alt, the end is pinned.
+        const inside = Boolean(target) && pinnedAt(target!, aimed, original);
         if (target) {
           bound[key] = target.id;
-          bound[anchorKey] = anchorFor(target, aimed, reach());
+          bound[anchorKey] = anchorFor(target, aimed, reach(), inside);
         } else {
           delete bound[key];
           delete bound[anchorKey];
         }
+        if (inside) bound[modeKey] = 'inside';
+        else delete bound[modeKey];
       };
     }
 
@@ -796,14 +1013,15 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           if (element.type !== 'arrow' || !isNew(element.id)) return element;
           const loose = { ...element } as SceneElement & Record<string, unknown>;
           let changed = false;
-          for (const [key, anchor] of [
-            ['startBinding', 'startAnchor'],
-            ['endBinding', 'endAnchor'],
+          for (const [key, anchor, mode] of [
+            ['startBinding', 'startAnchor', 'startMode'],
+            ['endBinding', 'endAnchor', 'endMode'],
           ] as const) {
             const target = loose[key] as string | undefined;
             if (target === undefined || !order.has(target)) continue;
             delete loose[key];
             delete loose[anchor];
+            delete loose[mode];
             changed = true;
           }
           return changed ? loose : element;
@@ -825,9 +1043,9 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           // would pull its ends back and undo the move without a word.
           if (element.type === 'arrow') {
             const bound = element as SceneElement & Record<string, unknown>;
-            for (const [key, anchor] of [
-              ['startBinding', 'startAnchor'],
-              ['endBinding', 'endAnchor'],
+            for (const [key, anchor, mode] of [
+              ['startBinding', 'startAnchor', 'startMode'],
+              ['endBinding', 'endAnchor', 'endMode'],
             ] as const) {
               const target = bound[key] as string | undefined;
               // A target already gone stays named: the end is detached, and
@@ -836,6 +1054,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
               if (!scene.elements.some((other) => other.id === target)) continue;
               delete bound[key];
               delete bound[anchor];
+              delete bound[mode];
             }
           }
         }
@@ -863,7 +1082,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
             points: [started.origin.x - box.x, started.origin.y - box.y, end.x - box.x, end.y - box.y].map(tidy),
             // An arrow is a connector: it attaches to what its ends land on,
             // unless Alt says otherwise. A line is geometry, and never binds.
-            ...(type === 'arrow' && !alt ? bindingsFor(started.origin, end, started.newId) : {}),
+            ...(type === 'arrow' && !mod ? bindingsFor(started.origin, end, started.newId) : {}),
           }
         : {};
     return (scene) => {
@@ -909,6 +1128,143 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     const w = Math.max(element.w, MIN_RESIZE_COLUMNS * metrics.advance + metrics.padding * 2);
     const size = measureCode(block.code, metrics, w);
     return { ...element, w: size.width, h: size.height, measuredWidth: size.width, measuredHeight: size.height } as SceneElement;
+  }
+
+  /** A line or arrow through `points` (scene space), boxed around them. */
+  function linearFrom(type: 'line' | 'arrow', id: string, points: Point[]): SceneElement {
+    const flat = points.flatMap((p) => [p.x, p.y]);
+    const box = boundsOfPoints(flat);
+    return {
+      id,
+      z: topZ(history.current.elements) + 1,
+      type,
+      x: tidy(box.x),
+      y: tidy(box.y),
+      w: tidy(box.w),
+      h: tidy(box.h),
+      points: flat.map((value, i) => tidy(value - (i % 2 === 0 ? box.x : box.y))),
+    } as SceneElement;
+  }
+
+  /**
+   * Commit the line drawn click by click, as one step: nothing for fewer than
+   * two points; an arrow attaches its first and last points as a dragged one
+   * does. Then, as after any draw, the select tool with the line selected.
+   */
+  function finishClicking(options: { keepTool?: boolean } = {}): void {
+    const drawing = clicking;
+    clicking = null;
+    if (!drawing) return;
+    // A single click makes nothing, but the tool still lets go, as after a draw.
+    if (drawing.points.length < 2) {
+      if (!options.keepTool) tools.escape();
+      return;
+    }
+    justFinishedClicking = true;
+    const first = drawing.points[0];
+    const last = drawing.points[drawing.points.length - 1];
+    const bindings = drawing.type === 'arrow' && !mod ? bindingsFor(first, last, drawing.id) : {};
+    const element = { ...linearFrom(drawing.type, drawing.id, drawing.points), ...bindings } as SceneElement;
+    history.mutate((scene) => {
+      scene.elements.push(element);
+    });
+    // A tool chosen mid-line is kept; otherwise, as after any draw, Select.
+    if (!options.keepTool) tools.escape();
+    selection.click(drawing.id);
+  }
+
+  /**
+   * The point editing in force, or null: it ends when the selection is no
+   * longer exactly its line (select all, a marquee, an undo), and selected
+   * indices past the line's points are dropped, so none can be stale.
+   */
+  function currentEditing(): { id: ElementId; selected: number[] } | null {
+    if (!pointEditing) return null;
+    const element = history.current.elements.find((e) => e.id === pointEditing!.id);
+    if (!element || selection.ids.length !== 1 || selection.ids[0] !== pointEditing.id) {
+      pointEditing = null;
+      return null;
+    }
+    const count = drawnPoints(element).length / 2;
+    pointEditing.selected = pointEditing.selected.filter((i) => i < count);
+    return pointEditing;
+  }
+
+  /**
+   * Add a point where Alt was clicked in point editing, after the last; on an
+   * arrow whose end is attached, before that end, which stays on its shape.
+   */
+  function appendPoint(point: Point): void {
+    const editing = currentEditing();
+    if (!editing) return;
+    const element = history.current.elements.find((e) => e.id === editing.id)!;
+    const base = unturned(element);
+    const points = [...(('points' in base ? base.points : []) as number[])];
+    const added = [tidy(point.x - base.x), tidy(point.y - base.y)];
+    const endBound = element.type === 'arrow' && (element as SceneElement & ArrowProps).endBinding !== undefined;
+    const at = endBound ? points.length - 2 : points.length;
+    points.splice(at, 0, ...added);
+    history.mutate((scene) => {
+      const i = scene.elements.findIndex((e) => e.id === element.id);
+      if (i >= 0) scene.elements[i] = settledAround(base, points);
+    });
+    editing.selected = [at / 2];
+  }
+
+  /** An empty drag: a press that selects or adds, and moves nothing. */
+  function inertDrag(point: Point): Drag {
+    return { origin: point, moving: [], originals: new Map(), strokePoints: [], resize: null, rotate: null, endpoint: null, inert: true, newId: '' };
+  }
+
+  /**
+   * A press while editing points. On a point: select it (Shift toggles) and
+   * drag the selection. On a segment's middle: the ordinary bend drag. With
+   * Alt anywhere: add a point after the last (before an attached end), on
+   * release. On the line itself: clear the
+   * point selection. Anywhere else: leave the mode, and the press goes on as
+   * any other. Returns whether the press was taken.
+   */
+  function pressInPointEditing(point: Point, options: { additive?: boolean; alt?: boolean }): boolean {
+    const editing = pointEditing!;
+    const element = history.current.elements.find((e) => e.id === editing.id)!;
+    const drawn = drawnPoints(element);
+    const reach = pointHit();
+    const count = drawn.length / 2;
+    for (let i = count - 1; i >= 0; i -= 1) {
+      if (Math.hypot(point.x - drawn[i * 2], point.y - drawn[i * 2 + 1]) > reach) continue;
+      // An arrow's end is dragged as an end: it attaches, pins or lets go.
+      if (element.type === 'arrow' && (i === 0 || i === count - 1)) {
+        editing.selected = [i];
+        const at = { x: drawn[i * 2], y: drawn[i * 2 + 1] };
+        drag = { ...inertDrag(point), inert: false, endpoint: { id: element.id, index: i === 0 ? 0 : 1, original: element, at } };
+        return true;
+      }
+      if (options.additive) {
+        editing.selected = editing.selected.includes(i) ? editing.selected.filter((j) => j !== i) : [...editing.selected, i].sort((a, b) => a - b);
+      } else if (!editing.selected.includes(i)) {
+        editing.selected = [i];
+      }
+      drag = { ...inertDrag(point), inert: false, points: { id: element.id, indices: [...editing.selected], original: element } };
+      return true;
+    }
+    const middle = bendAt(point);
+    if (middle?.insert) {
+      // The points after the new one shift: the selection is no longer theirs.
+      editing.selected = [];
+      drag = { ...inertDrag(point), inert: false, bend: middle };
+      return true;
+    }
+    if (options.alt) {
+      drag = { ...inertDrag(point), appendAt: point };
+      return true;
+    }
+    if (nearElement(element, point, hitTolerance())) {
+      editing.selected = [];
+      drag = inertDrag(point);
+      return true;
+    }
+    pointEditing = null;
+    return false;
   }
 
   /** The one selected line or arrow that can be bent, with its points. */
@@ -959,6 +1315,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
    */
   function segmentMiddles(element: SceneElement): ({ x: number; y: number } | null)[] {
     const drawn = drawnPoints(element);
+    // Outside point editing, only a two-point line or arrow offers its middle.
+    if (!offersMiddles(element, pointEditing?.id === element.id)) return [];
     const middles = middlesAlong(drawn, (element as SceneElement & ArrowProps).arrowType, tensionOf(element));
     return middles.map((middle, i) => {
       const [x1, y1, x2, y2] = drawn.slice(i * 2, i * 2 + 4);
@@ -976,13 +1334,27 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     return inside ? { id: found.element.id, original: found.element } : null;
   }
 
+  /**
+   * Whether an end dropped at `point` on `target` is pinned inside it: strictly
+   * inside its drawn outline, or anywhere on it with Alt (Excalidraw's
+   * "inside" mode). An elbow end never is: it keeps to a side.
+   */
+  function pinnedAt(target: SceneElement, point: Point, arrow?: SceneElement): boolean {
+    if ((arrow as { arrowType?: string } | undefined)?.arrowType === 'elbow') return false;
+    return alt || isInside(target, point);
+  }
+
   /** What each end of a drawn arrow lands on, and where, as keys for the element. */
   function bindingsFor(from: Point, to: Point, id: string): Record<string, unknown> {
     const start = targetAt(history.current, from, id, reach());
     const end = targetAt(history.current, to, id, reach());
+    const startInside = Boolean(start) && pinnedAt(start!, from);
+    const endInside = Boolean(end) && pinnedAt(end!, to);
     return {
-      ...(start ? { startBinding: start.id, startAnchor: anchorFor(start, from, reach()) } : {}),
-      ...(end && end.id !== start?.id ? { endBinding: end.id, endAnchor: anchorFor(end, to, reach()) } : {}),
+      ...(start ? { startBinding: start.id, startAnchor: anchorFor(start, from, reach(), startInside) } : {}),
+      ...(startInside ? { startMode: 'inside' } : {}),
+      ...(end && end.id !== start?.id ? { endBinding: end.id, endAnchor: anchorFor(end, to, reach(), endInside) } : {}),
+      ...(end && end.id !== start?.id && endInside ? { endMode: 'inside' } : {}),
     };
   }
 }

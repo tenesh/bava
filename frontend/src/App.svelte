@@ -115,6 +115,7 @@
     pointHit: () => (parseFloat(readRootVariable('--size-point-hit')) || 0) / viewport.zoom,
     bendInsertDistance: () => (parseFloat(readRootVariable('--size-bend-insert')) || 0) / viewport.zoom,
     minLinear: () => (parseFloat(readRootVariable('--size-min-linear')) || 0) / viewport.zoom,
+    confirmDistance: () => (parseFloat(readRootVariable('--size-line-confirm')) || 0) / viewport.zoom,
     // An arrow's label as the stage draws it, for sliding it along the arrow.
     labelBounds: (id) => canvas.labelBounds(id),
     // How far a press must travel to be a drag, in scene units at this zoom.
@@ -383,10 +384,26 @@
     toolbarCapacity = Math.max(1, Math.floor((width - margin) / (button + gap)));
   }
 
+  // Changing tool finishes a line being drawn click by click, as Excalidraw's,
+  // and keeps the tool picked; Line to Arrow and back finishes it too.
+  let drawingWith = tools.active;
+  $effect(() => {
+    const tool = tools.active;
+    if (tool !== drawingWith && pointer.drawingPoints) {
+      pointer.finishPoints({ keepTool: true });
+      canvas.setBindingCandidates([]);
+      commit();
+      canvas.render(history.current);
+    }
+    drawingWith = tool;
+  });
+
   function syncSelection() {
     hasSelection = canvasCommands.hasSelection;
     selectedIds = selection.ids;
     canvas.setSelection(selection.ids);
+    // Point editing (06.13) is drawn with the selection it belongs to.
+    canvas.setPointEditing(pointer.editingPoints);
   }
 
   function commit() {
@@ -893,14 +910,14 @@
       }
       // Text is placed with a click and typed; it is not a drag.
       if (tools.active === 'text') return;
-      pointer.down(scenePoint(event), { additive: event.shiftKey, shift: event.shiftKey });
+      pointer.down(scenePoint(event), { additive: event.shiftKey, alt: event.altKey, shift: event.shiftKey });
       // A click selects; show it now rather than on release.
       syncSelection();
     };
     // Drawn at most once per frame: a pointer reports moves faster than the
     // screen redraws. Every move still reaches the pointer handler, so a pen
     // stroke or an eraser trail keeps every point.
-    const drawDrag = frameThrottle((point: { x: number; y: number }, shift: boolean, alt: boolean) => {
+    const drawDrag = frameThrottle((point: { x: number; y: number }, shift: boolean, alt: boolean, mod: boolean) => {
       if (!pointer.dragging) return;
       if (tools.active === 'eraser') {
         canvas.setErasing(pointer.erasing, pointer.eraserTrail);
@@ -908,12 +925,15 @@
       }
       // Live feedback: the drag's result drawn as it would be committed, or the
       // scene as it is when the drag would change nothing.
-      canvas.render(pointer.preview(point, { shift, alt }) ?? history.current);
+      canvas.render(pointer.preview(point, { shift, alt, mod }) ?? history.current);
       canvas.setMarquee(pointer.marquee);
       // The shapes this arrow would attach to, shown while it is drawn.
       canvas.setBindingCandidates(pointer.bindingCandidates);
     });
     const drawPan = frameThrottle(() => applyView());
+    const drawClicking = frameThrottle((point: { x: number; y: number }) => {
+      canvas.render(pointer.pointsPreview(point) ?? history.current);
+    });
     const onMove = (event: PointerEvent) => {
       if (panningFrom) {
         const now = screenPoint(event);
@@ -924,9 +944,16 @@
       }
       const point = scenePoint(event);
       lastDragPoint = point;
-      pointer.move(point, { alt: event.altKey, shift: event.shiftKey });
+      pointer.move(point, { alt: event.altKey, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey });
+      // Drawing click by click: the next segment follows the pointer, pressed
+      // or not; a press there draws nothing of its own.
+      if (pointer.drawingPoints) {
+        drawClicking(point);
+        canvas.setBindingCandidates(pointer.bindingCandidates);
+        return;
+      }
       if (!pointer.dragging) return;
-      drawDrag(point, event.shiftKey, event.altKey);
+      drawDrag(point, event.shiftKey, event.altKey, event.metaKey || event.ctrlKey);
     };
     const onUp = (event: PointerEvent) => {
       if (labelEditor?.contains(event.target)) return;
@@ -935,6 +962,7 @@
       lastDragPoint = null;
       // Nothing from before the release may be drawn after it.
       drawDrag.cancel();
+      drawClicking.cancel();
       if (panningFrom) {
         panningFrom = null;
         drawPan.cancel();
@@ -948,7 +976,7 @@
         queueMicrotask(() => placeText(point));
         return;
       }
-      const placed = pointer.up(scenePoint(event), { alt: event.altKey, shift: event.shiftKey });
+      const placed = pointer.up(scenePoint(event), { alt: event.altKey, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey });
       if (placed) {
         tools.escape();
         const element = history.current.elements.find((e) => e.id === placed);
@@ -961,8 +989,9 @@
       commit();
       // The last frame drawn was a preview, possibly of a place the release
       // did not commit (a drag back to its start changes nothing, so nothing
-      // republishes). Show what is. Unchanged elements are skipped.
-      canvas.render(history.current);
+      // republishes). Show what is. Unchanged elements are skipped. While a
+      // line is drawn click by click, what is includes its next segment.
+      canvas.render(pointer.pointsPreview(scenePoint(event)) ?? history.current);
     };
     // Right-click: an unselected element under the pointer becomes the
     // selection first, then the menu opens at the pointer for it.
@@ -986,6 +1015,12 @@
         commit();
         return;
       }
+      // A line's points are edited by double-click, an arrow's with Cmd/Ctrl
+      // (a plain double-click types its label), as in Excalidraw.
+      if (pointer.doubleClick(scenePoint(event as PointerEvent), { mod: event.metaKey || event.ctrlKey })) {
+        syncSelection();
+        return;
+      }
       const element = editableAt(history.current, scenePoint(event as PointerEvent), hitTolerance());
       if (element?.type === 'code') editCode(element);
       else if (element) editElement(element);
@@ -1005,10 +1040,10 @@
     // key even when the pointer does not move: the drag is redrawn where the
     // pointer last was, so the release commits what is on screen.
     const onModifier = (event: KeyboardEvent) => {
-      if ((event.key !== 'Shift' && event.key !== 'Alt') || !pointer.dragging || !lastDragPoint) return;
+      if (!['Shift', 'Alt', 'Meta', 'Control'].includes(event.key) || !pointer.dragging || !lastDragPoint) return;
       // Through the frame throttle, so a move queued before the key cannot
       // draw over this with the old state.
-      drawDrag(lastDragPoint, event.shiftKey, event.altKey);
+      drawDrag(lastDragPoint, event.shiftKey, event.altKey, event.metaKey || event.ctrlKey);
     };
     const onSpace = (event: KeyboardEvent) => {
       if (event.key !== ' ') return;
@@ -1059,7 +1094,15 @@
         editTarget(event.target as Element | null, { canvasVisible: canvasShown() }) !== 'canvas';
 
       const handled = handleKey(event, {
-        deleteSelection: canvasEdit(canvasCommands.deleteSelection),
+        deleteSelection: () => {
+          // In point editing, Delete removes the selected points; with none
+          // selected, the line itself.
+          if (pointer.deletePoints()) {
+            commit();
+            return;
+          }
+          canvasEdit(canvasCommands.deleteSelection)();
+        },
         nudge: (dx, dy) => {
           // A frame carries its contents and a group its children, by keyboard
           // exactly as by mouse.
@@ -1075,13 +1118,31 @@
           commit();
         },
         escape: () => {
+          // Escape finishes a line drawn click by click, or leaves point
+          // editing, before anything else.
+          if (pointer.escape()) {
+            canvas.setBindingCandidates([]);
+            commit();
+            canvas.render(history.current);
+            return;
+          }
           tools.escape();
           selection.clear();
           syncSelection();
           published = history.current;
         },
         activateTool: (tool) => tools.activate(tool),
-        editSelection,
+        editSelection: () => {
+          // Enter finishes a line drawn click by click, or edits a selected
+          // line's points; anything else, its text.
+          if (pointer.enter()) {
+            canvas.setBindingCandidates([]);
+            commit();
+            canvas.render(history.current);
+            return;
+          }
+          editSelection();
+        },
       }, { typing });
 
       if (handled) event.preventDefault();
@@ -1147,6 +1208,7 @@
       document.fonts?.removeEventListener('loadingdone', onFontsLoaded);
       drawDrag.cancel();
       drawPan.cancel();
+      drawClicking.cancel();
       labelEditor?.destroy();
       codeEditor?.destroy();
       codeEditor = null;

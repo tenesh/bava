@@ -46,10 +46,15 @@
   // 5 px radius (this is the diameter), taken from within 11 px.
   --size-point-handle: 10px;
   --size-point-hit: 11px;
+  // A point handle while editing a line's points: Excalidraw's 10 px radius.
+  --size-point-handle-editing: 20px;
   // How far a segment's middle is dragged before it adds a bend, and the
   // shortest line or arrow a drag draws (Excalidraw's 10 and 20).
   --size-bend-insert: 10px;
   --size-min-linear: 20px;
+  // While drawing a line click by click, a click this near the last point
+  // finishes it (Excalidraw's LINE_CONFIRM_THRESHOLD).
+  --size-line-confirm: 8px;
   // How far the rotate handle sits above the selection, clear of the top one.
   --size-rotate-gap: 16px;
   // The marquee's dash and gap on screen, whatever the zoom.

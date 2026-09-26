@@ -198,6 +198,8 @@ Optional on the element types listed, and absent means the default:
 | `endBinding` | as above, for the other end | not attached | `arrow` |
 | `startAnchor` | `[fx, fy]`, each 0 to 1: the spot on the attached element's upright box the start aims through | the element's centre | `arrow`, with `startBinding` |
 | `endAnchor` | as above, for the other end | the element's centre | `arrow`, with `endBinding` |
+| `startMode` | `inside`: the start is pinned at its anchor, inside the element | on the element's edge | `arrow`, with `startBinding` |
+| `endMode` | as above, for the other end | on the element's edge | `arrow`, with `endBinding` |
 | `labelPosition` | 0 to 1: where the label sits, as a share of the drawn path's length | 0.5, the middle | `arrow` with a `label` |
 | `frame` | the `id` of the `frame` that owns this element | not in a frame | every element |
 | `language` | the language a code block is highlighted as | plain text | `code` |
@@ -239,7 +241,9 @@ the centre, `[0, 0.5]` the middle of its left side), turned with it when it
 rotates. A bound end is drawn where the line from its anchor towards its
 neighbour (the next bend, or else the other end) leaves the target's outline,
 a fixed gap clear of it, so moving either end or the target re-aims the arrow.
-No anchor means the centre. An elbow does not aim: its end stays on the side
+No anchor means the centre. An end whose mode is `inside` does not stop at
+the outline: it sits at its anchor itself, inside the element, and moves with
+it; the other end aims at it. An elbow end is never inside. An elbow does not aim: its end stays on the side
 its anchor is on, where the anchor meets the outline, a gap clear, and its
 route goes around. A bent attached arrow written before bends existed (one
 inserted from D2, for instance) re-aims each end at its nearest bend, not

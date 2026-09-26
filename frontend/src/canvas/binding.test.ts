@@ -441,3 +441,50 @@ describe('review of 06.10: targets, snaps and kept bends', () => {
     expect([arrow.x + routed[4], arrow.y + routed[5]]).toEqual([300 - BINDING_GAP, 200]);
   });
 });
+
+// Decision 7 (06.13): an end pinned inside a shape sits at its anchor, inside
+// the shape, and moves with it; the other end aims at it.
+describe('an end pinned inside a shape', () => {
+  const rect = (id: string, x: number, y: number, over: Record<string, unknown> = {}) =>
+    ({ id, type: 'rect', x, y, w: 100, h: 100, z: 1, ...over }) as never as SceneElement;
+  const arrow = (over: Record<string, unknown>) =>
+    ({ id: 'arrow', type: 'arrow', x: 0, y: 0, w: 1, h: 1, z: 3, points: [0, 0, 1, 1], ...over }) as never as SceneElement;
+  const world = (element: SceneElement, points: number[], i: number) => [
+    Math.round((element.x + points[i]) * 1000) / 1000,
+    Math.round((element.y + points[i + 1]) * 1000) / 1000,
+  ];
+
+  it('sits at its spot inside the shape, and moves with it', () => {
+    const a = arrow({ x: 25, y: 25, points: [0, 0, 400, 0], startBinding: 's', startAnchor: [0.25, 0.25], startMode: 'inside' });
+    expect(world(a, routeFor(a, { elements: [rect('s', 0, 0), a] }), 0)).toEqual([25, 25]);
+    expect(world(a, routeFor(a, { elements: [rect('s', 50, 10), a] }), 0)).toEqual([75, 35]);
+  });
+
+  it('is what the other end aims at', () => {
+    // The start is pinned at (25, 25) in s; the end, on t to its right, aims
+    // along the line from its own centre to that spot.
+    const a = arrow({ x: 25, y: 25, points: [0, 0, 275, 25], startBinding: 's', startAnchor: [0.25, 0.25], startMode: 'inside', endBinding: 't' });
+    const t = rect('t', 300, 0);
+    const routed = routeFor(a, { elements: [rect('s', 0, 0), t, a] });
+    const [x, y] = world(a, routed, 2);
+    expect(x).toBeCloseTo(300 - BINDING_GAP, 0);
+    expect(y).toBeLessThan(50);
+  });
+
+  it('is recorded exactly where it landed, without snapping', () => {
+    expect(anchorFor(rect('s', 0, 0), { x: 3, y: 50 }, 15, true)).toEqual([0.03, 0.5]);
+  });
+
+  it('is never how an elbow end sits', () => {
+    const a = arrow({ arrowType: 'elbow', x: 50, y: 50, points: [0, 0, 400, 0], startBinding: 's', startAnchor: [0.5, 0.5], startMode: 'inside' });
+    const routed = routeFor(a, { elements: [rect('s', 0, 0), a] });
+    expect(world(a, routed, 0)[0]).toBeGreaterThanOrEqual(100);
+  });
+});
+
+describe('an Alt-pinned end outside its shape', () => {
+  it('keeps its exact spot, outside the box', () => {
+    const rect = { id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 } as never as SceneElement;
+    expect(anchorFor(rect, { x: -3, y: 50 }, 15, true)).toEqual([0, 0.5]);
+  });
+});

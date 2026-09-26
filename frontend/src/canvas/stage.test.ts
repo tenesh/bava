@@ -943,12 +943,15 @@ describe('fonts arriving', () => {
 describe('the bend handles of a selected arrow', () => {
   const read = reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px', '--size-bend-min-segment': '40px' });
 
-  it('draws a handle per point and per long segment', () => {
+  // Since 06.13 a bent one offers its middles only in point editing.
+  it('draws a handle per point, and middles only while editing its points', () => {
     const stage = new CanvasStage({ read });
     stage.mount(host());
     stage.render(one({ type: 'arrow', x: 0, y: 0, w: 200, h: 80, points: [0, 0, 100, 80, 200, 0] }));
     stage.setSelection(['e1']);
     expect(stage.endpointHandles()).toHaveLength(3);
+    expect(stage.middleHandles()).toHaveLength(0);
+    stage.setPointEditing({ id: 'e1', selected: [] });
     expect(stage.middleHandles()).toHaveLength(2);
     stage.destroy();
   });
@@ -1070,6 +1073,23 @@ describe('the handles of a selected code block', () => {
     stage.render(one({ type: 'code', x: 0, y: 0, w: 200, h: 60, code: 'x', measuredWidth: 200, measuredHeight: 60 } as never));
     stage.setSelection(['e1']);
     expect(stage.selectionHandleCount()).toBe(4);
+    stage.destroy();
+  });
+});
+
+describe('a line in point editing', () => {
+  it('draws its points larger, the selected ones filled, and no box', () => {
+    const read = reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px', '--size-point-handle': '10px', '--size-point-handle-editing': '20px', '--size-bend-min-segment': '40px' });
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.render(one({ type: 'line', x: 0, y: 0, w: 200, h: 100, points: [0, 0, 100, 0, 200, 100] }));
+    stage.setSelection(['e1']);
+    stage.setPointEditing({ id: 'e1', selected: [1] });
+    const points = stage.endpointHandles();
+    expect(points.map((p) => p.radius())).toEqual([10, 10, 10]);
+    expect(points[1].fill()).toBe('dodgerblue');
+    expect(stage.selectionOutline()).toBeNull();
+    expect(stage.middleHandles()).toHaveLength(2);
     stage.destroy();
   });
 });

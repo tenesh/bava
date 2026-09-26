@@ -67,6 +67,9 @@ export type ArrowProps = {
    */
   startAnchor?: [number, number];
   endAnchor?: [number, number];
+  /** `inside`: the end is pinned at its anchor, inside the element. */
+  startMode?: 'inside';
+  endMode?: 'inside';
   /** The label's place along the drawn path, 0 to 1; absent is the middle. */
   labelPosition?: number;
 };
