@@ -384,3 +384,74 @@ func TestRoundTripCodeBlocks(t *testing.T) {
 		t.Errorf("a code block changed on the way through.\nwant:\n%s\ngot:\n%s", source, written)
 	}
 }
+
+// Bends, anchors and a label position are plain JSON the frontend writes; an
+// older reader keeps them verbatim, and this one must too
+// (docs/file-format.md, "Lines, arrows and strokes", "Attachment and
+// containment").
+func TestRoundTripBentArrowWithAnchorsAndLabelPosition(t *testing.T) {
+	source := "# Plan\n\n```bava-canvas\n" + `{
+  "elements": [
+    {
+      "endAnchor": [
+        0.5,
+        0
+      ],
+      "endBinding": "b",
+      "h": 60,
+      "id": "arrow1",
+      "label": "slides",
+      "labelPosition": 0.25,
+      "points": [
+        0,
+        0,
+        40,
+        60,
+        80,
+        0
+      ],
+      "startAnchor": [
+        0.125,
+        0.875
+      ],
+      "startBinding": "a",
+      "type": "arrow",
+      "w": 80,
+      "x": 20,
+      "y": 0,
+      "z": 1
+    },
+    {
+      "h": 10,
+      "id": "line1",
+      "points": [
+        0,
+        0,
+        5,
+        10,
+        10,
+        0
+      ],
+      "type": "line",
+      "w": 10,
+      "x": 0,
+      "y": 100,
+      "z": 2
+    }
+  ],
+  "version": 1
+}
+` + "```\n"
+
+	file, err := format.Read(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	written, err := format.Write(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written != source {
+		t.Errorf("bends, anchors or a label position changed on the way through.\nwant:\n%s\ngot:\n%s", source, written)
+	}
+}

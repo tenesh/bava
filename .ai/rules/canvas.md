@@ -269,3 +269,35 @@ own size and place, and `reconsidered` then lets go of what it no longer
 surrounds. A locked member goes with its frame too: locking stops the element
 being selected or edited on its own, not its frame being moved, as dragging a
 frame has always done.
+
+## An attached end aims through its anchor at its neighbour
+`startAnchor`/`endAnchor` are fractions of the target's upright box, turned
+with it; absent is the centre, which is exactly the old rule for a two-point
+arrow. An end sits where the ray from its anchor towards its neighbour (the
+nearest bend, else the other end's anchor; an elbow ignores its kept bends)
+leaves the outline, a gap clear. A bent attached arrow, every D2-inserted one
+among them, therefore re-aims differently from before 06.10: aiming its ends
+across the arrow sent the end legs diagonal and through their own shapes. A
+dropped anchor off the drawn outline is taken onto it, and a ray that misses
+falls back to the centre, so an attached end always follows its shape. A
+binding and its anchor are written and removed together.
+
+## Bends are points; the kind decides how they are drawn
+A line or arrow with more than two points is bent. `routePoints` is the one
+place a kind turns points into a path: straight keeps corners, an arc curves
+through the bends, an elbow routes end to end and ignores them but keeps them
+in the file. Stage, hit testing and export all go through it, so a kind added
+there is drawn the same everywhere.
+
+## A target is found by its outline, not its box
+`targetAt` takes the smallest element that contains the point or whose outline
+is within `bindingReach(zoom)`, so a small shape inside a big one wins from
+just outside it too, after a cheap cull by the grown box. Strict box
+containment attached an end to an ellipse's empty corner and let go of one
+dropped a pixel outside an edge.
+
+## A turned line is edited with its turn written into its points
+`unturned` gives a line or free arrow the same drawing with no angle; every
+bend, end or label edit starts from it, and every handle sits on
+`drawnPoints`. Editing stored points under an angle moves the pivot, so the
+whole line jumps.

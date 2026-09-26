@@ -6,6 +6,8 @@
  * is what lets an arrow re-route when Milestone 6.5 attaches it to a shape.
  */
 import type { PathSink } from './shapes';
+import { SEGMENT_SAMPLES, smoothPoints } from './curves';
+import { LINE_TENSION } from './paint';
 
 /** Points on the curve an arc is drawn as. More is smoother and slower. */
 const ARC_STEPS = 12;
@@ -17,11 +19,20 @@ export type ArrowType = 'straight' | 'elbow' | 'arc';
 
 /**
  * The drawn path for `points` (a flat x,y list relative to the element).
- * Anything but a two-point arrow is returned unchanged: a stroke's recorded
- * path is its own.
+ *
+ * Bends are points; the kind decides how they are drawn: a straight arrow
+ * runs through them with corners, an arc curves smoothly through them, and an
+ * elbow routes itself from the first point to the last and draws none of them
+ * (they are kept, for when the kind changes back). A stroke's recorded path
+ * is its own and never reaches here.
  */
 export function routePoints(points: number[], type: string | undefined): number[] {
-  if (points.length !== 4 || !type || type === 'straight') return points;
+  if (points.length < 4 || !type || type === 'straight') return points;
+  if (points.length > 4) {
+    if (type === 'arc') return smoothPoints(points, LINE_TENSION);
+    if (type === 'elbow') return routePoints([points[0], points[1], points[points.length - 2], points[points.length - 1]], type);
+    return points;
+  }
   const [x1, y1, x2, y2] = points;
 
   if (type === 'elbow') {
@@ -133,12 +144,14 @@ export function pathLength(points: number[]): number {
 }
 
 /**
- * The point halfway along a routed path, where an arrow's label sits.
+ * The point `position` of the way along a routed path (half, by default),
+ * where an arrow's label sits.
  *
  * Measured along the path rather than between the ends, so an elbow's label
- * lands on the line rather than floating in the corner it turns around.
+ * lands on the line rather than floating in the corner it turns around, and a
+ * label slid along a bent arrow follows its bends.
  */
-export function labelPoint(points: number[]): { x: number; y: number } {
+export function labelPoint(points: number[], position = 0.5): { x: number; y: number } {
   if (points.length < 4) return { x: points[0] ?? 0, y: points[1] ?? 0 };
 
   const lengths: number[] = [];
@@ -152,11 +165,11 @@ export function labelPoint(points: number[]): { x: number; y: number } {
 
   let travelled = 0;
   for (let segment = 0; segment < lengths.length; segment += 1) {
-    if (travelled + lengths[segment] < total / 2) {
+    if (travelled + lengths[segment] < total * position) {
       travelled += lengths[segment];
       continue;
     }
-    const along = lengths[segment] === 0 ? 0 : (total / 2 - travelled) / lengths[segment];
+    const along = lengths[segment] === 0 ? 0 : (total * position - travelled) / lengths[segment];
     const i = segment * 2;
     return {
       x: points[i] + (points[i + 2] - points[i]) * along,
@@ -164,4 +177,55 @@ export function labelPoint(points: number[]): { x: number; y: number } {
     };
   }
   return { x: points[points.length - 2], y: points[points.length - 1] };
+}
+
+/**
+ * How far along a routed path, as a share of its length, the path comes
+ * nearest `point`: where a label dragged to `point` goes.
+ */
+export function positionAlong(points: number[], point: { x: number; y: number }): number {
+  const total = pathLength(points);
+  if (total === 0) return 0.5;
+  let best = Infinity;
+  let bestAt = 0;
+  let travelled = 0;
+  for (let i = 0; i + 3 < points.length; i += 2) {
+    const [x1, y1, x2, y2] = points.slice(i, i + 4);
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const length = Math.hypot(dx, dy);
+    const t = length === 0 ? 0 : Math.max(0, Math.min(1, ((point.x - x1) * dx + (point.y - y1) * dy) / (length * length)));
+    const distance = Math.hypot(point.x - (x1 + t * dx), point.y - (y1 + t * dy));
+    if (distance < best) {
+      best = distance;
+      bestAt = travelled + t * length;
+    }
+    travelled += length;
+  }
+  return bestAt / total;
+}
+
+/**
+ * For each segment between two points, where the drawn path is halfway
+ * between them: where the handle for bending that segment sits. On a straight
+ * run that is the segment's middle; on an arc or a smoothed line it is on the
+ * curve, not the chord. An elbow offers no bends, so none.
+ */
+export function middlesAlong(points: number[], type: string | undefined, tension: number): { x: number; y: number }[] {
+  const count = points.length / 2;
+  if (count < 2 || type === 'elbow') return [];
+  if (type === 'arc' && count === 2) return [labelPoint(routePoints(points, 'arc'))];
+  const bend = type === 'arc' ? LINE_TENSION : tension;
+  if (bend <= 0 || count < 3) {
+    return Array.from({ length: count - 1 }, (_, i) => ({
+      x: (points[i * 2] + points[i * 2 + 2]) / 2,
+      y: (points[i * 2 + 1] + points[i * 2 + 3]) / 2,
+    }));
+  }
+  // `smoothPoints` samples each segment from its first point, so segment i
+  // runs from sample i·S to sample (i+1)·S.
+  const smooth = smoothPoints(points, bend);
+  return Array.from({ length: count - 1 }, (_, i) =>
+    labelPoint(smooth.slice(i * SEGMENT_SAMPLES * 2, ((i + 1) * SEGMENT_SAMPLES + 1) * 2)),
+  );
 }

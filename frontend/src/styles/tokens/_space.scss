@@ -37,6 +37,9 @@
   --size-hit-tolerance: 4px;
   // How far a press must travel, on screen, before it is a drag, not a click.
   --size-drag-threshold: 3px;
+  // The shortest segment, on screen, that offers a handle at its middle to
+  // bend it (Excalidraw hides its midpoint handles under 40px).
+  --size-bend-min-segment: 40px;
   // How far the rotate handle sits above the selection, clear of the top one.
   --size-rotate-gap: 16px;
   // The marquee's dash and gap on screen, whatever the zoom.

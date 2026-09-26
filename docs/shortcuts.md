@@ -139,7 +139,12 @@ or the source editor has it.
 | Drag with a shape tool | Create that shape; hold `⇧` for a square (a circle, a square box) |
 | Drag with Line or Arrow | Draw it; hold `⇧` to snap to 15° steps |
 | Drag with Arrow onto a shape | Attach the arrow to it; hold `⌥` to leave it free |
-| Drag an end of a selected arrow | Attach it to a shape, or drop it on empty canvas to let go |
+| Drag an end of a selected arrow | Attach it to a shape (it attaches from just outside, and the shape lights up), or drop it on empty canvas to let go; it keeps aiming at the spot it was dropped on, and snaps to a side's middle when dropped just outside it |
+| Drag the middle of a segment of a selected line or arrow | Add a bend there |
+| Drag a bend of a selected line or arrow | Move it |
+| Double-click a bend | Remove it |
+| Drag the label of a selected arrow | Slide it along the arrow |
+| Drag an attached arrow by its body | Move it, and let go of any shape not moving with it |
 | Click with Text | Place text and start typing; nothing is added until you type |
 | Double-click a shape, frame or text | Type into its label or text |
 | Drag a selection handle | Resize; hold `⇧` to keep the proportions, from any handle |

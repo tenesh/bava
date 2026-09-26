@@ -85,3 +85,8 @@ export function pathBounds(path: Point[]): Box {
 export function isLinear(type: string): boolean {
   return type === 'line' || type === 'arrow' || type === 'stroke';
 }
+
+/** How much a line is smoothed through its points: round edges only, no theme needed. */
+export function tensionOf(element: SceneElement): number {
+  return paintFor(element, NO_THEME).tension;
+}

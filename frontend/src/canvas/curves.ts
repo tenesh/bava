@@ -9,7 +9,7 @@
  */
 
 /** How many samples each segment becomes. Enough to read as a curve at 3x. */
-const SEGMENT_SAMPLES = 12;
+export const SEGMENT_SAMPLES = 12;
 
 /**
  * `points` (flat x,y pairs) bent through its corners, as a Catmull-Rom spline

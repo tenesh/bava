@@ -288,6 +288,22 @@ describe('style properties survive a load and a save', () => {
       { id: 'a2', type: 'arrow', x: 0, y: 0, w: 5, h: 5, z: 3, points: [0, 0, 5, 5], startBinding: 'r1', endBinding: 'went-away', label: 'edge label' },
       { id: 'f1', type: 'frame', x: 0, y: 0, w: 50, h: 50, z: 4, label: 'Frame' },
       { id: 'inside', type: 'rect', x: 5, y: 5, w: 10, h: 10, z: 5, frame: 'f1' },
+      // Bends, anchors and a label position (06.10).
+      {
+        id: 'a3',
+        type: 'arrow',
+        x: 0,
+        y: 0,
+        w: 80,
+        h: 60,
+        z: 6,
+        points: [0, 0, 40, 60, 80, 0],
+        startBinding: 's1',
+        startAnchor: [0.125, 0.875],
+        label: 'slides',
+        labelPosition: 0.25,
+      },
+      { id: 'l1', type: 'line', x: 0, y: 100, w: 10, h: 10, z: 7, points: [0, 0, 5, 10, 10, 0] },
     ],
     grid: { size: 8 },
   };

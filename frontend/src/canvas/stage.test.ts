@@ -924,3 +924,75 @@ describe('fonts arriving', () => {
     stage.destroy();
   });
 });
+
+// A selected line or arrow shows a handle on every point and one at the middle
+// of each segment long enough to bend.
+describe('the bend handles of a selected arrow', () => {
+  const read = reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px', '--size-bend-min-segment': '40px' });
+
+  it('draws a handle per point and per long segment', () => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.render(one({ type: 'arrow', x: 0, y: 0, w: 200, h: 80, points: [0, 0, 100, 80, 200, 0] }));
+    stage.setSelection(['e1']);
+    expect(stage.endpointHandles()).toHaveLength(3);
+    expect(stage.middleHandles()).toHaveLength(2);
+    stage.destroy();
+  });
+
+  it('draws no middle on a short segment, nor any bend on an elbow', () => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.render({
+      elements: [
+        { id: 'short', type: 'arrow', x: 0, y: 0, w: 30, h: 0, z: 1, points: [0, 0, 30, 0] },
+        { id: 'elbow', type: 'arrow', x: 0, y: 100, w: 200, h: 80, z: 2, arrowType: 'elbow', points: [0, 0, 100, 80, 200, 0] },
+      ] as never,
+    });
+    stage.setSelection(['short']);
+    expect(stage.middleHandles()).toHaveLength(0);
+    stage.setSelection(['elbow']);
+    expect(stage.endpointHandles()).toHaveLength(2);
+    expect(stage.middleHandles()).toHaveLength(0);
+    stage.destroy();
+  });
+
+  it('gives a selected line handles too', () => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.render(one({ type: 'line', x: 0, y: 0, w: 100, h: 0, points: [0, 0, 100, 0] }));
+    stage.setSelection(['e1']);
+    expect(stage.endpointHandles()).toHaveLength(2);
+    expect(stage.middleHandles()).toHaveLength(1);
+    stage.destroy();
+  });
+});
+
+describe('the handles of a turned line', () => {
+  it('sit where the line is drawn', () => {
+    const read = reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px', '--size-bend-min-segment': '40px' });
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.render(one({ type: 'line', x: 0, y: 0, w: 100, h: 0, angle: 90, points: [0, 0, 100, 0] }));
+    stage.setSelection(['e1']);
+    const ends = stage.endpointHandles().map((h) => [Math.round(h.x()), Math.round(h.y())]);
+    expect(ends).toEqual([
+      [50, -50],
+      [50, 50],
+    ]);
+    expect(stage.middleHandles().map((h) => [Math.round(h.x()), Math.round(h.y())])).toEqual([[50, 0]]);
+    stage.destroy();
+  });
+});
+
+describe('the middle handle under a label', () => {
+  it('is not drawn, since a press there slides the label', () => {
+    const read = reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px', '--size-bend-min-segment': '40px', '--text-body': '16px', '--leading-tight': '1.2' });
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.render(one({ type: 'arrow', x: 0, y: 0, w: 200, h: 0, points: [0, 0, 200, 0], label: 'sends' }));
+    stage.setSelection(['e1']);
+    expect(stage.middleHandles()).toHaveLength(0);
+    stage.destroy();
+  });
+});

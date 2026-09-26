@@ -37,6 +37,7 @@
   import { createSelection } from './canvas/selection';
   import { createPointerHandler } from './canvas/pointer';
   import { frameThrottle } from './canvas/frame-throttle';
+  import { bindingReach } from './canvas/binding';
   import { paintFor } from './canvas/paint';
   import { handleKey } from './canvas/keymap';
   import { createCanvasCommands } from './canvas/commands';
@@ -105,6 +106,12 @@
     eraserTolerance: () => (parseFloat(readRootVariable('--size-eraser-trail')) || 0) / 2 / viewport.zoom,
     // How near a click counts as hitting a line, in scene units at this zoom.
     hitTolerance,
+    // How near an arrow end must come to a shape to attach, at this zoom.
+    bindingReach: () => bindingReach(viewport.zoom),
+    // The shortest segment that offers a bend, in scene units at this zoom.
+    bendMinSegment: () => (parseFloat(readRootVariable('--size-bend-min-segment')) || 0) / viewport.zoom,
+    // An arrow's label as the stage draws it, for sliding it along the arrow.
+    labelBounds: (id) => canvas.labelBounds(id),
     // How far a press must travel to be a drag, in scene units at this zoom.
     dragThreshold: () => (parseFloat(readRootVariable('--size-drag-threshold')) || 0) / viewport.zoom,
     // The rotate handle's distance above the selection, as the stage draws it.
@@ -940,6 +947,12 @@
     };
     const onDoubleClick = (event: MouseEvent) => {
       if (labelEditor?.contains(event.target)) return;
+      // A double-click on a bend of the selected line or arrow removes it,
+      // before it could open the label editor.
+      if (pointer.removeBendAt(scenePoint(event as PointerEvent))) {
+        commit();
+        return;
+      }
       const element = editableAt(history.current, scenePoint(event as PointerEvent), hitTolerance());
       if (element?.type === 'code') editCode(element);
       else if (element) editElement(element);

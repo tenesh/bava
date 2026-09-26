@@ -196,6 +196,9 @@ Optional on the element types listed, and absent means the default:
 | `angle` | degrees, 0 to 359, clockwise about the element's centre | 0 | every element except an elbow arrow |
 | `startBinding` | the `id` of the element this end is attached to | not attached | `arrow` |
 | `endBinding` | as above, for the other end | not attached | `arrow` |
+| `startAnchor` | `[fx, fy]`, each 0 to 1: the spot on the attached element's upright box the start aims through | the element's centre | `arrow`, with `startBinding` |
+| `endAnchor` | as above, for the other end | the element's centre | `arrow`, with `endBinding` |
+| `labelPosition` | 0 to 1: where the label sits, as a share of the drawn path's length | 0.5, the middle | `arrow` with a `label` |
 | `frame` | the `id` of the `frame` that owns this element | not in a frame | every element |
 | `language` | the language a code block is highlighted as | plain text | `code` |
 
@@ -214,15 +217,31 @@ appearance.
 ### Lines, arrows and strokes
 `line`, `arrow` and `stroke` carry `points`: a flat list `[x1, y1, x2, y2,
 ...]` relative to the element's `x, y`. `line` and `arrow` have two points
-when drawn; `stroke` has as many as the pen recorded. They take `stroke`, and
-never `fill`.
+when drawn and one more for each bend the user adds; `stroke` has as many as
+the pen recorded. They take `stroke`, and never `fill`.
+
+**The kind decides how bends are drawn.** A straight arrow or a line runs
+through its points with sharp corners. An arc curves smoothly through them
+(with no bends, it bows once, as it always has). An elbow routes itself from
+the first point to the last and does not draw its bends; they are kept, and
+drawn again if the arrow becomes straight or an arc. Switching kinds never
+loses a bend.
 
 ### Attachment and containment
 An `arrow` may carry `startBinding` and `endBinding`: the `id` of the element
-that end is attached to. A bound end is drawn on the target's outline, on the
-line towards its centre, a fixed gap clear of it, so moving either end re-aims
-the arrow. The stored `points` are still written: they are what the arrow
-falls back to when a binding cannot be resolved.
+that end is attached to, and `startAnchor` and `endAnchor`: where on that
+element the end aims through, as fractions of its upright box (`[0.5, 0.5]` is
+the centre, `[0, 0.5]` the middle of its left side), turned with it when it
+rotates. A bound end is drawn where the line from its anchor towards its
+neighbour (the next bend, or else the other end) leaves the target's outline,
+a fixed gap clear of it, so moving either end or the target re-aims the arrow.
+No anchor means the centre. An elbow aims across the arrow, since it draws
+none of its bends. A bent attached arrow written before bends existed (one
+inserted from D2, for instance) re-aims each end at its nearest bend, not
+across the arrow, the first time it is drawn by a Bava that has them. An
+anchor without its binding means nothing and is kept as written. The stored
+`points` are still written: they are what the arrow falls back to when a
+binding cannot be resolved.
 
 Any element may carry `frame`: the `id` of the `frame` element that owns it.
 Membership lives on the child, so an element can only ever be in one frame and
@@ -236,7 +255,8 @@ detached. Reopening a file whose target has since returned re-aims it. This is
 the rule of `canvas-architecture.md`: never silently remove something the user
 drew.
 
-An `arrow` may also carry a `label`, drawn at the middle of the path it takes.
+An `arrow` may also carry a `label`, drawn at the middle of the path it takes,
+or at `labelPosition` along it.
 
 ### Code blocks
 A `code` element carries `code` (the text as typed, with its own line breaks),

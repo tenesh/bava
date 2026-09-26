@@ -143,12 +143,13 @@ function body(element: SceneElement, paint: Paint, headSize: number): string {
 }
 
 /**
- * An arrow's label, centred on the middle of the path it takes, as the stage
- * centres it: measured the same way, positioned the same way.
+ * An arrow's label, centred on its place along the path it takes (the middle,
+ * or its `labelPosition`), as the stage centres it: measured the same way,
+ * positioned the same way.
  */
 function arrowLabel(element: SceneElement, paint: Paint, label: string): string {
   const points = routePoints(('points' in element ? element.points : []) as number[], (element as { arrowType?: string }).arrowType);
-  const at = labelPoint(points);
+  const at = labelPoint(points, (element as { labelPosition?: number }).labelPosition);
   const measure = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
   // The same width the stage wraps to: the length of the path it sits on.
   const lines = wrapLines(label, pathLength(points), measure);
@@ -177,7 +178,8 @@ function heads(element: SceneElement, paint: Paint, routed: number[], size: numb
       const fill = filled ? paint.stroke : '';
       return (
         `<g data-head="${end}" transform="translate(${round(element.x + at.x)} ${round(element.y + at.y)})` +
-        ` rotate(${round(at.angle)})"><path d="${sink.d()}" ${paintAttributes(paint, { fill })}/></g>`
+        // Solid, as the stage draws it: a dash broke a small head into bits.
+        ` rotate(${round(at.angle)})"><path d="${sink.d()}" ${paintAttributes({ ...paint, dash: [] }, { fill })}/></g>`
       );
     })
     .join('');
