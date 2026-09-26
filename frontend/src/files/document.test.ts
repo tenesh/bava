@@ -300,6 +300,7 @@ describe('style properties survive a load and a save', () => {
         points: [0, 0, 40, 60, 80, 0],
         startBinding: 's1',
         startAnchor: [0.125, 0.875],
+        startMode: 'inside',
         label: 'slides',
         labelPosition: 0.25,
       },

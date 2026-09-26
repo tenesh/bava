@@ -631,6 +631,17 @@ deliberately at `5.24.2` or later.
   (ArrowDown, Enter); RadioGroup items accept a click. Popovers render closed
   content unless `lazyMount`.
 
+### Milestone 6.13 findings (pinned ends, point editing, click-by-click), 2026-09-26
+
+- **Gates green; not seen at a running window.** Plan
+  `.claude/work/plans/06.13-inside-edit-click.md`, decisions 7 to 9 in
+  `.claude/work/specs/06.12-arrows-and-code.md`.
+- `startMode`/`endMode: "inside"` pins an end (a drop inside, or Alt);
+  Cmd/Ctrl leaves it free, replacing Alt-means-free. Point-edit mode
+  (double-click a line, Cmd/Ctrl+double-click an arrow, Enter); outside it,
+  only two-point lines offer a middle. Click-by-click lines finish on the last
+  point, Enter, Escape or a tool change.
+
 ### Milestone 6.12 findings (arrows like Excalidraw, resizable code), 2026-09-26
 
 - **Gates green; not seen at a running window.** Plan

@@ -415,6 +415,7 @@ func TestRoundTripBentArrowWithAnchorsAndLabelPosition(t *testing.T) {
         0.875
       ],
       "startBinding": "a",
+      "startMode": "inside",
       "type": "arrow",
       "w": 80,
       "x": 20,

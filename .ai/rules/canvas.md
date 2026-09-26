@@ -321,3 +321,19 @@ stored width is tidied to three decimals.
 `selection-chrome.ts` says which outline, handles and rotate handle a
 selection has; the stage draws exactly those and the pointer presses exactly
 those. A straight line or arrow, or an elbow, has no box (Excalidraw's rule).
+
+## A pinned end sits inside
+An end with `mode: "inside"` sits at its anchor, inside its shape, not on the
+outline; it is set by a drop strictly inside the shape or with Alt, and
+Cmd/Ctrl leaves an end free (Excalidraw's rule). The mode, the binding and
+the anchor are written and removed together. An elbow is never pinned.
+
+## Point editing and click-by-click drawing are modes of the pointer
+Their state lives in the pointer handler (`editingPoints`, `drawingPoints`),
+never in Svelte; the app reads it after each event and hands it to the stage
+(`setPointEditing`, `pointsPreview`). A press in point editing acts on points
+first and falls through only when it lands off the line, which ends the mode.
+That is the one modifier sorted at the press: whether an Alt-press off the line
+adds a point is decided as it lands (and the add happens on release, if Alt is
+still held), since a plain press there has already ended the mode.
+A line drawn click by click enters history once, when it finishes.

@@ -172,7 +172,12 @@ export function routeFor(arrow: SceneElement, scene: SceneData): number[] {
   // Each end aims through its anchor (its shape's centre without one) at its
   // neighbour: the nearest bend, or with none, the other end, taken as that
   // end's own anchor when it is attached.
-  const bound = arrow as SceneElement & { startAnchor?: [number, number]; endAnchor?: [number, number] };
+  const bound = arrow as SceneElement & {
+    startAnchor?: [number, number];
+    endAnchor?: [number, number];
+    startMode?: string;
+    endMode?: string;
+  };
   const world = (index: number): Point => ({ x: arrow.x + points[index], y: arrow.y + points[index + 1] });
   const last = points.length - 2;
   const bent = points.length > 4;
@@ -190,8 +195,19 @@ export function routeFor(arrow: SceneElement, scene: SceneData): number[] {
     points[index] = anchor.x - arrow.x;
     points[index + 1] = anchor.y - arrow.y;
   };
-  if (startShape) place(startShape, startSpot, startTarget, 0);
-  if (endShape) place(endShape, endSpot, endTarget, last);
+  // A pinned end sits at its spot, inside the shape (`mode: "inside"`).
+  const pin = (spot: Point, index: number) => {
+    points[index] = spot.x - arrow.x;
+    points[index + 1] = spot.y - arrow.y;
+  };
+  if (startShape) {
+    if (bound.startMode === 'inside') pin(startSpot, 0);
+    else place(startShape, startSpot, startTarget, 0);
+  }
+  if (endShape) {
+    if (bound.endMode === 'inside') pin(endSpot, last);
+    else place(endShape, endSpot, endTarget, last);
+  }
   return points;
 }
 
@@ -316,10 +332,11 @@ const SIDE_MIDDLES: [number, number][] = [
  * The anchor for an end dropped at `point` on `shape`: where it landed, as a
  * fraction of the shape's upright box, clamped to it. Dropped outside the
  * shape within `reach` of a side's middle, it snaps to that middle
- * (Excalidraw's `getSnapOutlineMidPoint` for ordinary arrows).
+ * (Excalidraw's `getSnapOutlineMidPoint` for ordinary arrows). An `inside`
+ * (pinned) end keeps the exact spot, neither snapped nor taken to the outline.
  */
-export function anchorFor(shape: SceneElement, point: Point, reach = BINDING_REACH_MIN): [number, number] {
-  if (!measureAgainst(shape, point).contains) {
+export function anchorFor(shape: SceneElement, point: Point, reach = BINDING_REACH_MIN, inside = false): [number, number] {
+  if (!inside && !measureAgainst(shape, point).contains) {
     // The nearest middle in reach, not the first: on a small shape several
     // are in reach at once.
     let best: [number, number] | null = null;
@@ -340,10 +357,16 @@ export function anchorFor(shape: SceneElement, point: Point, reach = BINDING_REA
   // A spot outside the drawn outline (by an ellipse's or a diamond's box
   // corner) is taken to the nearest point on it, so the end aims through
   // somewhere on the shape.
+  // A pinned end keeps exactly where it landed.
   const outline = outlineOf(shape);
-  if (!insidePolygon(outline, local)) local = nearestOn(outline, local);
+  if (!inside && !insidePolygon(outline, local)) local = nearestOn(outline, local);
   const fraction = (value: number, size: number) => (size > 0 ? tidy(Math.min(1, Math.max(0, value / size + 0.5))) : 0.5);
   return [fraction(local.x, shape.w), fraction(local.y, shape.h)];
+}
+
+/** Whether a point is strictly inside an element's drawn outline. */
+export function isInside(shape: SceneElement, point: Point): boolean {
+  return measureAgainst(shape, point).contains;
 }
 
 /** Whether a point is inside an element's drawn outline, and how far from it. */

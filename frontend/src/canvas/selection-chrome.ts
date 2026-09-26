@@ -24,7 +24,20 @@ const CORNERS: readonly Handle[] = ['top-left', 'top-right', 'bottom-right', 'bo
  */
 const CODE_HANDLES: readonly Handle[] = ['left', 'right', 'bottom-right', 'bottom-left'];
 
-export function chromeFor(selected: SceneElement[]): Chrome {
+/**
+ * Whether a line or arrow offers its segments' middles for bending: a
+ * two-point one always, a bent one only in point editing (Excalidraw's
+ * `interactiveScene.ts:1206-1217`). The stage draws them and the pointer
+ * presses them by this one rule.
+ */
+export function offersMiddles(element: SceneElement, editing: boolean): boolean {
+  const points = ('points' in element ? element.points : []) as number[];
+  return points.length <= 4 || editing;
+}
+
+/** `editing`: the id of a line or arrow in point editing, which shows only its points. */
+export function chromeFor(selected: SceneElement[], editing: string | null = null): Chrome {
+  if (selected.length === 1 && editing === selected[0].id) return { box: false, handles: [], rotate: false };
   if (selected.length > 0 && selected.every((element) => element.type === 'code')) {
     return { box: true, handles: CODE_HANDLES, rotate: selected.some((e) => canRotate(e as { type: string; arrowType?: string })) };
   }

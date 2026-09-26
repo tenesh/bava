@@ -108,11 +108,11 @@ or the source editor has it.
 
 | Key | Action |
 |---|---|
-| `Delete` / `Backspace` | Delete the selection |
+| `Delete` / `Backspace` | Delete the selection; in point editing, the selected points (with none selected, the line itself) |
 | Arrow keys | Nudge the selection one unit |
 | `⇧` + arrow keys | Nudge the selection five units |
-| `Enter` | Type into the selected shape's label, or the selected text |
-| `Esc` | Back to Select, and clear the selection; while typing a label, finish typing |
+| `Enter` | Type into the selected shape's label, or the selected text; on a selected line, edit its points; while drawing a line point by point, finish it |
+| `Esc` | Back to Select, and clear the selection; while typing a label, finish typing; while drawing a line point by point, finish it; in point editing, leave it |
 | `⌘Enter` / `Ctrl+Enter` | Finish typing a label (plain `Enter` is a new line) |
 | `Space` held | Drag to pan |
 
@@ -133,9 +133,11 @@ In the insert panel, opened from the rail's +: `↑↓←→` move, `Enter` inse
 |---|---|
 | Drag with a shape tool | Create that shape; hold `⇧` for a square (a circle, a square box) |
 | Drag with Line or Arrow | Draw it (a drag of at least 20 px); hold `⇧` to snap to 15° steps |
-| Drag with Arrow onto a shape | Attach the arrow to it; hold `⌥` to leave it free |
-| Drag an end of a selected arrow | Attach it to a shape (it attaches from just outside, and the shape lights up), or drop it on empty canvas to let go; it keeps aiming at the spot it was dropped on, and snaps to a side's middle when dropped just outside it. An elbow's end stays on the side it was dropped on, and the elbow routes around the shapes |
-| Drag the middle of a segment of a selected line or arrow | Add a bend there, once dragged 10 px |
+| Drag with Arrow onto a shape | Attach the arrow to it: ended inside the shape it is pinned there, just outside it attaches to the edge; hold `⌥` to pin it, `⌘` / `Ctrl` to leave it free |
+| Click with Line or Arrow | Start a line point by point: each click adds a point; click the last point again, or press `Enter` or `Esc`, to finish |
+| Double-click a line, or `⌘` / `Ctrl` + double-click an arrow | Edit its points: click to select one (`⇧` adds), drag to move the selected, `⌫` removes them, `⌥`-click adds one after the last, `Esc` or a click elsewhere finishes |
+| Drag an end of a selected arrow | Attach it to a shape (inside it pins, just outside attaches to the edge, and the shape lights up; `⌥` pins, `⌘` / `Ctrl` leaves it free), or drop it on empty canvas to let go; it keeps aiming at the spot it was dropped on, and snaps to a side's middle when dropped just outside it. An elbow's end stays on the side it was dropped on, and the elbow routes around the shapes |
+| Drag the middle of a selected straight line or arrow | Add a bend there, once dragged 10 px (on a bent one, in point editing) |
 | Drag a point of a selected line or arrow | Move it; it keeps where you grabbed it, and `⇧` snaps it to 15° steps about its neighbour |
 | Double-click a bend | Remove it |
 | Drag the label of a selected arrow | Slide it along the arrow |

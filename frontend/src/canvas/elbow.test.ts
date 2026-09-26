@@ -188,3 +188,13 @@ describe('switching an arrow to elbow', () => {
     expect(world[1]).toBe(world[3]);
   });
 });
+
+describe('switching a pinned arrow to elbow', () => {
+  it('drops the pins: an elbow end is never inside', () => {
+    const history = createHistory({
+      elements: [box('a', 0, 0), { id: 'e', type: 'arrow', x: 50, y: 30, w: 200, h: 0, z: 9, points: [0, 0, 200, 0], startBinding: 'a', startAnchor: [0.5, 0.5], startMode: 'inside' } as never],
+    });
+    setProperty(history, ['e'], 'arrowType', 'elbow');
+    expect(history.current.elements[1]).not.toHaveProperty('startMode');
+  });
+});

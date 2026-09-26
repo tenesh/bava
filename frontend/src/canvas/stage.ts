@@ -33,7 +33,7 @@ import { canvasLineWidth } from './text-measure';
 import { drawHead, headAt, labelPoint, middlesAlong, pathLength, routePoints } from './arrows';
 import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
 import { handleCentre, rotateHandleCentre } from './resize';
-import { chromeFor } from './selection-chrome';
+import { chromeFor, offersMiddles } from './selection-chrome';
 import { angleOfElement, centreOf, rotatedBounds, selectionFrame } from './rotate';
 
 export type CanvasStageOptions = {
@@ -99,6 +99,8 @@ export class CanvasStage {
   /** Handles at the ends of a single selected arrow. */
   #endpoints: Konva.Circle[] = [];
   #middles: Konva.Circle[] = [];
+  /** The line or arrow in point editing, and its selected points (06.13). */
+  #pointEditing: { id: ElementId; selected: number[] } | null = null;
   /** Outlines on the shapes an arrow being drawn would attach to. */
   #candidates: Konva.Rect[] = [];
   #candidateIds: ElementId[] = [];
@@ -346,6 +348,12 @@ export class CanvasStage {
     return { x: box.x, y: box.y, w: box.width, h: box.height };
   }
 
+  /** Show a line or arrow in point editing, with its selected points; null to stop. */
+  setPointEditing(state: { id: ElementId; selected: number[] } | null): void {
+    this.#pointEditing = state;
+    this.#drawSelection(cached(this.#read));
+  }
+
   /** The handles at the middles of a selected line's or arrow's segments. */
   middleHandles(): Konva.Circle[] {
     return this.#middles;
@@ -396,7 +404,9 @@ export class CanvasStage {
     // same on screen however far in or out the canvas is.
     const scale = 1 / this.#zoom;
     // What this selection shows, decided with the pointer (`selection-chrome.ts`).
-    const chrome = chromeFor(selected);
+    // A line in point editing shows its points alone, as Excalidraw's editor.
+    const editingThis = selected.length === 1 && this.#pointEditing?.id === selected[0].id;
+    const chrome = chromeFor(selected, this.#pointEditing?.id ?? null);
     if (chrome.box) {
       this.#outline = turn(
         new Konva.Rect({ ...boundsToRect(bounds), stroke: colour, strokeWidth: scale }),
@@ -432,6 +442,10 @@ export class CanvasStage {
       // Excalidraw's point handle: 5 px in radius on screen (the token is its
       // diameter), and a middle handle the same size.
       const pointRadius = (number(read, '--size-point-handle') / 2) * scale;
+      // In point editing, points are larger (Excalidraw's 10 px) and the
+      // selected ones filled.
+      const editRadius = (number(read, '--size-point-handle-editing') / 2) * scale;
+      const chosen = new Set(editingThis ? this.#pointEditing!.selected : []);
       const elbow = (linear as SceneElement & ArrowProps).arrowType === 'elbow' && linear.type === 'arrow';
       const count = drawn.length >= 4 ? drawn.length / 2 : 0;
       for (let i = 0; i < count; i += 1) {
@@ -439,8 +453,8 @@ export class CanvasStage {
         const handle = new Konva.Circle({
           x: drawn[i * 2],
           y: drawn[i * 2 + 1],
-          radius: pointRadius,
-          fill: surface,
+          radius: editingThis ? editRadius : pointRadius,
+          fill: chosen.has(i) ? colour : surface,
           stroke: colour,
           strokeWidth: scale,
         });
@@ -448,7 +462,11 @@ export class CanvasStage {
         this.#overlay.add(handle);
       }
       const shortest = number(read, '--size-bend-min-segment') * scale;
-      const middles = count >= 2 ? middlesAlong(drawn, (linear as SceneElement & ArrowProps).arrowType, tensionOf(linear)) : [];
+      // Outside point editing, only a two-point line or arrow offers its middle.
+      const middles =
+        count >= 2 && offersMiddles(linear, editingThis)
+          ? middlesAlong(drawn, (linear as SceneElement & ArrowProps).arrowType, tensionOf(linear))
+          : [];
       // A middle under the label is not offered: a press there slides the label.
       const label = this.labelBounds(linear.id);
       const underLabel = (p: { x: number; y: number }) =>
