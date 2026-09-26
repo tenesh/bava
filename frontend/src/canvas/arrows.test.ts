@@ -27,14 +27,10 @@ describe('routePoints', () => {
     expect(routePoints([0, 0, 20, 100], 'elbow')).toEqual([0, 0, 0, 50, 20, 50, 20, 100]);
   });
 
-  it('bows an arc to one side, keeping its ends', () => {
-    const points = routePoints(from, 'arc');
-    expect(points.slice(0, 2)).toEqual([0, 0]);
-    expect(points.slice(-2)).toEqual([100, 60]);
-    expect(points.length).toBeGreaterThan(from.length);
-    // Every middle point sits off the straight line between the ends.
-    const offLine = points.slice(2, -2).some((_, i) => i % 2 === 0 && Math.abs(points[2 + i + 1] - (points[2 + i] * 0.6)) > 1);
-    expect(offLine).toBe(true);
+  // 06.15 V2, replacing "bows an arc to one side": a curve through two points
+  // is straight, as Excalidraw's (`element/src/shape.ts:934-935`).
+  it('draws a two-point arc straight', () => {
+    expect(routePoints(from, 'arc')).toEqual(from);
   });
 
   // Many points no longer means "a stroke": an arrow's bends are points too,

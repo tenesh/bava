@@ -191,9 +191,9 @@ check both before building either by hand.
 | `FileTree` ✓ | Workspace listing. Emits a path on activation; opens nothing itself. |
 | `ConfirmDialog` ✓ | A question with fixed answers. Dismissing it is a cancel, never an accident. |
 | `CanvasControls` ✓ | The zoom readout and its buttons. |
-| `ToolRail` ✓ | The canvas tool rail: grouped icon buttons, a key letter in each corner, a tooltip naming each. Layout in `canvas/rail.ts`. |
+| `ToolRail` ✓ | The canvas tool rail: grouped icon buttons, a key letter in each corner, a tooltip naming each; the tool lock (`Q`) on top. Layout in `canvas/rail.ts`. |
 | `InsertPanel` ✓ | Search, category rows (right chevron clear of the text), a category's tile grid, footer hint. State in `shell/insert.svelte.ts`. |
-| `SelectionToolbar` ✓ | Bottom-centre toolbar for a selection: `StyleBar` pickers, align and distribute, More. Model in `canvas/toolbar.ts`. |
+| `SelectionToolbar` ✓ | Bottom-centre toolbar for a selection: `StyleBar` pickers, line actions (Edit points, Close or Open line; Done alone while a line is drawn by clicks), align and distribute, More. Model in `canvas/toolbar.ts`. |
 | `ContextMenu` ✓ | A menu opened at a point, wrapping Ark's Menu, with nested submenus. Used for right-click and More. Tree in `canvas/context-menu.ts`. |
 | `Tooltip` ✓ | Names a control (and its key) on hover and keyboard focus, wrapping Ark's Tooltip. It renders the button itself, or wraps a control the caller renders through `trigger`, which avoids a button inside a button. |
 | `ToolIcon` ✓ | Interface icons by id: Lucide (ISC), plus the in-house parallelogram. |

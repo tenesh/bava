@@ -130,7 +130,9 @@ function body(element: SceneElement, paint: Paint, headSize: number): string {
     for (let i = 0; i + 1 < routed.length; i += 2) {
       pairs.push(`${round(element.x + routed[i])} ${round(element.y + routed[i + 1])}`);
     }
-    const line = `<polyline points="${pairs.join(' ')}" ${paintAttributes(paint, { fill: '' })} stroke-linecap="round" stroke-linejoin="round"/>`;
+    // A closed line's fill (06.15); an arrow's paint fill is its heads'.
+    const fill = element.type === 'line' ? paint.fill : '';
+    const line = `<polyline points="${pairs.join(' ')}" ${paintAttributes(paint, { fill })} stroke-linecap="round" stroke-linejoin="round"/>`;
     return element.type === 'arrow' ? line + heads(element, paint, straight, headSize) : line;
   }
   if (element.type === 'text') return '';

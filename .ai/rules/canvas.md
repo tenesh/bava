@@ -354,3 +354,16 @@ doing (tool, panning, a label drag) into a CSS cursor. The app sets it on the
 canvas host once a frame; nothing else writes a cursor. A drag keeps the
 cursor it started with, except a label's.
 
+## A closed line stays closed
+A line with `closed: true` has its last point on its first. Every edit of its
+points goes through `closed.ts` (`keepLoop`, `removeFromLoop`) or the
+pointer's `settleLine`, so moving or deleting either end keeps the loop; a
+line left with fewer than four points opens and loses its fill. `fill` on a
+line draws only while it is closed (`paint.ts`, `styleKeysOf`).
+
+## New elements take the last-used style, in memory only
+`current-style.ts` remembers what the toolbar last chose and hands it to the
+pointer (`newStyle`) for every new element. It starts with arrows curved and
+lines round, writes only what differs from an absent key, and is never
+stored: not in the file, not in browser storage.
+

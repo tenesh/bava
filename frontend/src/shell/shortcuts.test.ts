@@ -111,6 +111,8 @@ describe('canvas-scoped shortcuts', () => {
     expect(press('BracketRight', { metaKey: true })).toBe('canvas.bringForward');
     expect(press('KeyH', { shiftKey: true })).toBe('canvas.flipHorizontal');
     expect(press('KeyD', { metaKey: true })).toBe('canvas.duplicate');
+    // 06.15: ⌘/Ctrl+Enter edits the selected line's or arrow's points.
+    expect(press('Enter', { metaKey: true })).toBe('canvas.editPoints');
   });
 
   // Dropped in 06.12 (decision 6): their commands stay in the menus, keyless.

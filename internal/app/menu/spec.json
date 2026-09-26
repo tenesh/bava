@@ -160,6 +160,7 @@
         },
         { "kind": "separator" },
         { "kind": "command", "id": "canvas.duplicate", "label": "Duplicate", "shortcut": "CmdOrCtrl+D", "scope": "canvas" },
+        { "kind": "command", "id": "canvas.editPoints", "label": "Edit Points", "shortcut": "CmdOrCtrl+Enter", "scope": "canvas" },
         { "kind": "separator" },
         { "kind": "command", "id": "canvas.lock", "label": "Lock", "shortcut": "Shift+CmdOrCtrl+L", "scope": "canvas" },
         { "kind": "command", "id": "canvas.unlockAll", "label": "Unlock All" },

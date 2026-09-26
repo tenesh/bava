@@ -306,6 +306,9 @@ describe('style properties survive a load and a save', () => {
         labelPosition: 0.25,
       },
       { id: 'l1', type: 'line', x: 0, y: 100, w: 10, h: 10, z: 7, points: [0, 0, 5, 10, 10, 0] },
+      // A closed, filled line, and a new element's kind written out (06.15).
+      { id: 'l2', type: 'line', x: 0, y: 200, w: 10, h: 10, z: 8, points: [0, 0, 10, 0, 10, 10, 0, 0], closed: true, fill: 'blue', edges: 'round' },
+      { id: 'a4', type: 'arrow', x: 0, y: 300, w: 40, h: 0, z: 9, points: [0, 0, 40, 0], arrowType: 'arc' },
     ],
     grid: { size: 8 },
   };

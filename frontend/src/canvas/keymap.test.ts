@@ -10,6 +10,7 @@ function actions() {
     escape: vi.fn(),
     activateTool: vi.fn(),
     editSelection: vi.fn(),
+    toggleLock: vi.fn(),
   };
 }
 
@@ -134,3 +135,14 @@ function eventFor(accelerator: string, primary: 'metaKey' | 'ctrlKey'): Keyboard
     altKey: modifiers.has('optionoralt'),
   });
 }
+
+// 06.15 C16: Q keeps the tool after drawing, as Excalidraw's.
+describe('the tool lock key', () => {
+  it('toggles the lock on Q, not with a modifier', () => {
+    const a = actions();
+    expect(handleKey(key({ key: 'q' }), a, { typing: false })).toBe(true);
+    expect(handleKey(key({ key: 'Q', shiftKey: true }), a, { typing: false })).toBe(false);
+    expect(a.toggleLock).toHaveBeenCalledOnce();
+  });
+});
+

@@ -28,8 +28,8 @@ describe('ToolRail', () => {
   it('renders a named, keyed icon button per tool, in a vertical toolbar', () => {
     const { app, target, buttons, named } = render();
     expect(target.querySelector('[role="toolbar"]')?.getAttribute('aria-orientation')).toBe('vertical');
-    // Insert, seven common tools, frame, code and the eraser.
-    expect(buttons).toHaveLength(11);
+    // The tool lock (06.15), insert, seven common tools, frame, code and the eraser.
+    expect(buttons).toHaveLength(12);
     expect(named('Rectangle').querySelector('.key')?.textContent).toBe('R');
     expect(named('Rectangle').querySelector('svg')).not.toBeNull();
     unmount(app);
@@ -85,5 +85,21 @@ describe('ToolRail focus', () => {
     flushSync(() => harness.setOpen(false));
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Insert');
     unmount(harness as never);
+  });
+});
+
+// 06.15 C16: the rail's tool lock, as Excalidraw's.
+describe("ToolRail's lock", () => {
+  it('shows whether the tool is kept, and reports a press', () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const onLock = vi.fn();
+    const props = { active: 'select', insertOpen: false, onSelect: vi.fn(), onInsert: vi.fn(), locked: true, onLock };
+    const app = flushSync(() => mount(ToolRail, { target, props: props as never }));
+    const lock = [...target.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === 'Keep tool after drawing')!;
+    expect(lock.getAttribute('aria-pressed')).toBe('true');
+    lock.click();
+    expect(onLock).toHaveBeenCalledOnce();
+    unmount(app);
   });
 });

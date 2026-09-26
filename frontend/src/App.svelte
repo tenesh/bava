@@ -38,6 +38,7 @@
   import { createSelection } from './canvas/selection';
   import { createPointerHandler } from './canvas/pointer';
   import { cursorFor } from './canvas/cursor';
+  import { createCurrentStyle } from './canvas/current-style';
   import { frameThrottle } from './canvas/frame-throttle';
   import { bindingReach } from './canvas/binding';
   import { paintFor } from './canvas/paint';
@@ -49,7 +50,8 @@
   import { wrapLines } from './canvas/text-layout';
   import { applyStyle, currentProperty, currentStyle, setProperty, type PropertyKey } from './canvas/style';
   import SelectionToolbar from './components/SelectionToolbar.svelte';
-  import { toolbarFor, type ToolbarControl } from './canvas/toolbar';
+  import { toolbarFor, type LineAction, type ToolbarControl } from './canvas/toolbar';
+  import { closeLine, openLine } from './canvas/closed';
   import { readRootVariable } from './canvas/palette';
   import type { SceneData, SceneElement } from './canvas/scene';
   import FileTree from './components/FileTree.svelte';
@@ -105,10 +107,13 @@
     void tools.active;
     cursorUpdate?.();
   });
+  // The style a new element takes: the last chosen, for this session (06.15).
+  const newElementStyle = createCurrentStyle();
   const pointer = createPointerHandler({
     history,
     selection,
     tools,
+    newStyle: (type) => newElementStyle.for(type),
     // Half a handle's on-screen side, in scene units at the current zoom.
     handleSize: () => (parseFloat(readRootVariable('--size-selection-handle')) || 0) / 2 / viewport.zoom,
     // Half the trail's on-screen width, in scene units: what the trail visibly covers.
@@ -369,7 +374,11 @@
   // The selection's ids, published for the colour bar; selection itself is
   // plain state inside the canvas.
   let selectedIds = $state.raw<string[]>([]);
-  const toolbar = $derived(toolbarFor(published, selectedIds));
+  // The pointer's modes, published as the selection is: a line being drawn
+  // by clicks (the toolbar is its Done button), and the line in point editing.
+  let drawingByClicks = $state(false);
+  let editingPointsOf = $state<string | null>(null);
+  const toolbar = $derived(toolbarFor(published, selectedIds, { drawing: drawingByClicks, editing: editingPointsOf }));
   /** What each property control shows for the selection. */
   const toolbarProperties = $derived(
     Object.fromEntries(
@@ -416,6 +425,29 @@
     canvas.setSelection(selection.ids);
     // Point editing (06.13) is drawn with the selection it belongs to.
     canvas.setPointEditing(pointer.editingPoints);
+    drawingByClicks = pointer.drawingPoints;
+    editingPointsOf = pointer.editingPoints?.id ?? null;
+  }
+
+  /** A line action from the toolbar (06.15). */
+  function onLineAction(action: LineAction) {
+    if (action === 'finishLine') {
+      pointer.finishPoints();
+      canvas.setBindingCandidates([]);
+      commit();
+      canvas.render(history.current);
+      return;
+    }
+    if (action === 'editPoints') {
+      const [id] = selection.ids;
+      if (id !== undefined && pointer.editPoints(id)) syncSelection();
+      return;
+    }
+    const [id] = selection.ids;
+    if (id === undefined) return;
+    if (action === 'closeLine') closeLine(history, id);
+    else openLine(history, id);
+    commit();
   }
 
   function commit() {
@@ -765,6 +797,8 @@
         code: () => codeEditor?.selectAll(),
         field: fieldCommand('selectAll'),
         canvas: () => {
+          // In point editing, Select All does nothing (06.15, as Excalidraw).
+          if (pointer.selectAll()) return;
           canvasCommands.selectAll();
           syncSelection();
         },
@@ -773,7 +807,14 @@
       routeEdit({
         source: fieldCommand('delete'),
         field: fieldCommand('delete'),
-        canvas: canvasEdit(canvasCommands.deleteSelection),
+        canvas: () => {
+          // In point editing, the selected points (none: nothing), as the key does.
+          if (pointer.deletePoints()) {
+            commit();
+            return;
+          }
+          canvasEdit(canvasCommands.deleteSelection)();
+        },
       }),
 
     'view.document': () => view.setMode('document'),
@@ -814,7 +855,20 @@
     'canvas.sendBackward': canvasEdit(canvasCommands.sendBackward),
     'canvas.flipHorizontal': canvasEdit(canvasCommands.flipHorizontal),
     'canvas.flipVertical': canvasEdit(canvasCommands.flipVertical),
-    'canvas.duplicate': canvasEdit(canvasCommands.duplicate),
+    // Edit the selected line's or arrow's points (06.15, P2); not an elbow's.
+    'canvas.editPoints': () => {
+      const [id] = selection.ids;
+      if (!canvasShown() || selection.ids.length !== 1 || id === undefined) return;
+      if (pointer.editPoints(id)) syncSelection();
+    },
+    // In point editing, the selected points (06.15, P16); otherwise the selection.
+    'canvas.duplicate': () => {
+      if (canvasShown() && pointer.duplicatePoints()) {
+        commit();
+        return;
+      }
+      canvasEdit(canvasCommands.duplicate)();
+    },
     'canvas.lock': canvasEdit(canvasCommands.lock),
     'canvas.unlockAll': canvasEdit(canvasCommands.unlockAll),
     'canvas.copyPng': () => {
@@ -938,7 +992,7 @@
       }
       // Text is placed with a click and typed; it is not a drag.
       if (tools.active === 'text') return;
-      pointer.down(scenePoint(event), { additive: event.shiftKey, alt: event.altKey, shift: event.shiftKey });
+      pointer.down(scenePoint(event), { additive: event.shiftKey, alt: event.altKey, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey });
       // A click selects; show it now rather than on release.
       syncSelection();
       updateCursor();
@@ -962,12 +1016,16 @@
     const drawPan = frameThrottle(() => applyView());
     // What the pointer is over, looked up once a frame: a disc under the
     // handle it is on (none while dragging), and the cursor.
-    const drawHover = frameThrottle((point: { x: number; y: number }) => {
+    const drawHover = frameThrottle((point: { x: number; y: number }, alt: boolean, shift: boolean) => {
       canvas.setHoverHandle(pointer.hoveredHandle(point));
+      // In point editing, Alt shows the point an Alt-click would add (06.15, P14).
+      if (pointer.editingPoints && !pointer.dragging) canvas.render((alt ? pointer.appendPreview(point, { shift }) : null) ?? history.current);
       updateCursor();
+      // With the Arrow tool, the shape a press would start on (06.15, C18).
+      if (!pointer.dragging && !pointer.drawingPoints) canvas.setBindingCandidates(pointer.bindingCandidates);
     });
-    const drawClicking = frameThrottle((point: { x: number; y: number }) => {
-      canvas.render(pointer.pointsPreview(point) ?? history.current);
+    const drawClicking = frameThrottle((point: { x: number; y: number }, shift: boolean) => {
+      canvas.render(pointer.pointsPreview(point, { shift }) ?? history.current);
     });
     const onMove = (event: PointerEvent) => {
       if (panningFrom) {
@@ -981,11 +1039,11 @@
       lastDragPoint = point;
       lastPointer = point;
       pointer.move(point, { alt: event.altKey, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey });
-      drawHover(point);
+      drawHover(point, event.altKey, event.shiftKey);
       // Drawing click by click: the next segment follows the pointer, pressed
       // or not; a press there draws nothing of its own.
       if (pointer.drawingPoints) {
-        drawClicking(point);
+        drawClicking(point, event.shiftKey);
         canvas.setBindingCandidates(pointer.bindingCandidates, pointer.snapSpots);
         return;
       }
@@ -1029,7 +1087,7 @@
       // did not commit (a drag back to its start changes nothing, so nothing
       // republishes). Show what is. Unchanged elements are skipped. While a
       // line is drawn click by click, what is includes its next segment.
-      canvas.render(pointer.pointsPreview(scenePoint(event)) ?? history.current);
+      canvas.render(pointer.pointsPreview(scenePoint(event), { shift: event.shiftKey }) ?? history.current);
       updateCursor();
     };
     // Right-click: an unselected element under the pointer becomes the
@@ -1049,9 +1107,9 @@
     const onDoubleClick = (event: MouseEvent) => {
       if (labelEditor?.contains(event.target)) return;
       // A double-click on a fixed segment of the selected elbow lets it go,
-      // and on a bend of the selected line or arrow removes it, before either
-      // could open the label editor.
-      if (pointer.releaseSegmentAt(scenePoint(event as PointerEvent)) || pointer.removeBendAt(scenePoint(event as PointerEvent))) {
+      // before it could open the label editor. On a bend it removes nothing
+      // (06.15, as Excalidraw).
+      if (pointer.releaseSegmentAt(scenePoint(event as PointerEvent))) {
         commit();
         return;
       }
@@ -1080,7 +1138,13 @@
     // key even when the pointer does not move: the drag is redrawn where the
     // pointer last was, so the release commits what is on screen.
     const onModifier = (event: KeyboardEvent) => {
-      if (!['Shift', 'Alt', 'Meta', 'Control'].includes(event.key) || !pointer.dragging || !lastDragPoint) return;
+      if (!['Shift', 'Alt', 'Meta', 'Control'].includes(event.key)) return;
+      // In point editing, Alt shows or hides the next point where the pointer is.
+      if (!pointer.dragging && pointer.editingPoints && lastPointer) {
+        drawHover(lastPointer, event.altKey, event.shiftKey);
+        return;
+      }
+      if (!pointer.dragging || !lastDragPoint) return;
       // Through the frame throttle, so a move queued before the key cannot
       // draw over this with the old state.
       drawDrag(lastDragPoint, event.shiftKey, event.altKey, event.metaKey || event.ctrlKey);
@@ -1174,6 +1238,7 @@
           published = history.current;
         },
         activateTool: (tool) => tools.activate(tool),
+        toggleLock: () => tools.toggleLock(),
         editSelection: () => {
           // Enter finishes a line drawn click by click, or edits a selected
           // line's points; anything else, its text.
@@ -1382,6 +1447,7 @@
             capacity={toolbarCapacity}
             onProperty={(key, value) => {
               setProperty(history, selectedIds, key, value);
+              newElementStyle.remember(key, value);
               commit();
               // A new language means new colours, and the language may not be
               // loaded yet.
@@ -1392,10 +1458,14 @@
             distribute={toolbar.distribute}
             onApply={(key, swatch) => {
               applyStyle(history, selectedIds, key, swatch);
+              newElementStyle.remember(key, swatch);
               commit();
             }}
             onCommand={(id) => void dispatcher.dispatch({ id })}
             onMore={(anchor, overflow) => openContextMenu(anchor, overflow)}
+            lineActions={toolbar.lineActions}
+            onLine={onLineAction}
+            showMore={!drawingByClicks}
           />
         </div>
       {/if}
@@ -1407,6 +1477,8 @@
           tools.activate(tool);
         }}
         onInsert={() => (insertOpen ? closeInsertPanel() : openInsertPanel())}
+        locked={tools.locked}
+        onLock={() => tools.toggleLock()}
       />
       {#if insertOpen}
         <div class="insert-panel">
@@ -1471,9 +1543,13 @@
       // A control that did not fit the toolbar row acts from the menu; every
       // other entry is a command the native menu has too.
       const choice = parseOverflowId(id);
-      if (choice?.kind === 'property') setProperty(history, selectedIds, choice.key, choice.value);
-      else if (choice?.kind === 'style') applyStyle(history, selectedIds, choice.key, choice.swatch);
-      else {
+      if (choice?.kind === 'property') {
+        setProperty(history, selectedIds, choice.key, choice.value);
+        newElementStyle.remember(choice.key, choice.value);
+      } else if (choice?.kind === 'style') {
+        applyStyle(history, selectedIds, choice.key, choice.swatch);
+        newElementStyle.remember(choice.key, choice.swatch);
+      } else {
         void dispatcher.dispatch({ id });
         return;
       }

@@ -24,13 +24,29 @@ export function squareBox(origin: Point, point: Point): Box {
   return { x, y, w: side, h: side };
 }
 
-/** The drag's end point rotated to the nearest `step` degrees, same length. */
-export function snapAngle(origin: Point, point: Point, step = ANGLE_STEP): Point {
+/**
+ * The drag's end point rotated to the nearest `step` degrees, same length.
+ * With `own` (degrees), the angle a dragged point's segment started at, the
+ * step holding it splits there instead: within a sixth of a step (2.5°) the
+ * point keeps its own angle, and otherwise it takes the step on its side of it
+ * (Excalidraw's `getLockedLinearCursorAlignSize`).
+ */
+export function snapAngle(origin: Point, point: Point, step = ANGLE_STEP, own?: number): Point {
   const dx = point.x - origin.x;
   const dy = point.y - origin.y;
   const length = Math.hypot(dx, dy);
   if (length === 0) return { x: point.x, y: point.y };
-  const radians = (step * Math.PI) / 180;
-  const snapped = Math.round(Math.atan2(dy, dx) / radians) * radians;
-  return { x: origin.x + Math.cos(snapped) * length, y: origin.y + Math.sin(snapped) * length };
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  let snapped = Math.round(angle / step) * step;
+  if (own !== undefined) {
+    const lower = Math.floor(own / step) * step;
+    // The pointer's angle turned into the same turn as the step it may be in.
+    const turned = lower + ((((angle - lower) % 360) + 360) % 360);
+    if (turned >= lower && turned <= lower + step) {
+      if (Math.abs(turned - own) < step / 6) snapped = own;
+      else snapped = turned > own ? lower + step : lower;
+    }
+  }
+  const radians = (snapped * Math.PI) / 180;
+  return { x: origin.x + Math.cos(radians) * length, y: origin.y + Math.sin(radians) * length };
 }

@@ -631,6 +631,16 @@ deliberately at `5.24.2` or later.
   (ArrowDown, Enter); RadioGroup items accept a click. Popovers render closed
   content unless `lazyMount`.
 
+### Milestone 6.15 findings (points and creation), 2026-09-27
+
+- **Gates green; not seen at a running window.** Plan
+  `.claude/work/plans/06.15-points-and-creation.md`; its rows are marked
+  "built 06.15" in the lines inventory. 06.16 finishes it.
+- New: closed lines (`closed`, `closed.ts`), line fill while closed, the
+  last-used style (`current-style.ts`), the tool lock (`Q`), `⌘`/`Ctrl`+`Enter`
+  as Canvas ▸ Edit Points, point marquee, Alt preview, duplicate points. A
+  two-point curved arrow is straight; new arrows are curved and lines round.
+
 ### Milestone 6.14 findings (elbow segments, handles, cursors), 2026-09-27
 
 - **Gates green; not seen at a running window.** Plan

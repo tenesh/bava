@@ -112,3 +112,42 @@ describe('the toolbar for a code block', () => {
     expect(toolbarFor(scene, ['c']).controls.map((control) => control.id)).toEqual(['language', 'opacity']);
   });
 });
+
+// 06.15 C10, P3, P19: the line actions the toolbar offers.
+describe("the toolbar's line actions", () => {
+  const lines: SceneData = {
+    elements: [
+      { id: 'l', type: 'line', x: 0, y: 0, w: 10, h: 10, z: 1, points: [0, 0, 10, 10] },
+      { id: 'bent', type: 'line', x: 0, y: 0, w: 10, h: 10, z: 2, points: [0, 0, 10, 10, 20, 0] },
+      { id: 'loop', type: 'line', x: 0, y: 0, w: 10, h: 10, z: 3, points: [0, 0, 10, 0, 10, 10, 0, 0], closed: true },
+      { id: 'a', type: 'arrow', x: 0, y: 0, w: 10, h: 10, z: 4, points: [0, 0, 10, 10] },
+      { id: 'e', type: 'arrow', arrowType: 'elbow', x: 0, y: 0, w: 10, h: 10, z: 5, points: [0, 0, 10, 0, 10, 10] },
+    ] as never,
+  };
+
+  it('is Done alone while a line is drawn by clicks', () => {
+    expect(toolbarFor(lines, [], { drawing: true })).toMatchObject({ visible: true, controls: [], lineActions: ['finishLine'] });
+  });
+
+  it('offers editing the points of one line or arrow, not an elbow, nor one being edited', () => {
+    expect(toolbarFor(lines, ['l']).lineActions).toContain('editPoints');
+    expect(toolbarFor(lines, ['a']).lineActions).toContain('editPoints');
+    expect(toolbarFor(lines, ['e']).lineActions).not.toContain('editPoints');
+    expect(toolbarFor(lines, ['l'], { editing: 'l' }).lineActions).not.toContain('editPoints');
+    expect(toolbarFor(lines, ['l', 'a']).lineActions).toEqual([]);
+  });
+
+  it('offers closing a bent line, and opening a closed one', () => {
+    expect(toolbarFor(lines, ['bent']).lineActions).toContain('closeLine');
+    expect(toolbarFor(lines, ['loop']).lineActions).toContain('openLine');
+    expect(toolbarFor(lines, ['l']).lineActions).not.toContain('closeLine');
+    expect(toolbarFor(lines, ['a']).lineActions).not.toContain('closeLine');
+  });
+});
+
+describe('the colours of a closed line', () => {
+  it('include its fill', () => {
+    const loop: SceneData = { elements: [{ id: 'loop', type: 'line', x: 0, y: 0, w: 10, h: 10, z: 1, points: [0, 0, 10, 0, 10, 10, 0, 0], closed: true }] as never };
+    expect(toolbarFor(loop, ['loop']).styles).toEqual(['fill', 'stroke']);
+  });
+});

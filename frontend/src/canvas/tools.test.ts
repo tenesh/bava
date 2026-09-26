@@ -86,3 +86,16 @@ describe('the code tool', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 });
+
+// 06.15 C16: the tool lock, as Excalidraw's.
+describe('the tool lock', () => {
+  it('toggles, and survives a change of tool', () => {
+    const tools = createTools();
+    expect(tools.locked).toBe(false);
+    tools.toggleLock();
+    tools.activate('rect');
+    expect(tools.locked).toBe(true);
+    tools.toggleLock();
+    expect(tools.locked).toBe(false);
+  });
+});

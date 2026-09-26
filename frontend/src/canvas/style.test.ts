@@ -163,3 +163,19 @@ describe('setting a property from a control', () => {
     expect(history.current.elements[0]).toMatchObject({ strokeWidth: 1 });
   });
 });
+
+// 06.15 P21: a closed line takes a fill colour; an open one does not.
+describe('the fill of a closed line', () => {
+  it('is set on a closed line and refused by an open one', () => {
+    const history = createHistory({
+      elements: [
+        { id: 'loop', type: 'line', x: 0, y: 0, w: 10, h: 10, z: 1, points: [0, 0, 10, 0, 10, 10, 0, 0], closed: true },
+        { id: 'open', type: 'line', x: 0, y: 0, w: 10, h: 10, z: 2, points: [0, 0, 10, 0, 10, 10] },
+      ] as never,
+    });
+    applyStyle(history, ['loop', 'open'], 'fill', 'blue');
+    expect(history.current.elements[0]).toMatchObject({ fill: 'blue' });
+    expect(history.current.elements[1]).not.toHaveProperty('fill');
+    expect(currentStyle(history.current, ['open'], 'fill')).toBe('unavailable');
+  });
+});

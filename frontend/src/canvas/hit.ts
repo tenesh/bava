@@ -71,6 +71,23 @@ export function nearElement(element: SceneElement, point: Point, tolerance: numb
   return false;
 }
 
+/**
+ * Whether a point is inside a closed line that has a fill: then it is grabbed
+ * from inside, as a shape is (Excalidraw's `collision.ts:85-98`).
+ */
+export function insideFilledLine(element: SceneElement, point: Point): boolean {
+  if (element.type !== 'line') return false;
+  const loop = element as { closed?: boolean; fill?: string };
+  if (loop.closed !== true || loop.fill === undefined) return false;
+  const path = drawnPathOf(element);
+  let inside = false;
+  for (let i = 0, j = path.length - 1; i < path.length; j = i, i += 1) {
+    const [a, b] = [path[i], path[j]];
+    if (a.y > point.y !== b.y > point.y && point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+}
+
 /** The box around a path, for an element whose drawing leaves its stored box. */
 export function pathBounds(path: Point[]): Box {
   if (path.length === 0) return { x: 0, y: 0, w: 0, h: 0 };

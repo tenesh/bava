@@ -162,3 +162,10 @@ could reasonably have gone another way.
 | 2026-09-26 | A code block's height is the user's, never below its code | The user asked to resize the height; taller-only keeps the promise that code is never hidden. |
 | 2026-09-27 | Drawing reads the style defaults from their own module | `canvas/style-defaults.ts`: switching an arrow's kind needs the binding code, which draws through `paint.ts`, which needed `style.ts` for the defaults; the loop left the defaults undefined at load. |
 | 2026-09-27 | The rotate cursor is a small inline image, black on white | CSS has no rotate cursor. Drawn as the system's own cursors are, the same in both themes, so it takes no theme colour. |
+| 2026-09-27 | New arrows are curved and new lines round | The user's answer: as Excalidraw. The kind is written into each new element, so an absent key keeps meaning straight and older files are unchanged. |
+| 2026-09-27 | A two-point curved arrow is straight | As Excalidraw's; Bava bowed it 0.2 of its length. A visible change to such arrows in existing files, accepted with the curved default. |
+| 2026-09-27 | `Q`, `⌘`/`Ctrl`+`Enter` and `⌘`/`Ctrl`+`D` in point editing are shortcuts | The user's answer, after the shortcut trim: keep the tool, edit an arrow's points, duplicate points. |
+| 2026-09-27 | Delete with no point selected, and double-click on a bend, do nothing | The user's answer, as Excalidraw: both were Bava-only and could delete by mistake. Reverses 06.10 decision 2 and a 06.13 review choice. |
+| 2026-09-27 | A line can be closed into a loop, and a closed line filled | Excalidraw's polygon, stored as `closed: true`; `fill` on a line only while closed. |
+| 2026-09-27 | New elements take the last style chosen, for the session only | Excalidraw's `currentItem*`. Held in memory: it is not document state, and it is not a convenience worth a stored preference. |
+

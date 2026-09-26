@@ -4,6 +4,7 @@ import { createHistory } from './history';
 import { createSelection } from './selection';
 import { createTools } from './tools.svelte';
 import { labelPoint, routePoints } from './arrows';
+import { drawnPathOf, pathBounds } from './hit';
 
 function harness(tool: Parameters<ReturnType<typeof createTools>['activate']>[0] = 'select', zoom = 1) {
   const history = createHistory({ elements: [] });
@@ -777,9 +778,10 @@ describe('attaching an arrow while drawing it', () => {
   });
 
   // Cmd/Ctrl leaves the ends free since 06.13 (Alt now pins them inside).
+  // Since 06.15 (C19) the press decides the start, the release the end.
   it('binds nothing when Cmd/Ctrl is held', () => {
     const { handler, drawn } = withShapes();
-    handler.down(at(30, 30));
+    handler.down(at(30, 30), { mod: true });
     handler.move(at(230, 30), { mod: true });
     handler.up(at(230, 30), { mod: true });
     expect(drawn()!).not.toHaveProperty('startBinding');
@@ -799,8 +801,10 @@ describe('attaching an arrow while drawing it', () => {
     handler.down(at(30, 30));
     handler.move(at(230, 30));
     expect(handler.bindingCandidates).toEqual(['a', 'b']);
+    // Cmd/Ctrl pressed mid-drag frees the end only: the start was decided at
+    // the press (06.15, C19).
     handler.move(at(230, 30), { mod: true });
-    expect(handler.bindingCandidates).toEqual([]);
+    expect(handler.bindingCandidates).toEqual(['a']);
   });
 
   it('never attaches to a locked shape', () => {
@@ -997,10 +1001,11 @@ describe('selecting a line by its path', () => {
 // ends, and the stored box has to hold what is drawn, or selection, the
 // marquee, the eraser and the export bounds all cut the curve off.
 describe('an arc arrow box', () => {
-  it('covers the bow it draws', () => {
+  // Since 06.15 (V2) a two-point arc is straight: the curve is a bent one.
+  it('covers the curve it draws', () => {
     const kit = harness('arrow');
     kit.history.mutate((scene) => {
-      scene.elements.push({ id: 'a', type: 'arrow', x: 0, y: 0, w: 100, h: 0, z: 1, points: [0, 0, 100, 0], arrowType: 'arc' } as never);
+      scene.elements.push({ id: 'a', type: 'arrow', x: 0, y: 0, w: 100, h: 40, z: 1, points: [0, 0, 50, 40, 100, 0] } as never);
     });
     // Re-routing happens on every change; the box is settled with it.
     kit.history.mutate((scene) => {
@@ -1008,7 +1013,8 @@ describe('an arc arrow box', () => {
       arrow.arrowType = 'arc';
     });
     const arrow = kit.history.current.elements[0];
-    expect(arrow.h).toBeGreaterThan(0);
+    const drawn = pathBounds(drawnPathOf(arrow));
+    expect(arrow.y + arrow.h).toBeGreaterThanOrEqual(drawn.y + drawn.h);
   });
 });
 
@@ -1655,11 +1661,13 @@ describe('bending a line or arrow', () => {
     expect(world()).toEqual([0, 0, 120, 60, 200, 0]);
   });
 
-  it('removes a bend on double-click, but never an end', () => {
-    const { handler, world } = selected({ ...straight, h: 80, points: [0, 0, 100, 80, 200, 0] });
-    expect(handler.removeBendAt(at(0, 0))).toBe(false);
-    expect(handler.removeBendAt(at(101, 79))).toBe(true);
-    expect(world()).toEqual([0, 0, 200, 0]);
+  // 06.15 P24, the user's answer: as Excalidraw, a double-click on a bend
+  // removes nothing (06.10 had it remove the bend).
+  it('removes nothing on a double-click on a bend', () => {
+    const { handler, world } = selected({ ...straight, type: 'line', h: 80, points: [0, 0, 100, 80, 200, 0] });
+    handler.doubleClick(at(101, 79));
+    expect(world()).toEqual([0, 0, 100, 80, 200, 0]);
+    expect('removeBendAt' in handler).toBe(false);
   });
 
   it('moves the end of a line that is dragged', () => {
@@ -2143,16 +2151,15 @@ describe('editing the points of a line', () => {
     expect(world()).toEqual([0, 0, 100, 40, 200, 40]);
   });
 
-  it('removes the selected points, but keeps two', () => {
+  // Since 06.15 (P12, P13): the point before is selected after, and a line
+  // left with fewer than two points is deleted, as Excalidraw's.
+  it('removes the selected points, then selects the one before', () => {
     const { handler, world } = editing();
     handler.down(at(100, 0));
     handler.up(at(100, 0));
     expect(handler.removeSelectedPoints()).toBe(true);
     expect(world()).toEqual([0, 0, 200, 0]);
-    handler.down(at(200, 0));
-    handler.up(at(200, 0));
-    expect(handler.removeSelectedPoints()).toBe(false);
-    expect(world()).toEqual([0, 0, 200, 0]);
+    expect(handler.editingPoints?.selected).toEqual([0]);
   });
 
   it('adds a point after the last on Alt-click', () => {
@@ -2406,12 +2413,14 @@ describe('review of 06.13: modes of the pointer', () => {
     expect(handler.editingPoints).toEqual({ id: 'l', selected: [] });
   });
 
-  it('lets Delete remove the line itself when no point is selected', () => {
+  // 06.15 P11, the user's answer: as Excalidraw, Delete with no point
+  // selected does nothing (06.13 had it delete the line).
+  it('lets Delete do nothing when no point is selected', () => {
     const { selection, handler } = kit([line()]);
     selection.click('l');
     handler.editPoints('l');
-    expect(handler.deletePoints()).toBe(false);
-    expect(handler.editingPoints).toBeNull();
+    expect(handler.deletePoints()).toBe(true);
+    expect(handler.editingPoints).not.toBeNull();
   });
 
   it('enters point editing on a double-click: a line, or an arrow with Cmd/Ctrl, with Select only', () => {
@@ -2872,3 +2881,476 @@ describe('what the cursor is over', () => {
     expect(handler.cursorTarget(at(650, 550))).toBeNull();
   });
 });
+
+// 06.15 C2, C5, C6, C19: drawing a line or arrow, as Excalidraw.
+describe('drawing a line, as Excalidraw', () => {
+  it('shows the line from the first move, and a short release goes on by clicks', () => {
+    const { handler, history } = harness('line');
+    handler.down(at(0, 0));
+    handler.move(at(10, 0));
+    const preview = handler.preview(at(10, 0));
+    expect(preview?.elements.some((e) => e.type === 'line')).toBe(true);
+    handler.up(at(10, 0));
+    expect(handler.drawingPoints).toBe(true);
+    expect(history.current.elements).toHaveLength(0);
+  });
+
+  it('hides the floating segment while the pointer is back on the last point', () => {
+    const { handler } = harness('line');
+    handler.down(at(0, 0));
+    handler.up(at(0, 0));
+    handler.down(at(100, 0));
+    handler.up(at(100, 0));
+    const line = (p: ReturnType<typeof handler.pointsPreview>) => p!.elements.find((e) => e.type === 'line') as unknown as { points: number[] };
+    expect(line(handler.pointsPreview(at(103, 2))).points).toHaveLength(4);
+    expect(line(handler.pointsPreview(at(150, 40))).points).toHaveLength(6);
+  });
+
+  it('snaps each clicked segment to 15° with Shift', () => {
+    const { handler, history } = harness('line');
+    handler.down(at(0, 0));
+    handler.up(at(0, 0));
+    handler.down(at(100, 4), { shift: true });
+    handler.up(at(100, 4), { shift: true });
+    handler.finishPoints();
+    const line = history.current.elements[0] as unknown as { x: number; y: number; points: number[] };
+    expect(line.points[3] - line.points[1]).toBe(0);
+  });
+
+  it('reads Alt and Cmd/Ctrl for the start at the press, for the end at the release', () => {
+    const kit = harness('arrow');
+    kit.history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 } as never,
+        { id: 'b', type: 'rect', x: 300, y: 0, w: 100, h: 100, z: 2 } as never,
+      );
+    });
+    // Alt at the press pins the start; the end, released without it just
+    // outside B, attaches to B's edge.
+    kit.handler.down(at(104, 50), { alt: true });
+    kit.handler.move(at(296, 50));
+    kit.handler.up(at(296, 50));
+    const arrow = kit.history.current.elements.find((e) => e.type === 'arrow') as Record<string, unknown>;
+    expect(arrow).toMatchObject({ startBinding: 'a', startMode: 'inside', endBinding: 'b' });
+    expect(arrow).not.toHaveProperty('endMode');
+
+    const free = harness('arrow');
+    free.history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 } as never,
+        { id: 'b', type: 'rect', x: 300, y: 0, w: 100, h: 100, z: 2 } as never,
+      );
+    });
+    // Cmd/Ctrl at the press leaves the start free; released without it, the
+    // end attaches.
+    free.handler.down(at(104, 50), { mod: true });
+    free.handler.move(at(296, 50), { mod: false });
+    free.handler.up(at(296, 50));
+    const loose = free.history.current.elements.find((e) => e.type === 'arrow') as Record<string, unknown>;
+    expect(loose).not.toHaveProperty('startBinding');
+    expect(loose).toMatchObject({ endBinding: 'b' });
+  });
+});
+
+// 06.15 C7, C8: a clicked arrow finishes on a shape; a clicked line closes.
+describe('finishing a line drawn by clicks', () => {
+  const click = (handler: ReturnType<typeof harness>['handler'], x: number, y: number) => {
+    handler.down(at(x, y));
+    handler.up(at(x, y));
+  };
+
+  it('finishes an arrow when a click lands just outside a shape', () => {
+    const kit = harness('arrow');
+    kit.history.mutate((scene) => {
+      scene.elements.push({ id: 'b', type: 'rect', x: 300, y: 0, w: 100, h: 100, z: 1 } as never);
+    });
+    click(kit.handler, 0, 50);
+    click(kit.handler, 150, 200);
+    click(kit.handler, 296, 50);
+    expect(kit.handler.drawingPoints).toBe(false);
+    const arrow = kit.history.current.elements.find((e) => e.type === 'arrow') as unknown as { endBinding: string; points: number[] };
+    expect(arrow.endBinding).toBe('b');
+    expect(arrow.points).toHaveLength(6);
+  });
+
+  it('adds a point, not a finish, for a click inside a shape', () => {
+    const kit = harness('arrow');
+    kit.history.mutate((scene) => {
+      scene.elements.push({ id: 'b', type: 'rect', x: 300, y: 0, w: 100, h: 100, z: 1 } as never);
+    });
+    click(kit.handler, 0, 50);
+    click(kit.handler, 350, 50);
+    expect(kit.handler.drawingPoints).toBe(true);
+  });
+
+  it('closes a line clicked back on its first point', () => {
+    const { handler, history } = harness('line');
+    click(handler, 0, 0);
+    click(handler, 100, 0);
+    click(handler, 100, 100);
+    click(handler, 3, 2);
+    expect(handler.drawingPoints).toBe(false);
+    const line = history.current.elements[0] as unknown as { closed?: boolean; points: number[] };
+    expect(line.closed).toBe(true);
+    expect(line.points.slice(-2)).toEqual(line.points.slice(0, 2));
+    expect(line.points).toHaveLength(8);
+  });
+
+  it('finishes, open, a line of two points clicked back on its first', () => {
+    const { handler, history } = harness('line');
+    click(handler, 0, 0);
+    click(handler, 100, 0);
+    click(handler, 3, 2);
+    const line = history.current.elements[0] as unknown as { closed?: boolean };
+    expect(handler.drawingPoints).toBe(false);
+    expect(line.closed).toBeUndefined();
+  });
+});
+
+// 06.15 C9, C13, C16, C18: new elements, the tool lock, the pre-press highlight.
+describe('what drawing makes', () => {
+  it('gives a new element the style it is handed', () => {
+    const history = createHistory({ elements: [] });
+    const selection = createSelection();
+    const tools = createTools();
+    tools.activate('arrow');
+    const handler = createPointerHandler({ history, selection, tools, newStyle: (type) => (type === 'arrow' ? { arrowType: 'arc', stroke: 'red' } : {}) });
+    handler.down(at(0, 0));
+    handler.move(at(100, 0));
+    handler.up(at(100, 0));
+    expect(history.current.elements[0]).toMatchObject({ arrowType: 'arc', stroke: 'red' });
+  });
+
+  it('finishes an elbow drawn by clicks on its second click', () => {
+    const history = createHistory({ elements: [] });
+    const tools = createTools();
+    tools.activate('arrow');
+    const handler = createPointerHandler({ history, selection: createSelection(), tools, newStyle: () => ({ arrowType: 'elbow' }) });
+    handler.down(at(0, 0));
+    handler.up(at(0, 0));
+    handler.down(at(200, 100));
+    handler.up(at(200, 100));
+    expect(handler.drawingPoints).toBe(false);
+    expect(history.current.elements[0]).toMatchObject({ type: 'arrow', arrowType: 'elbow' });
+  });
+
+  it('keeps the tool, with nothing selected, while the tool is locked', () => {
+    const { handler, history, selection, tools } = harness('rect');
+    tools.toggleLock();
+    handler.down(at(0, 0));
+    handler.move(at(50, 50));
+    handler.up(at(50, 50));
+    expect(history.current.elements).toHaveLength(1);
+    expect(tools.active).toBe('rect');
+    expect(selection.ids).toEqual([]);
+  });
+
+  it('outlines the shape under the pointer with the Arrow tool, before any press', () => {
+    const { handler, history } = harness('arrow');
+    history.mutate((scene) => {
+      scene.elements.push({ id: 'b', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 } as never);
+    });
+    handler.move(at(50, 50));
+    expect(handler.bindingCandidates).toEqual(['b']);
+    handler.move(at(300, 300));
+    expect(handler.bindingCandidates).toEqual([]);
+  });
+});
+
+// 06.15 P7, P8, P10, P14, P15, P25: choosing and moving points, as
+// Excalidraw's linear editor.
+describe('choosing and moving points, as Excalidraw', () => {
+  function editing(points = [0, 0, 100, 0, 200, 0]) {
+    const history = createHistory({ elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 200, h: 0, z: 1, points }] as never });
+    const selection = createSelection();
+    selection.click('l');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), pointHit: () => 11, bendMinSegment: () => 40, bendInsertDistance: () => 10 });
+    handler.editPoints('l');
+    const world = () => {
+      const e = history.current.elements[0] as unknown as { x: number; y: number; points: number[] };
+      return e.points.map((v, i) => Math.round(v + (i % 2 === 0 ? e.x : e.y)));
+    };
+    const pick = (x: number, y: number, shift = false) => {
+      handler.down(at(x, y), { additive: shift, shift });
+      handler.up(at(x, y), { shift });
+    };
+    return { handler, history, selection, world, pick };
+  }
+
+  it('drops a selected point on Shift-click, but keeps it for a Shift-drag', () => {
+    const { handler, pick, world } = editing();
+    pick(100, 0);
+    pick(200, 0, true);
+    handler.down(at(100, 0), { additive: true, shift: true });
+    handler.move(at(100, 30), { shift: true });
+    handler.up(at(100, 30), { shift: true });
+    expect(world()).toEqual([0, 0, 100, 30, 200, 30]);
+    pick(200, 30, true);
+    expect(handler.editingPoints?.selected).toEqual([1]);
+  });
+
+  it('selects the points inside a box dragged off the line, Shift adding', () => {
+    const { handler, pick } = editing([0, 0, 100, 0, 200, 0, 300, 0]);
+    handler.down(at(80, -20));
+    handler.move(at(220, 20));
+    handler.up(at(220, 20));
+    expect(handler.editingPoints?.selected).toEqual([1, 2]);
+    pick(0, 0);
+    handler.down(at(280, -20), { additive: true, shift: true });
+    handler.move(at(320, 20), { shift: true });
+    handler.up(at(320, 20), { shift: true });
+    expect(handler.editingPoints?.selected).toEqual([0, 3]);
+  });
+
+  it('snaps one dragged point to 15° about its neighbour with Shift', () => {
+    const { handler, world } = editing([0, 0, 100, 0]);
+    handler.down(at(100, 0));
+    handler.move(at(100, 4), { shift: true });
+    handler.up(at(100, 4), { shift: true });
+    expect(world()).toEqual([0, 0, 100, 0]);
+  });
+
+  it('adds a point at an Alt-press and drags it with the same press', () => {
+    const { handler, world } = editing();
+    handler.down(at(260, 80), { alt: true });
+    handler.move(at(280, 100), { alt: true });
+    handler.up(at(280, 100), { alt: true });
+    expect(world()).toEqual([0, 0, 100, 0, 200, 0, 280, 100]);
+    expect(handler.editingPoints?.selected).toEqual([3]);
+  });
+
+  it('previews the next point while Alt is held, Shift snapping it', () => {
+    const { handler, history } = editing();
+    const where = (preview: ReturnType<typeof handler.appendPreview>) => {
+      const line = preview!.elements[0] as unknown as { x: number; y: number; points: number[] };
+      return line.points.slice(-2).map((v, i) => Math.round(v + (i === 0 ? line.x : line.y)));
+    };
+    expect(where(handler.appendPreview(at(260, 80)))).toEqual([260, 80]);
+    // 100 along and 4 up from (200, 0) snaps flat.
+    expect(where(handler.appendPreview(at(300, 4), { shift: true }))).toEqual([300, 0]);
+    expect((history.current.elements[0] as unknown as { points: number[] }).points).toHaveLength(6);
+  });
+
+  it('adds a point at a middle at once, not after 10 px', () => {
+    const { handler, world } = editing();
+    handler.down(at(50, 0));
+    handler.move(at(50, 5));
+    handler.up(at(50, 5));
+    expect(world()).toEqual([0, 0, 50, 5, 100, 0, 200, 0]);
+  });
+
+  it('moves the whole line when the line itself is dragged', () => {
+    const { handler, world } = editing();
+    // On the line, clear of its points and middles.
+    handler.down(at(125, 0));
+    handler.move(at(125, 40));
+    handler.up(at(125, 40));
+    expect(world()).toEqual([0, 40, 100, 40, 200, 40]);
+    expect(handler.editingPoints).not.toBeNull();
+  });
+});
+
+// 06.15 P11, P13, P16, P17: removing and duplicating points, as Excalidraw.
+describe('removing and duplicating points, as Excalidraw', () => {
+  function editing(points = [0, 0, 100, 0, 200, 0]) {
+    const history = createHistory({ elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 200, h: 0, z: 1, points }] as never });
+    const selection = createSelection();
+    selection.click('l');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), pointHit: () => 11, bendMinSegment: () => 40, bendInsertDistance: () => 10 });
+    handler.editPoints('l');
+    const world = () => {
+      const e = history.current.elements[0] as unknown as { x: number; y: number; points: number[] };
+      return e.points.map((v, i) => Math.round(v + (i % 2 === 0 ? e.x : e.y)));
+    };
+    const pick = (x: number, y: number, shift = false) => {
+      handler.down(at(x, y), { additive: shift, shift });
+      handler.up(at(x, y), { shift });
+    };
+    return { handler, history, world, pick };
+  }
+
+  it('does nothing on Delete with no point selected, and stays editing', () => {
+    const { handler, history } = editing();
+    const before = history.current;
+    expect(handler.deletePoints()).toBe(true);
+    expect(history.current).toBe(before);
+    expect(handler.editingPoints).not.toBeNull();
+  });
+
+  it('deletes the line when too few points would be left', () => {
+    const { handler, history, pick } = editing();
+    pick(0, 0);
+    pick(100, 0, true);
+    expect(handler.deletePoints()).toBe(true);
+    expect(history.current.elements).toHaveLength(0);
+    expect(handler.editingPoints).toBeNull();
+  });
+
+  it('duplicates each selected point halfway to the next, the last 30, 30 away', () => {
+    const { handler, world, pick } = editing();
+    pick(100, 0);
+    pick(200, 0, true);
+    expect(handler.duplicatePoints()).toBe(true);
+    expect(world()).toEqual([0, 0, 100, 0, 150, 0, 200, 0, 230, 30]);
+    expect(handler.editingPoints?.selected).toEqual([2, 4]);
+  });
+
+  it('does nothing on Select All while editing points', () => {
+    const { handler, pick } = editing();
+    pick(100, 0);
+    expect(handler.selectAll()).toBe(true);
+    expect(handler.editingPoints).toEqual({ id: 'l', selected: [1] });
+  });
+});
+
+
+// 06.15 P18, P20: closing a line by its ends, and keeping it closed.
+describe('a closed line', () => {
+  it('closes when an end is dragged onto the other', () => {
+    const { handler, history, selection } = harness('select');
+    history.mutate((scene) => {
+      scene.elements.push({ id: 'l', type: 'line', x: 0, y: 0, w: 100, h: 100, z: 1, points: [0, 0, 100, 0, 100, 100] } as never);
+    });
+    selection.click('l');
+    handler.down(at(100, 100));
+    handler.move(at(4, 3));
+    handler.up(at(4, 3));
+    const line = history.current.elements[0] as unknown as { closed?: boolean; x: number; y: number; points: number[] };
+    expect(line.closed).toBe(true);
+    expect(line.points.slice(-2)).toEqual(line.points.slice(0, 2));
+  });
+
+  it('moves its first and last point together', () => {
+    const { handler, history, selection } = harness('select');
+    history.mutate((scene) => {
+      scene.elements.push({ id: 'l', type: 'line', x: 0, y: 0, w: 100, h: 100, z: 1, points: [0, 0, 100, 0, 100, 100, 0, 0], closed: true } as never);
+    });
+    selection.click('l');
+    handler.editPoints('l');
+    handler.down(at(0, 0));
+    handler.move(at(-20, -10));
+    handler.up(at(-20, -10));
+    const line = history.current.elements[0] as unknown as { x: number; y: number; points: number[] };
+    const world = line.points.map((v, i) => v + (i % 2 === 0 ? line.x : line.y));
+    expect(world.slice(0, 2)).toEqual([-20, -10]);
+    expect(world.slice(-2)).toEqual([-20, -10]);
+  });
+
+  it('stays closed when its first point is deleted', () => {
+    const { handler, history, selection } = harness('select');
+    history.mutate((scene) => {
+      scene.elements.push({ id: 'l', type: 'line', x: 0, y: 0, w: 100, h: 100, z: 1, points: [0, 0, 100, 0, 100, 100, 0, 100, 0, 0], closed: true } as never);
+    });
+    selection.click('l');
+    handler.editPoints('l');
+    handler.down(at(0, 0));
+    handler.up(at(0, 0));
+    handler.removeSelectedPoints();
+    const line = history.current.elements[0] as unknown as { closed?: boolean; x: number; y: number; points: number[] };
+    const world = line.points.map((v, i) => v + (i % 2 === 0 ? line.x : line.y));
+    expect(line.closed).toBe(true);
+    expect(world).toEqual([100, 0, 100, 100, 0, 100, 100, 0]);
+  });
+
+  it('takes an Alt-added point before its closing one', () => {
+    const { handler, history, selection } = harness('select');
+    history.mutate((scene) => {
+      scene.elements.push({ id: 'l', type: 'line', x: 0, y: 0, w: 100, h: 100, z: 1, points: [0, 0, 100, 0, 100, 100, 0, 0], closed: true } as never);
+    });
+    selection.click('l');
+    handler.editPoints('l');
+    handler.down(at(-40, 80), { alt: true });
+    handler.up(at(-40, 80), { alt: true });
+    const line = history.current.elements[0] as unknown as { x: number; y: number; points: number[] };
+    const world = line.points.map((v, i) => v + (i % 2 === 0 ? line.x : line.y));
+    expect(world).toEqual([0, 0, 100, 0, 100, 100, -40, 80, 0, 0]);
+  });
+});
+
+// Review of 06.15: closed lines through duplicate and delete, the Alt-added
+// point's selection, and Duplicate with nothing selected.
+describe('point editing, from the 06.15 review', () => {
+  function loop(points: number[]) {
+    const { handler, history, selection } = harness('select');
+    history.mutate((scene) => {
+      scene.elements.push({ id: 'l', type: 'line', x: 0, y: 0, w: 100, h: 100, z: 1, points, closed: true } as never);
+    });
+    selection.click('l');
+    handler.editPoints('l');
+    const world = () => {
+      const e = history.current.elements[0] as unknown as { x: number; y: number; points: number[] };
+      return e ? e.points.map((v, i) => Math.round(v + (i % 2 === 0 ? e.x : e.y))) : null;
+    };
+    const pick = (x: number, y: number, shift = false) => {
+      handler.down(at(x, y), { additive: shift, shift });
+      handler.up(at(x, y), { shift });
+    };
+    return { handler, history, world, pick };
+  }
+
+  it('duplicates the joined corner of a loop towards its second point, still closed', () => {
+    const { handler, history, world, pick } = loop([0, 0, 100, 0, 100, 100, 0, 0]);
+    pick(0, 0);
+    expect(handler.duplicatePoints()).toBe(true);
+    expect(world()).toEqual([0, 0, 50, 0, 100, 0, 100, 100, 0, 0]);
+    expect(history.current.elements[0]).toMatchObject({ closed: true });
+  });
+
+  it('deletes a loop left with fewer than two distinct points', () => {
+    const { handler, history, pick } = loop([0, 0, 100, 0, 100, 100, 0, 0]);
+    pick(100, 0);
+    pick(100, 100, true);
+    handler.removeSelectedPoints();
+    expect(history.current.elements).toHaveLength(0);
+  });
+
+  it('selects the point before the first removed, in the new numbering', () => {
+    const { handler, world, pick } = loop([0, 0, 100, 0, 100, 100, 0, 100, 0, 0]);
+    pick(0, 0);
+    handler.removeSelectedPoints();
+    expect(world()).toEqual([100, 0, 100, 100, 0, 100, 100, 0]);
+    // The corner at (0, 100) was before the removed one; it is index 2 now.
+    expect(handler.editingPoints?.selected).toEqual([2]);
+  });
+
+  it('keeps an Alt-added point selected when the mode is read mid-press', () => {
+    const { handler, history, selection } = harness('select');
+    history.mutate((scene) => {
+      scene.elements.push({ id: 'l', type: 'line', x: 0, y: 0, w: 200, h: 0, z: 1, points: [0, 0, 100, 0, 200, 0] } as never);
+    });
+    selection.click('l');
+    handler.editPoints('l');
+    handler.down(at(260, 80), { alt: true });
+    void handler.editingPoints;
+    handler.move(at(280, 100), { alt: true });
+    void handler.editingPoints;
+    handler.up(at(280, 100), { alt: true });
+    expect(handler.editingPoints?.selected).toEqual([3]);
+  });
+
+  it('takes Duplicate in point editing even with no point selected', () => {
+    const { handler, history } = loop([0, 0, 100, 0, 100, 100, 0, 0]);
+    const before = history.current;
+    expect(handler.duplicatePoints()).toBe(true);
+    expect(history.current).toBe(before);
+  });
+});
+
+// Review of 06.15: the pen and a code block take the last style too.
+describe('the style of a pen stroke and a code block', () => {
+  it('is the one handed for their kind', () => {
+    const history = createHistory({ elements: [] });
+    const tools = createTools();
+    const handler = createPointerHandler({ history, selection: createSelection(), tools, newStyle: (type) => ({ stroke: `${type}-red` }) });
+    tools.activate('pen');
+    handler.down(at(0, 0));
+    handler.move(at(40, 30));
+    handler.up(at(40, 30));
+    expect(history.current.elements[0]).toMatchObject({ type: 'stroke', stroke: 'stroke-red' });
+    tools.activate('code');
+    handler.down(at(200, 200));
+    handler.up(at(200, 200));
+    expect(history.current.elements[1]).toMatchObject({ type: 'code', stroke: 'code-red' });
+  });
+});
+

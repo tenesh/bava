@@ -114,3 +114,15 @@ describe('how an element paints', () => {
     });
   });
 });
+
+// 06.15 P21: a closed line takes a fill; an open one never shows one.
+describe('the fill of a line', () => {
+  const loop = { id: 'l', type: 'line', x: 0, y: 0, w: 10, h: 10, z: 1, points: [0, 0, 10, 0, 10, 10, 0, 0], fill: 'blue' };
+  it('is drawn while the line is closed', () => {
+    expect(paintFor({ ...loop, closed: true } as unknown as SceneElement, theme).fill).toBe('lightblue');
+  });
+  it('is not drawn while it is open, nor without a fill of its own', () => {
+    expect(paintFor(loop as unknown as SceneElement, theme).fill).toBe('');
+    expect(paintFor({ ...loop, closed: true, fill: undefined } as unknown as SceneElement, theme).fill).toBe('');
+  });
+});
