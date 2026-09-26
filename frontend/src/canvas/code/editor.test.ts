@@ -272,3 +272,16 @@ describe('the code editor on the app path', () => {
     editor.destroy();
   });
 });
+
+describe('committing code to a taller block', () => {
+  const metrics = { advance: 6, lineHeight: 20, padding: 8 };
+  it('keeps the extra height, and grows when the code needs more', () => {
+    const history = createHistory({
+      elements: [{ id: 'c', type: 'code', x: 0, y: 0, w: 112, h: 200, z: 1, code: 'x', measuredWidth: 112, measuredHeight: 36 }] as never,
+    });
+    commitCode(history, 'c', 'y', metrics);
+    expect(history.current.elements[0]).toMatchObject({ h: 200 });
+    commitCode(history, 'c', Array.from({ length: 12 }, () => 'l').join('\n'), metrics);
+    expect(history.current.elements[0]).toMatchObject({ h: 12 * 20 + 16 });
+  });
+});

@@ -200,6 +200,7 @@ Optional on the element types listed, and absent means the default:
 | `endAnchor` | as above, for the other end | the element's centre | `arrow`, with `endBinding` |
 | `startMode` | `inside`: the start is pinned at its anchor, inside the element | on the element's edge | `arrow`, with `startBinding` |
 | `endMode` | as above, for the other end | on the element's edge | `arrow`, with `endBinding` |
+| `fixedSegments` | a list of `{ "index": n, "start": [x, y], "end": [x, y] }`: the middle segments of an elbow the user dragged, in the arrow's own coordinates | fully routed | `arrow` with `arrowType: "elbow"` |
 | `labelPosition` | 0 to 1: where the label sits, as a share of the drawn path's length | 0.5, the middle | `arrow` with a `label` |
 | `frame` | the `id` of the `frame` that owns this element | not in a frame | every element |
 | `language` | the language a code block is highlighted as | plain text | `code` |
@@ -228,8 +229,13 @@ through its points with sharp corners. An arc curves smoothly through them
 route: right-angled, leaving each attached shape from the side its end is on
 and going around both shapes, recomputed whenever either moves. Switching an
 arrow to elbow replaces its bends with the route; switching away keeps only
-its two ends. An elbow written before this rule is routed when the file is
-opened: one with only its two ends gains its route, and one that kept bends
+its two ends. A middle segment the user dragged is kept where it was put
+(`fixedSegments`): moving a shape or an end adapts only the legs to the ends,
+and releasing the segment hands it back to the router. Each entry's `start`
+and `end` are rewritten from `points` on every change; an entry whose index
+is the first or last segment, or out of range, is dropped. Switching kind
+drops `fixedSegments`. An elbow written before this rule is routed when the
+file is opened: one with only its two ends gains its route, and one that kept bends
 from being switched (06.10 and 06.11 kept them) has those replaced by its
 route, which the next save writes.
 
@@ -273,11 +279,12 @@ A `code` element carries `code` (the text as typed, with its own line breaks),
 text) and the `measuredWidth`/`measuredHeight` every text-bearing element
 stores.
 
-**Its width is the user's; its height comes from its code.** The block is as
-wide as the user makes it (a new one starts 20 columns wide), and each line
-that does not fit wraps onto the next, at its last space or, for a word too
-long, at the edge. Its height is the wrapped line count, rewritten on every
-edit, so nothing it holds is ever hidden. A block written before this rule was
+**Its width and height are the user's, but never smaller than its code.** The
+block is as wide as the user makes it (a new one starts 20 columns wide), and
+each line that does not fit wraps onto the next, at its last space or, for a
+word too long, at the edge. Its height is what the user makes it, but never
+less than the wrapped code needs: an edit that needs more grows it, so nothing
+it holds is ever hidden. A block written before this rule was
 sized to fit its longest line, so it draws unchanged.
 
 **An unknown `language` is kept and drawn as plain text.** A file written by a

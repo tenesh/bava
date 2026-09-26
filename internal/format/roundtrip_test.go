@@ -398,6 +398,19 @@ func TestRoundTripBentArrowWithAnchorsAndLabelPosition(t *testing.T) {
         0
       ],
       "endBinding": "b",
+      "fixedSegments": [
+        {
+          "end": [
+            40,
+            60
+          ],
+          "index": 2,
+          "start": [
+            40,
+            0
+          ]
+        }
+      ],
       "h": 60,
       "id": "arrow1",
       "label": "slides",

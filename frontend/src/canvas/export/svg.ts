@@ -7,7 +7,7 @@
  * something looks: that would be a second drawing implementation, and it would
  * drift from the canvas the first time a shape changed.
  */
-import { drawHead, headAt, labelPoint, pathLength, routePoints } from '../arrows';
+import { drawHead, headAt, labelPoint, pathLength, pathOf, routePoints } from '../arrows';
 import { paintFor, type Paint } from '../paint';
 import { angleOfElement, centreOf } from '../rotate';
 import { isShapeType, type SceneElement } from '../scene';
@@ -125,7 +125,7 @@ function body(element: SceneElement, paint: Paint, headSize: number): string {
     const straight = element.type === 'arrow' ? routePoints(points, (element as { arrowType?: string }).arrowType) : points;
     // Round edges on a line are a smoothing, and the stage draws the same
     // samples: leaving them out here drew corners where the canvas curves.
-    const routed = smoothPoints(straight, paint.tension);
+    const routed = smoothPoints(element.type === 'arrow' ? pathOf(points, (element as { arrowType?: string }).arrowType) : straight, paint.tension);
     const pairs: string[] = [];
     for (let i = 0; i + 1 < routed.length; i += 2) {
       pairs.push(`${round(element.x + routed[i])} ${round(element.y + routed[i + 1])}`);
@@ -149,7 +149,8 @@ function body(element: SceneElement, paint: Paint, headSize: number): string {
  * positioned the same way.
  */
 function arrowLabel(element: SceneElement, paint: Paint, label: string): string {
-  const points = routePoints(('points' in element ? element.points : []) as number[], (element as { arrowType?: string }).arrowType);
+  // The path as the stage draws it, which it centres the label on.
+  const points = smoothPoints(pathOf(('points' in element ? element.points : []) as number[], (element as { arrowType?: string }).arrowType), paint.tension);
   const at = labelPoint(points, (element as { labelPosition?: number }).labelPosition);
   const measure = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
   // The same width the stage wraps to: the length of the path it sits on.

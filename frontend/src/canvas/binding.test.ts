@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anchorFor, anchorOn, BINDING_GAP, bindingReach, isDetached, reroute, routeFor, targetAt } from './binding';
+import { anchorFor, anchorOn, BINDING_GAP, bindingReach, elbowSnapSpots, isDetached, reroute, routeFor, targetAt } from './binding';
 import type { SceneData, SceneElement } from './scene';
 
 const el = (over: Record<string, unknown>): SceneElement =>
@@ -486,5 +486,35 @@ describe('an Alt-pinned end outside its shape', () => {
   it('keeps its exact spot, outside the box', () => {
     const rect = { id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 } as never as SceneElement;
     expect(anchorFor(rect, { x: -3, y: 50 }, 15, true)).toEqual([0, 0.5]);
+  });
+});
+
+// E5: an elbow end snaps to a side's middle within a band of 5% of the side
+// (clamped 5 to reach), from inside or out; a diamond also to its edges' middles.
+describe('where an elbow end snaps', () => {
+  const rect = { id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 } as never as SceneElement;
+  const diamond = { id: 'd', type: 'diamond', x: 0, y: 0, w: 100, h: 100, z: 1 } as never as SceneElement;
+
+  it('snaps within the band, from outside or inside', () => {
+    expect(anchorFor(rect, { x: 54, y: -3 }, 15, false, true)).toEqual([0.5, 0]);
+    expect(anchorFor(rect, { x: 54, y: 3 }, 15, false, true)).toEqual([0.5, 0]);
+  });
+
+  it('does not snap outside the band', () => {
+    expect(anchorFor(rect, { x: 58, y: 3 }, 15, false, true)).toEqual([0.58, 0.03]);
+  });
+
+  it('snaps to a diamond edge middle', () => {
+    expect(anchorFor(diamond, { x: 22, y: 21 }, 15, false, true)).toEqual([0.25, 0.25]);
+  });
+});
+
+// Review of 06.14: every spot an elbow end snaps to shows as a dot, a
+// diamond's edge middles included.
+describe('the spots an elbow end shows', () => {
+  it("are a diamond's corners and its edge middles", () => {
+    const diamond = { id: 'd', type: 'diamond', x: 0, y: 0, w: 100, h: 100, z: 1 } as never as SceneElement;
+    expect(elbowSnapSpots(diamond)).toHaveLength(8);
+    expect(elbowSnapSpots(diamond)).toContainEqual({ x: 25, y: 25 });
   });
 });

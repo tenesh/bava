@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import Konva from 'konva';
 import { CanvasStage } from './stage';
 import { createScene, type SceneData, type SceneElement } from './scene';
+import { pathOf, routePoints } from './arrows';
 
 // jsdom resolves no CSS variables, so the tests hand the stage a reader.
 function reader(values: Record<string, string>) {
@@ -412,14 +413,14 @@ describe('style properties on the stage', () => {
     stage.destroy();
   });
 
-  it('draws an elbow arrow as orthogonal segments', () => {
+  // 06.14 E4: orthogonal segments with rounded corners, the path the hit
+  // test and the exporter use too (it replaces "orthogonal segments").
+  it('draws an elbow arrow along its route, corners rounded', () => {
     const stage = mounted(theme);
     stage.render(one({ type: 'arrow', x: 0, y: 0, w: 100, h: 60, points: [0, 0, 100, 60], arrowType: 'elbow' }));
     const points = (stage.bodyFor('e1') as Konva.Arrow).points();
-    expect(points.length).toBeGreaterThan(4);
-    for (let i = 0; i + 3 < points.length; i += 2) {
-      expect(points[i + 1] === points[i + 3] || points[i] === points[i + 2]).toBe(true);
-    }
+    expect(points).toEqual(pathOf([0, 0, 100, 60], 'elbow'));
+    expect(points).not.toEqual(routePoints([0, 0, 100, 60], 'elbow'));
     stage.destroy();
   });
 
@@ -649,6 +650,20 @@ describe('the attachment highlight', () => {
 
     stage.setBindingCandidates([]);
     expect(stage.bindingHighlights()).toHaveLength(0);
+    stage.destroy();
+  });
+  // 06.14 E5: while an elbow end is dragged, the spots it can snap to show
+  // as dots (Excalidraw's 4 px radius midpoints).
+  it('draws the snap spots it is given as dots, and clears them', () => {
+    const stage = new CanvasStage({ read: reader({ '--color-selection-handle': 'dodgerblue', '--size-snap-dot': '8px' }) });
+    stage.mount(host());
+    stage.render({ elements: [{ id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 }] as SceneElement[] });
+    stage.setBindingCandidates(['a'], [{ x: 30, y: 0 }, { x: 60, y: 30 }]);
+    const dots = stage.snapDots();
+    expect(dots.map((dot) => dot.getAbsolutePosition())).toEqual([{ x: 30, y: 0 }, { x: 60, y: 30 }]);
+    expect(dots[0].radius()).toBe(4);
+    stage.setBindingCandidates([]);
+    expect(stage.snapDots()).toHaveLength(0);
     stage.destroy();
   });
 });
@@ -973,6 +988,36 @@ describe('the bend handles of a selected arrow', () => {
     stage.destroy();
   });
 
+  // 06.14 E7, S3: an elbow shows a handle at the middle of each segment, for
+  // dragging it: hollow when free, filled when fixed, none on a segment under
+  // 5 screen px, and not hidden by the label (S8).
+  it("draws an elbow's segment handles, filled when fixed", () => {
+    const stage = new CanvasStage({ read: reader({ '--color-selection-handle': 'dodgerblue', '--color-surface': 'white', '--size-point-handle': '10px' }) });
+    stage.mount(host());
+    stage.render(
+      one({
+        type: 'arrow',
+        arrowType: 'elbow',
+        x: 0,
+        y: 0,
+        w: 200,
+        h: 100,
+        points: [0, 0, 100, 0, 100, 100, 103, 100, 200, 100],
+        fixedSegments: [{ index: 2, start: [100, 0], end: [100, 100] }],
+        label: 'over the middle',
+      }),
+    );
+    stage.setSelection(['e1']);
+    const handles = stage.segmentHandles();
+    expect(handles.map((h) => h.getAbsolutePosition())).toEqual([
+      { x: 50, y: 0 },
+      { x: 100, y: 50 },
+      { x: 151.5, y: 100 },
+    ]);
+    expect(handles.map((h) => h.fill())).toEqual(['white', 'dodgerblue', 'white']);
+    stage.destroy();
+  });
+
   it('gives a selected line handles too', () => {
     const stage = new CanvasStage({ read });
     stage.mount(host());
@@ -1001,14 +1046,15 @@ describe('the handles of a turned line', () => {
   });
 });
 
+// 06.14 S8, reversing 06.13: the middle keeps precedence over the label.
 describe('the middle handle under a label', () => {
-  it('is not drawn, since a press there slides the label', () => {
+  it('is drawn, since a press on it bends the arrow', () => {
     const read = reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px', '--size-bend-min-segment': '40px', '--text-body': '16px', '--leading-tight': '1.2' });
     const stage = new CanvasStage({ read });
     stage.mount(host());
     stage.render(one({ type: 'arrow', x: 0, y: 0, w: 200, h: 0, points: [0, 0, 200, 0], label: 'sends' }));
     stage.setSelection(['e1']);
-    expect(stage.middleHandles()).toHaveLength(0);
+    expect(stage.middleHandles()).toHaveLength(1);
     stage.destroy();
   });
 });
@@ -1023,6 +1069,12 @@ describe('what a selected line or arrow shows', () => {
     '--size-rotate-gap': '16px',
     '--size-bend-min-segment': '40px',
     '--size-point-handle': '10px',
+    '--size-bent-box-padding': '10px',
+    '--size-point-handle-editing': '20px',
+    '--size-point-hover': '20px',
+    '--size-focus-point': '9px',
+    '--size-point-overlap': '2px',
+    '--size-marquee-dash': '4px',
   });
   const selected = (element: Record<string, unknown>) => {
     const stage = new CanvasStage({ read });
@@ -1057,6 +1109,58 @@ describe('what a selected line or arrow shows', () => {
     stage.destroy();
   });
 
+  // 06.14 S2: a bent line's box stands 10 px clear of its points
+  // (Excalidraw's `transformHandles.ts:312-316`); other boxes are tight.
+  it("pads a bent line's box by 10 px, its handles with it", () => {
+    const stage = selected({ type: 'line', x: 0, y: 0, w: 200, h: 80, points: [0, 0, 100, 80, 200, 0] });
+    const outline = stage.selectionOutline()!;
+    expect([outline.x(), outline.y(), outline.width(), outline.height()]).toEqual([-10, -10, 220, 100]);
+    stage.destroy();
+  });
+
+  // 06.14 S6: a point on top of the one before it is drawn twice the size
+  // and hollow (1.5 times in point editing), so both can be seen and grabbed
+  // (Excalidraw's `interactiveScene.ts:268-289`, `:1120-1127`).
+  it('draws a point on its neighbour larger and hollow', () => {
+    const stage = selected({ type: 'line', x: 0, y: 0, w: 200, h: 80, points: [0, 0, 100, 80, 101, 80, 200, 0] });
+    const radii = stage.endpointHandles().map((h) => h.radius());
+    expect(radii).toEqual([5, 5, 10, 5]);
+    expect(stage.endpointHandles()[2].fillEnabled()).toBe(false);
+    stage.setPointEditing({ id: 'e1', selected: [] });
+    expect(stage.endpointHandles().map((h) => h.radius())).toEqual([10, 10, 15, 10]);
+    stage.destroy();
+  });
+
+  // 06.14 S7: a translucent disc under the handle the pointer is over.
+  it('draws a disc under the hovered handle, and clears it', () => {
+    const stage = selected({ type: 'line', x: 0, y: 0, w: 200, h: 0, points: [0, 0, 200, 0] });
+    stage.setHoverHandle({ x: 200, y: 0 });
+    const disc = stage.hoverHandle()!;
+    expect(disc.getAbsolutePosition()).toEqual({ x: 200, y: 0 });
+    expect(disc.radius()).toBe(10);
+    expect(disc.opacity()).toBe(0.4);
+    stage.setHoverHandle(null);
+    expect(stage.hoverHandle()).toBeNull();
+    stage.destroy();
+  });
+
+  // 06.14 S9: each attached end's anchor, a disc with a dashed line to the end.
+  it("draws each attached end's anchor, clear of the end", () => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.render({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 },
+        { id: 'r', type: 'arrow', x: 104, y: 50, w: 200, h: 0, z: 3, points: [0, 0, 200, 0], startBinding: 'a', startAnchor: [0.5, 0.5] },
+      ] as never,
+    });
+    stage.setSelection(['r']);
+    const discs = stage.focusHandles();
+    expect(discs.map((d) => d.getAbsolutePosition())).toEqual([{ x: 50, y: 50 }]);
+    expect(stage.focusLines()[0].dash().length).toBeGreaterThan(0);
+    stage.destroy();
+  });
+
   it('draws point handles 5 px in radius on screen', () => {
     const stage = selected({ type: 'line', x: 0, y: 0, w: 200, h: 0, points: [0, 0, 200, 0] });
     expect(stage.endpointHandles()[0].radius()).toBe(5);
@@ -1067,12 +1171,13 @@ describe('what a selected line or arrow shows', () => {
 // Review of 06.12: a code block's height is its code's, so it has no top or
 // bottom handles, and none that would move its top.
 describe('the handles of a selected code block', () => {
-  it('are its sides and its bottom corners', () => {
+  // Since 06.14 its bottom edge too: it can be made taller (decision 10).
+  it('are its sides, its bottom and its bottom corners', () => {
     const stage = new CanvasStage({ read: reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px', '--size-rotate-gap': '16px' }) });
     stage.mount(host());
     stage.render(one({ type: 'code', x: 0, y: 0, w: 200, h: 60, code: 'x', measuredWidth: 200, measuredHeight: 60 } as never));
     stage.setSelection(['e1']);
-    expect(stage.selectionHandleCount()).toBe(4);
+    expect(stage.selectionHandleCount()).toBe(5);
     stage.destroy();
   });
 });

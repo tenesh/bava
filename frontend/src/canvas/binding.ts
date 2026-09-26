@@ -15,6 +15,7 @@ import type { ElementId, SceneData, SceneElement } from './scene';
 import { drawnPathOf, pathBounds } from './hit';
 import { tidy } from './resize';
 import { headingOf, routeElbow, sideOf, type ElbowEnd, type Heading } from './elbow';
+import { adaptEnds, renormalise } from './elbow-segments';
 import { routePoints } from './arrows';
 
 export type Point = { x: number; y: number };
@@ -234,6 +235,30 @@ export function bindingReach(zoom: number): number {
  * around both shapes (`elbow.ts`). Where none exists, today's plain Z.
  */
 function elbowRoute(arrow: SceneElement, points: number[], startShape?: SceneElement, endShape?: SceneElement): number[] {
+  const { from, to } = elbowEnds(arrow, points, startShape, endShape);
+  // Re-aiming runs on every change and every preview frame, for every elbow;
+  // a route is only worked out again when what it depends on moved.
+  const key = JSON.stringify([from, to]);
+  let route = routed.get(key);
+  if (!route) {
+    route = routeElbow(from, to, { gap: BINDING_GAP }) ?? zRoute(from.point, to.point);
+    if (routed.size >= ROUTE_CACHE_SIZE) routed.clear();
+    routed.set(key, route);
+  }
+  return route.map((value, i) => value - (i % 2 === 0 ? arrow.x : arrow.y));
+}
+
+/**
+ * Where an elbow's ends are and which way each leaves, in scene space: an
+ * attached end on the side its anchor is on, a gap clear of the outline; a
+ * free end where it is, facing the other.
+ */
+export function elbowEnds(
+  arrow: SceneElement,
+  points: number[],
+  startShape?: SceneElement,
+  endShape?: SceneElement,
+): { from: ElbowEnd; to: ElbowEnd } {
   const bound = arrow as SceneElement & { startAnchor?: [number, number]; endAnchor?: [number, number] };
   const last = points.length - 2;
   const freeStart = { x: arrow.x + points[0], y: arrow.y + points[1] };
@@ -255,18 +280,56 @@ function elbowRoute(arrow: SceneElement, points: number[], startShape?: SceneEle
     const out = { x: spot.x + outward.x * 1e5, y: spot.y + outward.y * 1e5 };
     return { point: anchorOn(shape, out, spot), heading, box: rotatedBounds(shape) };
   };
-  const from = end(startShape, bound.startAnchor, startSpot, endSpot, freeStart);
-  const to = end(endShape, bound.endAnchor, endSpot, startSpot, freeEnd);
-  // Re-aiming runs on every change and every preview frame, for every elbow;
-  // a route is only worked out again when what it depends on moved.
-  const key = JSON.stringify([from, to]);
-  let route = routed.get(key);
-  if (!route) {
-    route = routeElbow(from, to, { gap: BINDING_GAP }) ?? zRoute(from.point, to.point);
-    if (routed.size >= ROUTE_CACHE_SIZE) routed.clear();
-    routed.set(key, route);
-  }
-  return route.map((value, i) => value - (i % 2 === 0 ? arrow.x : arrow.y));
+  return {
+    from: end(startShape, bound.startAnchor, startSpot, endSpot, freeStart),
+    to: end(endShape, bound.endAnchor, endSpot, startSpot, freeEnd),
+  };
+}
+
+/**
+ * An elbow with fixed segments (`fixedSegments`): its interior kept, the legs
+ * at its ends worked out again (`elbow-segments.ts`), relative to the arrow
+ * as its points are. Null when nothing fixed survives, for a whole route.
+ */
+function shapedRoute(arrow: SceneElement, scene: SceneData): { points: number[]; fixed: number[] } | null {
+  const fixed = fixedOf(arrow);
+  const points = ('points' in arrow ? arrow.points : []) as number[];
+  if (fixed.length === 0 || points.length < 8) return null;
+  const { start, end } = bindingsOf(arrow);
+  const find = (id?: string) => (id === undefined ? undefined : scene.elements.find((e) => e.id === id));
+  const { from, to } = elbowEnds(arrow, points, find(start), find(end));
+  const world: Point[] = [];
+  for (let i = 0; i + 1 < points.length; i += 2) world.push({ x: arrow.x + points[i], y: arrow.y + points[i + 1] });
+  const adapted = adaptEnds(world, fixed, from, to);
+  const tidied = adapted && renormalise(adapted.points, adapted.fixed);
+  if (!tidied) return null;
+  return { points: tidied.points.flatMap((p) => [p.x - arrow.x, p.y - arrow.y]), fixed: tidied.fixed };
+}
+
+/** The indices of an elbow's fixed segments, sorted; none when it has none. */
+export function fixedOf(arrow: SceneElement): number[] {
+  const list = (arrow as { fixedSegments?: { index?: unknown }[] }).fixedSegments;
+  if (!Array.isArray(list)) return [];
+  const indices = list.map((entry) => entry?.index).filter((i): i is number => typeof i === 'number' && Number.isInteger(i));
+  return [...new Set(indices)].sort((a, b) => a - b);
+}
+
+/**
+ * The arrow with its fixed segments set to `fixed`, each entry's ends read
+ * from its points; the key removed when there are none.
+ */
+export function withFixed(arrow: SceneElement, fixed: number[]): SceneElement {
+  const points = ('points' in arrow ? arrow.points : []) as number[];
+  const out = { ...arrow } as SceneElement & { fixedSegments?: unknown };
+  const valid = fixed.filter((i) => i > 1 && i < points.length / 2 - 1);
+  if (valid.length === 0) delete out.fixedSegments;
+  else
+    out.fixedSegments = valid.map((index) => ({
+      index,
+      start: [points[index * 2 - 2], points[index * 2 - 1]],
+      end: [points[index * 2], points[index * 2 + 1]],
+    }));
+  return out;
 }
 
 /** Routes already worked out, by their ends, headings and shapes' boxes. */
@@ -334,9 +397,15 @@ const SIDE_MIDDLES: [number, number][] = [
  * shape within `reach` of a side's middle, it snaps to that middle
  * (Excalidraw's `getSnapOutlineMidPoint` for ordinary arrows). An `inside`
  * (pinned) end keeps the exact spot, neither snapped nor taken to the outline.
+ * An `elbow` end snaps by the elbow's own rule (`elbowSnap`) and is never
+ * pinned.
  */
-export function anchorFor(shape: SceneElement, point: Point, reach = BINDING_REACH_MIN, inside = false): [number, number] {
-  if (!inside && !measureAgainst(shape, point).contains) {
+export function anchorFor(shape: SceneElement, point: Point, reach = BINDING_REACH_MIN, inside = false, elbow = false): [number, number] {
+  if (elbow) {
+    const snapped = elbowSnap(shape, point, reach);
+    if (snapped) return snapped;
+    inside = false;
+  } else if (!inside && !measureAgainst(shape, point).contains) {
     // The nearest middle in reach, not the first: on a small shape several
     // are in reach at once.
     let best: [number, number] | null = null;
@@ -362,6 +431,57 @@ export function anchorFor(shape: SceneElement, point: Point, reach = BINDING_REA
   if (!inside && !insidePolygon(outline, local)) local = nearestOn(outline, local);
   const fraction = (value: number, size: number) => (size > 0 ? tidy(Math.min(1, Math.max(0, value / size + 0.5))) : 0.5);
   return [fraction(local.x, shape.w), fraction(local.y, shape.h)];
+}
+
+/** Where an elbow end snaps to a diamond's edge middles, and which way from them. */
+const DIAMOND_EDGE_MIDDLES: [number, number, number, number][] = [
+  [0.25, 0.25, -1, -1],
+  [0.75, 0.25, 1, -1],
+  [0.25, 0.75, -1, 1],
+  [0.75, 0.75, 1, 1],
+];
+
+/** The share of a side, either way of its middle, an elbow end snaps within. */
+const ELBOW_SNAP_BAND = 0.05;
+
+/**
+ * Excalidraw's elbow snap (`getElbowArrowSnapMidPoint`, `utils.ts:640-786`):
+ * a point within a band either side of the line through the centre, 5% of
+ * the side and clamped between 5 and `reach`, snaps to the middle of the side
+ * it is towards, from inside the shape or out; on a diamond, a point near an
+ * edge's middle (a gap outside it) snaps there. Null when neither.
+ */
+function elbowSnap(shape: SceneElement, point: Point, reach: number): [number, number] | null {
+  const centre = centreOf(shape);
+  const upright = rotatePoint(point, centre, -angleOfElement(shape));
+  const dx = upright.x - centre.x;
+  const dy = upright.y - centre.y;
+  if (Math.hypot(dx, dy) < BINDING_GAP) return null;
+  const clamp = (value: number) => Math.min(reach, Math.max(5, value));
+  const across = clamp(ELBOW_SNAP_BAND * shape.w);
+  const down = clamp(ELBOW_SNAP_BAND * shape.h);
+  if (dx <= 0 && Math.abs(dy) < down) return [0, 0.5];
+  if (dy <= 0 && Math.abs(dx) < across) return [0.5, 0];
+  if (dx >= 0 && Math.abs(dy) < down) return [1, 0.5];
+  if (dy >= 0 && Math.abs(dx) < across) return [0.5, 1];
+  if (shape.type === 'diamond') {
+    const within = Math.max(across, down);
+    for (const [fx, fy, sx, sy] of DIAMOND_EDGE_MIDDLES) {
+      const zone = { x: shape.x + fx * shape.w + sx * BINDING_GAP, y: shape.y + fy * shape.h + sy * BINDING_GAP };
+      if (Math.hypot(zone.x - upright.x, zone.y - upright.y) < within) return [fx, fy];
+    }
+  }
+  return null;
+}
+
+/**
+ * The spots an elbow end can snap to on a shape, in scene space, for the
+ * stage to show as dots while an elbow end is dragged: the four side middles
+ * (a diamond's corners), and a diamond's edge middles too.
+ */
+export function elbowSnapSpots(shape: SceneElement): Point[] {
+  const edges: [number, number][] = shape.type === 'diamond' ? DIAMOND_EDGE_MIDDLES.map(([fx, fy]) => [fx, fy]) : [];
+  return [...SIDE_MIDDLES, ...edges].map((middle) => spotOn(shape, middle));
 }
 
 /** Whether a point is strictly inside an element's drawn outline. */
@@ -459,14 +579,22 @@ export function reroute(scene: SceneData): void {
     const element = scene.elements[i];
     if (element.type !== 'arrow') continue;
 
-    const routed = routeFor(element, scene);
+    const elbow = (element as { arrowType?: string }).arrowType === 'elbow';
+    const shaped = elbow && fixedOf(element).length > 0 ? shapedRoute(element, scene) : null;
+    const routed = shaped ? shaped.points : routeFor(element, scene);
     const { start, end } = bindingsOf(element);
     const attached = start !== undefined || end !== undefined;
     // An attached arrow's direction comes from the shapes it joins, so a
     // stored angle has nothing left to mean: keeping it would turn the arrow
     // away from the anchors just computed for it.
     const upright = attached && angleOfElement(element) !== 0 ? stripAngle(element) : element;
-    const settled = settledAround(upright, routed);
+    // Fixed segments survive only where they were kept; a whole route has none.
+    // Checked against the new route: a stub at an end shifts the indices.
+    const marked =
+      elbow && 'fixedSegments' in element
+        ? withFixed({ ...upright, points: shaped ? shaped.points : routed } as SceneElement, shaped ? shaped.fixed : [])
+        : upright;
+    const settled = settledAround(marked, routed);
     if (!changed(element, settled)) continue;
     scene.elements[i] = settled;
   }
@@ -515,7 +643,9 @@ function changed(before: SceneElement, after: SceneElement): boolean {
     before.y !== after.y ||
     before.w !== after.w ||
     before.h !== after.h ||
-    points(before) !== points(after)
+    points(before) !== points(after) ||
+    JSON.stringify((before as { fixedSegments?: unknown }).fixedSegments) !==
+      JSON.stringify((after as { fixedSegments?: unknown }).fixedSegments)
   );
 }
 
@@ -535,7 +665,7 @@ export function settledAround(arrow: SceneElement, points: number[]): SceneEleme
   const top = Math.min(drawn.y, ...ys);
   const right = Math.max(drawn.x + drawn.w, ...xs);
   const bottom = Math.max(drawn.y + drawn.h, ...ys);
-  return {
+  const settled = {
     ...arrow,
     // The points are relative to x, y: shifting the box shifts them back.
     x: tidy(arrow.x + left),
@@ -544,4 +674,8 @@ export function settledAround(arrow: SceneElement, points: number[]): SceneEleme
     h: tidy(bottom - top),
     points: points.map((value, i) => tidy(value - (i % 2 === 0 ? left : top))),
   } as SceneElement;
+  // A fixed segment's record follows its points, which just moved.
+  if (!('fixedSegments' in arrow)) return settled;
+  // Only an elbow keeps fixed segments (`docs/file-format.md`).
+  return withFixed(settled, (arrow as { arrowType?: string }).arrowType === 'elbow' ? fixedOf(arrow) : []);
 }

@@ -23,20 +23,21 @@ export type Box = { x: number; y: number; w: number; h: number };
 /**
  * How far a route keeps from the shapes it joins, in scene units. The token
  * `--size-elbow-margin` is the source; this is its value at the default theme,
- * for a pure function that takes no reader, as `BINDING_GAP` is. Excalidraw
- * pads by up to 40 (`BASE_PADDING`) on the far sides and less on the heading
- * side; half of it on every side keeps the route close and clear.
+ * for a pure function that takes no reader, as `BINDING_GAP` is. Excalidraw's
+ * `BASE_PADDING`: it pads the heading side by less but grows the shape there
+ * first, so a route keeps 40 clear on every side, head or not
+ * (`elbowArrow.ts:1308-1394`). Close shapes share the gap between them.
  */
-export const ELBOW_MARGIN = 20;
+export const ELBOW_MARGIN = 40;
 
-const VECTOR: Record<Heading, Point> = {
+export const VECTOR: Record<Heading, Point> = {
   up: { x: 0, y: -1 },
   right: { x: 1, y: 0 },
   down: { x: 0, y: 1 },
   left: { x: -1, y: 0 },
 };
 
-const OPPOSITE: Record<Heading, Heading> = { up: 'down', right: 'left', down: 'up', left: 'right' };
+export const OPPOSITE: Record<Heading, Heading> = { up: 'down', right: 'left', down: 'up', left: 'right' };
 
 /** The heading of a vector, as Excalidraw's `vectorToHeading`. */
 export function headingOf(dx: number, dy: number): Heading {

@@ -32,11 +32,12 @@ export function commitCode(history: History, id: ElementId, code: string, metric
     const element = draft.elements.find((e) => e.id === id) as (SceneElement & CodeFields) | undefined;
     if (!element || element.type !== 'code') return;
     if (element.code === code) return;
-    // The width is the user's; the height follows the code wrapped to it.
+    // The width is the user's; so is a taller height, but the code wrapped
+    // to the width sets its floor.
     const size = measureCode(code, metrics, element.w);
     element.code = code;
     element.w = size.width;
-    element.h = size.height;
+    element.h = Math.max(element.h, size.height);
     element.measuredWidth = size.width;
     element.measuredHeight = size.height;
   });

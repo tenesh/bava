@@ -7,6 +7,10 @@
 import type { History } from './history';
 import type { ElementId, SceneData, SceneElement } from './scene';
 import { isShapeType } from './scene';
+import { anchorFor, BINDING_REACH_MIN, drawnPoints } from './binding';
+import { angleOfElement } from './rotate';
+import { tidy } from './resize';
+import { PROPERTY_DEFAULTS } from './style-defaults';
 
 export type StyleKey = 'fill' | 'stroke' | 'color';
 
@@ -165,16 +169,41 @@ export function applyProperty(
       // The element's own types name each key; a generic setter writes through
       // a record view of the same object.
       const styled = element as unknown as Record<string, PropertyValue | undefined>;
-      // An elbow's points are its route: an arrow that stops being one keeps
-      // only its ends, as Excalidraw's does. Becoming one, `reroute` routes it.
-      // An elbow end is never pinned inside (`docs/file-format.md`).
-      if (key === 'arrowType' && value === 'elbow') {
-        delete styled.startMode;
-        delete styled.endMode;
-      }
-      if (key === 'arrowType' && styled.arrowType === 'elbow' && value !== 'elbow' && 'points' in element) {
-        const points = element.points as number[];
-        if (points.length > 4) element.points = [points[0], points[1], points[points.length - 2], points[points.length - 1]];
+      // Switching kinds as Excalidraw does (`actionProperties.tsx:2077-2221`):
+      // only the ends are kept, where they are drawn, and each attached end
+      // is attached again there by the new kind's rule. Becoming an elbow, the
+      // arrow loses its turn and `reroute` routes it; an elbow end is never
+      // pinned inside (`docs/file-format.md`). Fixed segments belong to one
+      // route, and go with it.
+      const switching = key === 'arrowType' && element.type === 'arrow' && 'points' in element && (value === 'elbow') !== (styled.arrowType === 'elbow');
+      if (switching) {
+        const toElbow = value === 'elbow';
+        const drawn = drawnPoints(element);
+        const ends = [
+          { x: drawn[0], y: drawn[1] },
+          { x: drawn[drawn.length - 2], y: drawn[drawn.length - 1] },
+        ];
+        const record = element as unknown as Record<string, unknown>;
+        if (toElbow) {
+          delete record.angle;
+          delete record.startMode;
+          delete record.endMode;
+        }
+        // Without its turn, the ends are written where they were drawn.
+        const turned = !toElbow && angleOfElement(element) !== 0;
+        if (!turned) element.points = ends.flatMap((p) => [tidy(p.x - element.x), tidy(p.y - element.y)]);
+        else {
+          const points = element.points as number[];
+          element.points = [points[0], points[1], points[points.length - 2], points[points.length - 1]];
+        }
+        delete record.fixedSegments;
+        (['start', 'end'] as const).forEach((side, i) => {
+          const id = record[`${side}Binding`];
+          const shape = draft.elements.find((e) => e.id === id);
+          if (!shape) return;
+          const inside = !toElbow && record[`${side}Mode`] === 'inside';
+          record[`${side}Anchor`] = anchorFor(shape, ends[i], BINDING_REACH_MIN, inside, toElbow);
+        });
       }
       if (value === null) {
         if (key in styled) delete styled[key];
@@ -204,22 +233,7 @@ export function currentProperty(
 }
 
 
-/**
- * What each property means when the key is absent, as `docs/file-format.md`
- * records it. `align` has no single default (centred in a shape, left in free
- * text) and is always written.
- */
-export const PROPERTY_DEFAULTS: Partial<Record<PropertyKey, PropertyValue>> = {
-  strokeWidth: 2,
-  strokeStyle: 'solid',
-  edges: 'sharp',
-  opacity: 100,
-  fontSize: 20,
-  verticalAlign: 'middle',
-  arrowType: 'straight',
-  startArrowhead: 'none',
-  endArrowhead: 'arrow',
-};
+export { PROPERTY_DEFAULTS } from './style-defaults';
 
 /**
  * Apply a control's choice: the default clears the key, so an element the user

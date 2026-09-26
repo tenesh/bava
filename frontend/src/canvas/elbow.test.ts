@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { reroute } from './binding';
 import { createHistory } from './history';
 import { setProperty } from './style';
+import { pathOf } from './arrows';
 import type { SceneData, SceneElement } from './scene';
 
 // Decision 2 of 06.12 and .claude/work/specs/excalidraw-elbow-routing.md: an
@@ -196,5 +197,143 @@ describe('switching a pinned arrow to elbow', () => {
     });
     setProperty(history, ['e'], 'arrowType', 'elbow');
     expect(history.current.elements[1]).not.toHaveProperty('startMode');
+  });
+});
+
+// 06.14, inventory section 4: the shape of an elbow's route, as Excalidraw's.
+describe('an elbow shaped as Excalidraw draws it', () => {
+  // E2: Excalidraw grows the shape by 10 on its heading side (30 with a
+  // head) and pads by 40 less that, so a route keeps 40 clear on every side,
+  // head or not (`elbowArrow.ts:1308-1394`).
+  it('keeps 40 clear of the shape it leaves', () => {
+    const points = routed({
+      elements: [
+        box('a', 0, 0),
+        box('b', 400, 0),
+        elbow({ points: [50, 0, 450, 0], startBinding: 'a', startAnchor: [0.5, 0], endBinding: 'b', endAnchor: [0.5, 0] }),
+      ],
+    });
+    // The top leg runs at the start's dongle, 40 above A.
+    expect(Math.min(...points.filter((_, i) => i % 2 === 1))).toBe(-40);
+  });
+
+  // E6: an end at a box corner leaves by a side, never along the edge.
+  it('leaves a corner anchor outward, not along the edge', () => {
+    const points = routed({
+      elements: [box('a', 0, 0), elbow({ points: [0, 0, 400, 300], startBinding: 'a', startAnchor: [0, 0] })],
+    });
+    const [x1, y1, x2, y2] = points;
+    // The first leg does not run along the top edge (y = 0) across the box.
+    expect(y1 === y2 && y1 === 0 && x2 > 0).toBe(false);
+    expect(x1 === x2 || y1 === y2).toBe(true);
+  });
+});
+
+describe('elbow corners', () => {
+  // E4: each corner drawn as a curve of radius min(16, half each neighbour).
+  it('are rounded when drawn, the stored route kept square', () => {
+    const route = [0, 0, 100, 0, 100, 100];
+    const drawn = pathOf(route, 'elbow');
+    expect(route).toEqual([0, 0, 100, 0, 100, 100]);
+    // The corner itself is cut: the drawn path turns within 16 of it.
+    const hitsCorner = drawn.some((v, i) => i % 2 === 0 && v === 100 && drawn[i + 1] === 0);
+    expect(hitsCorner).toBe(false);
+    expect(drawn.slice(0, 2)).toEqual([0, 0]);
+    expect(drawn.slice(-2)).toEqual([100, 100]);
+    expect(drawn).toContain(84);
+  });
+
+  it('use a smaller radius on a short segment', () => {
+    const drawn = pathOf([0, 0, 10, 0, 10, 100], 'elbow');
+    // Half of the 10-long first segment: the curve starts at x = 5.
+    expect(drawn.slice(2, 4)).toEqual([5, 0]);
+  });
+});
+
+// 06.14 E11: a dragged (fixed) segment stays where it was put when a shape
+// moves; only the legs at the ends adapt.
+describe('an elbow with a fixed segment', () => {
+  const scene = (bY = 200): SceneData => ({
+    elements: [
+      box('a', 0, 0, 100, 100),
+      box('b', 300, bY, 100, 100),
+      elbow({
+        x: 104,
+        y: 50,
+        points: [0, 0, 126, 0, 126, 200, 192, 200],
+        startBinding: 'a',
+        startAnchor: [1, 0.5],
+        endBinding: 'b',
+        endAnchor: [0, 0.5],
+        fixedSegments: [{ index: 2, start: [126, 0], end: [126, 200] }],
+      }),
+    ],
+  });
+
+  it('keeps it when a shape moves', () => {
+    expect(routed(scene(230))).toEqual([104, 50, 230, 50, 230, 280, 296, 280]);
+  });
+
+  it('keeps its record in step with the points', () => {
+    const moved = scene(230);
+    reroute(moved);
+    const arrow = moved.elements[2] as unknown as { points: number[]; fixedSegments: { index: number; start: number[]; end: number[] }[] };
+    expect(arrow.fixedSegments).toEqual([{ index: 2, start: arrow.points.slice(2, 4), end: arrow.points.slice(4, 6) }]);
+  });
+
+  // Review of 06.14: the stub pair shifts the indices; the kept segment
+  // must be checked against the new route, not the old one.
+  it('keeps it when the start moves to a side that needs a stub', () => {
+    const moved = scene();
+    (moved.elements[2] as unknown as { startAnchor: number[] }).startAnchor = [0.5, 0];
+    reroute(moved);
+    const arrow = moved.elements[2] as unknown as { x: number; points: number[]; fixedSegments?: { index: number }[] };
+    expect(arrow.fixedSegments?.map((f) => f.index)).toEqual([3]);
+    expect(arrow.x + arrow.points[6]).toBe(230);
+  });
+
+  it('routes whole again once no fixed segment is left', () => {
+    const plain = scene(230);
+    delete (plain.elements[2] as { fixedSegments?: unknown }).fixedSegments;
+    expect(routed(plain)).not.toEqual([104, 50, 230, 50, 230, 280, 296, 280]);
+  });
+});
+
+// 06.14 E14, E15: switching kinds as Excalidraw does
+// (`actionProperties.tsx:2077-2221`).
+describe('switching kinds, as Excalidraw does', () => {
+  it('to elbow: two points, its turn and its fixed segments gone', () => {
+    const history = createHistory({
+      elements: [{ id: 'e', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 9, angle: 90, points: [0, 0, 100, 40, 200, 0] } as never],
+    });
+    setProperty(history, ['e'], 'arrowType', 'elbow');
+    const arrow = history.current.elements[0] as unknown as { angle?: number; x: number; y: number; points: number[] };
+    expect(arrow.angle ?? 0).toBe(0);
+  });
+
+  it('to elbow: each end re-attached by the elbow snap', () => {
+    const history = createHistory({
+      elements: [
+        box('a', 0, 0, 100, 60),
+        { id: 'e', type: 'arrow', x: 104, y: 31, w: 200, h: 0, z: 9, points: [0, 0, 200, 0], startBinding: 'a', startAnchor: [1, 0.52] } as never,
+      ],
+    });
+    setProperty(history, ['e'], 'arrowType', 'elbow');
+    expect(history.current.elements[1]).toMatchObject({ startAnchor: [1, 0.5] });
+  });
+
+  it('away from elbow: its fixed segments dropped', () => {
+    const history = createHistory({
+      elements: [
+        elbow({
+          points: [0, 0, 100, 0, 100, 100, 200, 100],
+          w: 200,
+          h: 100,
+          fixedSegments: [{ index: 2, start: [100, 0], end: [100, 100] }],
+        }),
+      ],
+    });
+    setProperty(history, ['e'], 'arrowType', 'straight');
+    expect(history.current.elements[0]).not.toHaveProperty('fixedSegments');
   });
 });

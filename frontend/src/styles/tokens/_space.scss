@@ -34,9 +34,9 @@
   // How far clear of a shape an attached arrow stops.
   --size-binding-gap: 4px;
   // How far an elbow's route keeps from the shapes it joins (canvas/elbow.ts).
-  --size-elbow-margin: 20px;
-  // How near a line counts as a click on it.
-  --size-hit-tolerance: 4px;
+  --size-elbow-margin: 40px;
+  // How near a line counts as a click on it: Excalidraw's 0.85 × 8 = 6.8 px.
+  --size-hit-tolerance: 7px;
   // How far a press must travel, on screen, before it is a drag, not a click.
   --size-drag-threshold: 3px;
   // The shortest segment, on screen, that offers a handle at its middle to
@@ -48,6 +48,21 @@
   --size-point-hit: 11px;
   // A point handle while editing a line's points: Excalidraw's 10 px radius.
   --size-point-handle-editing: 20px;
+  // The spots an elbow end snaps to, shown while one is dragged: Excalidraw's
+  // 4 px radius (this is the diameter).
+  --size-snap-dot: 8px;
+  // The translucent disc under the handle the pointer is over: Excalidraw's
+  // 10 px radius.
+  --size-point-hover: 20px;
+  // The disc on an attached arrow end's anchor: Excalidraw's focus point,
+  // 10 / 1.5 / 1.5 px in radius (this is the diameter, rounded).
+  --size-focus-point: 9px;
+  // A point this near the one before it is drawn larger, so both show
+  // (Excalidraw's 2 px).
+  --size-point-overlap: 2px;
+  // A bent line's selection box stands this clear of it, so its corner
+  // handles are not on its points (Excalidraw's 10 px).
+  --size-bent-box-padding: 10px;
   // How far a segment's middle is dragged before it adds a bend, and the
   // shortest line or arrow a drag draws (Excalidraw's 10 and 20).
   --size-bend-insert: 10px;

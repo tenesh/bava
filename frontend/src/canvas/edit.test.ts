@@ -148,12 +148,43 @@ describe('copying keeps bindings and containment inside the copy', () => {
     expect(child.frame).toBe(frame.id);
   });
 
-  // Copying only the arrow leaves it pointing at the shapes it was drawn
-  // between: they are still there, and the copy sits on them.
-  it('keeps a binding whose target was not copied', () => {
-    const scene = arranged();
+  // B23 of the Excalidraw inventory: copying only the arrow lets go of the
+  // shapes it was drawn between. Kept, re-aiming pulled the copy back onto
+  // the original's shapes, on top of the original.
+  it('lets go of a shape that was not copied', () => {
+    const scene = createScene({
+      elements: [
+        { id: 'a', type: 'rect', x: 20, y: 20, w: 60, h: 60, z: 1 },
+        { id: 'arrow', type: 'arrow', x: 80, y: 50, w: 120, h: 0, z: 2, points: [0, 0, 120, 0], startBinding: 'a', startAnchor: [1, 0.5], startMode: 'inside', endBinding: 'gone' },
+      ] as never[],
+    });
     const [copy] = duplicate(scene, [scene.get('arrow')!]) as unknown as Record<string, unknown>[];
-    expect(copy.startBinding).toBe('a');
+    expect(copy).not.toHaveProperty('startBinding');
+    expect(copy).not.toHaveProperty('startAnchor');
+    expect(copy).not.toHaveProperty('startMode');
+    // A target already gone stays named: the copy's end is detached, as the
+    // original's is.
+    expect(copy.endBinding).toBe('gone');
+  });
+
+  // Review of 06.14: a copy replaced to let go keeps its place in the stack.
+  it('keeps the copies stacked as the originals are', () => {
+    const scene = createScene({
+      elements: [
+        { id: 'arrow', type: 'arrow', x: 80, y: 50, w: 120, h: 0, z: 1, points: [0, 0, 120, 0], startBinding: 'a', startAnchor: [1, 0.5] },
+        { id: 'a', type: 'rect', x: 20, y: 20, w: 60, h: 60, z: 2 },
+      ] as never[],
+    });
+    const copies = duplicate(scene, [scene.get('arrow')!, scene.get('a')!]);
+    const z = (type: string) => copies.find((c) => c.type === type)!.id;
+    expect(scene.get(z('arrow'))!.z).toBeLessThan(scene.get(z('rect'))!.z);
+  });
+
+  it('lets go through paste as well', () => {
+    const scene = arranged();
+    const [copy] = paste(scene, [scene.get('arrow')!]) as unknown as Record<string, unknown>[];
+    expect(copy).not.toHaveProperty('startBinding');
+    expect(copy).not.toHaveProperty('endBinding');
   });
 
   it('remaps through paste as well', () => {

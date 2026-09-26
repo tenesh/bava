@@ -337,3 +337,20 @@ That is the one modifier sorted at the press: whether an Alt-press off the line
 adds a point is decided as it lands (and the add happens on release, if Alt is
 still held), since a plain press there has already ended the mode.
 A line drawn click by click enters history once, when it finishes.
+
+## Fixed segments keep the route's interior
+An elbow with `fixedSegments` is not routed whole: `reroute` keeps its
+interior and rebuilds only the leg at each end (`elbow-segments.ts`,
+`adaptEnds`, then `renormalise`), and the same ends give the same points, so
+it runs on every change and every preview frame. A fixed segment is an index;
+its `start`/`end` are always rewritten from the points (`withFixed`, in
+`settledAround`), never trusted. A segment drag starts every frame from the
+press-time points. Switching kind drops the fixed segments.
+
+## Cursors are decided by one function
+`cursor.ts` (`cursorFor`) turns what the pointer reports under it
+(`cursorTarget`, by the same rules a press there follows) and what the app is
+doing (tool, panning, a label drag) into a CSS cursor. The app sets it on the
+canvas host once a frame; nothing else writes a cursor. A drag keeps the
+cursor it started with, except a label's.
+

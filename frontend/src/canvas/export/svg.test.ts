@@ -3,7 +3,7 @@ import { toSvg } from './svg';
 import { exportArea } from './area';
 import { svgPathSink } from './path-sink';
 import { drawOutline } from '../shapes';
-import { drawHead } from '../arrows';
+import { drawHead, labelPoint, pathOf } from '../arrows';
 import type { SceneData, SceneElement } from '../scene';
 
 const read = (name: string) =>
@@ -70,8 +70,12 @@ describe('exporting to SVG', () => {
     const svg = svgOf([
       { id: 'a', type: 'arrow', x: 0, y: 0, w: 40, h: 40, z: 1, points: [0, 0, 40, 40], arrowType: 'elbow' },
     ]);
-    // An elbow is orthogonal: it steps out, across and in, never diagonally.
-    expect(svg).toContain('points="0 0 20 0 20 40 40 40"');
+    // An elbow is orthogonal, stepping out, across and in, with its corners
+    // rounded as the stage draws them (06.14 E4).
+    const path = pathOf([0, 0, 40, 40], 'elbow');
+    const pairs = Array.from({ length: path.length / 2 }, (_, i) => `${Math.round(path[i * 2] * 1000) / 1000} ${Math.round(path[i * 2 + 1] * 1000) / 1000}`);
+    expect(svg).toContain(`points="${pairs.join(' ')}"`);
+    expect(svg).not.toContain('points="0 0 20 0 20 40 40 40"');
     expect(svg).toContain('data-head="end"');
   });
 
@@ -149,6 +153,15 @@ describe('exporting an arrow label', () => {
     ]);
     expect(svg).toContain('sends to');
     expect(svg).toMatch(/<text[^>]*x="50"/);
+  });
+
+  // Review of 06.14: an elbow's label sits on its rounded path, as drawn.
+  it("writes an elbow's label on the path as drawn, corners rounded", () => {
+    const svg = svgOf([
+      { id: 'a', type: 'arrow', arrowType: 'elbow', x: 0, y: 0, w: 100, h: 100, z: 1, points: [0, 0, 100, 0, 100, 100], label: 'x' },
+    ]);
+    const at = labelPoint(pathOf([0, 0, 100, 0, 100, 100], 'elbow'));
+    expect(svg).toContain(`<text x="${Math.round(at.x * 1000) / 1000}"`);
   });
 });
 

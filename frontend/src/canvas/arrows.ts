@@ -17,6 +17,53 @@ const ARC_BOW = 0.2;
 
 export type ArrowType = 'straight' | 'elbow' | 'arc';
 
+/** An elbow's corners are drawn round, at most this radius (Excalidraw's 16). */
+export const ELBOW_CORNER = 16;
+
+/** Points on each rounded corner of an elbow, both ends of the curve included. */
+const CORNER_STEPS = 6;
+
+/**
+ * The line an arrow is drawn along: its route (`routePoints`), with an
+ * elbow's corners turned into curves. The one path the stage draws, the hit
+ * test measures and the exporter writes, so the three agree.
+ */
+export function pathOf(points: number[], type: string | undefined): number[] {
+  const route = routePoints(points, type);
+  return type === 'elbow' ? roundCorners(route) : route;
+}
+
+/**
+ * A right-angled route with each corner a quadratic curve of radius
+ * min(`ELBOW_CORNER`, half of either neighbouring segment), as Excalidraw's
+ * `generateElbowArrowShape` (`element/src/shape.ts:1018-1081`), sampled so
+ * every renderer draws the same points.
+ */
+export function roundCorners(route: number[]): number[] {
+  const count = route.length / 2;
+  if (count < 3) return route;
+  const out = [route[0], route[1]];
+  for (let i = 1; i < count - 1; i += 1) {
+    const [px, py, x, y, nx, ny] = route.slice(i * 2 - 2, i * 2 + 4);
+    const before = Math.hypot(x - px, y - py);
+    const after = Math.hypot(nx - x, ny - y);
+    const radius = Math.min(ELBOW_CORNER, before / 2, after / 2);
+    if (radius <= 0) {
+      out.push(x, y);
+      continue;
+    }
+    const from = { x: x + ((px - x) / before) * radius, y: y + ((py - y) / before) * radius };
+    const to = { x: x + ((nx - x) / after) * radius, y: y + ((ny - y) / after) * radius };
+    for (let step = 0; step <= CORNER_STEPS; step += 1) {
+      const t = step / CORNER_STEPS;
+      const u = 1 - t;
+      out.push(u * u * from.x + 2 * u * t * x + t * t * to.x, u * u * from.y + 2 * u * t * y + t * t * to.y);
+    }
+  }
+  out.push(route[route.length - 2], route[route.length - 1]);
+  return out;
+}
+
 /**
  * The drawn path for `points` (a flat x,y list relative to the element).
  *
