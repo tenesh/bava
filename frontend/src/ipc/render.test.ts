@@ -252,3 +252,26 @@ describe('the real transport', () => {
     vi.doUnmock('../../bindings/github.com/tenesh/bava/internal/app');
   });
 });
+
+// The dialog's picker: a request carries the engine and direction it was made
+// with, so the preview and the insert use the same layout.
+describe('render client layout options', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('sends the engine and direction it is asked for', async () => {
+    const send = vi.fn().mockResolvedValue(ok('<svg/>'));
+    const client = createRenderClient({ send, engine: 'tala' });
+    client.request('a -> b', { engine: 'dagre', direction: 'right' });
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(send).toHaveBeenCalledWith('a -> b', 'dagre', 'right');
+  });
+
+  it('falls back to its own engine and no direction', async () => {
+    const send = vi.fn().mockResolvedValue(ok('<svg/>'));
+    const client = createRenderClient({ send, engine: 'elk' });
+    client.request('a');
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(send).toHaveBeenCalledWith('a', 'elk', '');
+  });
+});

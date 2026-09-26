@@ -631,6 +631,18 @@ deliberately at `5.24.2` or later.
   (ArrowDown, Enter); RadioGroup items accept a click. Popovers render closed
   content unless `lazyMount`.
 
+### Milestone 6.11 findings (Diagram from Code dialog), 2026-09-26
+
+- **Gates green; not seen at a running window.** Plan
+  `.claude/work/plans/06.11-diagram-dialog.md`.
+- `Dialog` has a `wide` size; `LayoutEnginePicker` exists; `render.Options`
+  has `Direction`, appended to the source only when it sets none (never
+  prepended, so diagnostics keep their lines). The document's own render now
+  uses the configured engine, which the status bar names.
+- **A parameter named `layout` in the render client shadowed its `layout`
+  state**: every successful render wrote its geometry to the parameter and the
+  dialog's Insert had nothing. Caught by existing tests; worth remembering.
+
 ### Milestone 6.10 findings (arrows you can shape), 2026-09-26
 
 - **Gates green; not seen at a running window.** Plan

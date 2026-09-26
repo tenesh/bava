@@ -112,6 +112,17 @@ describe('App shell integration', () => {
     unmount(app);
   });
 
+  // The status bar names the engine the document is laid out with, which is
+  // the configured one, not a literal (plan 06.11).
+  it('names the configured engine in the status bar', async () => {
+    const { FileService } = await import('../bindings/github.com/tenesh/bava/internal/app');
+    vi.mocked(FileService.Settings).mockResolvedValueOnce({ debounceMs: 250, layoutEngine: 'elk', autosave: 'off', autosaveDelayMs: 1000 } as never);
+    const { target, app } = mountApp();
+    menuCommand('file.new');
+    await vi.waitFor(() => expect(target.querySelector('footer')?.textContent).toContain('elk'));
+    unmount(app);
+  });
+
   it('renders the status bar', async () => {
     const { target, app } = mountApp();
     expect(target.querySelector('footer')?.textContent).toContain('Errors');

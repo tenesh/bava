@@ -106,3 +106,23 @@ describe('settings', () => {
     expect(settings.verboseLogging).toBe(false);
   });
 });
+
+// The Diagram from Code dialog opens with the engine used last (plan 06.11):
+// inserting saves it as the default, and an engine the app does not know
+// reads as TALA rather than reaching the renderer.
+describe('the layout engine', () => {
+  it('is saved as the default when set', async () => {
+    const stored = io();
+    const settings = createSettings(stored);
+    await settings.load();
+    await settings.setLayoutEngine('dagre');
+    expect(settings.layoutEngine).toBe('dagre');
+    expect(stored.save).toHaveBeenCalledWith({ ...defaults, layoutEngine: 'dagre' });
+  });
+
+  it('reads an engine it does not know as TALA', async () => {
+    const settings = createSettings(io({ load: vi.fn().mockResolvedValue({ ...defaults, layoutEngine: 'nomnoml' }) }));
+    await settings.load();
+    expect(settings.layoutEngine).toBe('tala');
+  });
+});

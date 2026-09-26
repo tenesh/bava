@@ -35,7 +35,7 @@ export type RenderResult = {
   layout?: Layout;
 };
 
-export type SendFn = (source: string, engine: string) => Promise<RenderResult>;
+export type SendFn = (source: string, engine: string, direction: string) => Promise<RenderResult>;
 
 /**
  * Normalises the binding's nullable fields into the shape the UI wants.
@@ -57,8 +57,11 @@ function normalise(result: Result): RenderResult {
   };
 }
 
-const sendOverIPC: SendFn = async (source, engine) =>
-  normalise(await RenderService.Render(source, { engine }));
+const sendOverIPC: SendFn = async (source, engine, direction) =>
+  normalise(await RenderService.Render(source, { engine, ...(direction ? { direction } : {}) }));
+
+/** How one request is laid out: an engine and a direction, both optional. */
+export type RenderLayout = { engine?: string; direction?: string };
 
 export type RenderClientOptions = {
   /** Injectable for tests; defaults to the real binding. */
@@ -88,11 +91,11 @@ export function createRenderClient(options: RenderClientOptions = {}) {
   let latestRequestID = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
 
-  async function dispatch(source: string) {
+  async function dispatch(source: string, options: RenderLayout) {
     const id = ++latestRequestID;
     pending = true;
     try {
-      const result = await send(source, engine);
+      const result = await send(source, options.engine ?? engine, options.direction ?? '');
       // Anything but the newest response is discarded, however good it is.
       if (id !== latestRequestID) return;
       failure = null;
@@ -141,10 +144,13 @@ export function createRenderClient(options: RenderClientOptions = {}) {
       },
     },
 
-    /** Queue a render. Repeated calls within DEBOUNCE_MS collapse into one. */
-    request(source: string) {
+    /**
+     * Queue a render. Repeated calls within DEBOUNCE_MS collapse into one. The
+     * engine and direction default to the client's own engine and none.
+     */
+    request(source: string, options: RenderLayout = {}) {
       clearTimeout(timer);
-      timer = setTimeout(() => void dispatch(source), debounceMs);
+      timer = setTimeout(() => void dispatch(source, options), debounceMs);
     },
 
     /** Cancel any queued render. Call from a component's cleanup. */

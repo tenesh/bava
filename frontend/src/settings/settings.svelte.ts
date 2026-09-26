@@ -8,6 +8,7 @@
 import { FileService, LogService } from '../../bindings/github.com/tenesh/bava/internal/app';
 import type { Settings } from '../../bindings/github.com/tenesh/bava/internal/config/models';
 import type { AutosaveMode } from '../files/autosave.svelte';
+import { isLayoutEngine, type LayoutEngine } from './layout-engine';
 
 export type SettingsIO = {
   load(): Promise<Settings>;
@@ -63,6 +64,10 @@ export function createSettings(io: SettingsIO = overIPC) {
     get verboseLogging(): boolean {
       return values.verboseLogging;
     },
+    /** The engine the Diagram from Code dialog opens with; one it does not know reads as TALA. */
+    get layoutEngine(): LayoutEngine {
+      return isLayoutEngine(values.layoutEngine) ? values.layoutEngine : 'tala';
+    },
 
     async load(): Promise<void> {
       values = await io.load();
@@ -71,6 +76,7 @@ export function createSettings(io: SettingsIO = overIPC) {
 
     setAutosave: (mode: AutosaveMode) => update({ autosave: mode }),
     setAutosaveDelay: (ms: number) => update({ autosaveDelayMs: ms }),
+    setLayoutEngine: (engine: LayoutEngine) => update({ layoutEngine: engine }),
 
     /**
      * Go owns this one: it changes the live log level too. Saving it here as
