@@ -356,6 +356,7 @@ func TestRoundTripCodeBlocks(t *testing.T) {
     },
     {
       "code": "SELECT 1;",
+      "fontSize": 16,
       "h": 20,
       "id": "c2",
       "language": "a-language-from-later",
@@ -504,6 +505,7 @@ func TestRoundTripClosedFilledLine(t *testing.T) {
       "h": 0,
       "id": "crowfoot",
       "label": "has",
+      "labelDirection": "along",
       "points": [
         0,
         0,

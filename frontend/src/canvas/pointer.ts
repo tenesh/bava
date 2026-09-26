@@ -159,7 +159,7 @@ export type PointerHandlerOptions = {
    */
   labelDrag?: () => number;
   /** How a code block is measured: the mono advance, line height and padding. */
-  codeMetrics?: () => CodeMetrics;
+  codeMetrics?: (element?: SceneElement) => CodeMetrics;
 };
 
 type Drag = {
@@ -1108,7 +1108,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         // At the size an empty block has, not nothing: a 0x0 element cannot be
         // seen, selected or deleted, and would sit in the user's file for ever
         // if they placed one and changed their mind.
-        const size = measureCode('', codeMetrics());
+        // At the size it is given (the last one chosen), as it will be drawn.
+        const size = measureCode('', codeMetrics({ type: 'code', ...newStyle('code') } as unknown as SceneElement));
         history.mutate((scene) => {
           scene.elements.push({
             id,
@@ -1626,7 +1627,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
    * wrapped to that width (`docs/file-format.md`, "Code blocks").
    */
   function codeResized(element: SceneElement): SceneElement {
-    const metrics = codeMetrics();
+    // At the block's own size (06.17).
+    const metrics = codeMetrics(element);
     const block = element as SceneElement & { code: string };
     const w = Math.max(element.w, MIN_RESIZE_COLUMNS * metrics.advance + metrics.padding * 2);
     const size = measureCode(block.code, metrics, w);

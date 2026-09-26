@@ -224,7 +224,7 @@ describe('syntax colours', () => {
 // without a word.
 describe('the canvas distances added in 06.12', () => {
   const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
-  it.each(['--size-point-handle', '--size-point-hit', '--size-bend-insert', '--size-min-linear', '--size-bend-min-segment', '--size-elbow-margin', '--size-line-confirm', '--size-point-handle-editing', '--size-snap-dot', '--size-bent-box-padding', '--size-point-hover', '--size-focus-point', '--size-point-overlap', '--size-label-drag'])(
+  it.each(['--size-point-handle', '--size-point-hit', '--size-bend-insert', '--size-min-linear', '--size-bend-min-segment', '--size-elbow-margin', '--size-line-confirm', '--size-point-handle-editing', '--size-snap-dot', '--size-bent-box-padding', '--size-point-hover', '--size-focus-point', '--size-point-overlap', '--size-label-drag', '--size-code-language-inset', '--size-code-language-clearance'])(
     '%s has a non-zero length',
     (name) => {
       const match = css.match(new RegExp(`${name}:\\s*([0-9.]+)px`));

@@ -133,6 +133,11 @@ export type EditorRequest = {
   /** The view's zoom: the font is scaled by it, as the drawn text is. */
   zoom?: number;
   /**
+   * Grow taller as lines are typed, about the middle of `rect`, rather than
+   * padding the top (an arrow's label, which sits centred on its spot).
+   */
+  growCentred?: boolean;
+  /**
    * The on-screen height of a value once wrapped, for a label placed by its
    * vertical alignment: the field is pushed down by the free space, as the
    * stage places the text.
@@ -237,6 +242,13 @@ export class LabelEditor {
       // The stage places a label by its vertical alignment; the field does it
       // with the free space above the text, recomputed as lines come and go.
       const place = () => {
+        if (request.growCentred) {
+          // Taller as lines come, the middle kept where it opened.
+          const height = Math.max(request.rect.height, textHeight(field.value));
+          field.style.height = `${height}px`;
+          field.style.top = `${request.rect.y - (height - request.rect.height) / 2}px`;
+          return;
+        }
         const free = Math.max(0, request.rect.height - textHeight(field.value));
         const align = font?.verticalAlign ?? 'middle';
         field.style.paddingTop = `${align === 'top' ? 0 : align === 'bottom' ? free : free / 2}px`;

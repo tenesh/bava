@@ -167,6 +167,9 @@ to one bad trailing block is the worst outcome available.
 back to `ChangedOnDisk`. Enough to notice another program writing the file, and
 cheap enough to check whenever the window regains focus. A content hash would
 be exact and would mean re-reading every open file on every focus change.
+The modification time, in nanoseconds, crosses as a decimal string
+(`modifiedUnixNano: "1790444150393195667"`): as a JSON number its 19 digits
+were rounded in JavaScript, and every file looked changed on disk (06.17).
 
 **Cancelling a dialog is not an error.** An empty path means the user changed
 their mind, which is a normal outcome and is not reported as a failure.

@@ -7,7 +7,8 @@
  * something looks: that would be a second drawing implementation, and it would
  * drift from the canvas the first time a shape changed.
  */
-import { LABEL_CLEARANCE, drawHead, endSegment, headAt, headDash, labelSpot, labelWrapWidth, pathOf, routePoints } from '../arrows';
+import { languageTag } from '../code/language-tag';
+import { LABEL_CLEARANCE, drawHead, endSegment, headAt, headDash, labelCorners, labelLayout, type LabelLayout, pathOf, routePoints } from '../arrows';
 import { paintFor, type Paint } from '../paint';
 import { angleOfElement, centreOf } from '../rotate';
 import { isShapeType, type SceneElement } from '../scene';
@@ -154,34 +155,40 @@ function body(element: SceneElement, paint: Paint, surface: string): string {
  * positioned the same way.
  */
 function arrowLabel(element: SceneElement, paint: Paint, label: string): string {
-  const box = { ...element, ...arrowLabelBox(element, paint, label) } as SceneElement;
-  return textElement(box, { ...paint, font: { ...paint.font, align: 'center', verticalAlign: 'middle' } }, label, 0);
+  const layout = arrowLabelLayout(element, paint, label);
+  const box = {
+    ...element,
+    x: element.x + layout.at.x - layout.width / 2,
+    y: element.y + layout.at.y - layout.height / 2,
+    w: layout.width,
+    h: layout.height,
+  } as SceneElement;
+  const text = textElement(box, { ...paint, font: { ...paint.font, align: 'center', verticalAlign: 'middle' } }, label, 0);
+  // Turned along the arrow about its centre, as the stage turns it (06.17).
+  return layout.angle === 0
+    ? text
+    : `<g transform="rotate(${round(layout.angle)} ${round(element.x + layout.at.x)} ${round(element.y + layout.at.y)})">${text}</g>`;
 }
 
-/** Where an arrow's label is, in scene space, as the stage lays it out. */
-function arrowLabelBox(element: SceneElement, paint: Paint, label: string): { x: number; y: number; w: number; h: number } {
+/** An arrow's label laid out as the stage lays it out (`labelLayout`), in the arrow's coordinates. */
+function arrowLabelLayout(element: SceneElement, paint: Paint, label: string): LabelLayout {
   // The path as the stage draws it, which it centres the label on.
   const points = smoothPoints(pathOf(('points' in element ? element.points : []) as number[], (element as { arrowType?: string }).arrowType), paint.tension);
-  const at = labelSpot(element, paint.tension, points);
   const measure = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
-  // The same width the stage wraps to (Excalidraw's).
-  const lines = wrapLines(label, labelWrapWidth(element, paint.font.size), measure);
-  const w = Math.max(...lines.map(measure));
-  const h = paint.font.size * paint.font.lineHeight * lines.length;
-  return { x: element.x + at.x - w / 2, y: element.y + at.y - h / 2, w, h };
+  return labelLayout(element, points, paint.tension, paint.font, measure, label);
 }
 
 /**
  * The mask that hides an arrow's line under its label's box and a margin
- * round it, as the stage clips it (06.16, L7).
+ * round it, turned with it, as the stage clips it (06.16, L7; 06.17).
  */
 function labelMask(element: SceneElement, paint: Paint, label: string): string {
-  const box = arrowLabelBox(element, paint, label);
-  const c = LABEL_CLEARANCE;
+  const corners = labelCorners(arrowLabelLayout(element, paint, label), LABEL_CLEARANCE);
+  const points = corners.map((p) => `${round(element.x + p.x)},${round(element.y + p.y)}`).join(' ');
   return (
     `<mask id="label-${element.id}" maskUnits="userSpaceOnUse">` +
     `<rect x="-1000000" y="-1000000" width="2000000" height="2000000" fill="white"/>` +
-    `<rect x="${round(box.x - c)}" y="${round(box.y - c)}" width="${round(box.w + c * 2)}" height="${round(box.h + c * 2)}" fill="black"/></mask>`
+    `<polygon points="${points}" fill="black"/></mask>`
   );
 }
 
@@ -219,7 +226,9 @@ function codeRuns(element: SceneElement, paint: Paint, options: SvgOptions): str
   if (runs.length === 0) return '';
   const padding = parseFloat(options.read('--size-code-padding')) || 0;
   const lineHeight = paint.font.size * paint.font.lineHeight;
-  const advance = options.monoAdvance ?? monoAdvance(paint.font.size, paint.font.family);
+  // A given advance is the base code size's; a block at its own size scales it.
+  const base = parseFloat(options.read('--text-code')) || paint.font.size;
+  const advance = options.monoAdvance !== undefined ? (options.monoAdvance * paint.font.size) / base : monoAdvance(paint.font.size, paint.font.family);
 
   // Wrapped to the block's width, as the stage wraps it (`code/wrap.ts`).
   return wrapRuns(runs, columnsFor(element.w, { advance, lineHeight, padding }))
@@ -241,12 +250,45 @@ function codeRuns(element: SceneElement, paint: Paint, options: SvgOptions): str
     .join('');
 }
 
+/**
+ * A code block's language on its top edge and its border broken for it, as
+ * the stage draws them (`code/language-tag.ts`); null for plain text.
+ */
+function codeLanguage(element: SceneElement, paint: Paint, options: SvgOptions): string | null {
+  const size = parseFloat(options.read('--text-code-language')) || 0;
+  const family = options.read('--font-mono').trim() || paint.font.family;
+  const lineHeight = parseFloat(options.read('--leading-tight')) || 1.2;
+  const tag = languageTag(element, canvasLineWidth(`${size}px ${family}`), {
+    size,
+    lineHeight,
+    inset: parseFloat(options.read('--size-code-language-inset')) || 0,
+    clearance: parseFloat(options.read('--size-code-language-clearance')) || 0,
+  });
+  if (!tag) return null;
+  const { x, y } = element;
+  const radius = paint.cornerRadius > 0 ? ` rx="${round(paint.cornerRadius)}"` : '';
+  return (
+    `<mask id="language-${element.id}" maskUnits="userSpaceOnUse">` +
+    `<rect x="-1000000" y="-1000000" width="2000000" height="2000000" fill="white"/>` +
+    `<rect x="${round(x + tag.gap.x)}" y="${round(y + tag.gap.y)}" width="${round(tag.gap.w)}" height="${round(tag.gap.h)}" fill="black"/></mask>` +
+    `<rect x="${round(x)}" y="${round(y)}" width="${round(element.w)}" height="${round(element.h)}"${radius}` +
+    ` fill="none" stroke="${paint.stroke}" stroke-width="${round(paint.strokeWidth)}" mask="url(#language-${element.id})"/>` +
+    // SVG places text on its baseline: the middle of the line box plus a
+    // third of the size, as the other labels here.
+    `<text x="${round(x + tag.x)}" y="${round(y + tag.y + tag.h / 2 + size / 3)}" fill="${options.read('--color-text-muted').trim()}"` +
+    ` font-family="${escapeXml(family)}" font-size="${round(size)}">${escapeXml(tag.text)}</text>`
+  );
+}
+
 /** One element: its body, its label, its opacity and its rotation. */
 function draw(element: SceneElement, options: SvgOptions, labelInset: number): string {
   const paint = paintFor(element, options.read);
   const label = 'label' in element ? (element.label as string | undefined) : undefined;
+  const tag = element.type === 'code' ? codeLanguage(element, paint, options) : null;
   const inner =
-    body(element, paint, options.read('--color-canvas-bg').trim()) +
+    // A named code block's border is drawn apart, broken for the name.
+    body(element, tag ? { ...paint, stroke: '' } : paint, options.read('--color-canvas-bg').trim()) +
+    (tag ?? '') +
     (element.type === 'code' ? codeRuns(element, paint, options) : '') +
     (element.type === 'text'
       ? textElement(element, paint, (element as { text: string }).text, 0)

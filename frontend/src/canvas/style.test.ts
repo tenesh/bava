@@ -243,3 +243,84 @@ describe('turning a line into an arrow and back', () => {
     expect(currentProperty(scene, ['l'], 'arrowType')).toBe('line');
   });
 });
+
+// 06.17: a code block's size, whose default is 13, not text's 20.
+describe("a code block's font size", () => {
+  const block = () => createHistory({ elements: [{ id: 'c', type: 'code', x: 0, y: 0, w: 100, h: 40, z: 1, code: 'x' }] as never });
+  it('is a property code takes', () => {
+    expect(propertyKeysFor('code')).toContain('fontSize');
+  });
+  it('keeps 20 on a block, and clears 13, its default', () => {
+    const history = block();
+    setProperty(history, ['c'], 'fontSize', 20);
+    expect(history.current.elements[0]).toMatchObject({ fontSize: 20 });
+    setProperty(history, ['c'], 'fontSize', 13);
+    expect(history.current.elements[0]).not.toHaveProperty('fontSize');
+  });
+  it('lets the caller adjust each changed element in the same step', () => {
+    const history = block();
+    setProperty(history, ['c'], 'fontSize', 16, (element) => {
+      element.h = 99;
+    });
+    expect(history.current.elements[0]).toMatchObject({ fontSize: 16, h: 99 });
+    history.undo();
+    expect(history.current.elements[0]).toMatchObject({ h: 40 });
+  });
+});
+
+describe("an arrow label's direction (06.17)", () => {
+  it('is a property arrows take, upright by default', () => {
+    expect(propertyKeysFor('arrow')).toContain('labelDirection');
+    const history = createHistory({ elements: [{ id: 'a', type: 'arrow', x: 0, y: 0, w: 10, h: 0, z: 1, points: [0, 0, 10, 0], label: 'x' }] as never });
+    setProperty(history, ['a'], 'labelDirection', 'along');
+    expect(history.current.elements[0]).toMatchObject({ labelDirection: 'along' });
+    setProperty(history, ['a'], 'labelDirection', 'upright');
+    expect(history.current.elements[0]).not.toHaveProperty('labelDirection');
+  });
+});
+
+// Review of 06.17: a size crosses between text and code by its step
+// (small, medium, large, extra large), never as an out-of-range number.
+describe('a font size across text and code', () => {
+  it('maps a text size onto a code block in a mixed selection', () => {
+    const history = createHistory({
+      elements: [
+        { id: 'c', type: 'code', x: 0, y: 0, w: 100, h: 40, z: 1, code: 'x' },
+        { id: 't', type: 'text', x: 0, y: 0, w: 10, h: 10, z: 2, text: 'x', measuredWidth: 10, measuredHeight: 10 },
+      ] as never,
+    });
+    setProperty(history, ['c', 't'], 'fontSize', 28);
+    expect(history.current.elements[0]).toMatchObject({ fontSize: 16 });
+    expect(history.current.elements[1]).toMatchObject({ fontSize: 28 });
+  });
+
+  it('maps a pasted size, and lets the caller refit what it changed', () => {
+    const history = createHistory({
+      elements: [
+        { id: 't', type: 'text', x: 0, y: 0, w: 10, h: 10, z: 1, text: 'x', fontSize: 36, measuredWidth: 10, measuredHeight: 10 },
+        { id: 'c', type: 'code', x: 0, y: 0, w: 100, h: 40, z: 2, code: 'x' },
+      ] as never,
+    });
+    const refitted: string[] = [];
+    pasteStyle(history, ['c'], copyStyle(history.current.elements[0]), (element) => refitted.push(element.id));
+    expect(history.current.elements[1]).toMatchObject({ fontSize: 20 });
+    expect(refitted).toEqual(['c']);
+  });
+});
+
+describe('a size that is valid in both scales (review of 06.17)', () => {
+  it('is read in the scale it was chosen in', () => {
+    const history = createHistory({
+      elements: [
+        { id: 'c', type: 'code', x: 0, y: 0, w: 100, h: 40, z: 1, code: 'x' },
+        { id: 't', type: 'text', x: 0, y: 0, w: 10, h: 10, z: 2, text: 'x', measuredWidth: 10, measuredHeight: 10 },
+      ] as never,
+    });
+    // Medium, chosen from the text sizes a mixed selection offers.
+    setProperty(history, ['c', 't'], 'fontSize', 20);
+    expect(history.current.elements[0]).not.toHaveProperty('fontSize');
+    const copied = copyStyle({ id: 's', type: 'text', x: 0, y: 0, w: 1, h: 1, z: 1, text: 'x', fontSize: 16 } as never);
+    pasteStyle(history, ['c'], copied);
+    expect(history.current.elements[0]).toMatchObject({ fontSize: 11 });
+  });
+});

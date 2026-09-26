@@ -14,7 +14,7 @@
   import ToolIcon from './ToolIcon.svelte';
   import type { IconId } from './tool-icons';
   import { splitForWidth, type LineAction, type ToolbarControl } from '../canvas/toolbar';
-  import { PROPERTY_OPTIONS } from '../canvas/property-options';
+  import { controlOptions } from '../canvas/property-options';
   import type { PropertyKey, PropertyValue, StyleKey } from '../canvas/style';
   import type { MessageKey } from '../i18n/messages';
   import { t } from '../i18n/t';
@@ -113,7 +113,7 @@
         onSelect={(value) => onProperty('opacity', value)}
       />
     {:else}
-      {@const option = PROPERTY_OPTIONS[control.id as PropertyKey]}
+      {@const option = controlOptions(control)}
       <OptionPicker
         label={t(option.labelKey)}
         icon={option.icon}

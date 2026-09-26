@@ -18,7 +18,7 @@
   import { carriedWith } from './canvas/containment';
   import { angleOfElement } from './canvas/rotate';
   import { createExporter, exportIO } from './canvas/export/exporter.svelte';
-  import { CodeEditor, commitCode } from './canvas/code/editor';
+  import { CodeEditor, commitCode, fitToCode } from './canvas/code/editor';
   import { createCodeRuns } from './canvas/code/runs';
   import { measureCode } from './canvas/code/measure';
   import { invalidateAdvanceOnFontLoad } from './canvas/code/advance';
@@ -39,6 +39,9 @@
   import { createPointerHandler } from './canvas/pointer';
   import { cursorFor } from './canvas/cursor';
   import { createCurrentStyle } from './canvas/current-style';
+  import { smoothPoints } from './canvas/curves';
+  import { pathOf, labelField } from './canvas/arrows';
+  import { keepsBrowserMenu } from './shell/native-menu';
   import { endTextPlacement, freeEndAt, insertTextAtEnd } from './canvas/arrow-text';
   import { frameThrottle } from './canvas/frame-throttle';
   import { bindingReach } from './canvas/binding';
@@ -49,7 +52,7 @@
   import { LabelEditor, commitLabel, commitText, editableAt, insertText, labelBox } from './canvas/label-editor';
   import { canvasLineWidth, measureFor } from './canvas/text-measure';
   import { wrapLines } from './canvas/text-layout';
-  import { applyStyle, currentProperty, currentStyle, setProperty, type PropertyKey } from './canvas/style';
+  import { applyStyle, currentProperty, currentStyle, CODE_FONT_SIZE, setProperty, type PropertyKey } from './canvas/style';
   import SelectionToolbar from './components/SelectionToolbar.svelte';
   import { toolbarFor, type LineAction, type ToolbarControl } from './canvas/toolbar';
   import { closeLine, openLine } from './canvas/closed';
@@ -146,7 +149,8 @@
     // A placed code block is sized the way a committed one is.
     codeMetrics,
   });
-  const canvasCommands = createCanvasCommands({ history, selection });
+  // A code block pasted a new size re-wraps and grows to its code (06.17).
+  const canvasCommands = createCanvasCommands({ history, selection, afterPasteStyle: (element) => fitToCode(element, codeMetrics(element)) });
 
   /** How near a click counts as hitting a line, in scene units at the current zoom. */
   function hitTolerance() {
@@ -156,9 +160,13 @@
   /** The editor that opens over a code block, and the block it is on. */
   let codeEditor: CodeEditor | null = null;
 
-  /** The metrics a code block is measured and drawn with, from the tokens. */
-  function codeMetrics() {
-    const size = parseFloat(readRootVariable('--text-code')) || 0;
+  /**
+   * The metrics a code block is measured and drawn with, from the tokens, at
+   * the block's own size when given one (06.17).
+   */
+  function codeMetrics(element?: SceneElement) {
+    // Absent means the file format's 13, as the stage draws it.
+    const size = (element as { fontSize?: number } | undefined)?.fontSize ?? CODE_FONT_SIZE;
     return {
       advance: monoAdvance(size, readRootVariable('--font-mono').trim()),
       lineHeight: size * (parseFloat(readRootVariable('--leading-code')) || 0),
@@ -191,16 +199,19 @@
       },
       angle: angleOfElement(element),
       zoom: viewport.zoom,
+      // Typed at the block's own size.
+      // Its stylesheet's size is the code token: scaled from that to the block's.
+      fontScale: ((element as { fontSize?: number }).fontSize ?? CODE_FONT_SIZE) / (parseFloat(readRootVariable('--text-code')) || CODE_FONT_SIZE),
       isReserved: reservedByMenu(menuSpec as MenuSpec, platform),
       // Grows as it is typed in, measured as the block will be on commit.
       measure: (code) => {
         // At the block's width: it wraps, and only grows taller.
-        const size = measureCode(code, codeMetrics(), element.w);
+        const size = measureCode(code, codeMetrics(element), element.w);
         // A block made taller than its code keeps that height while typed in.
         return { width: size.width * viewport.zoom, height: Math.max(size.height, element.h) * viewport.zoom };
       },
       onCommit: (code) => {
-        commitCode(history, element.id, code, codeMetrics());
+        commitCode(history, element.id, code, codeMetrics(element));
         commit();
         void highlightBlocks(history.current);
       },
@@ -588,26 +599,28 @@
     const paint = paintFor(element, readRootVariable);
     // The box the stage draws the text in, so the field wraps and sits as the
     // text will be drawn.
-    const box = labelBox(element, parseFloat(readRootVariable('--size-label-inset')) || 0);
-    const topLeft = viewport.sceneToScreen({ x: box.x, y: box.y });
     const lineWidth = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
+    // An arrow's label is typed where it is drawn: on its spot, at its wrap
+    // width, turned with it (06.17); it opened over the arrow's box before.
+    const field = isArrow ? arrowLabelField(element, paint, lineWidth) : null;
+    const box = field ?? labelBox(element, parseFloat(readRootVariable('--size-label-inset')) || 0);
+    const topLeft = viewport.sceneToScreen({ x: box.x, y: box.y });
     canvas.setEditing(element.id);
     labelEditor.open({
       value: isText ? (element as { text: string }).text : ((element as { label?: string }).label ?? ''),
       rect: { x: topLeft.x, y: topLeft.y, width: box.w * viewport.zoom, height: box.h * viewport.zoom },
-      angle: angleOfElement(element),
+      angle: field ? field.angle : angleOfElement(element),
+      growCentred: field !== null,
       // An arrow's label is always centred on its path, whatever it stores.
       font: isArrow ? { ...paint.font, align: 'center', verticalAlign: 'middle' } : paint.font,
       opacity: paint.opacity,
       zoom: viewport.zoom,
       measure: isText ? onScreen(measure) : undefined,
-      // A label's wrapped height on screen, for its vertical alignment. Not an
-      // arrow's: the stage wraps that to the path's length, not to a box, and
-      // the field still opens over the arrow's box (plan 06.8, out of scope).
-      textHeight:
-        isText || isArrow
-          ? undefined
-          : (value) => wrapLines(value, box.w, lineWidth).length * paint.font.size * paint.font.lineHeight * viewport.zoom,
+      // A label's wrapped height on screen, for its vertical alignment; an
+      // arrow's field is the label's own box, wrapped as the stage wraps it.
+      textHeight: isText
+        ? undefined
+        : (value) => wrapLines(value, box.w, lineWidth).length * paint.font.size * paint.font.lineHeight * viewport.zoom,
       onCommit: (value) => {
         canvas.setEditing(null);
         if (isText) commitText(history, element.id, value, measure);
@@ -615,6 +628,12 @@
         commit();
       },
     });
+  }
+
+  /** The field for an arrow's label, in scene space: where the stage draws the label. */
+  function arrowLabelField(element: SceneElement, paint: ReturnType<typeof paintFor>, measure: (text: string) => number) {
+    const drawn = smoothPoints(pathOf(('points' in element ? element.points : []) as number[], (element as { arrowType?: string }).arrowType), paint.tension);
+    return labelField(element, drawn, paint.tension, paint.font, measure);
   }
 
   /** Free text's size on screen: its scene measurement at the current zoom. */
@@ -1201,6 +1220,12 @@
     window.addEventListener('keydown', onModifier);
     window.addEventListener('keyup', onModifier);
     window.addEventListener('blur', releaseSpace);
+    // The webview's own menu (Reload and all) only where there is text to
+    // cut, copy or paste; the canvas opens Bava's menu itself (06.17).
+    const onAnyContextMenu = (event: MouseEvent) => {
+      if (!keepsBrowserMenu(event.target as Element | null)) event.preventDefault();
+    };
+    window.addEventListener('contextmenu', onAnyContextMenu);
 
     // The stage is sized at mount; follow the pane as the window or the
     // splitters change it.
@@ -1345,6 +1370,7 @@
       codeEditor?.destroy();
       codeEditor = null;
       labelEditor = null;
+      window.removeEventListener('contextmenu', onAnyContextMenu);
       window.removeEventListener('keydown', onSpace);
       window.removeEventListener('keyup', onSpace);
       window.removeEventListener('keydown', onModifier);
@@ -1477,8 +1503,12 @@
             properties={toolbarProperties}
             capacity={toolbarCapacity}
             onProperty={(key, value) => {
-              setProperty(history, selectedIds, key, value);
-              newElementStyle.remember(key, value);
+              // A code block at a new size re-wraps and grows to its code, in
+              // the same step (06.17).
+              setProperty(history, selectedIds, key, value, key === 'fontSize' ? (element) => fitToCode(element, codeMetrics(element)) : undefined);
+              // Which sizes it was chosen from: the code ones only for code alone.
+              const codeSizes = toolbar.controls.some((control) => control.id === 'fontSize' && control.variant === 'code');
+              newElementStyle.remember(key, value, codeSizes ? 'code' : 'text');
               commit();
               // A new language means new colours, and the language may not be
               // loaded yet.
@@ -1575,8 +1605,9 @@
       // other entry is a command the native menu has too.
       const choice = parseOverflowId(id);
       if (choice?.kind === 'property') {
-        setProperty(history, selectedIds, choice.key, choice.value);
-        newElementStyle.remember(choice.key, choice.value);
+        setProperty(history, selectedIds, choice.key, choice.value, choice.key === 'fontSize' ? (element) => fitToCode(element, codeMetrics(element)) : undefined);
+        const codeSizes = toolbar.controls.some((control) => control.id === 'fontSize' && control.variant === 'code');
+        newElementStyle.remember(choice.key, choice.value, codeSizes ? 'code' : 'text');
       } else if (choice?.kind === 'style') {
         applyStyle(history, selectedIds, choice.key, choice.swatch);
         newElementStyle.remember(choice.key, choice.swatch);

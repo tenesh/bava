@@ -19,6 +19,8 @@ export type ToolbarControl = {
   id: StyleKey | PropertyKey;
   group: ControlGroup;
   kind: ControlKind;
+  /** `code`: the size control offers the code sizes (only code blocks selected). */
+  variant?: 'code';
 };
 
 /**
@@ -52,6 +54,7 @@ const ORDERED: ToolbarControl[] = [
   { id: 'fontSize', group: 'label', kind: 'options' },
   { id: 'align', group: 'label', kind: 'options' },
   { id: 'verticalAlign', group: 'label', kind: 'options' },
+  { id: 'labelDirection', group: 'label', kind: 'options' },
   { id: 'arrowType', group: 'arrow', kind: 'options' },
   { id: 'startArrowhead', group: 'arrow', kind: 'options' },
   { id: 'endArrowhead', group: 'arrow', kind: 'options' },
@@ -73,7 +76,11 @@ export function toolbarFor(scene: SceneData, ids: ElementId[], context: { drawin
   return {
     visible: elements.length > 0,
     lineActions: lineActionsFor(elements, context.editing ?? null),
-    controls: ORDERED.filter((control) => takes.has(control.id)),
+    controls: ORDERED.filter((control) => takes.has(control.id)).map((control) =>
+      control.id === 'fontSize' && elements.every((e) => e.type === 'code' || !propertyKeysFor(e.type).includes('fontSize'))
+        ? { ...control, variant: 'code' as const }
+        : control,
+    ),
     styles: COLOURS.filter((key) => takes.has(key)),
     align: units >= 2,
     distribute: units >= 3,

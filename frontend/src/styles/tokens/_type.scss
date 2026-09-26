@@ -38,6 +38,8 @@
   // A code block on the canvas: body size in the mono face, generous leading
   // so lines of code are easy to follow.
   --text-code: 13px;
+  // A code block's language, named on its top edge (06.17).
+  --text-code-language: 11px;
   --leading-code: 1.5;
   --font-mono: 'Geist Mono', ui-monospace, monospace;
 

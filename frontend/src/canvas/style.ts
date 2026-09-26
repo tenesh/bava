@@ -10,7 +10,7 @@ import { isShapeType } from './scene';
 import { anchorFor, BINDING_REACH_MIN, drawnPoints } from './binding';
 import { angleOfElement } from './rotate';
 import { tidy } from './resize';
-import { PROPERTY_DEFAULTS } from './style-defaults';
+import { CODE_FONT_SIZE, PROPERTY_DEFAULTS } from './style-defaults';
 
 export type StyleKey = 'fill' | 'stroke' | 'color';
 
@@ -74,7 +74,10 @@ export function currentStyle(scene: SceneData, ids: ElementId[], key: StyleKey):
 }
 
 /** A copied style: each key the source takes, `null` where it used the default. */
-export type CopiedStyle = Partial<Record<StyleKey | PropertyKey, string | number | null>>;
+export type CopiedStyle = Partial<Record<StyleKey | PropertyKey, string | number | null>> & {
+  /** The scale a copied size is on: the source's (review of 06.17). */
+  sizeScale?: SizeScale;
+};
 
 /** Keys Copy Styles leaves behind: an arrow's kind and a code block's language are its own. */
 const NOT_A_STYLE: PropertyKey[] = ['arrowType', 'language'];
@@ -87,14 +90,20 @@ const NOT_A_STYLE: PropertyKey[] = ['arrowType', 'language'];
 export function copyStyle(element: SceneElement): CopiedStyle {
   const styled = element as unknown as Record<string, string | number | undefined>;
   const keys = [...styleKeysOf(element), ...propertyKeysFor(element.type).filter((key) => !NOT_A_STYLE.includes(key))];
-  return Object.fromEntries(keys.map((key) => [key, styled[key] ?? null]));
+  return { ...Object.fromEntries(keys.map((key) => [key, styled[key] ?? null])), sizeScale: scaleOf(element.type) };
 }
 
 /**
  * Apply a copied style to every selected element: each copied key it takes is
  * set, or cleared back to the default. One undo step.
  */
-export function pasteStyle(history: History, ids: ElementId[], style: CopiedStyle): void {
+export function pasteStyle(
+  history: History,
+  ids: ElementId[],
+  style: CopiedStyle,
+  /** Called on each element pasted onto, in the same step (a code block refitted). */
+  adjust?: (element: SceneElement) => void,
+): void {
   const selected = new Set(ids);
   history.mutate((draft) => {
     for (const element of draft.elements) {
@@ -103,13 +112,16 @@ export function pasteStyle(history: History, ids: ElementId[], style: CopiedStyl
       const keys = [...styleKeysOf(element), ...propertyKeysFor(element.type).filter((key) => !NOT_A_STYLE.includes(key))];
       for (const key of keys) {
         if (!(key in style)) continue;
-        const value = style[key as keyof CopiedStyle];
-        if (value === null || value === undefined) {
+        const copied = style[key as keyof CopiedStyle];
+        // A size in the element's own scale (review of 06.17).
+        const value = copied !== null && copied !== undefined && key === 'fontSize' ? fontSizeFor(element.type, copied, style.sizeScale) : copied;
+        if (value === null || value === undefined || value === defaultFor(key as PropertyKey, element.type)) {
           if (key in styled) delete styled[key];
         } else if (styled[key] !== value) {
           styled[key] = value;
         }
       }
+      adjust?.(element as SceneElement);
     }
   });
 }
@@ -126,7 +138,8 @@ export type PropertyKey =
   | 'verticalAlign'
   | 'arrowType'
   | 'startArrowhead'
-  | 'endArrowhead';
+  | 'endArrowhead'
+  | 'labelDirection';
 
 export type PropertyValue = string | number;
 
@@ -153,7 +166,7 @@ export function propertyKeysFor(type: string): PropertyKey[] {
       break;
     case 'arrow':
       // A label's size too (06.16, L8).
-      keys.push(...STROKE_KEYS, 'arrowType', 'startArrowhead', 'endArrowhead', 'fontSize');
+      keys.push(...STROKE_KEYS, 'arrowType', 'startArrowhead', 'endArrowhead', 'fontSize', 'labelDirection');
       break;
     case 'frame':
       keys.push(...STROKE_KEYS, ...LABEL_KEYS);
@@ -164,7 +177,8 @@ export function propertyKeysFor(type: string): PropertyKey[] {
     case 'code':
       // A code block's look comes from its language and the theme; the shape
       // controls would mean nothing on it (canvas-toolbar.md).
-      keys.push('language');
+      // Its size too, from the code sizes (06.17).
+      keys.push('language', 'fontSize');
       break;
     default:
       break;
@@ -183,8 +197,17 @@ export function applyProperty(
   ids: ElementId[],
   key: PropertyKey,
   value: PropertyValue | null,
+  /** Called on each element the choice changed, in the same step (a code block re-measured). */
+  adjust?: (element: SceneElement) => void,
 ): void {
   const selected = new Set(ids);
+  // A size was chosen from the code sizes only when every element taking one
+  // is a code block, as the toolbar offers them (`toolbar.ts`).
+  const from: SizeScale = history.current.elements
+    .filter((e) => selected.has(e.id) && propertyKeysFor(e.type).includes('fontSize'))
+    .every((e) => e.type === 'code')
+    ? 'code'
+    : 'text';
   history.mutate((draft) => {
     for (const element of draft.elements) {
       if (!selected.has(element.id) || !propertyKeysFor(element.type).includes(key)) continue;
@@ -201,7 +224,7 @@ export function applyProperty(
           record.type = 'line';
           // A line has no ends that attach, no heads and no label: nothing of
           // them is left hidden in the file (undo brings them back).
-          for (const gone of ['arrowType', 'startBinding', 'endBinding', 'startAnchor', 'endAnchor', 'startMode', 'endMode', 'startArrowhead', 'endArrowhead', 'fixedSegments', 'label', 'labelPosition', 'fontSize']) delete record[gone];
+          for (const gone of ['arrowType', 'startBinding', 'endBinding', 'startAnchor', 'endAnchor', 'startMode', 'endMode', 'startArrowhead', 'endArrowhead', 'fixedSegments', 'label', 'labelPosition', 'labelDirection', 'fontSize']) delete record[gone];
           if (curved) record.edges = 'round';
           continue;
         }
@@ -247,11 +270,15 @@ export function applyProperty(
           record[`${side}Anchor`] = anchorFor(shape, ends[i], BINDING_REACH_MIN, inside, toElbow, ends[1 - i]);
         });
       }
-      if (value === null) {
+      // A size in the element's own scale; its own default is written as nothing.
+      const scaled = value !== null && key === 'fontSize' ? fontSizeFor(element.type, value, from) : value;
+      const own = scaled !== null && scaled === defaultFor(key, element.type) ? null : scaled;
+      if (own === null) {
         if (key in styled) delete styled[key];
-      } else if (styled[key] !== value) {
-        styled[key] = value;
+      } else if (styled[key] !== own) {
+        styled[key] = own;
       }
+      adjust?.(element);
     }
   });
 }
@@ -283,6 +310,45 @@ export { PROPERTY_DEFAULTS } from './style-defaults';
  * takes back to the default carries nothing, and a file stays as small as what
  * was actually chosen. One undo step.
  */
-export function setProperty(history: History, ids: ElementId[], key: PropertyKey, value: PropertyValue): void {
-  applyProperty(history, ids, key, value === PROPERTY_DEFAULTS[key] ? null : value);
+export function setProperty(
+  history: History,
+  ids: ElementId[],
+  key: PropertyKey,
+  value: PropertyValue,
+  adjust?: (element: SceneElement) => void,
+): void {
+  applyProperty(history, ids, key, value, adjust);
+}
+
+/** What an absent key means on an element of `type`: a code block's size is 13. */
+export function defaultFor(key: PropertyKey, type: string): PropertyValue | undefined {
+  if (key === 'fontSize' && type === 'code') return CODE_FONT_SIZE;
+  return PROPERTY_DEFAULTS[key];
+}
+
+export { CODE_FONT_SIZE } from './style-defaults';
+
+/** The sizes text and labels take, and the sizes code takes, small to extra large. */
+const TEXT_SIZES = [16, 20, 28, 36];
+const CODE_SIZES = [11, 13, 16, 20];
+
+/** Which sizes a value was chosen from: the code sizes or the text sizes. */
+export type SizeScale = 'code' | 'text';
+
+/** The scale an element's sizes are on. */
+export function scaleOf(type: string): SizeScale {
+  return type === 'code' ? 'code' : 'text';
+}
+
+/**
+ * A font size chosen on scale `from`, for an element of `type`: the same step
+ * (small, medium, large, extra large) on the element's own scale, so a size
+ * never crosses between text and code out of range or at the wrong step.
+ */
+export function fontSizeFor(type: string, value: PropertyValue, from: SizeScale = scaleOf(type)): PropertyValue {
+  if (typeof value !== 'number') return value;
+  const own = scaleOf(type) === 'code' ? CODE_SIZES : TEXT_SIZES;
+  if (from === scaleOf(type)) return value;
+  const step = (from === 'code' ? CODE_SIZES : TEXT_SIZES).indexOf(value);
+  return step >= 0 ? own[step] : value;
 }

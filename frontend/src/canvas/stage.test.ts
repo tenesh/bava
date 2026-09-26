@@ -612,8 +612,10 @@ describe('an arrow with a label', () => {
     stage.render(one({ type: 'arrow', x: 10, y: 20, w: 100, h: 0, points: [0, 0, 100, 0], label: 'sends to' }));
     const label = stage.labelFor('e1')!;
     expect(label.text()).toBe('sends to');
-    // Centred on the midpoint, which is (60, 20) on the canvas.
-    expect(label.getAbsolutePosition().x + label.width() / 2).toBe(60);
+    // Centred on the midpoint, which is (60, 20) on the canvas. Since 06.17
+    // the label is placed by its centre, so it can turn about it.
+    expect(label.getAbsolutePosition()).toEqual({ x: 60, y: 20 });
+    expect(label.getClientRect().x + label.getClientRect().width / 2).toBeCloseTo(60, 5);
     stage.destroy();
   });
 
@@ -1237,6 +1239,39 @@ describe("the attach highlight's pulse", () => {
     stage.render(scene);
     stage.setBindingCandidates(['a']);
     expect(stage.pulsing()).toBe(false);
+    stage.destroy();
+  });
+});
+
+// 06.17: the language on a code block's top edge, the border broken for it.
+describe("a code block's language on the canvas", () => {
+  const read = reader({ '--text-code-language': '10px', '--size-code-language-inset': '12px', '--size-code-language-clearance': '4px', '--color-text-muted': 'gray', '--leading-tight': '1.2' });
+  it('names the language on the top edge, and breaks the border behind it', () => {
+    const stage = new CanvasStage({ read });
+    stage.mount(host());
+    stage.render(one({ type: 'code', x: 0, y: 0, w: 200, h: 60, code: 'x', language: 'go', measuredWidth: 200, measuredHeight: 60 }));
+    const tag = stage.codeLanguage('e1')!;
+    expect(tag.text()).toBe('Go');
+    expect(tag.x()).toBe(12);
+    // The body keeps its fill and loses its stroke; the border is drawn apart,
+    // with a hole from 4 before the name to 4 after it (review of 06.17).
+    expect(stage.bodyFor('e1')!.strokeEnabled()).toBe(false);
+    const rects: number[][] = [];
+    (stage.codeBorder('e1')!.getParent() as Konva.Group).clipFunc()!({ rect: (...args: number[]) => rects.push(args) } as never, undefined as never);
+    const hole = rects[1];
+    expect(hole[0]).toBe(12 - 4);
+    expect(hole[2]).toBeGreaterThan(8);
+    stage.render(one({ type: 'code', x: 0, y: 0, w: 200, h: 60, code: 'x', measuredWidth: 200, measuredHeight: 60 }));
+    expect(stage.codeLanguage('e1')).toBeNull();
+    stage.destroy();
+  });
+});
+
+describe('a label along its arrow (06.17)', () => {
+  it('turns with the arrow', () => {
+    const stage = mounted();
+    stage.render(one({ type: 'arrow', x: 0, y: 0, w: 0, h: 100, points: [0, 0, 0, 100], label: 'down', labelDirection: 'along' }));
+    expect(stage.labelFor('e1')!.rotation()).toBeCloseTo(90, 5);
     stage.destroy();
   });
 });

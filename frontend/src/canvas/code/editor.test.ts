@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EditorView } from '@codemirror/view';
-import { CodeEditor, commitCode } from './editor';
+import { CodeEditor, commitCode, fitToCode } from './editor';
 import { createHistory } from '../history';
 import { editTarget } from '../../shell/edit-target';
 
@@ -283,5 +283,23 @@ describe('committing code to a taller block', () => {
     expect(history.current.elements[0]).toMatchObject({ h: 200 });
     commitCode(history, 'c', Array.from({ length: 12 }, () => 'l').join('\n'), metrics);
     expect(history.current.elements[0]).toMatchObject({ h: 12 * 20 + 16 });
+  });
+});
+
+describe("the editor over a block at another size (06.17)", () => {
+  it("scales its text with the block's size as well as the zoom", async () => {
+    const editor = new CodeEditor(host());
+    await editor.open({ code: 'x', zoom: 2, fontScale: 1.5, rect: { x: 0, y: 0, width: 100, height: 40 }, onCommit: vi.fn() });
+    const wrapper = document.querySelector('.bava-code-editor') as HTMLElement;
+    expect(wrapper.style.fontSize).toBe('3em');
+    editor.destroy();
+  });
+});
+
+describe('a code block refitted to its code (06.17)', () => {
+  it('grows to its code at a larger size, keeping its width', () => {
+    const block = { id: 'c', type: 'code', x: 0, y: 0, w: 200, h: 36, z: 1, code: 'a\nb', measuredWidth: 200, measuredHeight: 36 } as never;
+    fitToCode(block, { advance: 12, lineHeight: 40, padding: 8 });
+    expect(block).toMatchObject({ w: 200, h: 96, measuredHeight: 96 });
   });
 });

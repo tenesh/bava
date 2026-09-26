@@ -381,3 +381,16 @@ segment, returning how the head is filled (the line's colour, the canvas's
 for an outline head). Dash patterns come from `dashFor(style, width)`, not
 tokens: they are scene units that scale with the stroke.
 
+## A code block names its language on its top edge
+`code/language-tag.ts` lays out the name and the break in the border; the
+stage draws the border apart from the fill, clipped round the name, and the
+exporter masks it the same way. A block is measured at its own `fontSize`
+(the app's `codeMetrics(element)`; absent means 13, `CODE_FONT_SIZE`, never a
+token), and a size change, chosen or pasted, re-fits it (`fitToCode`) in the
+same step. A size crosses between text and code by its step (`fontSizeFor`).
+
+## An arrow's label has one layout
+`labelLayout` in `arrows.ts` gives the spot, lines, size and turn; the stage,
+the exporter and the label editor's field (`labelField`) all use it, and the
+line's gap is its turned box (`labelCorners`).
+

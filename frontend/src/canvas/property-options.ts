@@ -121,6 +121,34 @@ export const PROPERTY_OPTIONS: Record<PropertyKey, PropertyControl> = {
       { value: 'line', labelKey: 'option.line', icon: 'line' },
     ],
   },
+  // Upright, or along the arrow at its place (06.17).
+  labelDirection: {
+    labelKey: 'style.labelDirection',
+    icon: 'labelAlong',
+    options: [
+      { value: 'upright', labelKey: 'option.upright', icon: 'labelUpright' },
+      { value: 'along', labelKey: 'option.along', icon: 'labelAlong' },
+    ],
+  },
   startArrowhead: { labelKey: 'style.startArrowhead', icon: 'headCircle', options: HEADS },
   endArrowhead: { labelKey: 'style.endArrowhead', icon: 'headArrow', options: HEADS },
 };
+
+/** A code block's sizes (06.17): code is set smaller than text. */
+const CODE_FONT_SIZE: PropertyControl = {
+  labelKey: 'style.fontSize',
+  icon: 'fontSize',
+  options: [
+    { value: 11, labelKey: 'option.small', icon: 'fontSize' },
+    { value: 13, labelKey: 'option.medium', icon: 'fontSize' },
+    { value: 16, labelKey: 'option.large', icon: 'fontSize' },
+    { value: 20, labelKey: 'option.very-large', icon: 'fontSize' },
+  ],
+};
+
+/** What a toolbar control offers: its property's options, or its variant's. */
+export function controlOptions(control: { id: string; variant?: 'code' }): PropertyControl {
+  if (control.id === 'fontSize' && control.variant === 'code') return CODE_FONT_SIZE;
+  return PROPERTY_OPTIONS[control.id as PropertyKey];
+}
+

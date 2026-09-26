@@ -7,6 +7,7 @@
  */
 import type { PathSink } from './shapes';
 import type { SceneElement } from './scene';
+import { wrapLines } from './text-layout';
 import { SEGMENT_SAMPLES, smoothPoints } from './curves';
 import { LINE_TENSION } from './paint';
 
@@ -307,6 +308,105 @@ export function labelSpot(element: SceneElement, tension: number, drawn?: number
   const segment = count / 2 - 1;
   const middles = middlesAlong(points, props.arrowType === 'elbow' ? 'straight' : props.arrowType, tension);
   return middles[segment] ?? labelPoint(points);
+}
+
+/** An arrow label laid out: centred on `at`, `width` by `height`, turned by `angle` degrees. */
+export type LabelLayout = { at: { x: number; y: number }; lines: string[]; width: number; height: number; angle: number };
+
+/**
+ * An arrow's label laid out, in the arrow's own coordinates: on its spot
+ * (`labelSpot`), wrapped as Excalidraw wraps it, and with
+ * `labelDirection: along` turned to the path's direction there, flipped so it
+ * never reads upside down (06.17). The stage, the exporter and the label
+ * editor all lay it out here, so the three agree.
+ */
+export function labelLayout(
+  element: SceneElement,
+  drawn: number[],
+  tension: number,
+  font: { size: number; lineHeight: number },
+  measure: (text: string) => number,
+  text = (element as { label?: string }).label ?? '',
+): LabelLayout {
+  const at = labelSpot(element, tension, drawn);
+  const lines = wrapLines(text, labelWrapWidth(element, font.size), measure);
+  const width = Math.max(0, ...lines.map(measure));
+  const height = font.size * font.lineHeight * lines.length;
+  const along = (element as { labelDirection?: string }).labelDirection === 'along';
+  // Readable on screen, where the arrow's own turn is added to the label's.
+  const turn = (element as { angle?: number }).angle ?? 0;
+  return { at, lines, width, height, angle: along ? readable(directionAt(drawn, at) + turn) - turn : 0 };
+}
+
+/**
+ * Where the field for typing an arrow's label sits, in scene space: centred
+ * on the label, as wide as the label wraps, at least a line tall, turned with
+ * it (06.17). The editor opened over the arrow's whole box before.
+ */
+export function labelField(
+  element: SceneElement,
+  drawn: number[],
+  tension: number,
+  font: { size: number; lineHeight: number },
+  measure: (text: string) => number,
+): { x: number; y: number; w: number; h: number; angle: number } {
+  const layout = labelLayout(element, drawn, tension, font, measure);
+  const w = labelWrapWidth(element, font.size);
+  const h = Math.max(layout.height, font.size * font.lineHeight);
+  // A turned arrow turns its label with it, about the arrow's centre, as its
+  // group turns on the canvas.
+  const turn = (element as { angle?: number }).angle ?? 0;
+  const radians = (turn * Math.PI) / 180;
+  const cx = element.x + element.w / 2;
+  const cy = element.y + element.h / 2;
+  const px = element.x + layout.at.x - cx;
+  const py = element.y + layout.at.y - cy;
+  const mx = cx + px * Math.cos(radians) - py * Math.sin(radians);
+  const my = cy + px * Math.sin(radians) + py * Math.cos(radians);
+  return { x: mx - w / 2, y: my - h / 2, w, h, angle: layout.angle + turn };
+}
+
+/** The corners of a laid-out label's box grown by `pad`, turned with it: the line's gap. */
+export function labelCorners(layout: LabelLayout, pad: number): { x: number; y: number }[] {
+  const radians = (layout.angle * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const hw = layout.width / 2 + pad;
+  const hh = layout.height / 2 + pad;
+  return [
+    [-hw, -hh],
+    [hw, -hh],
+    [hw, hh],
+    [-hw, hh],
+  ].map(([x, y]) => ({ x: layout.at.x + x * cos - y * sin, y: layout.at.y + x * sin + y * cos }));
+}
+
+/** The direction of the path where it passes nearest `at`, in degrees. */
+function directionAt(points: number[], at: { x: number; y: number }): number {
+  let best = 0;
+  let nearest = Infinity;
+  for (let i = 0; i + 3 < points.length; i += 2) {
+    const [x1, y1, x2, y2] = points.slice(i, i + 4);
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const length = dx * dx + dy * dy;
+    if (length === 0) continue;
+    const t = Math.max(0, Math.min(1, ((at.x - x1) * dx + (at.y - y1) * dy) / length));
+    const distance = Math.hypot(at.x - (x1 + t * dx), at.y - (y1 + t * dy));
+    if (distance < nearest) {
+      nearest = distance;
+      best = (Math.atan2(dy, dx) * 180) / Math.PI;
+    }
+  }
+  return best;
+}
+
+/** An angle turned half round when it would put text upside down: within (-90, 90]. */
+function readable(angle: number): number {
+  let a = ((angle % 360) + 360) % 360;
+  if (a > 90 && a <= 270) a -= 180;
+  if (a > 270) a -= 360;
+  return a;
 }
 
 /**

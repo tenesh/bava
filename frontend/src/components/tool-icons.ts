@@ -133,6 +133,8 @@ export const LUCIDE_ICONS = {
   headCircle: CircleSmall,
   headDiamond: Diamond,
   headMany: Split,
+  labelUpright: Type,
+  labelAlong: MoveUpRight,
   headExactlyOne: Equal,
   headZero: CircleDot,
   // Milestone 6.15's line actions and the tool lock.

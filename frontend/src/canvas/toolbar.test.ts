@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { splitForWidth, toolbarFor } from './toolbar';
+import { controlOptions } from './property-options';
 import type { SceneData } from './scene';
 
 const scene: SceneData = {
@@ -63,10 +64,11 @@ describe('the adaptive row', () => {
     expect(model.controls.find((c) => c.id === 'strokeWidth')?.group).toBe('stroke');
   });
 
-  // Since 06.16 (L8) an arrow takes its label's size, and no other label control.
-  it('gives an arrow its own controls and its label size', () => {
+  // Since 06.16 (L8) an arrow takes its label's size, and since 06.17 its
+  // direction; no other label control.
+  it('gives an arrow its own controls, its label size and direction', () => {
     expect(ids(toolbarFor(scene, ['a']))).toEqual([
-      'stroke', 'strokeWidth', 'strokeStyle', 'opacity', 'fontSize', 'arrowType', 'startArrowhead', 'endArrowhead',
+      'stroke', 'strokeWidth', 'strokeStyle', 'opacity', 'fontSize', 'labelDirection', 'arrowType', 'startArrowhead', 'endArrowhead',
     ]);
   });
 
@@ -104,13 +106,14 @@ describe('overflowing into More', () => {
 // The spec's controls table: a code block offers Language and opacity, and
 // none of the shape controls, which would mean nothing on it.
 describe('the toolbar for a code block', () => {
-  it('offers language and opacity only', () => {
+  // Since 06.17 its size too.
+  it('offers language, opacity and size only', () => {
     const scene: SceneData = {
       elements: [
         { id: 'c', type: 'code', x: 0, y: 0, w: 10, h: 10, z: 1, code: '', measuredWidth: 10, measuredHeight: 10 },
       ] as never[],
     };
-    expect(toolbarFor(scene, ['c']).controls.map((control) => control.id)).toEqual(['language', 'opacity']);
+    expect(toolbarFor(scene, ['c']).controls.map((control) => control.id)).toEqual(['language', 'opacity', 'fontSize']);
   });
 });
 
@@ -150,5 +153,20 @@ describe('the colours of a closed line', () => {
   it('include its fill', () => {
     const loop: SceneData = { elements: [{ id: 'loop', type: 'line', x: 0, y: 0, w: 10, h: 10, z: 1, points: [0, 0, 10, 0, 10, 10, 0, 0], closed: true }] as never };
     expect(toolbarFor(loop, ['loop']).styles).toEqual(['fill', 'stroke']);
+  });
+});
+
+describe('the size control for code blocks (06.17)', () => {
+  it('offers the code sizes when only code blocks are selected', () => {
+    const scene: SceneData = { elements: [{ id: 'c', type: 'code', x: 0, y: 0, w: 10, h: 10, z: 1, code: 'x' }, { id: 't', type: 'text', x: 0, y: 0, w: 10, h: 10, z: 2, text: 'x', measuredWidth: 10, measuredHeight: 10 }] as never };
+    expect(toolbarFor(scene, ['c']).controls.find((c) => c.id === 'fontSize')).toMatchObject({ variant: 'code' });
+    expect(toolbarFor(scene, ['c', 't']).controls.find((c) => c.id === 'fontSize')?.variant).toBeUndefined();
+  });
+});
+
+describe('the options a control offers (06.17)', () => {
+  it('are the code sizes for the code variant of the size control', () => {
+    expect(controlOptions({ id: 'fontSize', variant: 'code' }).options.map((o) => o.value)).toEqual([11, 13, 16, 20]);
+    expect(controlOptions({ id: 'fontSize' }).options.map((o) => o.value)).toEqual([16, 20, 28, 36]);
   });
 });

@@ -17,12 +17,12 @@ function baseIO() {
       source: '# T\n',
       diagrams: {},
       scene: emptyScene,
-      stamp: { size: 4, modifiedUnixNano: 1 },
+      stamp: { size: 4, modifiedUnixNano: '1' },
       error: '',
     }),
     save: vi.fn().mockResolvedValue({
       path: '/w/notes.md',
-      stamp: { size: 9, modifiedUnixNano: 2 },
+      stamp: { size: 9, modifiedUnixNano: '2' },
       error: '',
     }),
     changedOnDisk: vi.fn().mockResolvedValue(false),
@@ -69,7 +69,7 @@ describe('document state', () => {
       source: '',
       diagrams: {},
       scene: emptyScene,
-      stamp: { size: 0, modifiedUnixNano: 0 },
+      stamp: { size: 0, modifiedUnixNano: '0' },
       error: 'open missing.md: no such file',
     });
     await doc.open('/w/missing.md');
@@ -111,7 +111,7 @@ describe('document state', () => {
     const saving = doc.save(emptyScene);
     await vi.waitFor(() => expect(io.save).toHaveBeenCalled());
     doc.touch();
-    finish({ path: '/w/notes.md', stamp: { size: 9, modifiedUnixNano: 2 }, error: '' });
+    finish({ path: '/w/notes.md', stamp: { size: 9, modifiedUnixNano: '2' }, error: '' });
 
     expect((await saving).saved).toBe(true);
     expect(doc.dirty).toBe(true);
@@ -131,7 +131,7 @@ describe('document state', () => {
 
   it('reports a save failure and stays dirty', async () => {
     const io = stubIO({
-      save: vi.fn().mockResolvedValue({ path: '', stamp: { size: 0, modifiedUnixNano: 0 }, error: 'disk full' }),
+      save: vi.fn().mockResolvedValue({ path: '', stamp: { size: 0, modifiedUnixNano: '0' }, error: 'disk full' }),
     });
     const doc = createDocument(io);
     await doc.open('/w/notes.md');
@@ -166,7 +166,7 @@ describe('whether a document is open', () => {
 
   it('a failed open from nothing stays closed', async () => {
     const doc = createDocument(
-      stubIO({ open: vi.fn().mockResolvedValue({ path: '', source: '', diagrams: null, scene: emptyScene, stamp: { size: 0, modifiedUnixNano: 0 }, error: 'cannot read' }) }),
+      stubIO({ open: vi.fn().mockResolvedValue({ path: '', source: '', diagrams: null, scene: emptyScene, stamp: { size: 0, modifiedUnixNano: '0' }, error: 'cannot read' }) }),
     );
     await doc.open('/w/missing.md');
     expect(doc.isOpen).toBe(false);
@@ -213,7 +213,7 @@ describe('saving a new document', () => {
 
   it('stays untitled and dirty when the save fails', async () => {
     const io = stubIO({
-      save: vi.fn().mockResolvedValue({ path: '', stamp: { size: 0, modifiedUnixNano: 0 }, error: 'permission denied' }),
+      save: vi.fn().mockResolvedValue({ path: '', stamp: { size: 0, modifiedUnixNano: '0' }, error: 'permission denied' }),
     });
     const doc = createDocument(io);
     doc.touch();
@@ -237,7 +237,7 @@ describe('the scene around the elements', () => {
         source: '',
         diagrams: {},
         scene: { version: 2, elements: [{ id: 'e1' }], grid: { size: 8 } },
-        stamp: { size: 1, modifiedUnixNano: 1 },
+        stamp: { size: 1, modifiedUnixNano: '1' },
         error: '',
       }),
     });
@@ -310,14 +310,16 @@ describe('style properties survive a load and a save', () => {
       { id: 'l2', type: 'line', x: 0, y: 200, w: 10, h: 10, z: 8, points: [0, 0, 10, 0, 10, 10, 0, 0], closed: true, fill: 'blue', edges: 'round' },
       { id: 'a4', type: 'arrow', x: 0, y: 300, w: 40, h: 0, z: 9, points: [0, 0, 40, 0], arrowType: 'arc' },
       // A crow's-foot head and a label size on an arrow (06.16).
-      { id: 'a5', type: 'arrow', x: 0, y: 400, w: 40, h: 0, z: 10, points: [0, 0, 40, 0], endArrowhead: 'zeroOrMany', label: 'has', fontSize: 28 },
+      { id: 'a5', type: 'arrow', x: 0, y: 400, w: 40, h: 0, z: 10, points: [0, 0, 40, 0], endArrowhead: 'zeroOrMany', label: 'has', fontSize: 28, labelDirection: 'along' },
+      // A code block's size (06.17).
+      { id: 'c2', type: 'code', x: 0, y: 500, w: 200, h: 40, z: 11, code: 'x', language: 'go', fontSize: 16, measuredWidth: 200, measuredHeight: 40 },
     ],
     grid: { size: 8 },
   };
 
   it('writes back every key it was given', async () => {
     const io = stubIO({
-      open: vi.fn().mockResolvedValue({ path: '/w/styled.md', source: '', diagrams: {}, scene: styled, stamp: { size: 1, modifiedUnixNano: 1 }, error: '' }),
+      open: vi.fn().mockResolvedValue({ path: '/w/styled.md', source: '', diagrams: {}, scene: styled, stamp: { size: 1, modifiedUnixNano: '1' }, error: '' }),
     });
     const doc = createDocument(io);
     const opened = await doc.open('/w/styled.md');

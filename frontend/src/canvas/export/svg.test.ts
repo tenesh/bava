@@ -303,3 +303,36 @@ describe('the size of a head on a bent arrow', () => {
     expect(headOf(svg)).toBe(sink.d());
   });
 });
+
+describe("an exported code block's language", () => {
+  it('names it on the top edge, the border masked behind it', () => {
+    const svg = svgOf([{ id: 'c', type: 'code', x: 0, y: 0, w: 200, h: 60, z: 1, code: 'x', language: 'go', measuredWidth: 200, measuredHeight: 60 }]);
+    expect(svg).toContain('>Go</text>');
+    expect(svg).toContain('<mask id="language-c"');
+    // The body is filled without a stroke: the border is the masked one.
+    const body = svg.match(/<g data-id="c">(<rect[^>]*>)/)![1];
+    expect(body).not.toContain('stroke=');
+    expect(svgOf([{ id: 'p', type: 'code', x: 0, y: 0, w: 200, h: 60, z: 1, code: 'x', measuredWidth: 200, measuredHeight: 60 }])).not.toContain('language-p');
+  });
+});
+
+describe('an exported code block at another size (06.17)', () => {
+  it('draws its code at its own size and advance', () => {
+    const svg = toSvg(exportArea({ elements: [{ id: 'c', type: 'code', x: 0, y: 0, w: 400, h: 80, z: 1, code: 'ab', fontSize: 26, measuredWidth: 400, measuredHeight: 80 }] as never[] }, []), {
+      read: (name: string) => (({ '--text-code': '13px', '--font-mono': 'Geist Mono', '--leading-code': '1.5', '--size-code-padding': '8px' }) as Record<string, string>)[name] ?? '',
+      codeRuns: { c: [[{ text: 'a', kind: 'plain' }, { text: 'b', kind: 'plain' }]] } as never,
+      monoAdvance: 6,
+    });
+    expect(svg).toContain('font-size="26"');
+    // The second character one advance on: 6 at 13, 12 at 26.
+    expect(svg).toContain('<text x="20"');
+  });
+});
+
+describe('an exported label along its arrow (06.17)', () => {
+  it('is turned about its centre', () => {
+    const svg = svgOf([{ id: 'a', type: 'arrow', x: 0, y: 0, w: 0, h: 100, z: 1, points: [0, 0, 0, 100], label: 'down', labelDirection: 'along' }]);
+    expect(svg).toContain('<g transform="rotate(90 0 50)">');
+    expect(svg).toContain('<polygon points=');
+  });
+});

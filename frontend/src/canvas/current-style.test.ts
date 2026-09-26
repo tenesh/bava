@@ -35,3 +35,22 @@ describe('the style a new element takes', () => {
     expect(style.for('rect')).toEqual({});
   });
 });
+
+describe('a remembered size across text and code (review of 06.17)', () => {
+  it('is carried by its step, never out of range', () => {
+    const style = createCurrentStyle();
+    style.remember('fontSize', 11, 'code');
+    expect(style.for('text')).toEqual({ fontSize: 16 });
+    style.remember('fontSize', 36, 'text');
+    expect(style.for('code')).toEqual({ fontSize: 20 });
+  });
+});
+
+describe('a remembered size valid in both scales (review of 06.17)', () => {
+  it('is read in the scale it was chosen in', () => {
+    const style = createCurrentStyle();
+    style.remember('fontSize', 20, 'code');
+    expect(style.for('code')).toEqual({ fontSize: 20 });
+    expect(style.for('text')).toEqual({ fontSize: 36 });
+  });
+});
