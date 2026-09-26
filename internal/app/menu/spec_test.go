@@ -273,3 +273,37 @@ func TestCanvasScopedShortcutsAreNeverNative(t *testing.T) {
 		t.Error("no canvas-scoped items: the check exercised nothing")
 	}
 }
+
+// Only the shortcuts decided with the user on 2026-09-26 are bound (06.12,
+// decision 6); every other command stays reachable from its menu without a
+// key. A shortcut added later has to be added here on purpose.
+func TestOnlyTheKeptShortcutsAreBound(t *testing.T) {
+	kept := map[string]bool{
+		"app.settings": true, "file.settings": true,
+		"file.new": true, "file.open": true, "file.save": true, "file.saveAs": true,
+		"edit.undo": true, "edit.redo": true, "edit.cut": true, "edit.copy": true, "edit.paste": true, "edit.selectAll": true,
+		"view.document": true, "view.both": true, "view.canvas": true,
+		"view.zoomIn": true, "view.zoomOut": true, "view.actualSize": true,
+		"canvas.group": true, "canvas.ungroup": true, "canvas.bringForward": true, "canvas.sendBackward": true,
+		"canvas.flipHorizontal": true, "canvas.flipVertical": true, "canvas.duplicate": true, "canvas.lock": true,
+	}
+	bound := map[string]bool{}
+	for _, item := range load(t).AllItems() {
+		if item.ID == "" || item.Kind == menu.KindRole {
+			continue
+		}
+		if item.Accelerator == "" && item.Shortcut == "" {
+			continue
+		}
+		bound[item.ID] = true
+		if !kept[item.ID] {
+			t.Errorf("%s is bound (accelerator=%q shortcut=%q) but is not a kept shortcut", item.ID, item.Accelerator, item.Shortcut)
+		}
+	}
+	// And the other way: a kept shortcut that lost its key is a regression.
+	for id := range kept {
+		if !bound[id] {
+			t.Errorf("%s is a kept shortcut but the menu binds no key for it", id)
+		}
+	}
+}

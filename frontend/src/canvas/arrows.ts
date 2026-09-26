@@ -30,7 +30,7 @@ export function routePoints(points: number[], type: string | undefined): number[
   if (points.length < 4 || !type || type === 'straight') return points;
   if (points.length > 4) {
     if (type === 'arc') return smoothPoints(points, LINE_TENSION);
-    if (type === 'elbow') return routePoints([points[0], points[1], points[points.length - 2], points[points.length - 1]], type);
+    // An elbow's points are its route, stored by `reroute` (`elbow.ts`).
     return points;
   }
   const [x1, y1, x2, y2] = points;

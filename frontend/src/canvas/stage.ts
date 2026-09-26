@@ -28,11 +28,13 @@ import { tensionOf } from './hit';
 import type { Run } from './code/highlight';
 import { monoAdvance } from './code/advance';
 import { columnsIn } from './code/measure';
+import { columnsFor, wrapRuns } from './code/wrap';
 import { canvasLineWidth } from './text-measure';
 import { drawHead, headAt, labelPoint, middlesAlong, pathLength, routePoints } from './arrows';
 import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
-import { HANDLES, handleCentre, rotateHandleCentre } from './resize';
-import { angleOfElement, canRotate, centreOf, rotatedBounds, selectionFrame } from './rotate';
+import { handleCentre, rotateHandleCentre } from './resize';
+import { chromeFor } from './selection-chrome';
+import { angleOfElement, centreOf, rotatedBounds, selectionFrame } from './rotate';
 
 export type CanvasStageOptions = {
   /** Reads a CSS custom property. Injected so tests need no stylesheet. */
@@ -285,7 +287,10 @@ export class CanvasStage {
     // frame of a drag. Rebuilding a few hundred text nodes per frame is the
     // performance trap this class exists to avoid, so nodes are rebuilt only
     // when the runs or the way they paint actually changed.
-    const paintKey = `${paint.font.family} ${paint.font.size} ${paint.font.lineHeight} ${this.#zoom}`;
+    // The advance too: rows wrapped before Geist Mono loaded were measured
+    // with a fallback font, and must wrap again once it has.
+    const advanceNow = monoAdvance(paint.font.size, paint.font.family);
+    const paintKey = `${paint.font.family} ${paint.font.size} ${paint.font.lineHeight} ${this.#zoom} ${element.w} ${advanceNow}`;
     if (entry.drawnRuns === runsNow && entry.drawnPaint === paintKey) return;
     entry.drawnRuns = runsNow;
     entry.drawnPaint = paintKey;
@@ -295,7 +300,10 @@ export class CanvasStage {
     const padding = number(read, '--size-code-padding');
     const lineHeight = paint.font.size * paint.font.lineHeight;
     const advance = monoAdvance(paint.font.size, paint.font.family);
-    runsNow.forEach((line, row) => {
+    // Wrapped to the block's width, by the rule the measurement and the
+    // exporter use (`code/wrap.ts`).
+    const rows = wrapRuns(runsNow, columnsFor(element.w, { advance, lineHeight, padding }));
+    rows.forEach((line, row) => {
       let column = 0;
       for (const run of line) {
         const node = new Konva.Text({
@@ -387,13 +395,17 @@ export class CanvasStage {
     // Line widths and handle sizes are divided by the zoom, so they stay the
     // same on screen however far in or out the canvas is.
     const scale = 1 / this.#zoom;
-    this.#outline = turn(
-      new Konva.Rect({ ...boundsToRect(bounds), stroke: colour, strokeWidth: scale }),
-    ) as Konva.Rect;
-    this.#overlay.add(this.#outline);
+    // What this selection shows, decided with the pointer (`selection-chrome.ts`).
+    const chrome = chromeFor(selected);
+    if (chrome.box) {
+      this.#outline = turn(
+        new Konva.Rect({ ...boundsToRect(bounds), stroke: colour, strokeWidth: scale }),
+      ) as Konva.Rect;
+      this.#overlay.add(this.#outline);
+    }
 
     const size = number(read, '--size-selection-handle') * scale;
-    for (const handle of HANDLES) {
+    for (const handle of chrome.handles) {
       const at = handleCentre(bounds, handle);
       const square = new Konva.Rect({
         x: at.x - size / 2,
@@ -417,6 +429,9 @@ export class CanvasStage {
     if (linear) {
       // Where the points are drawn, a turn included, as the pointer tests them.
       const drawn = drawnPoints(linear);
+      // Excalidraw's point handle: 5 px in radius on screen (the token is its
+      // diameter), and a middle handle the same size.
+      const pointRadius = (number(read, '--size-point-handle') / 2) * scale;
       const elbow = (linear as SceneElement & ArrowProps).arrowType === 'elbow' && linear.type === 'arrow';
       const count = drawn.length >= 4 ? drawn.length / 2 : 0;
       for (let i = 0; i < count; i += 1) {
@@ -424,7 +439,7 @@ export class CanvasStage {
         const handle = new Konva.Circle({
           x: drawn[i * 2],
           y: drawn[i * 2 + 1],
-          radius: size / 2,
+          radius: pointRadius,
           fill: surface,
           stroke: colour,
           strokeWidth: scale,
@@ -444,7 +459,7 @@ export class CanvasStage {
         const handle = new Konva.Circle({
           x: middle.x,
           y: middle.y,
-          radius: size / 3,
+          radius: pointRadius,
           fill: colour,
           opacity: MIDDLE_HANDLE_OPACITY,
         });
@@ -455,7 +470,7 @@ export class CanvasStage {
 
     // The rotate handle: a disc above the frame, clear of the top edge. Not
     // drawn when nothing in the selection can turn, so no handle is dead.
-    if (!selected.some(canRotate)) {
+    if (!chrome.rotate) {
       this.#overlay.batchDraw();
       return;
     }

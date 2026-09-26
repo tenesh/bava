@@ -301,3 +301,23 @@ dropped a pixel outside an edge.
 bend, end or label edit starts from it, and every handle sits on
 `drawnPoints`. Editing stored points under an angle moves the pivot, so the
 whole line jumps.
+
+## An elbow's route is stored, and computed in reroute
+An elbow's `points` are its route (`elbow.ts`), recomputed by `reroute` inside
+`history.mutate`, where the scene is known: routing around shapes needs them,
+and the drawing path (`routePoints`, stage, hit test, export) has only the
+element. `routePoints` draws an elbow's stored points as they are. An attached
+elbow end stays on its anchor's side; straight and curved arrows keep the
+facing-side rule. Switching away from elbow keeps only the ends
+(`style.ts`, `applyProperty`).
+
+## Code wraps through one function
+A code block's width is the user's; `code/wrap.ts` breaks its lines, and the
+measurement, the stage and the exporter all use it, so a block is as tall as
+the lines each draws. `columnsFor` allows a hundredth of a column of slack: a
+stored width is tidied to three decimals.
+
+## What a selection shows is decided once
+`selection-chrome.ts` says which outline, handles and rotate handle a
+selection has; the stage draws exactly those and the pointer presses exactly
+those. A straight line or arrow, or an elbow, has no box (Excalidraw's rule).

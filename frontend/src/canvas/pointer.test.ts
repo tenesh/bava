@@ -1088,9 +1088,9 @@ describe('placing a code block', () => {
   });
 });
 
-// A code block's size comes from its code, so there is nothing to drag: it is
-// the one element with no resize handles (docs/file-format.md).
-describe('a code block is not resized by hand', () => {
+// A code block is resized like a shape: its width is the user's, its height
+// follows its code (docs/file-format.md, "Code blocks").
+describe('a code block resized by hand', () => {
   function placed() {
     const kit = harness('select');
     kit.history.mutate((scene) => {
@@ -1112,13 +1112,16 @@ describe('a code block is not resized by hand', () => {
     return { ...kit, block };
   }
 
-  it('ignores a drag on what would be a corner handle', () => {
+  // Since 06.12 a corner resizes it like a shape: the width follows the drag,
+  // the height follows its code, not the drag.
+  it('resizes from a corner, its height set by its code', () => {
     const { handler, block } = placed();
     handler.down(at(100, 40));
     handler.move(at(300, 300));
     handler.up(at(300, 300));
-    expect(block().w).toBe(100);
-    expect(block().h).toBe(40);
+    expect(block().w).toBe(300);
+    expect(block().h).toBe(block().measuredHeight);
+    expect(block().h).toBeLessThan(300);
   });
 
   it('still moves when it is dragged by its middle', () => {
@@ -1639,12 +1642,20 @@ describe('bending a line or arrow', () => {
     expect(world()).toEqual([0, 0, 100, 50]);
   });
 
+  // An elbow's points are its route (06.12): a press on it moves the whole
+  // arrow, never adds a bend.
   it('offers no bend on an elbow arrow', () => {
     const { handler, history } = selected({ ...straight, h: 100, arrowType: 'elbow', points: [0, 0, 200, 100] });
-    handler.down(at(100, 50));
-    handler.move(at(100, 90));
-    handler.up(at(100, 90));
-    expect((history.current.elements[0] as unknown as { points: number[] }).points).toHaveLength(4);
+    history.reset(history.current);
+    const before = (history.current.elements[0] as unknown as { points: number[] }).points;
+    const y = (history.current.elements[0] as unknown as { y: number }).y;
+    handler.down(at(100, 0));
+    handler.move(at(100, 40));
+    handler.up(at(100, 40));
+    const after = history.current.elements[0] as unknown as { y: number; points: number[] };
+    // Moved as a whole by the drag, with its route unchanged.
+    expect(after.y).toBe(y + 40);
+    expect(after.points).toEqual(before);
   });
 
   it('offers no middle on a segment too short to bend', () => {
@@ -1853,5 +1864,138 @@ describe('review of 06.10: labels, copies and modifiers on arrows', () => {
     handler.move(at(middle.x, middle.y + 40));
     handler.up(at(middle.x, middle.y + 40));
     expect((history.current.elements[0] as unknown as { points: number[] }).points).toHaveLength(6);
+  });
+});
+
+// Decision 1 of 06.12: a code block is resized like a shape; its width is the
+// user's and its height follows its wrapped code.
+describe('resizing a code block', () => {
+  const metrics = { advance: 6, lineHeight: 20, padding: 8 };
+  function selectedBlock() {
+    // Sixteen letters at advance 6: 96 wide plus padding, one line tall.
+    const history = createHistory({
+      elements: [{ id: 'c', type: 'code', x: 0, y: 0, w: 112, h: 36, z: 1, code: 'abcdefghijklmnop', measuredWidth: 112, measuredHeight: 36 }] as never,
+    });
+    const selection = createSelection();
+    selection.click('c');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), handleSize: () => 4, codeMetrics: () => metrics });
+    const block = () => history.current.elements[0] as unknown as { w: number; h: number; measuredWidth: number; measuredHeight: number };
+    return { handler, block };
+  }
+
+  it('narrows, and grows taller as its line wraps', () => {
+    const { handler, block } = selectedBlock();
+    handler.down(at(112, 18));
+    handler.move(at(76, 18));
+    handler.up(at(76, 18));
+    expect(block()).toMatchObject({ w: 76, h: 56, measuredWidth: 76, measuredHeight: 56 });
+  });
+
+  it('widens without changing its height', () => {
+    const { handler, block } = selectedBlock();
+    handler.down(at(112, 18));
+    handler.move(at(200, 18));
+    handler.up(at(200, 18));
+    expect(block()).toMatchObject({ w: 200, h: 36 });
+  });
+});
+
+describe('pressing on a selected line or arrow, as Excalidraw', () => {
+  function selected(element: Record<string, unknown>) {
+    const history = createHistory({ elements: [{ id: 'l', z: 1, ...element }] as never });
+    const selection = createSelection();
+    selection.click('l');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), handleSize: () => 4, pointHit: () => 11, bendMinSegment: () => 40 });
+    const points = () => (history.current.elements[0] as unknown as { points: number[]; w: number; h: number });
+    return { handler, points };
+  }
+
+  it('takes a point within 11 px of it', () => {
+    const { handler, points } = selected({ type: 'arrow', x: 0, y: 0, w: 200, h: 0, points: [0, 0, 200, 0] });
+    // 9.9 px from the end: outside the old 4 px square, inside 11 px.
+    handler.down(at(207, 7));
+    handler.move(at(207, 57));
+    handler.up(at(207, 57));
+    expect(points().points.at(-1)).toBeGreaterThan(40);
+  });
+
+  it('does not resize a straight arrow from where its box corner would be', () => {
+    const { handler, points } = selected({ type: 'arrow', x: 0, y: 0, w: 200, h: 100, points: [0, 0, 200, 100] });
+    handler.down(at(200, 0));
+    handler.move(at(300, -50));
+    handler.up(at(300, -50));
+    expect(points()).toMatchObject({ w: 200, h: 100, points: [0, 0, 200, 100] });
+  });
+});
+
+// Excalidraw's drag details (linearElementEditor.ts:542-557,1233-1240,
+// 1736-1779; App.tsx:11745-11815): a point keeps its grab offset, Shift snaps
+// it to 15° about its neighbour, a middle adds a bend only after 10 px, and a
+// new line or arrow needs a 20 px drag.
+describe('dragging points like Excalidraw', () => {
+  function selected(element: Record<string, unknown>) {
+    const history = createHistory({ elements: [{ id: 'l', z: 1, ...element }] as never });
+    const selection = createSelection();
+    selection.click('l');
+    const handler = createPointerHandler({
+      history, selection, tools: createTools(), handleSize: () => 4, pointHit: () => 11, bendMinSegment: () => 40, bendInsertDistance: () => 10,
+    });
+    const world = () => {
+      const e = history.current.elements[0] as unknown as { x: number; y: number; points: number[] };
+      return e.points.map((v, i) => Math.round(v + (i % 2 === 0 ? e.x : e.y)));
+    };
+    return { handler, world };
+  }
+  const straight = { type: 'line', x: 0, y: 0, w: 200, h: 0, points: [0, 0, 200, 0] };
+
+  it('keeps the offset from where the point was grabbed', () => {
+    const { handler, world } = selected(straight);
+    handler.down(at(205, 5));
+    handler.move(at(205, 55));
+    handler.up(at(205, 55));
+    expect(world()).toEqual([0, 0, 200, 50]);
+  });
+
+  it('snaps a dragged end to 15 degree steps about its neighbour with Shift', () => {
+    const { handler, world } = selected(straight);
+    handler.down(at(200, 0));
+    handler.move(at(190, 60), { shift: true });
+    handler.up(at(190, 60), { shift: true });
+    const [, , x, y] = world();
+    const degrees = (Math.atan2(y, x) * 180) / Math.PI;
+    expect(Math.abs(degrees - Math.round(degrees / 15) * 15)).toBeLessThan(0.5);
+  });
+
+  it('adds no bend for a middle moved 5 px', () => {
+    const { handler, world } = selected(straight);
+    handler.down(at(100, 0));
+    handler.move(at(100, 5));
+    handler.up(at(100, 5));
+    expect(world()).toEqual([0, 0, 200, 0]);
+  });
+
+  it('makes no arrow from a drag shorter than 20 px', () => {
+    const history = createHistory({ elements: [] });
+    const tools = createTools();
+    tools.activate('arrow');
+    const handler = createPointerHandler({ history, selection: createSelection(), tools, minLinear: () => 20 });
+    handler.down(at(0, 0));
+    handler.move(at(12, 8));
+    handler.up(at(12, 8));
+    expect(history.current.elements).toHaveLength(0);
+  });
+});
+
+describe('dragging an arrow end like Excalidraw', () => {
+  it('keeps the grab offset and snaps with Shift', () => {
+    const history = createHistory({ elements: [{ id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, points: [0, 0, 200, 0] }] as never });
+    const selection = createSelection();
+    selection.click('a');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), pointHit: () => 11 });
+    handler.down(at(205, 5));
+    handler.move(at(205, 55));
+    handler.up(at(205, 55));
+    const arrow = history.current.elements[0] as unknown as { x: number; y: number; points: number[] };
+    expect([arrow.x + arrow.points[2], arrow.y + arrow.points[3]]).toEqual([200, 50]);
   });
 });

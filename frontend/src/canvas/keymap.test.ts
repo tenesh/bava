@@ -6,13 +6,10 @@ import { handleKey } from './keymap';
 function actions() {
   return {
     deleteSelection: vi.fn(),
-    selectNext: vi.fn(),
-    selectPrevious: vi.fn(),
     nudge: vi.fn(),
     escape: vi.fn(),
     activateTool: vi.fn(),
     editSelection: vi.fn(),
-    openInsert: vi.fn(),
   };
 }
 
@@ -20,28 +17,19 @@ const key = (over: Partial<KeyboardEvent> = {}) =>
   ({ key: 'a', metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, ...over }) as KeyboardEvent;
 
 describe('keymap', () => {
-  // "/" opens the insert panel, like the rail's + button, but never while typing.
-  it('opens the insert panel with /, not while typing', () => {
+  // Fewer shortcuts (06.12, decision 6): / and Tab are not canvas keys. The
+  // insert panel opens from the rail; Tab is left to the browser's focus.
+  it('leaves / and Tab alone', () => {
     const a = actions();
-    expect(handleKey(key({ key: '/' }), a, { typing: false })).toBe(true);
-    expect(a.openInsert).toHaveBeenCalledTimes(1);
-    const b = actions();
-    expect(handleKey(key({ key: '/' }), b, { typing: true })).toBe(false);
-    expect(b.openInsert).not.toHaveBeenCalled();
+    for (const event of [key({ key: '/' }), key({ key: 'Tab' }), key({ key: 'Tab', shiftKey: true })]) {
+      expect(handleKey(event, a, { typing: false })).toBe(false);
+    }
   });
 
   it('deletes the selection', () => {
     const a = actions();
     handleKey(key({ key: 'Backspace' }), a, { typing: false });
     expect(a.deleteSelection).toHaveBeenCalled();
-  });
-
-  it('steps selection with tab', () => {
-    const a = actions();
-    handleKey(key({ key: 'Tab' }), a, { typing: false });
-    expect(a.selectNext).toHaveBeenCalled();
-    handleKey(key({ key: 'Tab', shiftKey: true }), a, { typing: false });
-    expect(a.selectPrevious).toHaveBeenCalled();
   });
 
   it('nudges with the arrow keys', () => {
@@ -83,7 +71,6 @@ describe('keymap', () => {
     expect(a.activateTool).not.toHaveBeenCalled();
     expect(a.deleteSelection).not.toHaveBeenCalled();
     expect(a.nudge).not.toHaveBeenCalled();
-    expect(a.selectNext).not.toHaveBeenCalled();
   });
 
   // A shortcut the native menu binds must not also be handled here, or one

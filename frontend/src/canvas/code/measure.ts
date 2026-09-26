@@ -1,15 +1,18 @@
 /**
  * How big a code block is.
  *
- * Its size comes from its code and nothing else (decided 2026-09-19): as wide
- * as the longest line, as tall as the line count, so nothing it holds is ever
- * hidden. That is why a code block has no resize handles.
+ * Its width is the user's and its height comes from its code (decided
+ * 2026-09-26, replacing "sized by its code"): lines wrap to the width
+ * (`wrap.ts`) and the height is the wrapped line count, so nothing it holds is
+ * ever hidden. A new block starts as wide as its longest line, at least
+ * `MIN_COLUMNS`.
  *
  * Geist Mono is monospaced, so one advance describes every glyph and a line's
  * width is its character count. Measuring each line with a canvas would be
  * both slower and less stable across the two webviews.
  */
 import { tidy } from '../resize';
+import { columnsFor, columnsIn, wrapLine } from './wrap';
 
 /**
  * A tab is drawn as this many spaces. Shared with the tokeniser: drawing a tab
@@ -26,28 +29,9 @@ export type CodeMetrics = {
   padding: number;
 };
 
-/**
- * How many mono columns a string occupies.
- *
- * Not its length: a CJK glyph is two columns wide in every terminal and
- * editor, an emoji is one glyph across two code units, and a combining mark
- * draws on the glyph before it rather than beside it. Counting code units put
- * every run after a wide glyph on top of the text before it, and under-sized
- * the panel so the code spilled out of it.
- */
-export function columnsIn(text: string): number {
-  let columns = 0;
-  for (const glyph of text) {
-    const point = glyph.codePointAt(0) ?? 0;
-    if (COMBINING.test(glyph)) continue;
-    columns += WIDE.test(glyph) || point > 0xffff ? 2 : 1;
-  }
-  return columns;
-}
-
-/** East Asian Wide and Fullwidth ranges, and the emoji blocks. */
-const WIDE = /[\u1100-\u115f\u2e80-\ua4cf\ua960-\ua97f\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe6f\uff00-\uff60\uffe0-\uffe6]/u;
-const COMBINING = /\p{Mn}|\p{Me}/u;
+// Column counting lives with wrapping, which needs it too; re-exported here,
+// where the stage and exporter have always imported it.
+export { columnsIn } from './wrap';
 
 /**
  * The narrowest a block is, in columns: room to type into. A new block is
@@ -57,9 +41,21 @@ const COMBINING = /\p{Mn}|\p{Me}/u;
  */
 export const MIN_COLUMNS = 20;
 
-/** The size of the panel that holds `code`. */
-export function measureCode(code: string, metrics: CodeMetrics): { width: number; height: number } {
+/** The narrowest a code block can be resized to, in columns. A count, as above. */
+export const MIN_RESIZE_COLUMNS = 4;
+
+/**
+ * The size of the panel that holds `code`. With a `width`, the block is that
+ * wide and its lines wrap to it (`docs/file-format.md`, "Code blocks"); without,
+ * it is as wide as its longest line, which is how a new block is sized.
+ */
+export function measureCode(code: string, metrics: CodeMetrics, width?: number): { width: number; height: number } {
   const lines = code.replace(/\t/g, TAB).split('\n');
+  if (width !== undefined) {
+    const columns = columnsFor(width, metrics);
+    const rows = lines.reduce((total, line) => total + wrapLine(line, columns).length, 0);
+    return { width: tidy(width), height: tidy(rows * metrics.lineHeight + metrics.padding * 2) };
+  }
   const longest = Math.max(...lines.map(columnsIn));
   return {
     // An empty block is still a block: one line tall, and wide enough to

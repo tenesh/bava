@@ -41,8 +41,8 @@ export function handleCentre(box: Box, handle: Handle): { x: number; y: number }
 }
 
 /** The handle within `size` of a point, if any. Corners win over edges. */
-export function handleAt(point: { x: number; y: number }, box: Box, size: number): Handle | null {
-  for (const handle of HANDLES) {
+export function handleAt(point: { x: number; y: number }, box: Box, size: number, among: readonly Handle[] = HANDLES): Handle | null {
+  for (const handle of among) {
     const centre = handleCentre(box, handle);
     if (Math.abs(point.x - centre.x) <= size && Math.abs(point.y - centre.y) <= size) return handle;
   }
@@ -95,9 +95,11 @@ export function resizeBox(box: Box, handle: Handle, dx: number, dy: number, opti
 export function scaleInto<T extends Box & { points?: number[]; type?: string }>(element: T, from: Box, to: Box): T {
   const sx = from.w === 0 ? 1 : to.w / from.w;
   const sy = from.h === 0 ? 1 : to.h / from.h;
-  if (element.type === 'text' || element.type === 'code') {
-    // Text and code keep their stored measurement, which must describe their
-    // box: they move with the group but are not stretched.
+  // Text keeps its stored measurement, which must describe its box: it moves
+  // with the group but is not stretched. A code block does scale: its width is
+  // the user's, and the caller sets its height from its wrapped code
+  // (`docs/file-format.md`, "Code blocks").
+  if (element.type === 'text') {
     return { ...element, x: tidy(to.x + (element.x - from.x) * sx), y: tidy(to.y + (element.y - from.y) * sy) };
   }
   const scaled = {

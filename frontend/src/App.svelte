@@ -111,6 +111,10 @@
     bindingReach: () => bindingReach(viewport.zoom),
     // The shortest segment that offers a bend, in scene units at this zoom.
     bendMinSegment: () => (parseFloat(readRootVariable('--size-bend-min-segment')) || 0) / viewport.zoom,
+    // How near a press must come to a line's point, in scene units at this zoom.
+    pointHit: () => (parseFloat(readRootVariable('--size-point-hit')) || 0) / viewport.zoom,
+    bendInsertDistance: () => (parseFloat(readRootVariable('--size-bend-insert')) || 0) / viewport.zoom,
+    minLinear: () => (parseFloat(readRootVariable('--size-min-linear')) || 0) / viewport.zoom,
     // An arrow's label as the stage draws it, for sliding it along the arrow.
     labelBounds: (id) => canvas.labelBounds(id),
     // How far a press must travel to be a drag, in scene units at this zoom.
@@ -165,9 +169,11 @@
       },
       angle: angleOfElement(element),
       zoom: viewport.zoom,
+      isReserved: reservedByMenu(menuSpec as MenuSpec, platform),
       // Grows as it is typed in, measured as the block will be on commit.
       measure: (code) => {
-        const size = measureCode(code, codeMetrics());
+        // At the block's width: it wraps, and only grows taller.
+        const size = measureCode(code, codeMetrics(), element.w);
         return { width: size.width * viewport.zoom, height: size.height * viewport.zoom };
       },
       onCommit: (code) => {
@@ -1054,17 +1060,6 @@
 
       const handled = handleKey(event, {
         deleteSelection: canvasEdit(canvasCommands.deleteSelection),
-        openInsert: () => {
-          if (canvasShown()) openInsertPanel();
-        },
-        selectNext: () => {
-          selection.selectNext(history.current);
-          syncSelection();
-        },
-        selectPrevious: () => {
-          selection.selectPrevious(history.current);
-          syncSelection();
-        },
         nudge: (dx, dy) => {
           // A frame carries its contents and a group its children, by keyboard
           // exactly as by mouse.

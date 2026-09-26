@@ -16,15 +16,11 @@ import { toolForKey, type ToolId } from './tools.svelte';
 
 export type KeymapActions = {
   deleteSelection(): void;
-  selectNext(): void;
-  selectPrevious(): void;
   nudge(dx: number, dy: number): void;
   escape(): void;
   activateTool(tool: ToolId): void;
   /** Type into the selected shape's label or text. */
   editSelection(): void;
-  /** Open the insert panel, as the rail's + does. */
-  openInsert(): void;
 };
 
 export function handleKey(
@@ -44,18 +40,11 @@ export function handleKey(
     case 'Delete':
       actions.deleteSelection();
       return true;
-    case 'Tab':
-      if (event.shiftKey) actions.selectPrevious();
-      else actions.selectNext();
-      return true;
     case 'Escape':
       actions.escape();
       return true;
     case 'Enter':
       actions.editSelection();
-      return true;
-    case '/':
-      actions.openInsert();
       return true;
     // One unit, or five with Shift, as Excalidraw steps.
     case 'ArrowLeft':

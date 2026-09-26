@@ -165,6 +165,12 @@ export function applyProperty(
       // The element's own types name each key; a generic setter writes through
       // a record view of the same object.
       const styled = element as unknown as Record<string, PropertyValue | undefined>;
+      // An elbow's points are its route: an arrow that stops being one keeps
+      // only its ends, as Excalidraw's does. Becoming one, `reroute` routes it.
+      if (key === 'arrowType' && styled.arrowType === 'elbow' && value !== 'elbow' && 'points' in element) {
+        const points = element.points as number[];
+        if (points.length > 4) element.points = [points[0], points[1], points[points.length - 2], points[points.length - 1]];
+      }
       if (value === null) {
         if (key in styled) delete styled[key];
       } else if (styled[key] !== value) {

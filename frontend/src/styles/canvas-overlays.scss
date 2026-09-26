@@ -41,6 +41,13 @@
   // would be dropped.
   transform-origin: center;
 
+  // Lines wrap where the block wraps them (`canvas/code/wrap.ts`): no inset
+  // of CodeMirror's own, and long words broken anywhere rather than spilling.
+  .cm-line {
+    padding: 0;
+    overflow-wrap: anywhere;
+  }
+
   .cm-editor {
     height: 100%;
     font-family: var(--font-mono);

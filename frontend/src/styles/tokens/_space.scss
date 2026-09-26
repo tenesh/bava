@@ -33,6 +33,8 @@
   --size-selection-handle: 8px;
   // How far clear of a shape an attached arrow stops.
   --size-binding-gap: 4px;
+  // How far an elbow's route keeps from the shapes it joins (canvas/elbow.ts).
+  --size-elbow-margin: 20px;
   // How near a line counts as a click on it.
   --size-hit-tolerance: 4px;
   // How far a press must travel, on screen, before it is a drag, not a click.
@@ -40,6 +42,14 @@
   // The shortest segment, on screen, that offers a handle at its middle to
   // bend it (Excalidraw hides its midpoint handles under 40px).
   --size-bend-min-segment: 40px;
+  // A line's or arrow's point handle, and a segment's middle: Excalidraw's
+  // 5 px radius (this is the diameter), taken from within 11 px.
+  --size-point-handle: 10px;
+  --size-point-hit: 11px;
+  // How far a segment's middle is dragged before it adds a bend, and the
+  // shortest line or arrow a drag draws (Excalidraw's 10 and 20).
+  --size-bend-insert: 10px;
+  --size-min-linear: 20px;
   // How far the rotate handle sits above the selection, clear of the top one.
   --size-rotate-gap: 16px;
   // The marquee's dash and gap on screen, whatever the zoom.
