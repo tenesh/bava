@@ -167,10 +167,15 @@ export function createScene(initial: SceneData = { elements: [] }) {
   }
 
   return {
-    add(element: NewElement): SceneElement {
+    /**
+     * Add an element above everything. `requested` asks for a particular id, which a
+     * drag uses to keep one per element across its previews; it is ignored if
+     * the scene already holds it.
+     */
+    add(element: NewElement, requested?: ElementId): SceneElement {
       nextZ += 1;
       // Skip ids the scene already holds: an opened file has its own "e1".
-      let id = nextId();
+      let id = requested !== undefined && !byId.has(requested) ? requested : nextId();
       while (byId.has(id)) id = nextId();
       const created = { ...element, id, z: nextZ } as SceneElement;
       byId.set(created.id, created);

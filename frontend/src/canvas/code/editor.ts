@@ -52,6 +52,12 @@ export type CodeEditorRequest = {
   angle?: number;
   /** The canvas zoom, so the typed text matches the code underneath. */
   zoom?: number;
+  /**
+   * The on-screen size of the block that would hold `code`: the editor grows
+   * to it as the user types, as free text's field does, so nothing typed is
+   * clipped before the edit commits and the block itself is resized.
+   */
+  measure?: (code: string) => { width: number; height: number };
   onCommit: (code: string) => void;
 };
 
@@ -126,6 +132,17 @@ export class CodeEditor {
         },
       }),
     ];
+    const { measure } = request;
+    if (measure) {
+      extensions.push(
+        EditorView.updateListener.of((update) => {
+          if (!update.docChanged) return;
+          const size = measure(update.state.doc.toString());
+          wrapper.style.width = `${size.width}px`;
+          wrapper.style.height = `${size.height}px`;
+        }),
+      );
+    }
 
     this.#host.append(wrapper);
     this.#view = new EditorView({

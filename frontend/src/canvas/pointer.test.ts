@@ -1209,3 +1209,308 @@ describe('the drag threshold', () => {
     expect(drag(0.75, 1)).toBe(1);
   });
 });
+
+// Decided on release, as Excalidraw does: a press on a selected element may be
+// the start of a drag of the whole selection, so only a click changes it.
+describe('clicking inside a selection', () => {
+  function threeSelected() {
+    const history = createHistory({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 20, h: 20, z: 1 },
+        { id: 'b', type: 'rect', x: 50, y: 0, w: 20, h: 20, z: 2 },
+        { id: 'c', type: 'rect', x: 100, y: 0, w: 20, h: 20, z: 3 },
+      ] as never,
+    });
+    const selection = createSelection();
+    ['a', 'b', 'c'].forEach((id, i) => selection.click(id, { additive: i > 0 }));
+    const tools = createTools();
+    const handler = createPointerHandler({ history, selection, tools });
+    return { history, selection, handler };
+  }
+
+  it('removes a selected element on shift-click', () => {
+    const { selection, handler } = threeSelected();
+    handler.down(at(60, 10), { additive: true, shift: true });
+    handler.up(at(60, 10), { shift: true });
+    expect(selection.ids).toEqual(['a', 'c']);
+  });
+
+  it('moves the selection and keeps it on shift-drag from a selected element', () => {
+    const { history, selection, handler } = threeSelected();
+    handler.down(at(60, 10), { additive: true, shift: true });
+    handler.move(at(60, 40), { shift: true });
+    handler.up(at(60, 40), { shift: true });
+    expect(selection.ids).toEqual(['a', 'b', 'c']);
+    expect(history.current.elements.map((e) => e.y)).toEqual([30, 30, 30]);
+  });
+
+  it('narrows to the element clicked when several are selected', () => {
+    const { selection, handler } = threeSelected();
+    handler.down(at(60, 10));
+    handler.up(at(60, 10));
+    expect(selection.ids).toEqual(['b']);
+  });
+
+  it('moves them all on a drag from one of several selected', () => {
+    const { history, selection, handler } = threeSelected();
+    handler.down(at(60, 10));
+    handler.move(at(80, 10));
+    handler.up(at(80, 10));
+    expect(selection.ids).toEqual(['a', 'b', 'c']);
+    expect(history.current.elements.map((e) => e.x)).toEqual([20, 70, 120]);
+  });
+});
+
+// Empty space between selected shapes is still part of the selection: a press
+// there drags it, rather than dropping it to start a marquee.
+describe('pressing inside a selection of several', () => {
+  function twoSelected() {
+    const history = createHistory({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 20, h: 20, z: 1 },
+        { id: 'b', type: 'rect', x: 100, y: 0, w: 20, h: 20, z: 2 },
+      ] as never,
+    });
+    const selection = createSelection();
+    selection.click('a');
+    selection.click('b', { additive: true });
+    const handler = createPointerHandler({ history, selection, tools: createTools() });
+    return { history, selection, handler };
+  }
+
+  it('drags the selection from empty space inside its box', () => {
+    const { history, selection, handler } = twoSelected();
+    handler.down(at(60, 10));
+    handler.move(at(60, 40));
+    handler.up(at(60, 40));
+    expect(selection.ids).toEqual(['a', 'b']);
+    expect(history.current.elements.map((e) => e.y)).toEqual([30, 30]);
+  });
+
+  it('still starts a marquee from outside the box', () => {
+    const { history, selection, handler } = twoSelected();
+    handler.down(at(60, 100));
+    handler.move(at(200, 200));
+    handler.up(at(200, 200));
+    expect(selection.ids).toEqual([]);
+    expect(history.current.elements.map((e) => e.y)).toEqual([0, 0]);
+  });
+
+  it('clears the selection on a click in empty space inside its box', () => {
+    const { selection, handler } = twoSelected();
+    handler.down(at(60, 10));
+    handler.up(at(60, 10));
+    expect(selection.ids).toEqual([]);
+  });
+});
+
+// Shift constrains a move to the axis it mostly travels along, read on every
+// move, so pressing or releasing it mid-drag changes the preview at once.
+describe('a shift-drag', () => {
+  function one() {
+    const history = createHistory({ elements: [{ id: 'a', type: 'rect', x: 0, y: 0, w: 20, h: 20, z: 1 }] as never });
+    const handler = createPointerHandler({ history, selection: createSelection(), tools: createTools() });
+    return { history, handler };
+  }
+
+  it('moves along the dominant axis only', () => {
+    const { history, handler } = one();
+    handler.down(at(10, 10));
+    handler.move(at(50, 18), { shift: true });
+    handler.up(at(50, 18), { shift: true });
+    expect(history.current.elements[0]).toMatchObject({ x: 40, y: 0 });
+  });
+
+  it('follows Shift as it is pressed and released mid-drag', () => {
+    const { history, handler } = one();
+    handler.down(at(10, 10));
+    expect(handler.preview(at(18, 50), { shift: true })!.elements[0]).toMatchObject({ x: 0, y: 40 });
+    handler.move(at(18, 50));
+    handler.up(at(18, 50));
+    expect(history.current.elements[0]).toMatchObject({ x: 8, y: 40 });
+  });
+});
+
+// Alt while moving copies instead, as in Excalidraw: the originals stay, the
+// copies move and become the selection. Read on every move, like Shift.
+describe('an alt-drag', () => {
+  function withGroup() {
+    const history = createHistory({
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 20, h: 20, z: 1 },
+        { id: 'b', type: 'rect', x: 40, y: 0, w: 20, h: 20, z: 2 },
+        { id: 'g', type: 'group', x: 0, y: 0, w: 60, h: 20, z: 3, children: ['a', 'b'] },
+        { id: 's', type: 'rect', x: 200, y: 0, w: 20, h: 20, z: 4 },
+      ] as never,
+    });
+    const selection = createSelection();
+    const handler = createPointerHandler({ history, selection, tools: createTools() });
+    return { history, selection, handler };
+  }
+
+  it('leaves the original and moves a copy', () => {
+    const { history, handler } = withGroup();
+    handler.down(at(210, 10));
+    handler.move(at(210, 60), { alt: true });
+    handler.up(at(210, 60), { alt: true });
+    const rects = history.current.elements.filter((e) => e.type === 'rect' && e.x === 200);
+    expect(rects.map((e) => e.y).sort()).toEqual([0, 50]);
+    expect(history.current.elements.find((e) => e.id === 's')).toMatchObject({ y: 0 });
+  });
+
+  // A copy exactly on its original is invisible and would sit in the file.
+  it('copies nothing on an alt-click that does not move', () => {
+    const { history, handler } = withGroup();
+    handler.down(at(210, 10));
+    handler.up(at(211, 10), { alt: true });
+    expect(history.current.elements).toHaveLength(4);
+  });
+
+  it('selects the copy after release', () => {
+    const { history, selection, handler } = withGroup();
+    handler.down(at(210, 10));
+    handler.up(at(210, 60), { alt: true });
+    const copy = history.current.elements.find((e) => e.type === 'rect' && e.y === 50)!;
+    expect(copy.id).not.toBe('s');
+    expect(selection.ids).toEqual([copy.id]);
+  });
+
+  it('keeps one copy id for the whole drag', () => {
+    const { handler } = withGroup();
+    handler.down(at(210, 10));
+    handler.move(at(210, 30), { alt: true });
+    const first = handler.preview(at(210, 30));
+    handler.move(at(210, 40), { alt: true });
+    const second = handler.preview(at(210, 40));
+    const ids = (scene: typeof first) => scene!.elements.map((e) => e.id).sort();
+    expect(first!.elements).toHaveLength(5);
+    expect(ids(first)).toEqual(ids(second));
+  });
+
+  it('moves the original instead when Alt is released mid-drag', () => {
+    const { history, handler } = withGroup();
+    handler.down(at(210, 10));
+    handler.move(at(210, 40), { alt: true });
+    handler.move(at(210, 60));
+    handler.up(at(210, 60));
+    expect(history.current.elements).toHaveLength(4);
+    expect(history.current.elements.find((e) => e.id === 's')).toMatchObject({ y: 50 });
+  });
+
+  it('is one undo step, however much it copied', () => {
+    const { history, handler } = withGroup();
+    handler.down(at(10, 10));
+    handler.up(at(10, 60), { alt: true });
+    history.undo();
+    expect(history.current.elements.map((e) => e.id)).toEqual(['a', 'b', 'g', 's']);
+  });
+
+  it('names copies without stacking prefixes when a copy is copied', () => {
+    const { history, handler, selection } = withGroup();
+    handler.down(at(210, 10));
+    handler.up(at(210, 60), { alt: true });
+    handler.down(at(210, 60));
+    handler.up(at(210, 110), { alt: true });
+    const [latest] = selection.ids;
+    expect(latest.length).toBeLessThan(20);
+    expect(history.current.elements.filter((e) => e.type === 'rect')).toHaveLength(5);
+  });
+
+  it('copies a frame with its contents into the copied frame', () => {
+    const history = createHistory({
+      elements: [
+        { id: 'f', type: 'frame', x: 0, y: 0, w: 100, h: 100, z: 1 },
+        { id: 'in', type: 'rect', x: 10, y: 10, w: 20, h: 20, z: 2, frame: 'f' },
+      ] as never,
+    });
+    const selection = createSelection();
+    selection.click('f');
+    const handler = createPointerHandler({ history, selection, tools: createTools() });
+    handler.down(at(95, 50));
+    handler.up(at(115, 50), { alt: true });
+    const copy = history.current.elements.find((e) => e.type === 'frame' && e.id !== 'f')!;
+    expect(history.current.elements.filter((e) => (e as { frame?: string }).frame === copy.id)).toHaveLength(1);
+    expect(history.current.elements.find((e) => e.id === 'in')).toMatchObject({ frame: 'f', x: 10 });
+  });
+
+  it('copies a group with its children, pointing at the copies', () => {
+    const { history, handler } = withGroup();
+    handler.down(at(10, 10));
+    handler.up(at(10, 60), { alt: true });
+    const groups = history.current.elements.filter((e) => e.type === 'group') as unknown as { id: string; children: string[] }[];
+    expect(groups).toHaveLength(2);
+    const copy = groups.find((g) => g.id !== 'g')!;
+    const children = history.current.elements.filter((e) => copy.children.includes(e.id));
+    expect(children.map((e) => e.y)).toEqual([50, 50]);
+    expect(history.current.elements.filter((e) => e.type === 'rect' && e.y === 0)).toHaveLength(3);
+  });
+});
+
+// Resizing a frame changes the frame; what is inside keeps its size and place.
+// Moving a frame still carries its contents.
+describe('resizing a frame', () => {
+  it('leaves its contents alone', () => {
+    const history = createHistory({
+      elements: [
+        { id: 'f', type: 'frame', x: 0, y: 0, w: 100, h: 100, z: 1 },
+        { id: 'in', type: 'rect', x: 10, y: 10, w: 20, h: 20, z: 2, frame: 'f' },
+      ] as never,
+    });
+    const selection = createSelection();
+    selection.click('f');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), handleSize: () => 4 });
+    // The bottom-right handle, dragged out to double the frame.
+    handler.down(at(100, 100));
+    handler.move(at(200, 200));
+    handler.up(at(200, 200));
+    expect(history.current.elements.find((e) => e.id === 'f')).toMatchObject({ w: 200, h: 200 });
+    expect(history.current.elements.find((e) => e.id === 'in')).toMatchObject({ x: 10, y: 10, w: 20, h: 20, frame: 'f' });
+  });
+});
+
+describe('shrinking a frame past what it holds', () => {
+  // Its contents keep their place, so what the frame no longer surrounds must
+  // stop recording it; otherwise the next drag of the frame carries it off.
+  it('lets go of a member it no longer holds', () => {
+    const history = createHistory({
+      elements: [
+        { id: 'f', type: 'frame', x: 0, y: 0, w: 100, h: 100, z: 1 },
+        { id: 'in', type: 'rect', x: 70, y: 70, w: 20, h: 20, z: 2, frame: 'f' },
+      ] as never,
+    });
+    const selection = createSelection();
+    selection.click('f');
+    const handler = createPointerHandler({ history, selection, tools: createTools(), handleSize: () => 4 });
+    handler.down(at(100, 100));
+    handler.move(at(50, 50));
+    handler.up(at(50, 50));
+    expect(history.current.elements.find((e) => e.id === 'in')).not.toHaveProperty('frame');
+  });
+});
+
+// Alt pressed or released with the pointer still: the preview must show what
+// the release will commit.
+describe('Alt changed without moving', () => {
+  it('previews the copy when Alt is pressed after the last move', () => {
+    const history = createHistory({ elements: [{ id: 's', type: 'rect', x: 0, y: 0, w: 20, h: 20, z: 1 }] as never });
+    const handler = createPointerHandler({ history, selection: createSelection(), tools: createTools() });
+    handler.down(at(10, 10));
+    handler.move(at(10, 60));
+    expect(handler.preview(at(10, 60), { alt: true })!.elements).toHaveLength(2);
+    expect(handler.preview(at(10, 60), { alt: false })!.elements).toHaveLength(1);
+  });
+});
+
+// Movement under the drag threshold is a click, from any press: the preview
+// shows nothing moving, and the release commits nothing.
+describe('a twitch on an element', () => {
+  it('moves nothing, in preview or on release', () => {
+    const history = createHistory({ elements: [{ id: 's', type: 'rect', x: 0, y: 0, w: 20, h: 20, z: 1 }] as never });
+    const handler = createPointerHandler({ history, selection: createSelection(), tools: createTools() });
+    handler.down(at(10, 10));
+    handler.move(at(11, 11));
+    expect(handler.preview(at(11, 11))).toBeNull();
+    handler.up(at(11, 11));
+    expect(history.current.elements[0]).toMatchObject({ x: 0, y: 0 });
+  });
+});

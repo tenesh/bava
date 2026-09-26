@@ -13,7 +13,7 @@
 import { applyPatches, enablePatches, produce, produceWithPatches, type Patch } from 'immer';
 import type { SceneData } from './scene';
 import { reroute } from './binding';
-import { applyMembership, membershipFor, movedIds } from './containment';
+import { applyMembership, membershipFor, reconsidered } from './containment';
 
 enablePatches();
 
@@ -73,7 +73,7 @@ export function createHistory(initial: SceneData) {
         // which frame owns what, and where attached arrows now run. Only what
         // the change actually moved is reconsidered, so a frame dragged across
         // the canvas does not adopt whatever it passes over.
-        applyMembership(draft, membershipFor(draft, movedIds(current, draft)));
+        applyMembership(draft, membershipFor(draft, reconsidered(current, draft)));
         reroute(draft);
       });
 

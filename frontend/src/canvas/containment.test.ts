@@ -152,3 +152,29 @@ describe('frames inside frames', () => {
     expect(carriedWith(cycle, ['outer']).map((e) => e.id).sort()).toEqual(['inner', 'leaf', 'outer']);
   });
 });
+
+// Two frames can hold an element equally tightly, as a duplicated frame does
+// while it overlaps its original. The one it records wins, then the top one:
+// taking the first in the file moved a copied frame's contents back to the
+// original.
+describe('choosing between frames of the same size', () => {
+  const frames = [
+    { id: 'first', type: 'frame', x: 0, y: 0, w: 100, h: 100, z: 1 },
+    { id: 'second', type: 'frame', x: 10, y: 10, w: 100, h: 100, z: 2 },
+  ];
+
+  it('keeps the frame the element records', () => {
+    // Recorded against the order in the file, so the rule is what decides.
+    const inside = { id: 'r', type: 'rect', x: 20, y: 20, w: 10, h: 10, z: 3, frame: 'second' };
+    const scene = { elements: [...frames, inside] } as never;
+    expect(frameAt(scene, inside as never)?.id).toBe('second');
+    const other = { ...inside, frame: 'first' };
+    expect(frameAt({ elements: [...frames, other] } as never, other as never)?.id).toBe('first');
+  });
+
+  it('takes the top one for an element that records neither', () => {
+    const inside = { id: 'r', type: 'rect', x: 20, y: 20, w: 10, h: 10, z: 3 };
+    const scene = { elements: [...frames, inside] } as never;
+    expect(frameAt(scene, inside as never)?.id).toBe('second');
+  });
+});

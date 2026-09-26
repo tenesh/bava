@@ -20,6 +20,7 @@
   import { createExporter, exportIO } from './canvas/export/exporter.svelte';
   import { CodeEditor, commitCode } from './canvas/code/editor';
   import { createCodeRuns } from './canvas/code/runs';
+  import { measureCode } from './canvas/code/measure';
   import { invalidateAdvanceOnFontLoad } from './canvas/code/advance';
   import { monoAdvance } from './canvas/code/advance';
   import ExportDialog from './components/ExportDialog.svelte';
@@ -156,6 +157,11 @@
       },
       angle: angleOfElement(element),
       zoom: viewport.zoom,
+      // Grows as it is typed in, measured as the block will be on commit.
+      measure: (code) => {
+        const size = measureCode(code, codeMetrics());
+        return { width: size.width * viewport.zoom, height: size.height * viewport.zoom };
+      },
       onCommit: (code) => {
         commitCode(history, element.id, code, codeMetrics());
         commit();
@@ -854,7 +860,7 @@
     // Drawn at most once per frame: a pointer reports moves faster than the
     // screen redraws. Every move still reaches the pointer handler, so a pen
     // stroke or an eraser trail keeps every point.
-    const drawDrag = frameThrottle((point: { x: number; y: number }, shift: boolean) => {
+    const drawDrag = frameThrottle((point: { x: number; y: number }, shift: boolean, alt: boolean) => {
       if (!pointer.dragging) return;
       if (tools.active === 'eraser') {
         canvas.setErasing(pointer.erasing, pointer.eraserTrail);
@@ -862,7 +868,7 @@
       }
       // Live feedback: the drag's result drawn as it would be committed, or the
       // scene as it is when the drag would change nothing.
-      canvas.render(pointer.preview(point, { shift }) ?? history.current);
+      canvas.render(pointer.preview(point, { shift, alt }) ?? history.current);
       canvas.setMarquee(pointer.marquee);
       // The shapes this arrow would attach to, shown while it is drawn.
       canvas.setBindingCandidates(pointer.bindingCandidates);
@@ -880,7 +886,7 @@
       lastDragPoint = point;
       pointer.move(point, { alt: event.altKey, shift: event.shiftKey });
       if (!pointer.dragging) return;
-      drawDrag(point, event.shiftKey);
+      drawDrag(point, event.shiftKey, event.altKey);
     };
     const onUp = (event: PointerEvent) => {
       if (labelEditor?.contains(event.target)) return;
@@ -949,14 +955,14 @@
         applyView();
       }
     };
-    // Shift constrains a drag, and the preview follows the key even when the
-    // pointer does not move: the drag is redrawn where the pointer last was.
-    const onShift = (event: KeyboardEvent) => {
-      if (event.key !== 'Shift' || !pointer.dragging || !lastDragPoint) return;
-      const held = event.type === 'keydown';
+    // Shift constrains a drag and Alt copies it, and the preview follows either
+    // key even when the pointer does not move: the drag is redrawn where the
+    // pointer last was, so the release commits what is on screen.
+    const onModifier = (event: KeyboardEvent) => {
+      if ((event.key !== 'Shift' && event.key !== 'Alt') || !pointer.dragging || !lastDragPoint) return;
       // Through the frame throttle, so a move queued before the key cannot
-      // draw over this with the old Shift state.
-      drawDrag(lastDragPoint, held);
+      // draw over this with the old state.
+      drawDrag(lastDragPoint, event.shiftKey, event.altKey);
     };
     const onSpace = (event: KeyboardEvent) => {
       if (event.key !== ' ') return;
@@ -981,8 +987,8 @@
     codeEditor = new CodeEditor(diagramHost);
     window.addEventListener('keydown', onSpace);
     window.addEventListener('keyup', onSpace);
-    window.addEventListener('keydown', onShift);
-    window.addEventListener('keyup', onShift);
+    window.addEventListener('keydown', onModifier);
+    window.addEventListener('keyup', onModifier);
     window.addEventListener('blur', releaseSpace);
 
     // The stage is sized at mount; follow the pane as the window or the
@@ -1112,8 +1118,8 @@
       labelEditor = null;
       window.removeEventListener('keydown', onSpace);
       window.removeEventListener('keyup', onSpace);
-      window.removeEventListener('keydown', onShift);
-      window.removeEventListener('keyup', onShift);
+      window.removeEventListener('keydown', onModifier);
+      window.removeEventListener('keyup', onModifier);
       window.removeEventListener('blur', releaseSpace);
       sizeObserver?.disconnect();
       window.removeEventListener('keydown', onKeyDown);

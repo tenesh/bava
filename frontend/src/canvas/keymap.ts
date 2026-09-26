@@ -57,17 +57,18 @@ export function handleKey(
     case '/':
       actions.openInsert();
       return true;
+    // One unit, or five with Shift, as Excalidraw steps.
     case 'ArrowLeft':
-      actions.nudge(-1, 0);
+      actions.nudge(-nudgeStep(event), 0);
       return true;
     case 'ArrowRight':
-      actions.nudge(1, 0);
+      actions.nudge(nudgeStep(event), 0);
       return true;
     case 'ArrowUp':
-      actions.nudge(0, -1);
+      actions.nudge(0, -nudgeStep(event));
       return true;
     case 'ArrowDown':
-      actions.nudge(0, 1);
+      actions.nudge(0, nudgeStep(event));
       return true;
     default:
       break;
@@ -82,4 +83,16 @@ export function handleKey(
     return true;
   }
   return false;
+}
+
+/**
+ * How far an arrow key moves the selection, in scene units, and with Shift
+ * held (Excalidraw's steps). Scene units, not a length on screen, so these are
+ * constants rather than tokens.
+ */
+export const NUDGE_STEP = 1;
+export const NUDGE_STEP_LARGE = 5;
+
+function nudgeStep(event: KeyboardEvent): number {
+  return event.shiftKey ? NUDGE_STEP_LARGE : NUDGE_STEP;
 }

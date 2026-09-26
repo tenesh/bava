@@ -9,6 +9,7 @@ import type { ElementId, GroupElement, Scene, SceneElement } from './scene';
 import type { Box } from './selection';
 import { angleOfElement, normalise, rotatedBounds } from './rotate';
 import { remapReferences } from './references';
+import { tidy } from './resize';
 
 /** How far a pasted copy lands from its original, so it is visibly a copy. */
 export const PASTE_OFFSET = 16;
@@ -108,18 +109,50 @@ export function withDescendants(scene: Scene, elements: SceneElement[]): SceneEl
 }
 
 /**
+ * The elements, their groups' children and their frames' contents, all the
+ * way down: what goes wherever a frame or group goes. Every command that moves,
+ * mirrors, copies or restacks uses this, so a frame never leaves what it holds
+ * behind. `carriedWith` in `containment.ts` is the same walk over scene data.
+ */
+export function withContents(scene: Scene, elements: SceneElement[]): SceneElement[] {
+  const all = scene.data().elements;
+  const seen = new Map<ElementId, SceneElement>();
+  // A queue, not one pass: a group in a frame in a group, as deep as it goes.
+  // The map de-duplicates, so a frame that somehow records itself cannot loop.
+  const queue = [...elements];
+  while (queue.length > 0) {
+    const element = queue.shift()!;
+    if (seen.has(element.id)) continue;
+    seen.set(element.id, element);
+    if (element.type === 'group') {
+      for (const id of element.children) {
+        const child = scene.get(id);
+        if (child) queue.push(child);
+      }
+    }
+    if (element.type === 'frame') queue.push(...all.filter((e) => (e as { frame?: string }).frame === element.id));
+  }
+  return [...seen.values()];
+}
+
+/**
  * Copy elements beside themselves. A group's children are copied with it and
  * the copy's children point at the copies. Returns the copies of the elements
  * asked for, not of their descendants.
  */
-export function duplicate(scene: Scene, elements: SceneElement[]): SceneElement[] {
-  const all = withDescendants(scene, elements).sort((a, b) => a.z - b.z);
+export function duplicate(
+  scene: Scene,
+  elements: SceneElement[],
+  options: { dx?: number; dy?: number; name?: (original: ElementId) => ElementId } = {},
+): SceneElement[] {
+  const { dx = PASTE_OFFSET, dy = PASTE_OFFSET, name } = options;
+  const all = withContents(scene, elements).sort((a, b) => a.z - b.z);
   const copies = new Map<ElementId, SceneElement>();
   // Non-groups first, so every group's children have their new ids.
   const ordered = [...all.filter((e) => e.type !== 'group'), ...all.filter((e) => e.type === 'group')];
   for (const element of ordered) {
-    const moved = { ...element, x: element.x + PASTE_OFFSET, y: element.y + PASTE_OFFSET };
-    copies.set(element.id, scene.add(moved));
+    const moved = { ...element, x: tidy(element.x + dx), y: tidy(element.y + dy) };
+    copies.set(element.id, scene.add(moved, name?.(element.id)));
   }
   // The copies refer to each other, never back to what they were copied from.
   pointAtCopies(scene, [...copies.values()], copies);
@@ -136,7 +169,7 @@ export function duplicate(scene: Scene, elements: SceneElement[]): SceneElement[
  */
 export function flip(scene: Scene, selection: SceneElement[], axis: 'horizontal' | 'vertical'): void {
   const bounds = drawnBoundsOf(selection);
-  for (const element of withDescendants(scene, selection)) {
+  for (const element of withContents(scene, selection)) {
     // A mirrored element leans the other way; which axis it was mirrored
     // across is already carried by the box.
     const angle = angleOfElement(element);
@@ -202,7 +235,7 @@ export function steppedOrder(scene: Scene, selectedIds: ElementId[], direction: 
   const all = scene.ordered();
   const byId = new Map(all.map((e) => [e.id, e]));
   const selected = new Set(
-    withDescendants(scene, selectedIds.map((id) => byId.get(id)).filter((e): e is SceneElement => Boolean(e)))
+    withContents(scene, selectedIds.map((id) => byId.get(id)).filter((e): e is SceneElement => Boolean(e)))
       .filter((e) => e.type !== 'group')
       .map((e) => e.id),
   );

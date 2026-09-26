@@ -49,14 +49,22 @@ export function columnsIn(text: string): number {
 const WIDE = /[\u1100-\u115f\u2e80-\ua4cf\ua960-\ua97f\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe6f\uff00-\uff60\uffe0-\uffe6]/u;
 const COMBINING = /\p{Mn}|\p{Me}/u;
 
+/**
+ * The narrowest a block is, in columns: room to type into. A new block is
+ * empty, and one sized to a single column showed one character of anything
+ * typed (`docs/file-format.md`, "Code blocks"). A count, not a length, so a
+ * constant rather than a token.
+ */
+export const MIN_COLUMNS = 20;
+
 /** The size of the panel that holds `code`. */
 export function measureCode(code: string, metrics: CodeMetrics): { width: number; height: number } {
   const lines = code.replace(/\t/g, TAB).split('\n');
   const longest = Math.max(...lines.map(columnsIn));
   return {
     // An empty block is still a block: one line tall, and wide enough to
-    // click and to show a cursor in.
-    width: tidy(Math.max(longest, 1) * metrics.advance + metrics.padding * 2),
+    // type into.
+    width: tidy(Math.max(longest, MIN_COLUMNS) * metrics.advance + metrics.padding * 2),
     height: tidy(lines.length * metrics.lineHeight + metrics.padding * 2),
   };
 }

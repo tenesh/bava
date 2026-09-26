@@ -249,3 +249,23 @@ the element must be re-applied by its own method, as `setCodeRuns` and
 The pointer handler still sees every move, because a pen stroke and an eraser
 trail are built from them. A release cancels the pending frame and redraws
 the committed scene, since a drag that commits nothing republishes nothing.
+
+## A click on a selected element is decided on release
+A press on an element already selected, or on empty space inside a selection
+of several, may be the start of a drag of the whole selection. So the press
+changes nothing; the release does, and only if the pointer did not travel the
+drag threshold: Shift-click removes, a plain click narrows to the element, a
+click in the empty space clears. Deciding at the press made Shift-click unable
+to remove and made a drag from inside a selection drop it.
+
+## Frames and groups go wherever their owner goes, through one walk
+`withContents` in `edit.ts` (and `carriedWith`, its form over scene data)
+expands groups to their children and frames to their contents, all the way
+down. Every command that moves, mirrors, copies or restacks uses it; a command
+using `withDescendants` alone leaves a frame's contents behind, which is how
+align, flip, duplicate and Bring to Front each shipped broken. The one
+exception is a resize: a frame is resized alone, since its contents keep their
+own size and place, and `reconsidered` then lets go of what it no longer
+surrounds. A locked member goes with its frame too: locking stops the element
+being selected or edited on its own, not its frame being moved, as dragging a
+frame has always done.

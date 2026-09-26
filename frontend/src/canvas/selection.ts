@@ -23,6 +23,22 @@ export function intersects(a: Box, b: Box): boolean {
 export function createSelection() {
   let ids: ElementId[] = [];
 
+  /** Select the next unlocked element in paint order, `by` 1 or -1. */
+  function step(data: SceneData, by: 1 | -1): void {
+    const count = data.elements.length;
+    const from = index(data);
+    // With nothing selected, forward starts at the first and back at the last.
+    const start = from < 0 ? (by === 1 ? -1 : count) : from;
+    for (let i = 1; i <= count; i += 1) {
+      const element = data.elements[(((start + by * i) % count) + count) % count];
+      if (!isLocked(element)) {
+        ids = [element.id];
+        return;
+      }
+    }
+    ids = [];
+  }
+
   function index(data: SceneData): number {
     if (ids.length !== 1) return -1;
     return data.elements.findIndex((e) => e.id === ids[0]);
@@ -65,18 +81,16 @@ export function createSelection() {
       if (ids.some((id) => !present.has(id))) ids = ids.filter((id) => present.has(id));
     },
 
-    /** Tab order is paint order, which is the order a reader sees them in. */
+    /**
+     * Tab order is paint order, which is the order a reader sees them in. A
+     * locked element is stepped over: nothing may select it.
+     */
     selectNext(data: SceneData): void {
-      if (data.elements.length === 0) return;
-      const next = (index(data) + 1) % data.elements.length;
-      ids = [data.elements[next].id];
+      step(data, 1);
     },
 
     selectPrevious(data: SceneData): void {
-      if (data.elements.length === 0) return;
-      const current = index(data);
-      const previous = current <= 0 ? data.elements.length - 1 : current - 1;
-      ids = [data.elements[previous].id];
+      step(data, -1);
     },
   };
 }
