@@ -112,8 +112,11 @@ for (const theme of THEMES) {
     test('the / menu', async ({ page }) => {
       await openDocument(page, theme, 'Marketing', 'Marketing/Launch plan.md');
       await newLineAtEnd(page);
-      await page.keyboard.type('/head');
-      await expect(page.locator('.slash-menu')).toBeVisible();
+      await page.keyboard.type('/');
+      await expect(page.locator('.slash-group')).toHaveText(['Basic', 'Advanced', 'Inline']);
+      await expect(page).toHaveScreenshot(shot('document', 'slash-menu', 'all', theme));
+      await page.keyboard.type('head');
+      await expect(page.locator('.slash-group')).toHaveText(['Basic']);
       await expect(page).toHaveScreenshot(shot('document', 'slash-menu', 'filtered', theme));
       await page.keyboard.press('ArrowDown');
       await page.keyboard.press('Enter');
@@ -184,6 +187,16 @@ for (const theme of THEMES) {
       await expect(page.locator('header')).not.toContainText('unsaved');
     });
 
+    test('a code block keeps its height as the pointer passes', async ({ page }) => {
+      await openDocument(page, theme, '', 'Team handbook.md');
+      const block = editor(page).locator('.code-block');
+      await page.mouse.move(0, 0);
+      const before = (await block.boundingBox())!.height;
+      await block.hover();
+      await expect(block.locator('.code-copy')).toBeVisible();
+      expect((await block.boundingBox())!.height).toBe(before);
+    });
+
     test("a code block's languages", async ({ page }) => {
       await openDocument(page, theme, 'Engineering', 'Engineering/Blocks.md');
       await editor(page).locator('.code-block').hover();
@@ -218,6 +231,22 @@ for (const theme of THEMES) {
       await expect(page).toHaveScreenshot(shot('document', 'emoji-picker', 'open', theme));
       await page.getByRole('button', { name: 'party popper' }).click();
       await expect(editor(page)).toContainText('🎉');
+    });
+
+    test('Turn into offers only its own family', async ({ page }) => {
+      await openDocument(page, theme, '', 'Team handbook.md');
+      const openMenu = async (text: string) => {
+        await editor(page).getByText(text).first().hover();
+        await page.getByRole('button', { name: 'Drag, or open the block menu' }).click();
+        await expect(page.locator('.bava-menu').filter({ visible: true })).toBeVisible();
+      };
+      await openMenu('Files are the source of truth');
+      await expect(page.getByRole('menuitem', { name: 'Turn into' })).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await openMenu('Ship small');
+      await page.getByRole('menuitem', { name: 'Turn into' }).click();
+      await expect(page.getByRole('menuitem', { name: 'Numbered list' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Heading 1' })).toHaveCount(0);
     });
 
     test('the page menu', async ({ page }) => {

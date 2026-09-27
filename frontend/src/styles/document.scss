@@ -562,9 +562,10 @@ $callout-swatches: (
     }
   }
 
-  // An empty caption is offered only on the block being worked on.
-  .code-block:not([data-captioned], :hover, :focus-within) .code-below {
-    display: none;
+  // An empty caption is offered only on the block being worked on; its line
+  // stays, so the page does not move as the caret passes.
+  .code-block:not([data-captioned], :hover, :focus-within) .code-caption {
+    visibility: hidden;
   }
 
   @each $kind in keyword, string, number, comment, name, type, operator, punctuation {

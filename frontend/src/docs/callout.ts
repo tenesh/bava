@@ -39,15 +39,6 @@ export const callouts = {
   setIcon(pos: number, icon: string): Command {
     return setAttrs(pos, (attrs) => ({ ...attrs, kind: 'note', icon, color: attrs.color ?? CUSTOM_DEFAULT.color }));
   },
-  /** Back to a plain quote, keeping what is in it. */
-  toQuote(pos: number): Command {
-    return (state, dispatch) => {
-      const node = state.doc.nodeAt(pos);
-      if (node?.type !== schema.nodes.callout) return false;
-      dispatch?.(state.tr.setNodeMarkup(pos, schema.nodes.blockquote, { extra: node.attrs.extra }));
-      return true;
-    };
-  },
 };
 
 /** `[!info]` and a space, typed at the start of a quote, turns the quote into that callout. */

@@ -135,10 +135,11 @@ describe('making toggles', () => {
     expect(host.querySelector('.toggle')!.hasAttribute('data-folded')).toBe(false);
   });
 
-  it('makes a toggle heading from the / menu', () => {
+  it('makes a heading a toggle heading', () => {
     open('');
-    runItem(editor!.view!, SLASH_ITEMS.find((i) => i.id === 'toggleHeading2')!);
+    runItem(editor!.view!, SLASH_ITEMS.find((i) => i.id === 'heading2')!);
     type('Plan');
+    folds.toggleHeading(0)(editor!.view!.state, editor!.view!.dispatch);
     expect(editor!.markdown()).toBe('<!-- bava: toggle -->\n## Plan\n');
   });
 

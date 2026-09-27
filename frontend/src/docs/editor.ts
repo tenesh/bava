@@ -19,7 +19,7 @@ import { keys } from './keymap';
 import { parseBody, parsePage, writePage, type FrontMatter, type PageSettings } from './markdown';
 import { shortcuts } from './rules';
 import { dropPosition } from './handle';
-import { commands, topBlock } from './commands';
+import { commands, currentKind, topBlock } from './commands';
 import { findNext, findPrev, getSearchState, replaceAll, replaceNext, search, SearchQuery, setSearchState } from 'prosemirror-search';
 import { filterItems, runItem, slashKey, slashPlugin, type SlashInfo } from './slash';
 import { schema } from './schema';
@@ -71,7 +71,8 @@ function placeholder(): Plugin {
       decorations(state) {
         const { $from, empty } = state.selection;
         const node = $from.parent;
-        if (!empty || !node.isTextblock || node.content.size > 0) return null;
+        // Code is not where blocks are typed: no hint over its language.
+        if (!empty || !node.isTextblock || node.type.spec.code || node.content.size > 0) return null;
         return DecorationSet.create(state.doc, [
           Decoration.node($from.before(), $from.after(), { class: 'is-empty', 'data-placeholder': t('doc.placeholder') }),
         ]);
@@ -344,6 +345,8 @@ export class DocEditor {
     const $pos = view.state.doc.resolve(hit.inside >= 0 ? hit.inside : hit.pos);
     const pos = $pos.depth === 0 ? hit.inside : $pos.before(1);
     if (pos < 0) return null;
+    // The notes follow their references: they are not moved or added to by hand.
+    if (view.state.doc.nodeAt(pos)?.type === schema.nodes.footnotes) return null;
     const dom = view.nodeDOM(pos);
     return dom instanceof HTMLElement ? { pos, rect: dom.getBoundingClientRect() } : null;
   }
@@ -362,13 +365,19 @@ export class DocEditor {
     const view = this.view;
     const node = view?.state.doc.nodeAt(pos);
     if (!view || !node || this.locked) return;
-    // An empty line takes the `/` itself; any other block gets a new line after it.
+    // An empty line takes the `/` itself; any other block gets a new line
+    // after it. The notes stay last, so a line for them goes before them.
     const empty = node.type === schema.nodes.paragraph && node.content.size === 0;
-    const at = empty ? pos : pos + node.nodeSize;
+    const at = empty || node.type === schema.nodes.footnotes ? pos : pos + node.nodeSize;
     const tr = empty ? view.state.tr : view.state.tr.insert(at, schema.nodes.paragraph.create());
     tr.insertText('/', at + 1);
     view.dispatch(tr.setSelection(TextSelection.create(tr.doc, at + 2)).scrollIntoView());
     view.focus();
+  }
+
+  /** The kind of block the caret is in, as Turn into names it; null for one it does not offer. */
+  currentKind(): string | null {
+    return this.view ? currentKind(this.view.state) : null;
   }
 
   /** The block at `pos`: its type and attributes, for the menus that act on it. */

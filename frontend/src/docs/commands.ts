@@ -22,6 +22,40 @@ export function topBlock(state: EditorState): { node: Node; pos: number } | null
   return { node: $from.node(1), pos: $from.before(1) };
 }
 
+/**
+ * The kind of block the caret is in, as Turn into names it (`paragraph`,
+ * `heading:2`, `bullet_list`, `ordered_list`, `todo`, `blockquote`), or null
+ * for one it does not offer.
+ */
+export function currentKind(state: EditorState): string | null {
+  const { $from } = state.selection;
+  for (let d = $from.depth; d > 0; d -= 1) {
+    const node = $from.node(d);
+    if (node.type === nodes.list_item) {
+      if (node.attrs.checked !== null) return 'todo';
+      return $from.node(d - 1).type === nodes.bullet_list ? 'bullet_list' : 'ordered_list';
+    }
+    if (node.type === nodes.blockquote) return 'blockquote';
+    if (node.type === nodes.callout || node.type === nodes.toggle || node.type === nodes.footnote) return null;
+  }
+  const block = $from.parent;
+  if (block.type === nodes.paragraph) return 'paragraph';
+  if (block.type === nodes.heading) return `heading:${block.attrs.level}`;
+  return null;
+}
+
+const TEXT_KINDS = ['paragraph', 'heading:1', 'heading:2', 'heading:3', 'heading:4', 'heading:5', 'heading:6'];
+const LIST_KINDS = ['bullet_list', 'ordered_list', 'todo'];
+
+/**
+ * What a block of `kind` can turn into: text and headings into one another,
+ * a list into another list, and anything else into nothing.
+ */
+export function turnIntoChoices(kind: string | null): string[] {
+  const family = [TEXT_KINDS, LIST_KINDS].find((kinds) => kinds.includes(kind ?? ''));
+  return family ? family.filter((k) => k !== kind) : [];
+}
+
 /** Sets or clears a colour mark over the selection. */
 function colourMark(type: MarkType, name: string | null): Command {
   return (state, dispatch) => {
@@ -119,6 +153,33 @@ export const commands = {
         }
       }
       return true;
+    };
+  },
+
+  /**
+   * The list the caret is in becomes a bulleted, numbered or to-do list, all
+   * of its items at once; nested lists keep their own kind.
+   */
+  switchList(kind: 'bullet_list' | 'ordered_list' | 'todo'): Command {
+    return (state, dispatch) => {
+      const $pos = state.selection.$from;
+      for (let d = $pos.depth; d > 0; d -= 1) {
+        const list = $pos.node(d);
+        if (list.type !== nodes.bullet_list && list.type !== nodes.ordered_list) continue;
+        if (dispatch) {
+          const pos = $pos.before(d);
+          const type = kind === 'ordered_list' ? nodes.ordered_list : nodes.bullet_list;
+          const attrs = kind === 'ordered_list' ? { ...list.attrs, order: 1, style: '1' } : { tight: list.attrs.tight, color: list.attrs.color, background: list.attrs.background, extra: list.attrs.extra };
+          const tr = state.tr.setNodeMarkup(pos, type, attrs);
+          list.forEach((item, offset) => {
+            const checked = kind === 'todo' ? (item.attrs.checked ?? false) : null;
+            tr.setNodeMarkup(pos + 1 + offset, undefined, { ...item.attrs, checked });
+          });
+          dispatch(tr);
+        }
+        return true;
+      }
+      return false;
     };
   },
 
