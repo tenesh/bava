@@ -1782,7 +1782,7 @@
   $effect(() => {
     const pane = docPane;
     void doc.generation;
-    untrack(() => pane?.setPage(doc.source));
+    untrack(() => pane?.setPage(doc.source, doc.path));
   });
 
   // The native menu shows checks and enabled items from this state. Go never
@@ -1975,6 +1975,7 @@
       onCounts={(counts) => (docCounts = counts)}
       onDuplicatePage={() => openRel && void duplicatePath(openRel)}
       onTrashPage={() => openRel && void trashPath(openRel)}
+      onCopyText={(text) => void Clipboard.SetText(text)}
     />
   {/snippet}
 

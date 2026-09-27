@@ -4,6 +4,8 @@
  */
 import { InputRule, inputRules, textblockTypeInputRule, wrappingInputRule } from 'prosemirror-inputrules';
 import { schema } from './schema';
+import { calloutRule } from './callout';
+import { inlineMathRule } from './math';
 
 const { nodes } = schema;
 
@@ -47,6 +49,9 @@ export function shortcuts() {
       todoRule(),
       wrappingInputRule(/^\s*>\s$/, nodes.blockquote),
       dividerRule(),
+      textblockTypeInputRule(/^```([\w+#.-]*)\s$/, nodes.code_block, (m) => ({ language: m[1] })),
+      calloutRule(),
+      inlineMathRule(),
     ],
   });
 }

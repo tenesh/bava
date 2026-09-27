@@ -147,3 +147,18 @@ export function toRuns(code: string, parser: Parser | null): Run[][] {
   for (let line = 0; line < lines.length; line += 1) fillTo(line, lines[line].length);
   return runs;
 }
+
+/**
+ * Where each coloured stretch of `code` is, by offset into the code as
+ * written (a tab is one character), for text that is coloured in place rather
+ * than drawn run by run. Plain stretches are left out.
+ */
+export function toRanges(code: string, parser: Parser | null): { from: number; to: number; kind: RunKind }[] {
+  if (!parser) return [];
+  const ranges: { from: number; to: number; kind: RunKind }[] = [];
+  highlightTree(parser.parse(code), HIGHLIGHTER, (from, to, classes) => {
+    const kind = kindOf(classes);
+    if (kind !== 'plain') ranges.push({ from, to, kind });
+  });
+  return ranges;
+}

@@ -474,7 +474,7 @@ restores the attachment.
 
 ---
 
-## Milestone 8: Documents *(in progress; 8.1 built and committed 2026-09-27, 8.2 next)*
+## Milestone 8: Documents *(in progress; 8.1 and 8.2 built and committed 2026-09-27, 8.3 next)*
 
 **Discussed and decided (2026-09-27):** 71 decisions in
 `.claude/work/specs/08-documents.md`, mockups in Bava Design
@@ -485,8 +485,8 @@ changes in `docs/file-format.md` first:
 | Part | Delivers |
 |---|---|
 | 8.1 Spaces and files *(built)* | `.bava` folder and `space.json`; start screen, Space switcher and settings; New Space (a name and a place); the Files tree (order by hand, duplicate, trash, an Add menu, folding); single files; one page open at a time. Also built with it: the restyle to the mockups (dialog frame, status bar per side, canvas dot grid) |
-| 8.2 The Document editor | ProseMirror, saving Markdown; text blocks, lists, inline formatting and colours; typing shortcuts, `/` menu, formatting bubble, block handle; find and replace, word count; page menu, lock, width |
-| 8.3 Rich blocks | Callouts, toggles, code, equations, rich tables, contents, footnotes, emoji, date chips, `@` page links and backlinks, links to headings |
+| 8.2 The Document editor *(built)* | ProseMirror, saving Markdown; text blocks, lists, inline formatting and colours; typing shortcuts, `/` menu, formatting bubble, block handle; find and replace, word count; page menu, lock, width |
+| 8.3 Rich blocks | In three parts (decision 77): **8.3a** callouts, toggles, code, equations, footnotes, contents, emoji; **8.3b** rich tables and spreadsheet paste; **8.3c** `@` page links and backlinks, links to headings, date chips |
 | 8.4 Media and attachments | The attachments folder; images and videos; online media; file and link cards; the Media section and dialog |
 | 8.4a Canvas testing pass | Screen checks of seeded canvases (every shape and style, arrows of every kind and attachment, frames, groups, code blocks, a D2 diagram; selection, rotation, snapping and point-editing states; the pickers and menus; exported PNG and SVG) in both themes and at two zooms; real-app smoke scenarios that draw, connect, move, undo and insert a diagram, then check the saved file's contents. Replaces the 6.x window checks still owed. Before 8.5, so embedding cannot break the canvas unseen |
 | 8.5 Canvas in the Document | Live frame embeds, Diagram from Code from the Document; this part carries the exit criterion below |

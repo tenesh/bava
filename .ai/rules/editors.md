@@ -32,6 +32,18 @@ component per block.
 - **A locked page refuses edits in a transaction filter**, so no path (paste,
   drop, a menu command) gets round it. Loading a page replaces the editor's
   state rather than dispatching, so the filter never sees it.
+- **Code in the page is page text, not an editor inside the page.** A code
+  block is ProseMirror text coloured by decorations from the canvas code
+  blocks' own parsers (`canvas/code/highlight.ts` `toRanges`), so undo is one
+  history and focus never moves between editors. The section below on an
+  embedded CodeMirror applies only if a diagram block is built.
+- **Folding is not page content.** Which toggles are folded lives in
+  decorations (`docs/fold.ts`) and in `localStorage` per page, inside
+  try/catch; a fold must never be an attribute, or folding would mark the
+  page unsaved.
+- **Pane state read inside a closing handler is read before it is cleared.**
+  A `{@const open = x}` follows `x`: set `x = null` and `open` is null too, so
+  a handler reads what it needs from `open` first.
 - **The formatting bubble follows focus.** It shows for a text selection only
   while the page has focus: a selection left by find is not one to format.
 

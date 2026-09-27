@@ -14,8 +14,31 @@ async function openDocument(page: Page, theme: Theme, folder: string, path: stri
 
 /** Puts the caret on a new empty line after the page's last text. */
 async function newLineAtEnd(page: Page) {
-  await editor(page).locator('p').last().click();
-  await page.keyboard.press('End');
+  const last = editor(page).locator('p').last();
+  await last.click();
+  // The caret at the paragraph's very end, placed directly: End stops at the
+  // end of a wrapped line, and the click can land anywhere in the text. The
+  // editor settles the click's own caret just after the mouse is released, so
+  // the caret is placed again until it holds.
+  await expect(async () => {
+    await last.evaluate((p) => {
+      const range = document.createRange();
+      range.selectNodeContents(p);
+      range.collapse(false);
+      document.getSelection()!.removeAllRanges();
+      document.getSelection()!.addRange(range);
+    });
+    await page.waitForTimeout(100);
+    const seen = await last.evaluate((p) => {
+      const selection = document.getSelection()!;
+      if (!selection.isCollapsed || !p.contains(selection.anchorNode)) return 'outside';
+      const after = document.createRange();
+      after.setStart(selection.anchorNode!, selection.anchorOffset);
+      after.setEnd(p, p.childNodes.length);
+      return after.toString() === '' ? 'end' : 'inside';
+    });
+    expect(seen).toBe('end');
+  }).toPass();
   await page.keyboard.press('Enter');
 }
 
@@ -120,8 +143,10 @@ for (const theme of THEMES) {
     test('the block menu and the bubble from the keyboard', async ({ page }) => {
       await openDocument(page, theme, 'Marketing', 'Marketing/Launch plan.md');
       await selectWord(page, 'thousand');
-      await page.keyboard.press('Alt+F10');
       const bubble = page.getByRole('toolbar', { name: 'Formatting' });
+      // Alt+F10 goes into the bubble a person can see.
+      await expect(bubble).toBeVisible();
+      await page.keyboard.press('Alt+F10');
       await expect(bubble.getByRole('button').first()).toBeFocused();
       await page.keyboard.press('ArrowRight');
       await expect(bubble.getByRole('button', { name: 'Bold' })).toBeFocused();
@@ -136,6 +161,63 @@ for (const theme of THEMES) {
       await expect(page.locator('.bava-menu:focus-within, .bava-menu:focus')).toHaveCount(1);
       await page.keyboard.press('Escape');
       await expect(editor(page)).toBeFocused();
+    });
+
+    test('every rich block', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Blocks.md');
+      await expect(editor(page).locator('.syntax-keyword').first()).toBeVisible();
+      await expect(editor(page).locator('.math-block .katex-display')).toHaveCount(1);
+      await expect(editor(page).locator('.math-error')).toHaveCount(1);
+      await expect(editor(page).locator('.contents a')).toHaveCount(4);
+      // A folded toggle and toggle heading hide what they hold.
+      await expect(editor(page).getByText('Hidden inside it.')).toBeHidden();
+      await expect(editor(page).getByText('Hidden under its heading.')).toBeHidden();
+      await expect(pane(page)).toHaveScreenshot(shot('document', 'blocks', 'top', theme));
+      await editor(page).locator('.footnotes').scrollIntoViewIfNeeded();
+      await expect(pane(page)).toHaveScreenshot(shot('document', 'blocks', 'bottom', theme));
+    });
+
+    test('unfolding a toggle heading', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Blocks.md');
+      await editor(page).locator('h2 .toggle-arrow').first().click();
+      await expect(editor(page).getByText('Hidden under its heading.')).toBeVisible();
+      await expect(page.locator('header')).not.toContainText('unsaved');
+    });
+
+    test("a code block's languages", async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Blocks.md');
+      await editor(page).locator('.code-block').hover();
+      await editor(page).locator('.code-language').click();
+      await expect(page.locator('.bava-menu').filter({ visible: true })).toBeVisible();
+      await expect(page).toHaveScreenshot(shot('document', 'code-languages', 'open', theme));
+    });
+
+    test('editing an equation', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Blocks.md');
+      await editor(page).locator('.math-inline').first().click();
+      const field = page.getByRole('textbox', { name: 'Equation' });
+      await expect(field).toBeFocused();
+      await expect(page.locator('.equation-preview .katex')).toBeVisible();
+      await expect(page).toHaveScreenshot(shot('document', 'equation-field', 'open', theme));
+      await field.fill('\\pi d');
+      await page.keyboard.press('Enter');
+      await expect(page.locator('header')).toContainText('unsaved');
+    });
+
+    test('emoji by name and from the picker', async ({ page }) => {
+      await openDocument(page, theme, 'Marketing', 'Marketing/Launch plan.md');
+      await newLineAtEnd(page);
+      await page.keyboard.type('Go :rocke');
+      await expect(page.getByRole('listbox', { name: 'Emoji' })).toBeVisible();
+      await expect(page).toHaveScreenshot(shot('document', 'emoji-suggestions', 'open', theme));
+      await page.keyboard.press('Enter');
+      await expect(editor(page)).toContainText('Go 🚀');
+      await page.keyboard.type(' /emoji');
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('dialog', { name: 'Emoji' })).toBeVisible();
+      await expect(page).toHaveScreenshot(shot('document', 'emoji-picker', 'open', theme));
+      await page.getByRole('button', { name: 'party popper' }).click();
+      await expect(editor(page)).toContainText('🎉');
     });
 
     test('the page menu', async ({ page }) => {

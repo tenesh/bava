@@ -192,11 +192,13 @@ describe('type tokens', () => {
     expect((css.match(/@font-face/g) ?? []).length).toBe(3);
   });
 
-  it('references the bundled files rather than a remote source', () => {
+  // An inline image (a callout's icon mask) is written into the stylesheet
+  // itself; nothing is ever fetched from elsewhere.
+  it('references the bundled files or inline images, never a remote source', () => {
     const urls = [...css.matchAll(/url\(([^)]+)\)/g)].map((m) => m[1]);
     expect(urls.length).toBeGreaterThan(0);
     for (const u of urls) {
-      expect(u, `${u} is not a local font`).toMatch(/^['"]?\/fonts\//);
+      expect(u, `${u} is neither a bundled file nor inline`).toMatch(/^['"]?(\/fonts\/|data:image\/svg\+xml;utf8,)/);
     }
   });
 

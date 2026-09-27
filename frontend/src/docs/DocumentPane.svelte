@@ -11,6 +11,8 @@
   import FindBar from '../components/FindBar.svelte';
   import FormatBubble from '../components/FormatBubble.svelte';
   import LinkField from '../components/LinkField.svelte';
+  import EquationField from '../components/EquationField.svelte';
+  import EmojiPicker from '../components/EmojiPicker.svelte';
   import PageHeader from '../components/PageHeader.svelte';
   import SlashMenu from '../components/SlashMenu.svelte';
   import type { MenuNode } from '../canvas/context-menu';
@@ -22,6 +24,11 @@
   import type { PageSettings } from './markdown';
   import type { SlashInfo } from './slash';
   import { pageWidth } from './page-settings';
+  import { CUSTOM_DEFAULT, callouts } from './callout';
+  import { folds } from './fold';
+  import { math, renderTex, type EquationAt } from './math';
+  import { loadEmoji, type Emoji, type EmojiInfo } from './emoji';
+  import { LANGUAGES } from '../canvas/code/languages';
 
   type Props = {
     /** The page's folders, then its name; empty with no page open. */
@@ -36,9 +43,11 @@
     onCounts: (counts: { words: number; characters: number }) => void;
     onDuplicatePage: () => void;
     onTrashPage: () => void;
+    /** Text for the clipboard: a code block's Copy. */
+    onCopyText: (text: string) => void;
   };
 
-  let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage }: Props = $props();
+  let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage, onCopyText }: Props = $props();
 
   const editor = new DocEditor();
   let host: HTMLDivElement;
@@ -56,6 +65,10 @@
   let finding = $state.raw(false);
   let findFocus = $state.raw<{ field: 'find' | 'replace'; at: number }>({ field: 'find', at: 0 });
   let found = $state.raw({ count: 0, index: -1 });
+  let emojiSuggest = $state.raw<EmojiInfo | null>(null);
+  let picker = $state.raw<{ at: { left: number; top: number; bottom: number }; pick: (emoji: string) => void } | null>(null);
+  let emojiList = $state.raw<Emoji[]>([]);
+  let equation = $state.raw<{ pos: number; at: EquationAt; value: string; display: boolean } | null>(null);
   let link = $state.raw<{ left: number; top: number; value: string } | null>(null);
   let dragging: number | null = null;
 
@@ -80,6 +93,21 @@
       onSelection: refreshSelection,
       onSlash: (info) => (slash = info),
       onLink: openLink,
+      onCopy: (text) => onCopyText(text),
+      onEmoji: (info) => (emojiSuggest = info),
+      onEmojiPicker: (at) => openPicker(at, (emoji) => editor.insertText(emoji)),
+      onEquation: (pos, at) => {
+        const block = editor.blockInfo(pos);
+        if (!block || editor.locked) return;
+        equation = { pos, at, value: String(block.attrs.tex ?? ''), display: block.type === 'math_block' };
+      },
+      onCodeLanguage: (pos, anchor) => {
+        menu = {
+          anchor,
+          items: [item('lang:', t('code.plain')), { kind: 'separator' }, ...LANGUAGES.map((language) => item(`lang:${language.name}`, language.label))],
+          run: (id) => editor.setCodeLanguage(pos, id.slice(5)),
+        };
+      },
       onBlockMenu: () => {
         const block = editor.caretBlock();
         if (block) openBlockMenu({ x: block.left, y: block.bottom }, block.pos);
@@ -96,10 +124,14 @@
   // ---- what the app calls -------------------------------------------------
 
   /** Shows a page, with fresh undo, and closes anything open over the last one. */
-  export function setPage(markdown: string) {
-    editor.setPage(markdown);
+  /** Shows a page; `page` names it for remembering its folds on this computer. */
+  export function setPage(markdown: string, page: string | null = null) {
+    editor.setPage(markdown, page);
     settings = editor.settings;
     slash = null;
+    equation = null;
+    emojiSuggest = null;
+    picker = null;
     bubble = null;
     menu = null;
     link = null;
@@ -145,10 +177,48 @@
     editor.run(commands.turnInto(kind as BlockKind, Number(level) || 1));
   }
 
+  /** Opens the emoji picker at `at`; the names load the first time. */
+  function openPicker(at: { left: number; top: number; bottom: number }, pick: (emoji: string) => void) {
+    picker = { at, pick };
+    if (emojiList.length === 0) void loadEmoji().then((list) => (emojiList = list));
+  }
+
   /** The block menu, for the hovered block or (from ⌘/) the one at `pos`. */
   function openBlockMenu(anchor: { x: number; y: number }, pos = hovered?.pos) {
     if (pos === undefined || editor.locked) return;
+    const block = editor.blockInfo(pos);
     editor.selectBlock(pos);
+    // A callout's colour is its panel's; a text colour on it would be a second one.
+    const styling: MenuNode[] =
+      block?.type === 'callout'
+        ? [
+            {
+              kind: 'submenu',
+              id: 'callout',
+              label: t('callout.kind'),
+              items: [
+                ...(['info', 'note', 'success', 'warning', 'error'] as const).map((kind) => item(`kind:${kind}`, t(`slash.${kind}`))),
+                item('kind:custom', t('callout.custom')),
+              ],
+            },
+            ...(block.attrs.color
+              ? [
+                  {
+                    kind: 'submenu',
+                    id: 'panel',
+                    label: t('callout.color'),
+                    items: SWATCHES.map((name) => item(`panel:${name}`, t(`swatch.${name}` as MessageKey))),
+                  } satisfies MenuNode,
+                ]
+              : []),
+            ...(block.attrs.color ? [item('icon', t('callout.icon'))] : []),
+            item('quote', t('callout.toQuote')),
+          ]
+        : [
+            ...(block?.type === 'heading' ? [item('toggleheading', t('block.toggleHeading'))] : []),
+            { kind: 'submenu', id: 'color', label: t('block.color'), items: colours('color', 'swatch.default') },
+            { kind: 'submenu', id: 'background', label: t('block.background'), items: colours('background', 'bubble.none') },
+          ];
     menu = {
       anchor,
       items: [
@@ -156,11 +226,16 @@
         item('duplicate', t('block.duplicate')),
         item('delete', t('block.delete')),
         { kind: 'separator' },
-        { kind: 'submenu', id: 'color', label: t('block.color'), items: colours('color', 'swatch.default') },
-        { kind: 'submenu', id: 'background', label: t('block.background'), items: colours('background', 'bubble.none') },
+        ...styling,
       ],
       run: (id) => {
-        if (id.startsWith('turn:')) runTurn(id);
+        if (id === 'kind:custom') editor.run(callouts.setColor(pos, (block?.attrs.color as string | null) ?? CUSTOM_DEFAULT.color));
+        else if (id.startsWith('kind:')) editor.run(callouts.setKind(pos, id.slice(5)));
+        else if (id.startsWith('panel:')) editor.run(callouts.setColor(pos, id.slice(6)));
+        else if (id === 'quote') editor.run(callouts.toQuote(pos));
+        else if (id === 'icon') openPicker({ left: anchor.x, top: anchor.y, bottom: anchor.y }, (emoji) => editor.run(callouts.setIcon(pos, emoji)));
+        else if (id === 'toggleheading') editor.run(folds.toggleHeading(pos));
+        else if (id.startsWith('turn:')) runTurn(id);
         else if (id === 'duplicate') editor.run(commands.duplicateBlock);
         else if (id === 'delete') editor.run(commands.deleteBlock);
         else if (id.startsWith('color:')) editor.run(commands.blockColor({ color: id.slice(6) || null }));
@@ -304,6 +379,58 @@
     onBlur={() => {
       bubbleHeld = false;
       refreshSelection();
+    }}
+  />
+{/if}
+
+{#if emojiSuggest}
+  <SlashMenu
+    label={t('emoji.label')}
+    items={emojiSuggest.items.map((e, i) => ({ id: String(i), label: `${e.emoji}  ${e.name}` }))}
+    active={emojiSuggest.active}
+    at={emojiSuggest.at}
+    onChoose={(id) => editor.chooseEmoji(Number(id))}
+  />
+{/if}
+
+{#if picker}
+  {@const open = picker}
+  <EmojiPicker
+    at={open.at}
+    emojis={emojiList}
+    groupLabel={(group) => t(`emoji.group.${group}` as MessageKey)}
+    onPick={(emoji) => {
+      // Read before closing: `open` follows `picker`, and is gone once it is null.
+      const { pick } = open;
+      picker = null;
+      pick(emoji);
+    }}
+    onClose={() => {
+      picker = null;
+      editor.focus();
+    }}
+  />
+{/if}
+
+{#if equation}
+  {@const open = equation}
+  <EquationField
+    at={open.at}
+    value={open.value}
+    display={open.display}
+    render={renderTex}
+    onSave={(tex) => {
+      // Read before closing: `open` follows `equation`, and is gone once it is null.
+      const { pos } = open;
+      equation = null;
+      editor.run(math.setTex(pos, tex));
+    }}
+    onCancel={() => {
+      const { pos, value } = open;
+      equation = null;
+      // A new equation left without TeX is not kept.
+      if (value === '') editor.run(math.setTex(pos, ''));
+      else editor.focus();
     }}
   />
 {/if}

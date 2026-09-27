@@ -1,7 +1,30 @@
 // The DOM the Document editor creates imperatively (ProseMirror), which no
 // component owns: the page's type, blocks, colours and states, as the
 // mockups' Document board draws them.
+@use 'sass:map';
 @use 'tokens/swatches' as sw;
+
+// The five callouts' icons, Lucide's (ISC), drawn as masks in the look's colour.
+$callout-icons: (
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+  note: '<path d="M21.17 6.81a1 1 0 0 0-3.98-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5zM15 5l4 4"/>',
+  success: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  warning: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01"/>',
+  error: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>',
+);
+
+// Each look's panel: the swatch it is drawn in.
+$callout-swatches: (
+  info: blue,
+  note: purple,
+  success: green,
+  warning: orange,
+  error: red,
+);
+
+@function icon-mask($body) {
+  @return url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">#{$body}</svg>');
+}
 
 .bava-doc {
   box-sizing: border-box;
@@ -173,6 +196,381 @@
     color: var(--color-accent);
     text-decoration: underline;
     text-underline-offset: var(--space-half);
+  }
+
+  // A callout: a panel in its look's colour, the icon beside its first line.
+  .callout {
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--callout-fill);
+  }
+
+  @each $look, $swatch in $callout-swatches {
+    .callout[data-look='#{$look}'] {
+      --callout-fill: var(--swatch-#{$swatch}-fill);
+      --callout-stroke: var(--swatch-#{$swatch}-stroke);
+    }
+
+    .callout[data-look='#{$look}'] .callout-icon {
+      mask: icon-mask(map.get($callout-icons, $look)) center / contain no-repeat;
+    }
+  }
+
+  // A custom callout's own colour wins over its look's.
+  @each $name, $_ in sw.$swatches-light {
+    .callout[data-swatch='#{$name}'] {
+      --callout-fill: var(--swatch-#{$name}-fill);
+      --callout-stroke: var(--swatch-#{$name}-stroke);
+    }
+  }
+
+  .callout-side {
+    display: flex;
+    align-items: center;
+    height: calc(var(--text-doc-body) * var(--leading-prose));
+    color: var(--callout-stroke);
+    user-select: none;
+  }
+
+  .callout-icon {
+    display: block;
+    width: var(--size-callout-icon);
+    height: var(--size-callout-icon);
+    background: currentColor;
+  }
+
+  .callout-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .callout-title {
+    font-weight: var(--weight-semibold);
+    color: var(--color-text-primary);
+    user-select: none;
+  }
+
+  .callout-body > * + * {
+    margin-top: var(--space-2);
+  }
+
+  // A toggle list: its arrow, then the summary and what it folds.
+  .toggle {
+    display: flex;
+    gap: var(--space-1);
+  }
+
+  .toggle-inner {
+    flex: 1;
+    min-width: 0;
+
+    > * + * {
+      margin-top: var(--space-2);
+    }
+  }
+
+  .toggle[data-folded] > .toggle-inner > :not(.toggle-summary) {
+    display: none;
+  }
+
+  .toggle-arrow {
+    flex: none;
+    width: var(--size-toggle-arrow);
+    height: calc(var(--text-doc-body) * var(--leading-prose));
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+
+    &::before {
+      content: '';
+      display: block;
+      width: var(--size-toggle-arrow);
+      height: var(--size-toggle-arrow);
+      margin: auto;
+      background: currentColor;
+      mask: icon-mask('<path d="m9 18 6-6-6-6"/>') center / contain no-repeat;
+      transition: transform var(--duration-fast) var(--ease-out);
+    }
+
+    &[aria-expanded='true']::before {
+      transform: rotate(90deg);
+    }
+
+    &:hover {
+      background: var(--color-control-hover);
+      color: var(--color-text-primary);
+    }
+
+    &:active {
+      background: var(--color-control-active);
+    }
+  }
+
+  // A toggle heading's arrow sits before its text, clear of the block
+  // handle in the gutter.
+  :is(h1, h2, h3, h4, h5, h6) > .toggle-arrow {
+    display: inline-block;
+    height: var(--size-toggle-arrow);
+    margin-right: var(--space-1);
+    vertical-align: middle;
+  }
+
+  .folded-away {
+    display: none;
+  }
+
+  // Equations: drawn, and pressed to edit.
+  .math-block,
+  .math-inline {
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-control-hover);
+    }
+  }
+
+  .math-block {
+    padding: var(--space-2);
+    overflow-x: auto;
+    text-align: center;
+  }
+
+  .ProseMirror-selectednode.math-block,
+  .ProseMirror-selectednode.math-inline {
+    outline: var(--border-width) solid var(--color-focus-ring);
+  }
+
+  .math-source {
+    font-family: var(--font-mono);
+    font-size: var(--text-doc-code);
+    color: var(--color-danger);
+  }
+
+  .math-error {
+    display: block;
+    font-size: var(--text-meta);
+    color: var(--color-text-muted);
+  }
+
+  .math-inline .math-error {
+    display: inline;
+    margin-left: var(--space-1);
+  }
+
+  .math-empty {
+    color: var(--color-text-faint);
+  }
+
+  // The contents block: the page's headings as links, indented by depth.
+  .contents {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-3);
+    border-left: var(--size-quote-rule) solid var(--color-border-subtle);
+    user-select: none;
+
+    a {
+      padding-left: calc(var(--depth, 0) * var(--space-4));
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      cursor: pointer;
+
+      &:hover {
+        color: var(--color-accent);
+        text-decoration: underline;
+      }
+    }
+  }
+
+  .contents-title {
+    font-size: var(--text-meta);
+    font-weight: var(--weight-semibold);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+  }
+
+  .contents-empty {
+    margin: 0;
+    color: var(--color-text-faint);
+  }
+
+  .ProseMirror-selectednode.contents {
+    outline: var(--border-width) solid var(--color-focus-ring);
+    border-radius: var(--radius-sm);
+  }
+
+  // Footnotes: a number in the text, and the notes at the foot.
+  .footnote-ref {
+    padding: 0 var(--space-half);
+    color: var(--color-accent);
+    font-size: var(--text-meta);
+    cursor: pointer;
+
+    &::after {
+      content: attr(data-number);
+    }
+  }
+
+  .footnotes {
+    margin-top: var(--space-8);
+    padding-top: var(--space-3);
+    border-top: var(--border-width) solid var(--color-border-subtle);
+    font-size: var(--text-control);
+    color: var(--color-text-secondary);
+  }
+
+  // The number hangs in the note's indent; its paragraphs stack beside it.
+  .footnote {
+    position: relative;
+    padding-left: calc(var(--size-todo-box) + var(--space-2));
+
+    &::before {
+      content: attr(data-number) '.';
+      position: absolute;
+      left: 0;
+      color: var(--color-text-muted);
+    }
+
+    > * + * {
+      margin-top: var(--space-1);
+    }
+  }
+
+  .footnote + .footnote {
+    margin-top: var(--space-2);
+  }
+
+  .footnote-back {
+    padding: 0 var(--space-1);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--color-accent);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-control-hover);
+    }
+
+    &:active {
+      background: var(--color-control-active);
+    }
+  }
+
+  // A code block: its bar, the code, and a caption under it.
+  .code-block {
+    border: var(--border-width) solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-sunken);
+
+    pre {
+      margin: 0;
+      padding: var(--space-1) var(--space-3) var(--space-3);
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: var(--text-doc-code);
+      line-height: var(--leading-code);
+      white-space: pre;
+      tab-size: 4;
+    }
+
+    pre code {
+      padding: 0;
+      border: 0;
+      background: none;
+      font-size: inherit;
+    }
+
+    &[data-wrap] pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .code-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2) 0;
+    user-select: none;
+  }
+
+  .code-spacer {
+    flex: 1;
+  }
+
+  .code-control {
+    height: var(--size-row-sm);
+    padding: 0 var(--space-2);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--color-text-muted);
+    font: inherit;
+    font-size: var(--text-meta);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-control-hover);
+      color: var(--color-text-primary);
+    }
+
+    &:active {
+      background: var(--color-control-active);
+    }
+
+    &[aria-pressed='true'] {
+      background: var(--color-selection);
+      color: var(--color-text-primary);
+    }
+  }
+
+  // Wrap and Copy show on the block the pointer or caret is in.
+  .code-block:not(:hover, :focus-within) .code-wrap:not([aria-pressed='true']),
+  .code-block:not(:hover, :focus-within) .code-copy {
+    visibility: hidden;
+  }
+
+  .code-below {
+    padding: 0 var(--space-3) var(--space-2);
+  }
+
+  .code-caption {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    outline: none;
+    background: none;
+    color: var(--color-text-muted);
+    font: inherit;
+    font-size: var(--text-meta);
+
+    &::placeholder {
+      color: var(--color-text-faint);
+    }
+
+    &:disabled {
+      cursor: default;
+    }
+  }
+
+  // An empty caption is offered only on the block being worked on.
+  .code-block:not([data-captioned], :hover, :focus-within) .code-below {
+    display: none;
+  }
+
+  @each $kind in keyword, string, number, comment, name, type, operator, punctuation {
+    .syntax-#{$kind} {
+      color: var(--syntax-#{$kind});
+    }
   }
 
   // The line the caret is on, empty: what to type.
