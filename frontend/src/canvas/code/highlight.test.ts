@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RUN_KINDS, toRuns } from './highlight';
+import { RUN_KINDS, toRanges, toRuns } from './highlight';
 import { loadParser, resetLanguageCache } from './languages';
 
 const js = async () => {
@@ -55,5 +55,21 @@ describe('turning code into coloured runs', () => {
 
   it('is one empty line for empty code', () => {
     expect(toRuns('', null)).toEqual([[]]);
+  });
+});
+
+describe('coloured ranges over code as written', () => {
+  it('places each coloured stretch by offset, tabs counted as one character', async () => {
+    const parser = await loadParser('javascript');
+    const code = '\tconst x = "a";';
+    const ranges = toRanges(code, parser);
+    const keyword = ranges.find((r) => r.kind === 'keyword')!;
+    expect(code.slice(keyword.from, keyword.to)).toBe('const');
+    const string = ranges.find((r) => r.kind === 'string')!;
+    expect(code.slice(string.from, string.to)).toBe('"a"');
+  });
+
+  it('has nothing to colour without a parser', () => {
+    expect(toRanges('const x = 1;', null)).toEqual([]);
   });
 });

@@ -21,12 +21,38 @@ describe('the / menu\'s items', () => {
       'todo',
       'quote',
       'divider',
+      'code',
+      'toggle',
+      'toggleHeading1',
+      'toggleHeading2',
+      'toggleHeading3',
+      'equation',
+      'inlineEquation',
+      'emoji',
+      'contents',
+      'footnote',
+      'info',
+      'note',
+      'success',
+      'warning',
+      'error',
+      'callout',
     ]);
   });
 
   it('filters by name and by other words for it, ignoring case', () => {
-    expect(filterItems('head').map((i) => i.id)).toEqual(['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6']);
-    expect(filterItems('h2').map((i) => i.id)).toEqual(['heading2']);
+    expect(filterItems('head').map((i) => i.id)).toEqual([
+      'heading1',
+      'heading2',
+      'heading3',
+      'heading4',
+      'heading5',
+      'heading6',
+      'toggleHeading1',
+      'toggleHeading2',
+      'toggleHeading3',
+    ]);
+    expect(filterItems('h2').map((i) => i.id)).toEqual(['heading2', 'toggleHeading2']);
     expect(filterItems('CHECK').map((i) => i.id)).toEqual(['todo']);
     expect(filterItems('line').map((i) => i.id)).toContain('divider');
     expect(filterItems('zzz')).toEqual([]);
@@ -130,6 +156,14 @@ describe('the / menu in the page', () => {
     editor!.addBlockAfter(empty);
     expect(onSlash).toHaveBeenLastCalledWith(expect.objectContaining({ query: '' }));
     expect(view.state.doc.childCount).toBe(2);
+  });
+
+  it('turns the line into a code block', () => {
+    open('');
+    type('/code');
+    key('Enter');
+    type('x := 1');
+    expect(editor!.markdown()).toBe('```\nx := 1\n```\n');
   });
 
   it('inserts a divider, with a line after it to go on typing', () => {

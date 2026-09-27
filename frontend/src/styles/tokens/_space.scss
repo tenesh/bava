@@ -49,6 +49,16 @@
   --size-doc-gutter: 56px;
   // A to-do's box, a quote's rule, a list's indent.
   --size-todo-box: 14px;
+  // A callout's icon, beside its first line.
+  --size-callout-icon: 16px;
+  // A toggle's arrow, hanging before its summary or heading.
+  --size-toggle-arrow: 18px;
+  // The field that edits an equation's TeX.
+  --size-equation-field: 360px;
+  // The emoji picker, and each emoji in it.
+  --size-emoji-picker: 320px;
+  --size-emoji-picker-height: 340px;
+  --size-emoji-cell: 32px;
   // Find and replace's fields, and its match count.
   --size-find-field: 200px;
   --size-find-count: 72px;

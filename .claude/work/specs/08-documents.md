@@ -733,6 +733,52 @@ the Space, so folder sync and Git carry it until emptied.
 - Chosen over whole HTML blocks, which stop the Markdown inside them from
   being Markdown in many editors.
 
+### 77. 8.3 is built in three parts (2026-09-27)
+
+The user's choice, so each is planned, checked and committed on its own:
+**8.3a** blocks inside a page (callouts, toggles, code blocks, equations,
+footnotes, the contents block, emoji); **8.3b** rich tables, with
+spreadsheet paste; **8.3c** links between pages (`@` page links, backlinks,
+links to headings) and date chips, which need the Space scanned.
+
+### 78. A custom callout keeps its colour and icon in an invisible mark (2026-09-27)
+
+The user's choice. A custom panel (decision 13) is a note callout with the
+invisible mark of decision 76 above it: `<!-- bava: color=purple icon=🚀 -->`
+then `> [!note]`. The icon is an emoji at the callout's left, as the named
+kinds have theirs; other apps show a plain note box. The five named kinds are
+`[!info]`, `[!note]`, `[!success]`, `[!warning]` and `[!error]`.
+
+### 79. Only headings made toggles fold (2026-09-27)
+
+The user's choice, as Notion: "Toggle heading" is chosen from the `/` menu or
+the block menu, and marked with the invisible mark `<!-- bava: toggle -->`
+above the heading. Other apps show an ordinary heading with its section
+visible. Toggle lists stay HTML `<details>` (decision 14).
+
+### 80. Folding is remembered on this computer, never saved (2026-09-27)
+
+The user's choice. Folding or unfolding a toggle list or toggle heading does
+not change the file or mark the page unsaved; Bava remembers what was folded
+on this computer, as it remembers pane sizes. A toggle it has no memory of
+starts folded, or open when the file says `<details open>`, which is kept
+as written.
+
+### 81. A code block's wrap and caption go in an invisible mark (2026-09-27)
+
+The user's choice: the invisible mark above the fence, as colours and toggles
+have, `<!-- bava: wrap caption="Start the server" -->`. The fence itself
+stays plain (`` ```go ``), so every app shows and colours the code as
+before; the caption shows only in Bava.
+
+### 82. The contents block is written out as a list (2026-09-27)
+
+The user's choice. The file holds the list of links itself between two
+invisible marks, `<!-- bava: contents -->` and `<!-- bava: /contents -->`,
+rewritten on every save, so GitHub, Obsidian and exports show a working
+contents list. Links use the standard heading anchors (`#goals`), which
+GitHub also follows.
+
 ## Features
 
 Chosen from Notion's editor, one question at a time (decisions 12 to 50),

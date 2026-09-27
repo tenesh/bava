@@ -260,9 +260,10 @@ wrong facts. When a milestone closes, update this section in the same change.
 
 ### Milestones
 
-- **Committed through Milestone 8.1** (HEAD 9cf4d06, 2026-09-27). **8.2, the
-  Document editor, passes its gates** and is uncommitted at the time of
-  writing; 8.3 to 8.6 follow, then 8.4a (canvas screen checks and smoke runs
+- **Committed through Milestone 8.2** (HEAD 4c405ba, 2026-09-27; CI green on
+  all three platforms, the Document smoke steps included). **8.3a (blocks
+  inside a page) passes its gates**, uncommitted; 8.3b, 8.3c and 8.4 to 8.6
+  follow, then 8.4a (canvas screen checks and smoke runs
   with complex scenes, before 8.5), then Milestone 15 (export, import and
   search). The roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **The Document** (`frontend/src/docs/`): a ProseMirror editor over the
@@ -316,7 +317,7 @@ wrong facts. When a milestone closes, update this section in the same change.
   `wails3 generate bindings -f '' -clean=true -ts -i` after any bound Go
   change, including comments (the generated TypeScript copies them).
 
-### Gate status: last run 2026-09-27, after 8.2
+### Gate status: last run 2026-09-27, after 8.3a
 
 | Gate | Result |
 |---|---|
@@ -325,9 +326,9 @@ wrong facts. When a milestone closes, update this section in the same change.
 | `go test ./internal/render -run Golden` | exit 0; goldens under `testdata/golden/` |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 1,947 tests across 144 files (1 skipped) |
-| `npm run visual` (layer 2) | exit 0; 76 walks, 74 references in `testdata/visual/`; needs OrbStack running |
-| CI `smoke` (layer 3) | green on all three platforms at 9cf4d06; the Document steps added in 8.2 need a push |
+| `npm test` | exit 0; 2,064 tests across 154 files (1 skipped) |
+| `npm run visual` (layer 2) | exit 0; 86 walks, 86 references in `testdata/visual/`; needs OrbStack running |
+| CI `smoke` (layer 3) | green on all three platforms at 4c405ba; 8.3a's equation and code block steps need a push |
 | `wails3 build` | macOS only, unverified elsewhere |
 
 ### Open problems

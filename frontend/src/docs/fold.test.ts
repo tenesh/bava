@@ -1,0 +1,152 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TextSelection } from 'prosemirror-state';
+import { DocEditor } from './editor';
+import { folds, sectionOf } from './fold';
+import { parsePage } from './markdown';
+import { runItem, SLASH_ITEMS } from './slash';
+
+let editor: DocEditor | null = null;
+
+beforeEach(() => localStorage.clear());
+afterEach(() => {
+  editor?.destroy();
+  editor = null;
+  document.body.innerHTML = '';
+});
+
+function open(markdown: string, key = 'page.md') {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const onChange = vi.fn();
+  editor = new DocEditor();
+  editor.mount(host, { onChange });
+  editor.setPage(markdown, key);
+  return { host, onChange, view: editor.view! };
+}
+
+function type(text: string) {
+  const view = editor!.view!;
+  for (const char of text) {
+    const { from, to } = view.state.selection;
+    const handled = view.someProp('handleTextInput', (f) => f(view, from, to, char, () => view.state.tr.insertText(char, from, to)));
+    if (!handled) view.dispatch(view.state.tr.insertText(char, from, to));
+  }
+}
+
+function key(name: string) {
+  const view = editor!.view!;
+  return view.someProp('handleKeyDown', (f) => f(view, new KeyboardEvent('keydown', { key: name, bubbles: true })));
+}
+
+const press = (el: Element) => el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+const TOGGLE = '<details>\n<summary>Details</summary>\n\nThe secret.\n\n</details>\n';
+
+describe("a toggle heading's section", () => {
+  it('runs to the next heading of its size or larger', () => {
+    const doc = parsePage('<!-- bava: toggle -->\n## Two\n\nA\n\n### Three\n\nB\n\n## Next\n\nC\n').doc;
+    const { from, to } = sectionOf(doc, 0)!;
+    expect(doc.textBetween(from, to, '|')).toBe('A|Three|B');
+  });
+
+  it('runs to the end of the page when nothing larger follows', () => {
+    const doc = parsePage('<!-- bava: toggle -->\n# One\n\nA\n\n## Two\n').doc;
+    const { from, to } = sectionOf(doc, 0)!;
+    expect(doc.textBetween(from, to, '|')).toBe('A|Two');
+  });
+});
+
+describe('folding', () => {
+  it('starts a toggle folded, or open when the file says so', () => {
+    const { host } = open(TOGGLE + '\n<details open>\n<summary>Open</summary>\n\nShown.\n\n</details>\n');
+    const toggles = host.querySelectorAll('.toggle');
+    expect(toggles[0].hasAttribute('data-folded')).toBe(true);
+    expect(toggles[1].hasAttribute('data-folded')).toBe(false);
+  });
+
+  it('says on its arrow whether it is folded, from the start', () => {
+    const { host } = open(TOGGLE + '\n<details open>\n<summary>Open</summary>\n\nShown.\n\n</details>\n');
+    const arrows = [...host.querySelectorAll('.toggle-arrow')].map((a) => a.getAttribute('aria-expanded'));
+    expect(arrows).toEqual(['false', 'true']);
+  });
+
+  it('folds and unfolds from its arrow without changing the page', () => {
+    const { host, onChange } = open(TOGGLE);
+    press(host.querySelector('.toggle-arrow')!);
+    expect(host.querySelector('.toggle')!.hasAttribute('data-folded')).toBe(false);
+    press(host.querySelector('.toggle-arrow')!);
+    expect(host.querySelector('.toggle')!.hasAttribute('data-folded')).toBe(true);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(editor!.markdown()).toBe(TOGGLE);
+  });
+
+  it("hides a folded toggle heading's section", () => {
+    const { host } = open('<!-- bava: toggle -->\n## Plan\n\nHidden.\n\n## After\n');
+    const [hidden, after] = [...host.querySelectorAll('p, h2')].slice(1);
+    expect(hidden.classList.contains('folded-away')).toBe(true);
+    expect(after.classList.contains('folded-away')).toBe(false);
+    press(host.querySelector('.toggle-arrow')!);
+    expect(hidden.classList.contains('folded-away')).toBe(false);
+  });
+
+  it('remembers what was unfolded on this computer, per page', () => {
+    const first = open(TOGGLE, 'a.md');
+    press(first.host.querySelector('.toggle-arrow')!);
+    editor!.destroy();
+    document.body.innerHTML = '';
+    expect(open(TOGGLE, 'a.md').host.querySelector('.toggle')!.hasAttribute('data-folded')).toBe(false);
+    editor!.destroy();
+    document.body.innerHTML = '';
+    expect(open(TOGGLE, 'b.md').host.querySelector('.toggle')!.hasAttribute('data-folded')).toBe(true);
+  });
+
+  it('carries on when this computer will not remember', () => {
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('full');
+    });
+    const { host } = open(TOGGLE);
+    expect(() => press(host.querySelector('.toggle-arrow')!)).not.toThrow();
+    expect(host.querySelector('.toggle')!.hasAttribute('data-folded')).toBe(false);
+    spy.mockRestore();
+  });
+
+  it('opens a fold that find lands in', () => {
+    const { host } = open(TOGGLE);
+    editor!.find('secret');
+    editor!.findNext();
+    expect(host.querySelector('.toggle')!.hasAttribute('data-folded')).toBe(false);
+  });
+
+  it('folds the section by the toggle heading command', () => {
+    const { view } = open('## Plan\n\nText.\n');
+    folds.toggleHeading(0)(view.state, view.dispatch);
+    expect(editor!.markdown()).toBe('<!-- bava: toggle -->\n## Plan\n\nText.\n');
+  });
+});
+
+describe('making toggles', () => {
+  it('makes a toggle list from the / menu, open, and Enter moves from its summary into it', () => {
+    const { host } = open('');
+    runItem(editor!.view!, SLASH_ITEMS.find((i) => i.id === 'toggle')!);
+    type('What ships');
+    key('Enter');
+    type('The editor.');
+    expect(editor!.markdown()).toBe('<details>\n<summary>What ships</summary>\n\nThe editor.\n\n</details>\n');
+    expect(host.querySelector('.toggle')!.hasAttribute('data-folded')).toBe(false);
+  });
+
+  it('makes a toggle heading from the / menu', () => {
+    open('');
+    runItem(editor!.view!, SLASH_ITEMS.find((i) => i.id === 'toggleHeading2')!);
+    type('Plan');
+    expect(editor!.markdown()).toBe('<!-- bava: toggle -->\n## Plan\n');
+  });
+
+  it('turns an empty toggle back into text with Backspace in its summary', () => {
+    const { view } = open('');
+    runItem(view, SLASH_ITEMS.find((i) => i.id === 'toggle')!);
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)));
+    key('Backspace');
+    expect(editor!.view!.state.doc.firstChild!.type.name).toBe('paragraph');
+  });
+});

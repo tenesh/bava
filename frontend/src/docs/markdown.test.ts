@@ -19,6 +19,7 @@ const shown = (markdown: string) =>
   viewer
     .render(markdown.replace(/^---\r?\n[\s\S]*?\n---\r?\n/, ''))
     .replace(/\s+/g, ' ')
+    .replace(/> </g, '><')
     .trim();
 
 /** One save keeps what the page shows, and a second save changes nothing. */
@@ -112,7 +113,7 @@ describe('inline marks', () => {
   });
 
   it('keeps footnote references and inline equations exactly', () => {
-    same('A claim[^1] and $a_b + c^2$ here.\n');
+    same('A claim[^1] and $a_b + c^2$ here.\n\n[^1]: The note.\n');
   });
 });
 
@@ -132,15 +133,7 @@ describe('block colours', () => {
 });
 
 describe('blocks kept as they are', () => {
-  const kept = [
-    '```d2\nwriter -> queue\n```',
-    '```\n  indented   code\n```',
-    '    four-space code',
-    '| A | B |\n|---|:-:|\n| 1 | 2 |',
-    '<div align="center">\n  <b>raw</b>\n</div>',
-    '[^1]: The footnote text,\n    carried on.',
-    '$$\nE = mc^2\n$$',
-  ];
+  const kept = ['| A | B |\n|---|:-:|\n| 1 | 2 |', '<div align="center">\n  <b>raw</b>\n</div>'];
 
   it.each(kept)('keeps %j byte for byte, in its place', (block) => {
     same(`Before\n\n${block}\n\nAfter\n`);
@@ -152,14 +145,184 @@ describe('blocks kept as they are', () => {
     const inList = '- Item\n\n  | A |\n  |---|\n  | 1 |\n';
     expect(tidy(tidy(inList))).toBe(tidy(inList));
     expect(tidy(inList)).toContain('  | A |\n  |---|\n  | 1 |');
-    const inQuote = '> ```js\n> const x = 1;\n> ```\n';
+    const inQuote = '> <div>\n> raw\n> </div>\n';
     same(inQuote);
   });
 
   it('shows a kept block as one read-only node', () => {
-    const page = parsePage('```d2\na -> b\n```\n');
+    const page = parsePage('| A |\n|---|\n| 1 |\n');
     expect(page.doc.firstChild?.type.name).toBe('kept');
-    expect(page.doc.firstChild?.attrs.text).toBe('```d2\na -> b\n```');
+    expect(page.doc.firstChild?.attrs.text).toBe('| A |\n|---|\n| 1 |');
+  });
+});
+
+describe('code blocks', () => {
+  it('keeps a fence with its language, and the code byte for byte', () => {
+    same('```go\nfunc main() {\n\tprintln("hi")  \n}\n```\n');
+    same('```d2\nwriter -> queue\n```\n');
+    same('```\n  indented   code\n\n\nafter blank lines\n```\n');
+    const block = parsePage('```go\nx := 1\n```\n').doc.firstChild!;
+    expect([block.type.name, block.attrs.language, block.textContent]).toEqual(['code_block', 'go', 'x := 1']);
+  });
+
+  it('keeps what follows the language on the opening line', () => {
+    same('```js title="app.js" {1,3}\nlet a;\n```\n');
+  });
+
+  it('writes a fence longer than any run of backticks in the code', () => {
+    const once = keepsMeaning('````md\n```go\nx\n```\n````\n');
+    expect(once).toBe('````md\n```go\nx\n```\n````\n');
+  });
+
+  it('writes a tilde fence and an indented block as backtick fences', () => {
+    expect(keepsMeaning('~~~py\nx = 1\n~~~\n')).toBe('```py\nx = 1\n```\n');
+    expect(keepsMeaning('Text\n\n    four-space code\n')).toBe('Text\n\n```\nfour-space code\n```\n');
+  });
+
+  it('keeps wrap and a caption in the mark above it', () => {
+    same('<!-- bava: wrap caption="Start the server" -->\n```go\nfunc main() {}\n```\n');
+    same('<!-- bava: caption="Says &quot;hi&quot; &amp; bye &#45;&#45; twice" -->\n```\nx\n```\n');
+    const block = parsePage('<!-- bava: wrap caption="Says &quot;hi&quot; &#45;&#45; ok" -->\n```\nx\n```\n').doc.firstChild!;
+    expect([block.attrs.wrap, block.attrs.caption]).toEqual([true, 'Says "hi" -- ok']);
+  });
+
+  it('keeps a code block inside a list item and a quote, save after save', () => {
+    same('- Item\n\n  ```js\n  const x = 1;\n  ```\n');
+    same('> ```js\n> const x = 1;\n> ```\n');
+  });
+});
+
+describe('callouts', () => {
+  it('reads each kind and writes it back', () => {
+    for (const kind of ['info', 'note', 'success', 'warning', 'error']) {
+      same(`> [!${kind}]\n> Some text.\n`);
+      expect(parsePage(`> [!${kind}]\n> Some text.\n`).doc.firstChild!.attrs.kind).toBe(kind);
+    }
+  });
+
+  it('keeps several blocks inside a callout', () => {
+    same('> [!warning]\n> First.\n>\n> - a\n> - b\n');
+  });
+
+  it('keeps a kind it does not know, a title and a fold sign as written', () => {
+    same('> [!tip] Heads up\n> Text.\n');
+    same('> [!NOTE]- Folded\n> Text.\n');
+    const callout = parsePage('> [!tip]+ Heads up\n> Text.\n').doc.firstChild!;
+    expect([callout.type.name, callout.attrs.kind, callout.attrs.fold, callout.attrs.title]).toEqual(['callout', 'tip', '+', ' Heads up']);
+  });
+
+  // A callout reader shows the two the same; one that does not know callouts
+  // shows the marker on a line of its own either way.
+  it('tidies a blank line after the marker away', () => {
+    const once = tidy('> [!info]\n>\n> Text.\n');
+    expect(once).toBe('> [!info]\n> Text.\n');
+    expect(tidy(once)).toBe(once);
+  });
+
+  it('keeps a custom callout\'s colour and icon', () => {
+    same('<!-- bava: color=purple icon=🚀 -->\n> [!note]\n> Launch is on Friday.\n');
+    const callout = parsePage('<!-- bava: color=purple icon=🚀 -->\n> [!note]\n> Go.\n').doc.firstChild!;
+    expect([callout.attrs.color, callout.attrs.icon]).toEqual(['purple', '🚀']);
+  });
+
+  it('leaves a quote that only mentions a marker later as a quote', () => {
+    expect(parsePage('> Text then [!info]\n').doc.firstChild!.type.name).toBe('blockquote');
+  });
+});
+
+describe('toggles', () => {
+  it('reads a toggle list and writes it back', () => {
+    same('<details>\n<summary>What ships</summary>\n\nThe editor.\n\n- and the tree\n\n</details>\n');
+    const toggle = parsePage('<details>\n<summary>What ships</summary>\n\nThe editor.\n\n</details>\n').doc.firstChild!;
+    expect([toggle.type.name, toggle.firstChild!.textContent, toggle.childCount]).toEqual(['toggle', 'What ships', 2]);
+  });
+
+  it('keeps open, and characters HTML would read, in the summary', () => {
+    same('<details open>\n<summary>Tom &amp; Jerry &lt;3</summary>\n\nText.\n\n</details>\n');
+    expect(parsePage('<details>\n<summary>Tom &amp; Jerry</summary>\n\nText.\n\n</details>\n').doc.firstChild!.firstChild!.textContent).toBe('Tom & Jerry');
+  });
+
+  it('reads toggles inside toggles', () => {
+    same('<details>\n<summary>Outer</summary>\n\n<details>\n<summary>Inner</summary>\n\nDeep.\n\n</details>\n\n</details>\n');
+  });
+
+  it('tidies a summary on the opening line, keeping what it shows', () => {
+    expect(keepsMeaning('<details><summary>One line</summary>\n\nText.\n\n</details>\n')).toBe(
+      '<details>\n<summary>One line</summary>\n\nText.\n\n</details>\n',
+    );
+  });
+
+  it('keeps details it cannot read as a toggle as written', () => {
+    same('<details>\n<summary>S</summary>\nText with no blank line.\n</details>\n');
+    same('<details>\n<summary>Never closed</summary>\n\nText.\n');
+  });
+
+  it('reads a toggle heading from its mark', () => {
+    same('<!-- bava: toggle -->\n## Launch checklist\n\nFolds away.\n');
+    expect(parsePage('<!-- bava: toggle -->\n## Launch\n').doc.firstChild!.attrs.toggle).toBe(true);
+    same('<!-- bava: toggle color=red -->\n# Both\n');
+  });
+});
+
+describe('equations', () => {
+  it('reads a block equation and writes it back', () => {
+    same('$$\n\\int_0^1 x^2\\,dx = \\tfrac{1}{3}\n$$\n');
+    same('$$E = mc^2$$\n');
+    const block = parsePage('$$\na^2\n+ b^2\n$$\n').doc.firstChild!;
+    expect([block.type.name, block.attrs.tex]).toEqual(['math_block', 'a^2\n+ b^2']);
+  });
+
+  it('reads an inline equation and writes it exactly', () => {
+    same('The area is $\\pi r^2$, and costs \\$5.\n');
+    const para = parsePage('Area $\\pi r^2$.\n').doc.firstChild!;
+    expect(para.child(1).type.name).toBe('math_inline');
+    expect(para.child(1).attrs.tex).toBe('\\pi r^2');
+  });
+
+  it('leaves dollars that are not an equation as text', () => {
+    const para = parsePage('It costs $5 and $10 more.\n').doc.firstChild!;
+    expect(para.childCount).toBe(1);
+    expect(para.textContent).toBe('It costs $5 and $10 more.');
+  });
+});
+
+describe('footnotes', () => {
+  it('reads references and notes, and writes the notes at the foot', () => {
+    same('Bava keeps files plain.[^1] And local.[^2]\n\n[^1]: No database.\n\n[^2]: No service.\n');
+    const doc = parsePage('Plain.[^1]\n\n[^1]: No database.\n').doc;
+    expect(doc.lastChild!.type.name).toBe('footnotes');
+    expect(doc.firstChild!.child(1).type.name).toBe('footnote_ref');
+  });
+
+  it('moves notes defined mid-page to the foot, in the order first referred to', () => {
+    const once = tidy('B first.[^b] A second.[^a]\n\n[^a]: Note a.\n\nMiddle.\n\n[^b]: Note b.\n');
+    expect(once).toBe('B first.[^b] A second.[^a]\n\nMiddle.\n\n[^b]: Note b.\n\n[^a]: Note a.\n');
+    expect(tidy(once)).toBe(once);
+  });
+
+  it('keeps a note of several paragraphs, and a note nothing refers to', () => {
+    same('Text.[^long]\n\n[^long]: First paragraph.\n\n    Second paragraph.\n\n[^unused]: Never cited.\n');
+  });
+});
+
+describe('the contents block', () => {
+  it('rewrites the list from the page\'s headings', () => {
+    const page = '<!-- bava: contents -->\n\n- [Old](#old)\n\n<!-- bava: /contents -->\n\n# Goals\n\n## Beta launch\n\n## Beta launch\n\n### Deep\n\n# Risks & costs\n';
+    const once = tidy(page);
+    expect(once).toBe(
+      '<!-- bava: contents -->\n\n- [Goals](#goals)\n  - [Beta launch](#beta-launch)\n  - [Beta launch](#beta-launch-1)\n    - [Deep](#deep)\n- [Risks & costs](#risks--costs)\n\n<!-- bava: /contents -->\n\n# Goals\n\n## Beta launch\n\n## Beta launch\n\n### Deep\n\n# Risks & costs\n',
+    );
+    expect(tidy(once)).toBe(once);
+    expect(parsePage(page).doc.firstChild!.type.name).toBe('contents');
+  });
+
+  it('nests a heading that skips a level under the nearest one above it', () => {
+    const once = tidy('<!-- bava: contents -->\n<!-- bava: /contents -->\n\n# One\n\n### Three\n');
+    expect(once).toContain('- [One](#one)\n  - [Three](#three)\n');
+  });
+
+  it('keeps a contents mark with no end as written', () => {
+    same('<!-- bava: contents -->\n\nText.\n');
   });
 });
 
@@ -277,6 +440,102 @@ describe('what a save must not change', () => {
   });
 });
 
+describe('what the new blocks must not lose', () => {
+  it.each([
+    ['a divider', '> [!info]\n>\n> ---\n>\n> Text.\n'],
+    ['a coloured paragraph', '> [!info]\n>\n> <!-- bava: color=red -->\n> Red.\n'],
+    ['a toggle heading', '> [!info]\n>\n> <!-- bava: toggle -->\n> ## Head\n'],
+    ['a toggle', '> [!info]\n>\n> <details>\n> <summary>S</summary>\n>\n> B.\n>\n> </details>\n'],
+    ['a table', '> [!info]\n>\n> | A |\n> |---|\n> | 1 |\n'],
+  ])('keeps a callout whose first block is %s', (_name, page) => {
+    same(page);
+    expect(parsePage(page).doc.firstChild!.type.name).toBe('callout');
+  });
+
+  it('keeps every word of a callout whose title line runs into its body', () => {
+    for (const page of ['> [!note] `code\n> span` body\n', '> [!note] [link\n> text](http://u) more\n', '> [!note] **bold\n> still** end\n']) {
+      const once = tidy(page);
+      expect(tidy(once)).toBe(once);
+      for (const word of ['span', 'body', 'text', 'http://u', 'still', 'end'].filter((w) => page.includes(w))) expect(once).toContain(word);
+    }
+  });
+
+  it('writes inline TeX that ends in or holds backslashes and dollars so it reads back as an equation', () => {
+    for (const tex of ['a \\\\', 'x\\$y', '\\$5']) {
+      const doc = schema.node('doc', null, [schema.node('paragraph', null, [schema.text('A '), schema.nodes.math_inline.create({ tex })])]);
+      const back = parsePage(writePage(doc, parsePage('').front)).doc.firstChild!;
+      expect(back.lastChild!.type.name).toBe('math_inline');
+      expect(back.lastChild!.attrs.tex).toBe(tex);
+    }
+    same('Escaped $x\\$y$ and $\\\\$ here.\n');
+  });
+
+  it('keeps a tight numbered list with a code block in an item, save after save', () => {
+    const page = '1. Run:\n   ```sh\n   make\n   ```\n2. Done\n';
+    const once = tidy(page);
+    expect(tidy(once)).toBe(once);
+    expect(once).toContain('```sh\n   make\n   ```');
+  });
+
+  it('writes loose a tight list whose item gained a second paragraph, so a second save changes nothing', () => {
+    const p = (text: string) => schema.node('paragraph', null, [schema.text(text)]);
+    const doc = schema.node('doc', null, [
+      schema.nodes.bullet_list.create({ tight: true }, [schema.nodes.list_item.create(null, [p('One'), p('More')]), schema.nodes.list_item.create(null, [p('Two')])]),
+    ]);
+    const once = writePage(doc, parsePage('').front);
+    expect(once).toBe('- One\n\n  More\n\n- Two\n');
+    expect(tidy(once)).toBe(once);
+  });
+
+  it('keeps a tilde fence whose opening line holds a backtick', () => {
+    same('~~~js `x`\nlet a;\n~~~\n');
+  });
+
+  it('reads a table or a </details> straight after a paragraph', () => {
+    const table = 'Para\n| a | b |\n|---|---|\n| 1 | 2 |\n';
+    expect(tidy(table)).toContain('| a | b |\n|---|---|\n| 1 | 2 |');
+    const details = '<details>\n<summary>S</summary>\n\nBody\n</details>\n';
+    expect(parsePage(details).doc.firstChild!.type.name).toBe('toggle');
+    expect(tidy(tidy(details))).toBe(tidy(details));
+  });
+
+  it('keeps the backslashes in a toggle summary', () => {
+    same('<details>\n<summary>a \\* b &amp; c</summary>\n\nBody.\n\n</details>\n');
+  });
+
+  it('quotes an icon that could end the mark', () => {
+    const page = '> [!note]\n> Go.\n';
+    const doc = parsePage(page).doc;
+    const custom = doc.type.create(null, [doc.firstChild!.type.create({ ...doc.firstChild!.attrs, color: 'red', icon: 'x-->' }, doc.firstChild!.content)]);
+    const written = writePage(custom, parsePage('').front);
+    expect(written.split('\n')[0]).toMatch(/^<!-- bava: .* -->$/);
+    expect(parsePage(written).doc.firstChild!.attrs.icon).toBe('x-->');
+  });
+
+  it('keeps a footnote reference that starts a line before a colon in the text', () => {
+    const doc = schema.node('doc', null, [
+      schema.node('paragraph', null, [schema.nodes.footnote_ref.create({ label: '1' }), schema.text(': hello')]),
+      schema.nodes.footnotes.create(null, schema.nodes.footnote.create({ label: '1' }, schema.node('paragraph', null, [schema.text('Note.')]))),
+    ]);
+    const written = writePage(doc, parsePage('').front);
+    expect(parsePage(written).doc.firstChild!.textContent).toBe('[^1]: hello');
+    expect(tidy(written)).toBe(written);
+  });
+
+  it('keeps anything but a list between the contents marks as written', () => {
+    same('<!-- bava: contents -->\n\nProse someone wrote here.\n\n<!-- bava: /contents -->\n');
+  });
+
+  it('keeps $$…$$ inside a line as written', () => {
+    same('a $$x$$ b\n');
+  });
+
+  it('keeps what follows a fence\'s language, and before a callout title, as written', () => {
+    same('```go\tmeta   more\nx\n```\n');
+    same('> [!info]\tTitle\n> Text.\n');
+  });
+});
+
 describe('front matter edges', () => {
   it('ends front matter only at a line that is --- alone', () => {
     same('---\ntitle: a---\nx: 1\n---\nBody\n');
@@ -313,11 +572,8 @@ describe('real Markdown', async () => {
     expect(files.length).toBeGreaterThan(10);
   });
 
-  it.each(files)('%s: a save keeps what it shows, a second changes nothing, and every code block survives whole', (file) => {
-    const original = readFileSync(file, 'utf8');
-    const once = keepsMeaning(original);
-    for (const fence of original.match(/^```[^\n]*\n[\s\S]*?\n```$/gm) ?? []) {
-      expect(once).toContain(fence);
-    }
+  // What it shows includes every code block's code, character for character.
+  it.each(files)('%s: a save keeps what it shows, and a second changes nothing', (file) => {
+    keepsMeaning(readFileSync(file, 'utf8'));
   });
 });

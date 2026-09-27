@@ -1,6 +1,7 @@
 <script lang="ts">
   /**
-   * The `/` menu's list, under the `/` in the page. Its keys stay in the
+   * The `/` menu's list, under the `/` in the page; the `:` emoji
+   * suggestions use it too. Its keys stay in the
    * editor so typing goes on filtering it; this only shows the items and
    * reports a pointer pick.
    *
@@ -15,16 +16,18 @@
     active: number;
     at: { left: number; bottom: number };
     onChoose: (id: string) => void;
+    /** What the list is, for a screen reader: the `/` menu unless said otherwise. */
+    label?: string;
   };
 
-  let { items, active, at, onChoose }: Props = $props();
+  let { items, active, at, onChoose, label = t('doc.placeholder') }: Props = $props();
 </script>
 
 <Portal container={portalRoot()}>
   <div
     class="bava-menu slash-menu"
     role="listbox"
-    aria-label={t('doc.placeholder')}
+    aria-label={label}
     style:left={`${at.left}px`}
     style:top={`calc(${at.bottom}px + var(--space-1))`}
   >

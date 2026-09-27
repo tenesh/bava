@@ -23,6 +23,13 @@ import { commands, topBlock } from './commands';
 import { findNext, findPrev, getSearchState, replaceAll, replaceNext, search, SearchQuery, setSearchState } from 'prosemirror-search';
 import { filterItems, runItem, slashKey, slashPlugin, type SlashInfo } from './slash';
 import { schema } from './schema';
+import { codeBlockView, codeHighlight, codeKeys, setLanguage } from './code';
+import { foldKeys, foldPlugin, toggleView } from './fold';
+import { mathKeys, mathPlugin, mathView, type EquationAt } from './math';
+import { footnotesPlugin, withoutDroppedNotes } from './footnotes';
+import { contentsPlugin, contentsView } from './contents';
+import { chooseEmoji, emojiPlugin, PICKER, type EmojiInfo } from './emoji';
+import { keymap } from 'prosemirror-keymap';
 
 export type DocEditorOptions = {
   /** Called after every change the user makes; never for loading a page. */
@@ -33,6 +40,16 @@ export type DocEditorOptions = {
   onBlockMenu?: () => void;
   /** Alt+F10: focus into the formatting bubble. */
   onBubble?: () => void;
+  /** A code block's Copy: its code, for the clipboard. */
+  onCopy?: (text: string) => void;
+  /** The `:` emoji suggestions to show, or null when they close. */
+  onEmoji?: (info: EmojiInfo | null) => void;
+  /** The `/` menu's Emoji: the app opens the picker at the caret. */
+  onEmojiPicker?: (at: { left: number; top: number; bottom: number }) => void;
+  /** An equation at `pos` to edit: the app opens its field there. */
+  onEquation?: (pos: number, at: EquationAt) => void;
+  /** A code block's language button, at `pos`: the app offers the languages there. */
+  onCodeLanguage?: (pos: number, at: { x: number; y: number }) => void;
   /** The selection changed, so a bubble or count can follow it. */
   onSelection?: () => void;
   /** The `/` menu opened, changed or closed (null). */
@@ -41,7 +58,8 @@ export type DocEditorOptions = {
 
 /** An empty page still has a line to type on; it is written back as nothing. */
 function withALine(doc: Node): Node {
-  return doc.childCount > 0 ? doc : schema.topNodeType.create(null, schema.nodes.paragraph.create());
+  if (doc.childCount > 0 && doc.firstChild!.type !== schema.nodes.footnotes) return doc;
+  return doc.copy(doc.content.addToStart(schema.nodes.paragraph.create()));
 }
 
 const emptyFront: FrontMatter = { lines: null, bavaAt: null, bavaLines: [], settings: {} };
@@ -113,6 +131,7 @@ export class DocEditor {
   #front: FrontMatter = emptyFront;
   /** The page as it was read, to give back unchanged while nothing in it changes. */
   #loaded: { source: string; doc: Node; front: FrontMatter } | null = null;
+  #foldMemory: string | null = null;
   #options: DocEditorOptions | null = null;
 
   mount(host: HTMLElement, options: DocEditorOptions): void {
@@ -123,6 +142,15 @@ export class DocEditor {
       nodeViews: {
         kept: (node) => keptView(node),
         list_item: (node, view, getPos) => listItemView(node, view, getPos),
+        toggle: (node, view, getPos, decorations) => toggleView(node, view, getPos, decorations),
+        contents: (node, view) => contentsView(node, view),
+        math_block: (node, view, getPos) => mathView(node, view, getPos, (pos, at) => this.#options?.onEquation?.(pos, at)),
+        math_inline: (node, view, getPos) => mathView(node, view, getPos, (pos, at) => this.#options?.onEquation?.(pos, at)),
+        code_block: (node, view, getPos) =>
+          codeBlockView(node, view, getPos, {
+            onCopy: (text) => this.#options?.onCopy?.(text),
+            onCodeLanguage: (pos, at) => this.#options?.onCodeLanguage?.(pos, at),
+          }),
       },
       attributes: { class: 'bava-doc', spellcheck: 'true' },
       // The bubble follows focus: a selection left behind by find is not one to format.
@@ -140,6 +168,11 @@ export class DocEditor {
       plugins: [
         // Before the keymap, so its keys win while it is open.
         slashPlugin((info) => this.#options?.onSlash?.(info)),
+        emojiPlugin((info) => this.#options?.onEmoji?.(info)),
+        keymap(codeKeys),
+        keymap(foldKeys),
+        keymap(mathKeys),
+        mathPlugin((pos, at) => this.#options?.onEquation?.(pos, at)),
         shortcuts(),
         ...keys({
           onLink: () => this.#options?.onLink?.(),
@@ -149,6 +182,10 @@ export class DocEditor {
         history(),
         dropCursor({ color: false, class: 'bava-drop-cursor' }),
         search(),
+        codeHighlight(),
+        footnotesPlugin(),
+        contentsPlugin(),
+        foldPlugin(() => this.#foldMemory),
         gapCursor(),
         placeholder(),
         // A locked page takes no edits, however they arrive.
@@ -162,11 +199,16 @@ export class DocEditor {
     if (!view) return;
     view.updateState(view.state.apply(tr));
     if (tr.docChanged) this.#options?.onChange();
+    if (tr.getMeta(PICKER)) this.#options?.onEmojiPicker?.(this.#caretAt());
     if (tr.selectionSet || tr.docChanged) this.#options?.onSelection?.();
   }
 
-  /** Shows a page, with a fresh undo history of its own. */
-  setPage(markdown: string): void {
+  /**
+   * Shows a page, with a fresh undo history of its own. `foldMemory` names
+   * the page for remembering its folds on this computer; null remembers none.
+   */
+  setPage(markdown: string, foldMemory: string | null = null): void {
+    this.#foldMemory = foldMemory;
     const page = parsePage(markdown);
     const doc = withALine(page.doc);
     this.#front = page.front;
@@ -184,7 +226,7 @@ export class DocEditor {
     if (!this.view || !loaded) return null;
     const doc = this.view.state.doc;
     if (this.#front === loaded.front && doc.eq(loaded.doc)) return loaded.source;
-    return writePage(doc, this.#front);
+    return writePage(withoutDroppedNotes(doc, loaded.doc), this.#front);
   }
 
   get settings(): PageSettings {
@@ -327,6 +369,41 @@ export class DocEditor {
     tr.insertText('/', at + 1);
     view.dispatch(tr.setSelection(TextSelection.create(tr.doc, at + 2)).scrollIntoView());
     view.focus();
+  }
+
+  /** The block at `pos`: its type and attributes, for the menus that act on it. */
+  blockInfo(pos: number): { type: string; attrs: Record<string, unknown> } | null {
+    const node = this.view?.state.doc.nodeAt(pos);
+    return node ? { type: node.type.name, attrs: node.attrs } : null;
+  }
+
+  /** Types `text` at the caret, as the emoji picker does. */
+  insertText(text: string): void {
+    const view = this.view;
+    if (!view || this.locked) return;
+    view.dispatch(view.state.tr.insertText(text).scrollIntoView());
+    view.focus();
+  }
+
+  /** Chooses the `:` suggestion at `index`, picked with the pointer. */
+  chooseEmoji(index: number): void {
+    if (this.view) chooseEmoji(this.view, index);
+  }
+
+  /** Where the caret is on screen. */
+  #caretAt(): { left: number; top: number; bottom: number } {
+    const view = this.view;
+    try {
+      const coords = view!.coordsAtPos(view!.state.selection.from);
+      return { left: coords.left, top: coords.top, bottom: coords.bottom };
+    } catch {
+      return { left: 0, top: 0, bottom: 0 };
+    }
+  }
+
+  /** Sets the language of the code block at `pos`. */
+  setCodeLanguage(pos: number, language: string): void {
+    this.run(setLanguage(pos, language));
   }
 
   /** The page-level block the caret is in, and where it sits on screen. */

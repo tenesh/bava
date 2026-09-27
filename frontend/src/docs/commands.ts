@@ -51,7 +51,7 @@ function unwrapAll(state: EditorState, dispatch?: (tr: import('prosemirror-state
   return current;
 }
 
-type BlockKind = 'paragraph' | 'heading' | 'bullet_list' | 'ordered_list' | 'todo' | 'blockquote';
+type BlockKind = 'paragraph' | 'heading' | 'bullet_list' | 'ordered_list' | 'todo' | 'blockquote' | 'code_block';
 
 export const commands = {
   bold: toggleMark(marks.strong),
@@ -105,6 +105,7 @@ export const commands = {
       current = unwrapAll(current, step);
       setBlockType(nodes.paragraph)(current, step);
       if (kind === 'heading') setBlockType(nodes.heading, { level })(current, step);
+      else if (kind === 'code_block') setBlockType(nodes.code_block)(current, step);
       else if (kind === 'bullet_list') wrapInList(nodes.bullet_list)(current, step);
       else if (kind === 'ordered_list') wrapInList(nodes.ordered_list)(current, step);
       else if (kind === 'blockquote') wrapIn(nodes.blockquote)(current, step);

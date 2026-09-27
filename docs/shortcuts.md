@@ -151,6 +151,18 @@ Active while the page has focus. On Windows and Linux, `Ctrl` for `⌘`.
 | `⌫` at the start of a heading | Back to text |
 | `/` at the start of a line or after a space | The block menu; `↑` `↓` choose, `Enter` inserts, `Esc` closes |
 | `⌘F` / `⌥⌘F` | Find / Find and Replace; in the bar `Enter` and `⇧Enter` step, `Esc` closes |
+| `:` and a name | Emoji that match; `↑` `↓` choose, `Enter` or `Tab` puts one in, `Esc` closes |
+| `Enter` on a selected equation | Edit its TeX |
+| `Enter` in a toggle's summary | Into the toggle, opening it |
+
+In a code block:
+
+| Key | Action |
+|---|---|
+| `Enter` | New line |
+| `Tab` / `⇧Tab` | Indent / outdent by two spaces: the caret's line, or every line the selection touches |
+| `⌘Enter`, or `↓` on the last line of the page's last block | Leave the block, onto a new line after it |
+| `⌫` in an empty block | Back to text |
 
 Typed at the start of a line, then a space:
 
@@ -162,6 +174,11 @@ Typed at the start of a line, then a space:
 | `[]` | To-do |
 | `>` | Quote |
 | `---` (no space) | Divider |
+| ```` ``` ```` and a language (then a space or `Enter`) | Code block |
+| `$$` (then `Enter`) | Equation |
+| `[!info]`, `[!note]`, `[!success]`, `[!warning]` or `[!error]` at the start of a quote | That callout |
+
+Typed inside a line: `$x^2$` makes an inline equation.
 
 ## In the Files tree
 

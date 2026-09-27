@@ -12,7 +12,7 @@ version that adds them.
 
 A Bava file is **Markdown**. One file holds a document and a canvas.
 
-```markdown
+````markdown
 # Ingest pipeline
 
 Events arrive over HTTP and are written to the queue.
@@ -31,7 +31,7 @@ More prose.
   ]
 }
 ```
-```
+````
 
 Three parts, in this order:
 
@@ -65,7 +65,9 @@ The cost is accepted knowingly: a JSON block at the end of a human document.
 
 ## The document
 
-**Status:** specified 2026-09-27 for Milestone 8.2, ahead of the code.
+**Status:** specified 2026-09-27 for Milestone 8.2, and for 8.3a's callouts,
+toggles, code blocks, equations, footnotes, contents and emoji, each ahead of
+the code.
 
 The prose part of a page, everything before the canvas block, is edited as
 formatted text and written back as Markdown in one style. A page whose prose
@@ -136,9 +138,9 @@ An entity in the file (`&amp;`, `&copy;`, `&nbsp;`) is written as the
 character it stands for.
 
 Inline HTML Bava does not know (`<kbd>`, `<sup>`, a comment, a `<u>` never
-closed) is kept as it is, in its place in the text. Images, footnote
-references and `$…$` equations are kept as written too. A numbered list that starts at another number
-keeps its first number.
+closed) is kept as it is, in its place in the text. Images are kept as
+written too. A numbered list that starts at another number keeps its first
+number.
 
 ### Invisible marks
 Formatting a block that Markdown has no form for is written as an HTML comment
@@ -160,14 +162,160 @@ A paragraph in red on yellow.
 - A mark with a key Bava does not know is kept, with that key, on the block;
   known keys are written first. `list` on a block that is not a numbered list
   is kept as written.
+- `toggle`: a heading that folds its section (below).
+- `wrap` and `caption="…"`: a code block's settings (below).
+- `color=<swatch>` and `icon=<emoji>` on a note callout: a custom callout
+  (below).
+- A value with spaces is quoted (`caption="Start the server"`). Inside the
+  quotes, `&`, `"` and `--` are written `&amp;`, `&quot;` and `&#45;&#45;`, so
+  the value can never end the comment.
 - A mark with no block after it that can carry one (before a divider or a kept
   block, or at the end) is kept as it is, where it was.
 
+### Callouts
+A quote whose first line is a kind in brackets. Obsidian draws all five;
+GitHub draws Note and Warning and shows the others as quotes.
+
+```markdown
+> [!warning]
+> Back up before migrating.
+
+<!-- bava: color=purple icon=🚀 -->
+> [!note]
+> A custom callout: your colour and icon, shown only in Bava.
+```
+
+- The kinds: `info`, `note`, `success`, `warning`, `error`, in lower case.
+  Another kind (`[!tip]`, `[!NOTE]`) is kept as written and shown as the
+  nearest of the five, or as a note.
+- Text after the marker on its first line is a title (`> [!info] Heads up`),
+  and `-` or `+` straight after the brackets folds it in Obsidian; both are
+  kept as written.
+- A custom callout is `[!note]` with `color` and `icon` in the mark above it.
+- The callout's first block follows the marker's line directly when it is
+  plain text, and after a `>` line otherwise, so it is never read as more of
+  that line.
+
+### Toggles
+A **toggle list** is HTML's fold box, which GitHub and most viewers draw:
+
+```markdown
+<details>
+<summary>What ships on Friday</summary>
+
+The editor, the tree and the Trash.
+
+</details>
+```
+
+- The summary is one line of plain text, with `&`, `<` and `>` written as
+  `&amp;`, `&lt;` and `&gt;` (formatting inside `<summary>` shows as its raw
+  marks on GitHub); the content is any blocks. `<details open>` is kept, and
+  makes it start open. A `<details>` whose content does not start after a
+  blank line is kept as written.
+
+A **toggle heading** is an ordinary heading with a mark, folding its section
+(every block up to the next heading of its size or larger) in Bava only:
+
+```markdown
+<!-- bava: toggle -->
+## Launch checklist
+```
+
+Whether a toggle is folded is **never written**: Bava remembers it on this
+computer. One it has no memory of starts folded, unless the file says `open`.
+
+### Code blocks
+A fence with a language. The mark above holds a block's wrap switch and its
+caption, shown under the block in Bava only:
+
+````markdown
+<!-- bava: wrap caption="Start the server" -->
+```go
+func main() {}
+```
+````
+
+- The fence is written with backticks, three or as many more as the code
+  needs. A `~~~` fence is written with backticks.
+- The language is the first word after the fence; anything after it on that
+  line is kept as written. A block with no language is plain text.
+- The code is kept byte for byte, tabs and trailing spaces included.
+- A fence whose opening line holds a backtick is written with tildes (`~~~`),
+  which is the only fence that allows one.
+- A block indented four spaces is written as a fence, and an empty block as a
+  fence around one empty line.
+- In a tight list, an item's code block, list, quote, heading or equation
+  follows its text with no blank line. When an item holds any other block
+  after its first, the whole list is written loose.
+
+### Equations
+TeX, drawn in Bava and by GitHub and Obsidian:
+
+```markdown
+The area is $\pi r^2$.
+
+$$
+\int_0^1 x^2\,dx = \tfrac{1}{3}
+$$
+```
+
+- `$$` blocks are written with `$$` on lines of their own; a one-line
+  `$$…$$` block is written that way too.
+- Inline `$…$` is kept exactly as written, TeX included. A `$` preceded by an
+  odd run of backslashes is part of the TeX, not its end. TeX edited in Bava
+  is kept on one line, trimmed, with any `$` in it escaped; a block's TeX
+  never holds a line of `$$` alone.
+- `$$…$$` inside a line (Obsidian's display maths) is kept as written.
+
+### Footnotes
+A reference `[^label]` in the text and its note `[^label]: …`, which GitHub
+and Obsidian draw as numbered notes.
+
+```markdown
+Bava keeps files plain.[^1]
+
+[^1]: No database, no container.
+```
+
+- Labels are kept as written; a new footnote takes the next free number.
+- Notes are written after the page's last block, in the order they are first
+  referred to, one blank line apart. A note of several paragraphs indents its
+  later ones by four spaces.
+- A note nothing refers to is kept, after the others.
+- A note whose last reference is deleted in Bava is left out when the page is
+  saved. Until then it stays, so a sentence cut and pasted elsewhere keeps its
+  note.
+
+### The contents block
+The page's headings as a list of links, written out between two marks so
+every viewer shows a working list. Bava rewrites the list on every save.
+
+```markdown
+<!-- bava: contents -->
+
+- [Goals](#goals)
+- [Timeline](#timeline)
+  - [Beta](#beta)
+
+<!-- bava: /contents -->
+```
+
+- Anchors are GitHub's: lower case, spaces as `-`, punctuation other than `-`
+  and `_` dropped, and `-1`, `-2` after a heading's name when it repeats.
+- A blank line sets the list apart from each mark; without it, some readers
+  take the closing mark into the list's last item.
+- The list between the marks is Bava's to write: an edit made there by hand
+  is replaced on the next save. Anything but one list between the marks is
+  kept as written, marks included, and shows as text.
+
+### Emoji
+Written as the character itself (`🚀`), never as a `:rocket:` code.
+
 ### Blocks kept as they are
 A block this version cannot edit is shown in the page, read-only, and written
-back **byte for byte**: fenced code blocks (including `d2`), tables, HTML
-blocks, footnote definitions, link reference definitions, math blocks, and any
-other construct not listed above. It keeps its place among the other blocks.
+back **byte for byte**: tables, HTML blocks other than `<details>`, link
+reference definitions, and any other construct not listed above. It keeps its place among the other blocks.
 Inside a list item or a quote, its lines are written under the container's
 indent or `>`, with the container's own indent written as spaces. Later milestones make these
 editable one by one; until then nothing about them changes.

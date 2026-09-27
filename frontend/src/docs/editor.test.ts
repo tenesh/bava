@@ -304,9 +304,9 @@ describe('edit commands from the menu', () => {
   });
 
   it('copies a kept block in the selection as written', () => {
-    open('Before\n\n```go\nx := 1\n```\n\nAfter\n');
+    open('Before\n\n| A |\n|---|\n| 1 |\n\nAfter\n');
     editor!.selectAll();
-    expect(editor!.selectedText()).toContain('```go\nx := 1\n```');
+    expect(editor!.selectedText()).toContain('| A |\n|---|\n| 1 |');
   });
 
   it('pastes a plain word into the line the caret is in', () => {
