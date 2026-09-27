@@ -3,7 +3,7 @@
    * Mount point. Layout lives in Shell; this file owns the imperative
    * libraries and the wiring between them.
    */
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { CanvasStage } from './canvas/stage';
   import { createViewport } from './canvas/viewport';
   import { createTools } from './canvas/tools.svelte';
@@ -26,13 +26,14 @@
   import ExportDialog from './components/ExportDialog.svelte';
   import { topmostAt } from './canvas/eraser';
   import { SourcePane } from './editor/source-pane';
+  import DocumentPane from './docs/DocumentPane.svelte';
   import { createRenderClient } from './ipc/render.svelte';
   import DiagramDialog from './components/DiagramDialog.svelte';
   import { createDiagramDialog } from './shell/diagram-dialog.svelte';
   import { toElements } from './canvas/import/convert';
   import { createTheme } from './styles/theme.svelte';
   import Shell from './shell/Shell.svelte';
-  import { countText, statusContext, type StatusSide } from './shell/status-context';
+  import { statusContext, type StatusSide } from './shell/status-context';
   import { statusLocation } from './shell/status-location';
   import { createDocument, sceneToSave } from './files/document.svelte';
   import { createSpace, type TrashEntry } from './files/space.svelte';
@@ -102,12 +103,10 @@
   import { t } from './i18n/t';
   import type { MessageKey } from './i18n/messages';
 
-  const client = createRenderClient();
   const theme = createTheme();
 
   // Constructed at initialisation so the effects below can close over them.
   // They are inert until mounted, and both guard against being used before.
-  const pane = new SourcePane();
   const canvas = new CanvasStage();
   const viewport = createViewport();
   const doc = createDocument();
@@ -268,11 +267,8 @@
       y: (canvasHostEl?.clientHeight ?? 0) / 2,
     });
     canvasCommands.insertDiagram(toElements(layout, { at: centre }));
-    // The engine used becomes the default, so the next dialog opens with it;
-    // the document is laid out with the default, so it is laid out again.
-    void diagramDialog.inserted().then((changed) => {
-      if (changed) client.request(pane.doc, { engine: settingsState.layoutEngine });
-    });
+    // The engine used becomes the default, so the next dialog opens with it.
+    void diagramDialog.inserted();
     diagramOpen = false;
     commit();
     syncSelection();
@@ -1045,16 +1041,17 @@
    * nowhere when the canvas is hidden or a dialog has focus.
    */
   /**
-   * The source editor with focus: the document's pane, or another source pane
-   * (the Diagram from Code dialog's). An edit command acts on the one the user
-   * is typing in, never on one they cannot see.
+   * The source editor with focus (the Diagram from Code dialog's). An edit
+   * command acts on the one the user is typing in, never on one they cannot see.
    */
-  function focusedSource(): SourcePane {
-    return SourcePane.containing(document.activeElement) ?? pane;
+  function focusedSource(): SourcePane | null {
+    return SourcePane.containing(document.activeElement);
   }
 
   async function routeEdit(actions: {
     source: () => void | Promise<void>;
+    /** The page's Document editor. */
+    document: () => void | Promise<void>;
     field: () => void | Promise<void>;
     canvas: () => void | Promise<void>;
     /** The editor over a code block, which keeps its own history. */
@@ -1074,7 +1071,8 @@
   const clipboardHandlers = {
     copy: () =>
       routeEdit({
-        source: () => Clipboard.SetText(focusedSource().selectedText()).then(() => {}),
+        source: () => Clipboard.SetText(focusedSource()?.selectedText() ?? '').then(() => {}),
+        document: () => Clipboard.SetText(docPane?.selectedText() ?? "").then(() => {}),
         code: () => Clipboard.SetText(codeEditor?.selectedText() ?? '').then(() => {}),
         field: () => Clipboard.SetText(fieldSelection(document.activeElement)).then(() => {}),
         canvas: () => void canvasCommands.copy(),
@@ -1083,8 +1081,12 @@
       routeEdit({
         source: async () => {
           const editor = focusedSource();
-          await Clipboard.SetText(editor.selectedText());
-          editor.replaceSelection('');
+          await Clipboard.SetText(editor?.selectedText() ?? '');
+          editor?.replaceSelection('');
+        },
+        document: async () => {
+          await Clipboard.SetText(docPane?.selectedText() ?? "");
+          docPane?.deleteSelection();
         },
         code: async () => {
           await Clipboard.SetText(codeEditor?.selectedText() ?? '');
@@ -1103,8 +1105,10 @@
         source: async () => {
           // Chosen before the await: focus can move while the clipboard is read.
           const editor = focusedSource();
-          editor.replaceSelection(await Clipboard.Text());
+          const text = await Clipboard.Text();
+          editor?.replaceSelection(text);
         },
+        document: async () => docPane?.paste(await Clipboard.Text()),
         code: async () => codeEditor?.replaceSelection(await Clipboard.Text()),
         field: async () => void document.execCommand('insertText', false, await Clipboard.Text()),
         canvas: () => {
@@ -1154,7 +1158,8 @@
 
     'edit.undo': () =>
       routeEdit({
-        source: () => focusedSource().undo(),
+        source: () => focusedSource()?.undo(),
+        document: () => docPane?.undo(),
         code: () => codeEditor?.undo(),
         field: fieldCommand('undo'),
         // Not mid-gesture, a line drawn by clicks included.
@@ -1164,7 +1169,8 @@
       }),
     'edit.redo': () =>
       routeEdit({
-        source: () => focusedSource().redo(),
+        source: () => focusedSource()?.redo(),
+        document: () => docPane?.redo(),
         code: () => codeEditor?.redo(),
         field: fieldCommand('redo'),
         canvas: () => {
@@ -1176,7 +1182,8 @@
     'edit.paste': clipboardHandlers.paste,
     'edit.selectAll': () =>
       routeEdit({
-        source: () => focusedSource().selectAll(),
+        source: () => focusedSource()?.selectAll(),
+        document: () => docPane?.selectAll(),
         code: () => codeEditor?.selectAll(),
         field: fieldCommand('selectAll'),
         canvas: () => {
@@ -1186,9 +1193,17 @@
           syncSelection();
         },
       }),
+    // Find in the page, when a page shows in the Document.
+    'edit.find': () => {
+      if (doc.isOpen && view.showsDocument) docPane?.openFind();
+    },
+    'edit.replace': () => {
+      if (doc.isOpen && view.showsDocument) docPane?.openFind(true);
+    },
     'edit.delete': () =>
       routeEdit({
         source: fieldCommand('delete'),
+        document: () => docPane?.deleteSelection(),
         field: fieldCommand('delete'),
         canvas: () => {
           // In point editing, the selected points (none: nothing), as the key does.
@@ -1300,7 +1315,8 @@
     },
   });
 
-  let sourceHost: HTMLDivElement;
+  // The Document pane: the page's editor and its menus.
+  let docPane: DocumentPane | undefined = $state();
   let canvasHost: HTMLDivElement;
 
   // What is on the canvas: every element, as the status bar counts it.
@@ -1310,7 +1326,13 @@
   // or focused, when both show.
   let lastWorkedIn = $state.raw<StatusSide>('document');
   const statusSide = $derived(statusContext(view.mode, lastWorkedIn));
-  const documentCounts = $derived(countText(doc.source));
+  // The page's words and characters, or the selection's.
+  let docCounts = $state.raw({ words: 0, characters: 0 });
+  // Where the open page is, for the page header: its folders, then its name.
+  const pageCrumbs = $derived(
+    !doc.isOpen ? [] : openRel ? openRel.replace(/\.md$/i, '').split('/') : [pageTitle(doc.path) ?? t('file.untitled')],
+  );
+  const documentCounts = $derived(docCounts);
   $effect(() => {
     const note = (event: Event) => {
       const side = (event.target as Element | null)?.closest?.('[data-side]')?.getAttribute('data-side');
@@ -1327,16 +1349,11 @@
   onMount(() => {
     // Captured: `bind:this` is nulled when the snippet's DOM is torn down,
     // which happens before this cleanup runs.
-    const editorHost = sourceHost;
     const diagramHost = canvasHost;
     canvasHostEl = diagramHost;
 
-    pane.mount(editorHost, {
-      doc: '',
-      // Laid out with the configured engine, which the status bar names.
-      onChange: (source) => client.request(source, { engine: settingsState.layoutEngine }),
-      isReserved: reservedByMenu(menuSpec as MenuSpec, platform),
-    });
+    // A save reads the page's text from the editor, not on every keystroke.
+    const unbindSource = doc.bindSource(() => docPane?.markdown() ?? doc.source);
     // A mono advance measured before Geist Mono resolves would be stored in
     // the user's file; the first measurement after it loads replaces it.
     invalidateAdvanceOnFontLoad();
@@ -1749,9 +1766,8 @@
       window.removeEventListener('blur', releaseSpace);
       sizeObserver?.disconnect();
       window.removeEventListener('keydown', onKeyDown);
-      client.destroy();
+      unbindSource();
       canvas.destroy();
-      pane.destroy();
       theme.destroy();
     };
   });
@@ -1759,11 +1775,14 @@
   // Effects belong at initialisation, not inside onMount: an effect created in
   // a mount callback is orphaned and Svelte throws.
   //
-  // The D2 preview is not wired to the canvas: the canvas is a drawing
-  // surface. The pipeline still runs (diagnostics below prove it), but
-  // nothing paints it.
+  // Each page that arrives is handed to the Document editor once: opening,
+  // reloading, a new page, closing. Never while it is being typed in. A pane
+  // mounted again (after a failure) is handed the page too; until then saving
+  // reads the file's text, never an empty editor.
   $effect(() => {
-    pane.setDiagnostics(client.state.errors);
+    const pane = docPane;
+    void doc.generation;
+    untrack(() => pane?.setPage(doc.source));
   });
 
   // The native menu shows checks and enabled items from this state. Go never
@@ -1844,7 +1863,6 @@
   nodes={doc.isOpen && statusSide === 'canvas' ? nodeCount : undefined}
   words={doc.isOpen && statusSide === 'document' ? documentCounts.words : undefined}
   characters={doc.isOpen && statusSide === 'document' ? documentCounts.characters : undefined}
-  errors={client.state.errors.length}
   status={notice ??
     (autosave.pauseReason === 'conflict'
       ? t('status.autosavePaused')
@@ -1853,6 +1871,8 @@
         : undefined)}
   themeChoice={theme.choice}
   onChooseTheme={(choice) => theme.set(choice)}
+  pageWidth={settingsState.pageWidth}
+  onPageWidth={(width) => void settingsState.setPageWidth(width)}
   {view}
   bind:settingsOpen
   settings={[
@@ -1943,7 +1963,19 @@
     {/if}
   {/snippet}
   {#snippet document()}
-    <div class="fill" bind:this={sourceHost}></div>
+    <DocumentPane
+      bind:this={docPane}
+      crumbs={pageCrumbs}
+      spaceWidth={space.pageWidth}
+      appWidth={settingsState.pageWidth}
+      onEdit={() => {
+        doc.touch();
+        autosave.changed();
+      }}
+      onCounts={(counts) => (docCounts = counts)}
+      onDuplicatePage={() => openRel && void duplicatePath(openRel)}
+      onTrashPage={() => openRel && void trashPath(openRel)}
+    />
   {/snippet}
 
   {#snippet canvas()}

@@ -40,11 +40,12 @@
     /** The document's counts, while it is being worked on. */
     words?: number;
     characters?: number;
-    errors: number;
     /** A message for the status bar, when something needs noticing. */
     status?: string;
     themeChoice: ThemeChoice;
     onChooseTheme: (choice: ThemeChoice) => void;
+    pageWidth: 'narrow' | 'wide' | 'full';
+    onPageWidth: (width: 'narrow' | 'wide' | 'full') => void;
     document: Snippet;
     canvas: Snippet;
     /** The workspace listing, or the empty state when no folder is open. */
@@ -73,10 +74,11 @@
     nodes,
     words,
     characters,
-    errors,
     status,
     themeChoice,
     onChooseTheme,
+    pageWidth,
+    onPageWidth,
     document: documentPane,
     canvas: canvasPane,
     files: filesPane,
@@ -180,13 +182,15 @@
     {/if}
   </div>
 
-  <StatusBar {engine} {nodes} {words} {characters} {errors} {space} {path} message={status} />
+  <StatusBar {engine} {nodes} {words} {characters} {space} {path} message={status} />
 </div>
 
 <SettingsDialog
   bind:open={settingsOpen}
   choice={themeChoice}
   onChoose={onChooseTheme}
+  {pageWidth}
+  {onPageWidth}
   onOpenChange={(open) => (settingsOpen = open)}
   sections={settings}
 />

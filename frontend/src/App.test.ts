@@ -8,6 +8,16 @@ vi.mock('../bindings/github.com/tenesh/bava/internal/app', () => ({
     Render: vi.fn().mockResolvedValue({ svg: '<svg id="stub"/>', errors: [], nodeMap: {} }),
   },
   FileService: {
+    Open: vi.fn().mockResolvedValue({
+      path: '/w/Acme/Roadmap.md',
+      source: '# Hello\n\nWorld.\n',
+      diagrams: {},
+      scene: { version: 1, elements: [] },
+      stamp: { size: 1, modifiedUnixNano: '1' },
+      error: '',
+    }),
+    Save: vi.fn().mockResolvedValue({ path: '/w/Acme/Roadmap.md', stamp: { size: 2, modifiedUnixNano: '2' }, error: '' }),
+    ChangedOnDisk: vi.fn().mockResolvedValue(false),
     Settings: vi.fn().mockResolvedValue({ debounceMs: 250, layoutEngine: 'tala', autosave: 'off', autosaveDelayMs: 1000 }),
     SaveSettings: vi.fn().mockResolvedValue(''),
   },
@@ -31,6 +41,10 @@ vi.mock('../bindings/github.com/tenesh/bava/internal/app', () => ({
 }));
 
 import App from './App.svelte';
+
+// The app remembers the last Space and page it had open; each test starts as
+// a first launch, not reopening what the test before it left.
+beforeEach(() => localStorage.clear());
 import { SpaceService } from '../bindings/github.com/tenesh/bava/internal/app';
 import { PENDING } from './files/tree';
 
@@ -73,29 +87,29 @@ describe('App', () => {
     unmount(app);
   });
 
-  it('mounts the editor into the source pane', () => {
+  it('mounts the Document editor into its pane', () => {
     const target = document.createElement('div');
     document.body.append(target);
 
     // onMount runs when effects flush, not during mount() itself.
     const app = flushSync(() => mount(App, { target }));
 
-    // CodeMirror creates its own DOM inside the element it was handed.
-    expect(target.querySelector('.cm-editor')).not.toBeNull();
+    // ProseMirror creates its own DOM inside the element it was handed.
+    expect(target.querySelector('.bava-doc')).not.toBeNull();
 
     unmount(app);
   });
 });
 
 describe('App shell integration', () => {
-  // A view switch must not unmount the editor: CodeMirror owns its own DOM,
+  // A view switch must not unmount the editor: ProseMirror owns its own DOM,
   // and remounting it would take the undo history and cursor with it.
   it('keeps the editor mounted when the canvas is hidden', async () => {
     const { target, app } = mountApp();
     menuCommand('file.new');
     await vi.waitFor(() => expect(target.textContent).toContain('untitled'));
 
-    const editorBefore = target.querySelector('.cm-editor');
+    const editorBefore = target.querySelector('.bava-doc');
     expect(editorBefore).not.toBeNull();
 
     const documentButton = [...target.querySelectorAll('button, label')].find((el) =>
@@ -105,7 +119,7 @@ describe('App shell integration', () => {
     flushSync(() => (documentButton as HTMLElement).click());
 
     // Same node, not a replacement.
-    expect(target.querySelector('.cm-editor')).toBe(editorBefore);
+    expect(target.querySelector('.bava-doc')).toBe(editorBefore);
 
     unmount(app);
   });
@@ -163,7 +177,7 @@ describe('launch', () => {
     expect(target.querySelector('header')?.textContent).not.toContain('saved');
     expect(target.querySelector('.regions')?.classList.contains('hidden')).toBe(true);
     // Still mounted underneath.
-    expect(target.querySelector('.cm-editor')).not.toBeNull();
+    expect(target.querySelector('.bava-doc')).not.toBeNull();
     expect(titleBarButtons(target)).not.toContain('Document');
     expect(target.querySelector('footer')?.textContent).not.toContain('Engine');
 
@@ -261,6 +275,35 @@ describe('launch', () => {
     await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
     expect(target.querySelector('header')?.textContent).toContain('No page open');
     expect(target.querySelector('header')?.textContent).not.toContain('untitled');
+    unmount(app);
+  });
+
+  // The page's text is shown formatted, edited, and saved back as Markdown.
+  it('shows a page in the Document editor, and saves what was changed', async () => {
+    const { target, app } = mountApp();
+    menuCommand('file.openSpace');
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
+    target.querySelector<HTMLElement>('[data-path="Roadmap.md"]')!.click();
+    await vi.waitFor(() => expect(target.querySelector('.bava-doc h1')?.textContent).toBe('Hello'));
+    (target.querySelector('.bava-doc') as HTMLElement).focus();
+    menuCommand('edit.selectAll');
+    menuCommand('edit.delete');
+    await vi.waitFor(() => expect(target.querySelector('header')?.textContent).toContain('unsaved'));
+    menuCommand('file.save');
+    const { FileService } = await import('../bindings/github.com/tenesh/bava/internal/app');
+    await vi.waitFor(() => expect(FileService.Save).toHaveBeenCalledWith('/w/Acme/Roadmap.md', '', { version: 1, elements: [] }));
+    unmount(app);
+  });
+
+  // ⌘F finds in the page.
+  it('opens find in the page from the menu', async () => {
+    const { target, app } = mountApp();
+    menuCommand('file.openSpace');
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
+    target.querySelector<HTMLElement>('[data-path="Roadmap.md"]')!.click();
+    await vi.waitFor(() => expect(target.querySelector('.bava-doc h1')).not.toBeNull());
+    menuCommand('edit.find');
+    await vi.waitFor(() => expect(target.querySelector('[role="search"]')).not.toBeNull());
     unmount(app);
   });
 
@@ -394,7 +437,7 @@ describe('launch', () => {
     };
     expect(await units()).toBe('one');
 
-    const editor = target.querySelector('.cm-content') as HTMLElement;
+    const editor = target.querySelector('.bava-doc') as HTMLElement;
     editor.focus();
     editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', code: 'KeyD', metaKey: true, ctrlKey: true, bubbles: true }));
     expect(await units()).toBe('one');

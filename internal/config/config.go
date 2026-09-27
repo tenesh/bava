@@ -44,6 +44,10 @@ type Settings struct {
 	// elements' edges, centres and spacing; Cmd/Ctrl turns it over for one
 	// drag. Off by default, as Excalidraw's.
 	ObjectSnap bool `json:"objectSnap"`
+	// PageWidth is how wide a page shows in the Document when neither the
+	// page nor its Space sets one: narrow, wide or full. A preference of this
+	// viewer, never written into a page. Wide by default.
+	PageWidth string `json:"pageWidth"`
 }
 
 // Autosave modes.
@@ -73,6 +77,7 @@ func Defaults() Settings {
 		MidpointSnap: true,
 		// Off, as Excalidraw's: shapes move freely unless asked to snap.
 		ObjectSnap: false,
+		PageWidth:  "wide",
 	}
 }
 
@@ -143,6 +148,11 @@ func sanitise(settings Settings) Settings {
 	}
 	if _, err := layout.Resolve(settings.LayoutEngine); err != nil {
 		settings.LayoutEngine = Defaults().LayoutEngine
+	}
+	switch settings.PageWidth {
+	case "narrow", "wide", "full":
+	default:
+		settings.PageWidth = Defaults().PageWidth
 	}
 	switch settings.Autosave {
 	case AutosaveOff, AutosaveAfterDelay, AutosaveOnFocusChange:

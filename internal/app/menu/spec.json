@@ -62,7 +62,10 @@
         { "kind": "command", "id": "edit.copy", "label": "Copy", "accelerator": "CmdOrCtrl+C" },
         { "kind": "command", "id": "edit.paste", "label": "Paste", "accelerator": "CmdOrCtrl+V" },
         { "kind": "command", "id": "edit.delete", "label": "Delete", "hint": "⌫" },
-        { "kind": "command", "id": "edit.selectAll", "label": "Select All", "accelerator": "CmdOrCtrl+A" }
+        { "kind": "command", "id": "edit.selectAll", "label": "Select All", "accelerator": "CmdOrCtrl+A" },
+        { "kind": "separator" },
+        { "kind": "command", "id": "edit.find", "label": "Find", "accelerator": "CmdOrCtrl+F" },
+        { "kind": "command", "id": "edit.replace", "label": "Find and Replace", "accelerator": "OptionOrAlt+CmdOrCtrl+F" }
       ]
     },
     {

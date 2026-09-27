@@ -6,6 +6,17 @@
  * Imported one file at a time, so only these icons reach the bundle.
  */
 import type { Component } from 'svelte';
+import Bold from '@lucide/svelte/icons/bold';
+import Italic from '@lucide/svelte/icons/italic';
+import Underline from '@lucide/svelte/icons/underline';
+import Strikethrough from '@lucide/svelte/icons/strikethrough';
+import InlineCode from '@lucide/svelte/icons/code';
+import Link from '@lucide/svelte/icons/link';
+import Highlighter from '@lucide/svelte/icons/highlighter';
+import GripVertical from '@lucide/svelte/icons/grip-vertical';
+import ChevronUp from '@lucide/svelte/icons/chevron-up';
+import Replace from '@lucide/svelte/icons/replace';
+import TypeIcon from '@lucide/svelte/icons/type';
 import ALargeSmall from '@lucide/svelte/icons/a-large-small';
 import Code from '@lucide/svelte/icons/code-2';
 import AlignCenterHorizontal from '@lucide/svelte/icons/align-center-horizontal';
@@ -162,6 +173,19 @@ export const LUCIDE_ICONS = {
   // Settings' sections.
   appearance: Contrast,
   grid: Hash,
+  // The Document: the formatting bubble, the block handle, find.
+  bold: Bold,
+  italic: Italic,
+  underline: Underline,
+  strike: Strikethrough,
+  inlineCode: InlineCode,
+  link: Link,
+  textColor: Baseline,
+  highlight: Highlighter,
+  turnInto: TypeIcon,
+  grip: GripVertical,
+  chevronUp: ChevronUp,
+  replace: Replace,
 } satisfies Record<string, Component>;
 
 export type IconId = keyof typeof LUCIDE_ICONS | 'parallelogram';

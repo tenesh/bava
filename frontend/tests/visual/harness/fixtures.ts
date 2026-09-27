@@ -38,6 +38,45 @@ const launchPlan: FakePage = {
   scene: { version: 1, elements: [] },
 };
 
+// Every construct of the Document's format, to see each drawn.
+const handbook: FakePage = {
+  source: [
+    '# Team handbook',
+    '',
+    'How we work: **bold**, *italic*, <u>underlined</u>, ~~struck~~, `code`, a [link](https://example.com), <span data-color="blue">blue text</span> and <span data-highlight="yellow">a highlight</span>.',
+    '',
+    '## Lists',
+    '',
+    '- Ship small\n  - Then smaller\n- Write it down',
+    '',
+    '<!-- bava: list=a -->\n1. Plan\n2. Build\n3. Check',
+    '',
+    '<!-- bava: list=i -->\n1. First\n2. Second',
+    '',
+    '- [x] Set up the Space\n- [ ] Invite the team',
+    '',
+    '### A quote',
+    '',
+    '> Files are the source of truth. Everything else is a cache.',
+    '',
+    '<!-- bava: color=red background=yellow -->\nA coloured paragraph, on a background.',
+    '',
+    '---',
+    '',
+    '```go\nfunc main() {}\n```',
+    '',
+    '| Who | What |\n|---|---|\n| Ana | Design |',
+    '',
+  ].join('\n'),
+  scene: { version: 1, elements: [] },
+};
+
+// A locked page: nothing on it can be changed until it is unlocked.
+const checklist: FakePage = {
+  source: '---\nbava:\n  locked: true\n---\n# Release checklist\n\n- [x] Tag the build\n- [ ] Write the notes\n',
+  scene: { version: 1, elements: [] },
+};
+
 export function seedSpace(): FakeSpace {
   return {
     root: SPACE_ROOT,
@@ -49,12 +88,12 @@ export function seedSpace(): FakeSpace {
     },
     pages: {
       'Roadmap.md': blank(),
-      'Team handbook.md': blank(),
+      'Team handbook.md': handbook,
       'Marketing/Launch plan.md': launchPlan,
       'Marketing/Brand guide.md': blank(),
       'Marketing/Press release.md': blank(),
       'Engineering/Architecture.md': architecture,
-      'Engineering/Release checklist.md': blank(),
+      'Engineering/Release checklist.md': checklist,
     },
     trash: [
       { id: 't1', path: 'Meeting notes/Q3 retro.md', kind: 'page', deletedAt: '2026-09-27T09:00:00Z', size: 2048 },

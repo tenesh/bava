@@ -56,14 +56,9 @@ export function createDiagramDialog(options: DiagramDialogOptions) {
       render();
     },
 
-    /**
-     * A diagram was inserted: its engine becomes the default. Resolves true
-     * when the default changed, so the caller can re-render what depends on it.
-     */
-    async inserted(): Promise<boolean> {
-      if (engine === options.defaultEngine()) return false;
-      await options.saveDefault(engine);
-      return true;
+    /** A diagram was inserted: its engine becomes the default. */
+    async inserted(): Promise<void> {
+      if (engine !== options.defaultEngine()) await options.saveDefault(engine);
     },
   };
 }

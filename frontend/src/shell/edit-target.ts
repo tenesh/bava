@@ -8,7 +8,7 @@
  * source pane's undo; a text field keeps the browser's; everything else is
  * the canvas.
  */
-export type EditTarget = 'source' | 'code' | 'field' | 'canvas' | 'none';
+export type EditTarget = 'source' | 'code' | 'document' | 'field' | 'canvas' | 'none';
 
 /**
  * `canvasVisible` guards the fallback: with the canvas hidden, Select All
@@ -19,6 +19,8 @@ export function editTarget(focused: Element | null, context: { canvasVisible: bo
   // Checked before `.cm-editor`, because a code block's editor is one too.
   if (focused?.closest('.bava-code-editor')) return 'code';
   if (focused?.closest('.cm-editor')) return 'source';
+  // The page's editor keeps its own history and clipboard handling.
+  if (focused?.closest('.bava-doc')) return 'document';
   if (focused?.closest('input, textarea, [contenteditable]')) return 'field';
   if (focused?.closest('[role="dialog"], [role="alertdialog"]')) return 'none';
   return context.canvasVisible ? 'canvas' : 'none';

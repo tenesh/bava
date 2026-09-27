@@ -19,12 +19,23 @@
     open: boolean;
     choice: ThemeChoice;
     onChoose: (choice: ThemeChoice) => void;
+    /** How wide a page shows when neither it nor its Space sets a width. */
+    pageWidth: PageWidth;
+    onPageWidth: (width: PageWidth) => void;
     onOpenChange: (open: boolean) => void;
     /** Sections owned elsewhere, after Appearance. */
     sections?: Section[];
   };
 
-  let { open = $bindable(), choice, onChoose, onOpenChange, sections = [] }: Props = $props();
+  type PageWidth = 'narrow' | 'wide' | 'full';
+
+  let { open = $bindable(), choice, onChoose, pageWidth, onPageWidth, onOpenChange, sections = [] }: Props = $props();
+
+  const widths: { value: PageWidth; label: string }[] = [
+    { value: 'narrow', label: t('width.narrow') },
+    { value: 'wide', label: t('width.wide') },
+    { value: 'full', label: t('width.full') },
+  ];
 
   const themes: { value: ThemeChoice; label: string }[] = [
     { value: 'light', label: t('settings.theme.light') },
@@ -45,6 +56,11 @@
       <span class="label">{t('settings.theme')}</span>
       <Segments value={choice} options={themes} label={t('settings.theme')} onValueChange={onChoose} />
     </div>
+    <div class="row">
+      <span class="label">{t('doc.width')}</span>
+      <Segments value={pageWidth} options={widths} label={t('doc.width')} onValueChange={(value) => onPageWidth(value as PageWidth)} />
+    </div>
+    <p class="hint">{t('settings.pageWidth.hint')}</p>
   </section>
 {/snippet}
 
@@ -97,5 +113,16 @@
   .label {
     font-size: var(--text-control);
     color: var(--color-text-secondary);
+  }
+
+  .row + .row {
+    margin-top: var(--space-3);
+  }
+
+  .hint {
+    margin: var(--space-1) 0 0;
+    max-width: 52ch;
+    font-size: var(--text-meta);
+    color: var(--color-text-muted);
   }
 </style>

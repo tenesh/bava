@@ -1,0 +1,103 @@
+<script lang="ts">
+  /**
+   * Find and replace in the page: a bar over the Document.
+   * Enter steps to the next match, Shift+Enter to the previous, Escape
+   * closes. The count says where you are.
+   *
+   * Presentational: it reports what was typed and asked for; the Document
+   * editor finds and replaces.
+   */
+  import ToolIcon from './ToolIcon.svelte';
+  import { t } from '../i18n/t';
+
+  type Props = {
+    count: number;
+    /** Which match is selected, from 0; -1 for none. */
+    index: number;
+    onFind: (text: string) => void;
+    onNext: () => void;
+    onPrevious: () => void;
+    onReplace: (text: string) => void;
+    onReplaceAll: (text: string) => void;
+    onClose: () => void;
+    /** Which field to put the caret in; a new `at` asks again. */
+    focus: { field: 'find' | 'replace'; at: number };
+  };
+
+  let { count, index, focus, onFind, onNext, onPrevious, onReplace, onReplaceAll, onClose }: Props = $props();
+
+  let query = $state('');
+  let replacement = $state('');
+
+  function keydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+    } else if (event.key === 'Enter' && event.currentTarget === findField) {
+      event.preventDefault();
+      if (event.shiftKey) onPrevious();
+      else onNext();
+    }
+  }
+
+  let findField: HTMLInputElement;
+  let replaceField: HTMLInputElement;
+
+  $effect(() => {
+    const field = focus.field === 'replace' ? replaceField : findField;
+    void focus.at;
+    field.focus();
+    field.select();
+  });
+  const position = $derived(count === 0 ? t('find.none') : t('find.position').replace('{n}', String(index + 1)).replace('{count}', String(count)));
+</script>
+
+<div class="find" role="search" aria-label={t('find.label')}>
+  <input
+    bind:this={findField}
+    class="bava-field"
+    type="search"
+    placeholder={t('find.placeholder')}
+    aria-label={t('find.placeholder')}
+    bind:value={query}
+    oninput={() => onFind(query)}
+    onkeydown={keydown}
+  />
+  <span class="position" aria-live="polite">{query ? position : ''}</span>
+  <button type="button" class="bava-icon-button" aria-label={t('find.previous')} title={t('find.previous')} disabled={count === 0} onclick={onPrevious}>
+    <ToolIcon id="chevronUp" size="sm" />
+  </button>
+  <button type="button" class="bava-icon-button" aria-label={t('find.next')} title={t('find.next')} disabled={count === 0} onclick={onNext}>
+    <ToolIcon id="chevronDown" size="sm" />
+  </button>
+  <input
+    bind:this={replaceField}
+    class="bava-field"
+    placeholder={t('find.replacePlaceholder')}
+    aria-label={t('find.replacePlaceholder')}
+    bind:value={replacement}
+    onkeydown={keydown}
+  />
+  <button type="button" class="bava-button" disabled={count === 0} onclick={() => onReplace(replacement)}>{t('find.replace')}</button>
+  <button type="button" class="bava-button" disabled={count === 0} onclick={() => onReplaceAll(replacement)}>{t('find.replaceAll')}</button>
+  <button type="button" class="bava-icon-button" aria-label={t('dialog.close')} title={t('dialog.close')} onclick={onClose}>
+    <ToolIcon id="close" size="sm" />
+  </button>
+</div>
+
+<style>
+  .find {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-bottom: var(--border-width) solid var(--color-border-subtle);
+    background: var(--color-surface-nav);
+  }
+
+  .position {
+    min-width: var(--size-find-count);
+    font-size: var(--text-meta);
+    color: var(--color-text-muted);
+  }
+</style>

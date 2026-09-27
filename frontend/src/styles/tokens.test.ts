@@ -90,6 +90,8 @@ describe('token emission', () => {
       'diagram-label',
       'diagram-edge',
       'diagram-edge-label',
+      'find-match',
+      'find-match-active',
     ]) {
       expect(light, `--color-${name} missing`).toContain(`--color-${name}`);
     }
@@ -387,6 +389,29 @@ describe('the splash tokens', () => {
     ['--size-mark-tile-splash-padding', 14],
     ['--size-error-detail-label', 110],
   ])('%s is %ipx', (name, px) => {
+    expect(css).toMatch(new RegExp(`${name}:\\s*${px}px`));
+  });
+});
+
+// The Document: its type scale and page widths, as the mockups draw them.
+describe('the document tokens', () => {
+  const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+  it.each([
+    ['--text-doc-body', 15],
+    ['--text-doc-h1', 32],
+    ['--text-doc-h2', 23],
+    ['--text-doc-h3', 18],
+    ['--text-doc-h4', 16],
+    ['--text-doc-h5', 14],
+    ['--text-doc-h6', 12.5],
+    ['--text-doc-code', 13],
+    ['--size-page-narrow', 640],
+    ['--size-page-wide', 760],
+    ['--size-doc-gutter', 56],
+    ['--size-todo-box', 14],
+    ['--size-quote-rule', 3],
+    ['--size-list-indent', 24],
+  ])('%s is %spx', (name, px) => {
     expect(css).toMatch(new RegExp(`${name}:\\s*${px}px`));
   });
 });

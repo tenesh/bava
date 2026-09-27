@@ -41,18 +41,18 @@ describe('the Diagram from Code dialog', () => {
     expect(request).toHaveBeenLastCalledWith('x -> y', { engine: 'dagre', direction: 'right' });
   });
 
-  it('saves the engine used as the default on insert, and says so', async () => {
+  it('saves the engine used as the default on insert', async () => {
     const { dialog, saveDefault } = setup();
     dialog.open('a -> b');
     dialog.setEngine('dagre');
-    expect(await dialog.inserted()).toBe(true);
+    await dialog.inserted();
     expect(saveDefault).toHaveBeenCalledWith('dagre');
   });
 
   it('saves nothing when the default was used', async () => {
     const { dialog, saveDefault } = setup('elk');
     dialog.open('a -> b');
-    expect(await dialog.inserted()).toBe(false);
+    await dialog.inserted();
     expect(saveDefault).not.toHaveBeenCalled();
   });
 });

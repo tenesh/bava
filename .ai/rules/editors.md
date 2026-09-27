@@ -5,6 +5,36 @@ CodeMirror 6 and ProseMirror are imperative and own their DOM. Mount in
 `onMount`, destroy in the cleanup return, never pass reactive props in. If you
 find yourself writing `$derived` that feeds an editor, the design is wrong.
 
+## The document editor
+`frontend/src/docs/editor.ts` is a plain class (`DocEditor`) owning one
+ProseMirror view; `DocumentPane.svelte` mounts it once and keeps the menus,
+bubble and handle beside it as components fed by callbacks. Never a Svelte
+component per block.
+
+- **The file is Markdown both ways.** `docs/markdown.ts` reads a page into the
+  schema and writes it back in Bava's style (`docs/file-format.md`). Anything
+  the schema cannot hold becomes a `kept` block or `keptInline` run holding its
+  source byte for byte; never drop or "fix" what cannot be edited. Every real
+  `.md` in the repo is round-tripped by `markdown.test.ts`: a second save must
+  change nothing.
+- **Front matter is copied, never re-serialised.** Only the lines under
+  `bava:` are read and written; every other line is kept verbatim.
+- **Undo is per editor, routed by focus.** The page has its own history;
+  `shell/edit-target.ts` sends ⌘Z and the other edit commands to whichever
+  editor holds focus (`document` for `.bava-doc`).
+- **Saving reads the editor.** `doc.bindSource(read)` makes save take the
+  editor's Markdown; the pane never writes `doc.source` on each keystroke.
+  A new page reaches the editor through `doc.generation` (incremented on open,
+  reset and close) or a new pane instance, and `setPage` gives it a fresh
+  history. `markdown()` gives back the text it was handed while nothing
+  changed, and `null` before any page, so saving falls back to the file's
+  text and never writes an empty editor over a page.
+- **A locked page refuses edits in a transaction filter**, so no path (paste,
+  drop, a menu command) gets round it. Loading a page replaces the editor's
+  state rather than dispatching, so the filter never sees it.
+- **The formatting bubble follows focus.** It shows for a text selection only
+  while the page has focus: a selection left by find is not one to format.
+
 ## The diagram block
 A diagram is a custom ProseMirror node type whose NodeView hosts a CodeMirror
 instance holding the D2 source, plus a container for the rendered SVG.

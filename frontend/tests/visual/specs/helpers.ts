@@ -19,7 +19,8 @@ export async function openApp(page: Page, theme: Theme, storage: Record<string, 
   await page.clock.install({ time: new Date('2026-09-27T12:00:00Z') });
   await page.goto('/tests/visual/harness/index.html');
   await expect(page.locator('[data-part="splash"]')).toHaveCount(0, { timeout: 15_000 });
-  await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+  // The first page a fresh server serves is slow to build; later ones are quick.
+  await expect(page.locator('html')).toHaveAttribute('data-theme', theme, { timeout: 15_000 });
   await page.evaluate(() => document.fonts.ready);
 }
 

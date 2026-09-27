@@ -43,6 +43,19 @@ describe('the smoke driver', () => {
     expect(keys).toEqual(['Enter']);
   });
 
+  // A click on an editable page leaves the caret at the end of its text, so
+  // what is typed next goes into the page.
+  it('clicks into an editable page with the caret at its end', async () => {
+    document.body.innerHTML = '<div id="page" contenteditable="true"><p>Hello</p></div>';
+    const page = document.querySelector<HTMLElement>('#page')!;
+    expect(await runScenario([{ do: 'click', target: '#page' }], env())).toBe('');
+    expect(document.activeElement).toBe(page);
+    const selection = document.getSelection()!;
+    expect(page.contains(selection.anchorNode)).toBe(true);
+    expect(selection.isCollapsed).toBe(true);
+    expect(selection.anchorOffset).toBe(selection.anchorNode!.nodeType === Node.TEXT_NODE ? 5 : selection.anchorNode!.childNodes.length);
+  });
+
   it('clicks an element by its text', async () => {
     document.body.innerHTML = '<button>Cancel</button><button>Create</button>';
     let clicked = '';

@@ -712,6 +712,27 @@ the Space, so folder sync and Git carry it until emptied.
   while the canvas is worked on, or the document's words and characters
   while the document is. In Both, the side last pressed or focused.
 
+### 75. A page's settings live in a header at the top of its file (2026-09-27)
+
+- Lock and the page's own width (decision 45) are written in the page's
+  front matter, the lines between `---` marks at the very top, under a
+  `bava:` key (`locked: true`, `width: wide`). Other editors hide it or show
+  it as a small table; Obsidian calls it Properties. Tags (decision 66) will
+  go in the same header, as a plain `tags:` list other tools read too.
+- Keys Bava does not know are kept as they are.
+
+### 76. Formatting Markdown lacks is written as invisible marks and small HTML (2026-09-27)
+
+- Lettered and roman lists (decision 12) and block colours (decision 15) stay
+  ordinary Markdown with an invisible HTML comment just before them, such as
+  `<!-- bava: list=a -->` or `<!-- bava: color=blue -->`.
+- Underline, text colour and highlight (decision 38) are small inline HTML
+  tags around the words: `<u>`, `<span data-color="blue">`,
+  `<span data-highlight="yellow">`. Other viewers show the text; only the
+  styling is lost.
+- Chosen over whole HTML blocks, which stop the Markdown inside them from
+  being Markdown in many editors.
+
 ## Features
 
 Chosen from Notion's editor, one question at a time (decisions 12 to 50),

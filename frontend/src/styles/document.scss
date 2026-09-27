@@ -1,0 +1,250 @@
+// The DOM the Document editor creates imperatively (ProseMirror), which no
+// component owns: the page's type, blocks, colours and states, as the
+// mockups' Document board draws them.
+@use 'tokens/swatches' as sw;
+
+.bava-doc {
+  box-sizing: border-box;
+  max-width: calc(var(--page-width, var(--size-page-wide)) + 2 * var(--size-doc-gutter));
+  min-height: 100%;
+  margin: 0 auto;
+  padding: var(--space-4) var(--size-doc-gutter) var(--space-12);
+  outline: none;
+  font-size: var(--text-doc-body);
+  line-height: var(--leading-prose);
+  color: var(--color-text-prose);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  caret-color: var(--color-text-primary);
+
+  // No block brings the browser's own margins; the rhythm below sets them.
+  :where(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre) {
+    margin: 0;
+  }
+
+  // Blocks keep one rhythm; lines inside a list keep a tighter one.
+  > * + * {
+    margin-top: var(--space-4);
+  }
+
+  // A heading starts a section, so it stands further from what is above.
+  > * + :is(h1, h2, h3) {
+    margin-top: var(--space-8);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--color-text-primary);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+  }
+
+  > h1:first-child,
+  > h2:first-child {
+    margin-top: 0;
+  }
+
+  h1 {
+    font-size: var(--text-doc-h1);
+  }
+
+  h2 {
+    font-size: var(--text-doc-h2);
+  }
+
+  h3 {
+    font-size: var(--text-doc-h3);
+  }
+
+  h4 {
+    font-size: var(--text-doc-h4);
+  }
+
+  h5 {
+    font-size: var(--text-doc-h5);
+  }
+
+  h6 {
+    font-size: var(--text-doc-h6);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+  }
+
+  ul,
+  ol {
+    padding-left: var(--size-list-indent);
+  }
+
+  li + li,
+  li > * + * {
+    margin-top: var(--space-1);
+  }
+
+  li > p {
+    margin: 0;
+  }
+
+  ol[type='a'] {
+    list-style-type: lower-alpha;
+  }
+
+  ol[type='i'] {
+    list-style-type: lower-roman;
+  }
+
+  // A to-do: its box, clickable, and the text struck through when done.
+  li[data-checked] {
+    display: flex;
+    gap: var(--space-2);
+    list-style: none;
+    margin-left: calc(-1 * var(--size-list-indent));
+  }
+
+  .todo-box {
+    position: relative;
+    box-sizing: border-box;
+    flex: none;
+    width: var(--size-todo-box);
+    height: var(--size-todo-box);
+    // Centred on the first line of the text beside it.
+    margin-top: calc((var(--text-doc-body) * var(--leading-prose) - var(--size-todo-box)) / 2);
+    border: var(--size-handle-border) solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  li[data-checked='true'] > .todo-box {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+
+    // The tick: two sides of a small box, turned.
+    &::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 45%;
+      width: calc(var(--size-todo-box) / 4);
+      height: calc(var(--size-todo-box) / 2);
+      border: solid var(--color-accent-contrast);
+      border-width: 0 var(--size-handle-border) var(--size-handle-border) 0;
+      transform: translate(-50%, -50%) rotate(45deg);
+    }
+  }
+
+  li[data-checked='true'] > .todo-text {
+    text-decoration: line-through;
+    color: var(--color-text-muted);
+  }
+
+  .todo-text {
+    flex: 1;
+    min-width: 0;
+    margin-top: 0;
+  }
+
+  blockquote {
+    margin-left: 0;
+    padding-left: var(--space-3);
+    border-left: var(--size-quote-rule) solid var(--color-border-strong);
+    color: var(--color-text-secondary);
+  }
+
+  hr {
+    border: 0;
+    border-top: var(--border-width) solid var(--color-border-subtle);
+    margin-block: var(--space-2);
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: var(--text-doc-code);
+    padding: 0 var(--space-1);
+    border: var(--border-width) solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-sunken);
+  }
+
+  a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: var(--space-half);
+  }
+
+  // The line the caret is on, empty: what to type.
+  .is-empty::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    color: var(--color-text-faint);
+    pointer-events: none;
+  }
+
+  // What this version cannot edit: shown as written, and said so.
+  .kept-block {
+    padding: var(--space-2) var(--space-3);
+    border: var(--border-width) dashed var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-sunken);
+
+    &::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: var(--space-1);
+      font-size: var(--text-meta);
+      color: var(--color-text-muted);
+    }
+
+    pre {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: var(--text-doc-code);
+      color: var(--color-text-secondary);
+      white-space: pre-wrap;
+    }
+  }
+
+  // Find's matches, and the one it is on.
+  .ProseMirror-search-match {
+    background: var(--color-find-match);
+  }
+
+  .ProseMirror-active-search-match {
+    background: var(--color-find-match-active);
+  }
+
+  .kept-inline {
+    color: var(--color-text-secondary);
+  }
+
+  // Colours are the canvas's swatches, so they follow the theme.
+  @each $name, $_ in sw.$swatches-light {
+    [data-color='#{$name}'] {
+      color: var(--swatch-#{$name}-stroke);
+    }
+
+    [data-background='#{$name}'],
+    [data-highlight='#{$name}'] {
+      background: var(--swatch-#{$name}-fill);
+    }
+
+    [data-background='#{$name}'] {
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-md);
+    }
+  }
+
+  &[contenteditable='false'] {
+    caret-color: transparent;
+  }
+}
+
+// Where a dragged block will land. The editor places it outside the page's
+// own element, so it is styled from the top.
+.bava-drop-cursor {
+  background: var(--color-accent);
+}

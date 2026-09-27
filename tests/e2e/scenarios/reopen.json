@@ -7,6 +7,8 @@
     { "do": "wait", "target": "[data-path='First page.md']" },
     { "do": "click", "target": "[data-path='First page.md']" },
     { "do": "wait", "target": "header", "text": "First page" },
+    { "do": "menu", "target": "view.document" },
+    { "do": "wait", "target": ".bava-doc", "text": "Written in the smoke run" },
     { "do": "menu", "target": "view.canvas" },
     { "do": "wait", "target": "footer", "text": "Nodes 1" },
     { "do": "shot", "name": "reopened" }

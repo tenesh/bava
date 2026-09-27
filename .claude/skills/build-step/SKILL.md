@@ -260,10 +260,16 @@ wrong facts. When a milestone closes, update this section in the same change.
 
 ### Milestones
 
-- **Committed through Milestone 8.1** (HEAD after 231db07, 2026-09-27). The
-  roadmap (`.claude/plan/roadmap.md`) holds the sequence; **8.2, the Document
-  editor, is next**, then 8.3 to 8.6, then Milestone 15 (export, import and
-  search).
+- **Committed through Milestone 8.1** (HEAD 9cf4d06, 2026-09-27). **8.2, the
+  Document editor, passes its gates** and is uncommitted at the time of
+  writing; 8.3 to 8.6 follow, then 8.4a (canvas screen checks and smoke runs
+  with complex scenes, before 8.5), then Milestone 15 (export, import and
+  search). The roadmap (`.claude/plan/roadmap.md`) holds the sequence.
+- **The Document** (`frontend/src/docs/`): a ProseMirror editor over the
+  page's Markdown, with markdown-it pinned to the copy prosemirror-markdown
+  uses (one copy, matching types). What it cannot edit is kept byte for byte.
+  The D2 source pane that sat in the Document side is gone from the window;
+  `SourcePane` lives on in the Diagram dialog and code blocks.
 - **Built and gated:** Milestones 0 to 7 (the canvas: shapes, styles,
   rotation, export, arrows and bindings, frames, Diagram from Code, code
   blocks, points and elbows, snapping) and 8.1 (Spaces: `.bava/space.json`,
@@ -274,6 +280,8 @@ wrong facts. When a milestone closes, update this section in the same change.
 - **Owed by a human at a running window, in both themes** (tests cannot see
   these): the 6.x canvas plans' Verification sections; 8.1's keyboard pass
   (SpaceTree, SpaceSwitcher, StartScreen, the Space dialogs, SectionTabs);
+  8.2's keyboard pass (the `/` menu, bubble, block handle, find bar, page
+  menu) and typing into a page and saving it at a real window;
   the restyle's look; draw, save, quit and reopen; the native menus on each
   platform; a forced panic and frontend exception found in the log folder in
   a release build; the icons at 16px and 1024px. Milestone 7 was checked.
@@ -308,31 +316,30 @@ wrong facts. When a milestone closes, update this section in the same change.
   `wails3 generate bindings -f '' -clean=true -ts -i` after any bound Go
   change, including comments (the generated TypeScript copies them).
 
-### Gate status: last run 2026-09-27, after the 8.1 restyle
+### Gate status: last run 2026-09-27, after 8.2
 
 | Gate | Result |
 |---|---|
 | `go vet ./internal/... .` | exit 0 (the linker warns about the macOS deployment target; harmless) |
-| `go test ./internal/... .` | exit 0; 10 packages |
+| `go test ./internal/... .` | exit 0; 11 packages |
 | `go test ./internal/render -run Golden` | exit 0; goldens under `testdata/golden/` |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; about 1,750 tests across 137 files |
-| `npm run visual` (layer 2) | exit 0; 54 walks, 52 references in `testdata/visual/`; needs OrbStack running |
-| CI `smoke` (layer 3) | not yet run: needs a push |
+| `npm test` | exit 0; 1,947 tests across 144 files (1 skipped) |
+| `npm run visual` (layer 2) | exit 0; 76 walks, 74 references in `testdata/visual/`; needs OrbStack running |
+| CI `smoke` (layer 3) | green on all three platforms at 9cf4d06; the Document steps added in 8.2 need a push |
 | `wails3 build` | macOS only, unverified elsewhere |
 
 ### Open problems
 
 - **Scope the Go gates to `./internal/... .`**: `frontend/node_modules` ships a
   Go package (`flatted/golang`), so `./...` depends on an npm dependency.
-- **CI has never gone green on the matrix.** The workflow installs GTK4 and
-  WebKitGTK 6.0 on Linux and builds the frontend before the Go steps; it
-  needs a push and a run. It is also what answers whether D2 renders
-  byte-identical SVG on Linux and Windows, which every golden assumes.
-- **No visual check runs automatically.** Every test runs under jsdom, which
-  has no layout and applies no stylesheet rules that matter; look at a
-  running window after any styling change.
+- **CI is green on the matrix** (9cf4d06), goldens included on Linux and
+  Windows.
+- **Screen checks see WebKit in a container, not the real webviews.** Layer 2
+  (`npm run visual`) catches layout and styling faults in both themes; how
+  each platform's webview draws, and how anything feels, is still seen only at
+  a running window.
 
 ### Spike findings: Ark UI in the Wails webview, 2026-09-16
 

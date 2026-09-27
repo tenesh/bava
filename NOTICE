@@ -24,6 +24,19 @@ Runtime and framework
   Wails v3: MIT
   Svelte: MIT
 
+Document editor
+  ProseMirror (prosemirror-model, -state, -view, -transform, -commands,
+  -keymap, -history, -inputrules, -schema-list, -dropcursor, -gapcursor,
+  -search, -markdown): MIT
+    Copyright (C) 2015-2017 by Marijn Haverbeke <marijn@haverbeke.berlin> and others
+    https://prosemirror.net
+  markdown-it: MIT
+    Copyright (c) 2014 Vitaly Puzrin, Alex Kocharin.
+    https://github.com/markdown-it/markdown-it
+  Their bundled dependencies: orderedmap, rope-sequence, w3c-keyname,
+  linkify-it, mdurl, punycode.js, uc.micro (MIT); entities (BSD-2-Clause,
+  Copyright (c) Felix Böhm, https://github.com/fb55/entities).
+
 Icons
   Lucide (@lucide/svelte): ISC
     Copyright (c) 2026 Lucide Icons and Contributors

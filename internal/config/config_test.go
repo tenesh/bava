@@ -23,7 +23,7 @@ func TestDefaultsWhenTheFileIsAbsent(t *testing.T) {
 
 func TestRoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
-	want := config.Settings{DebounceMS: 400, LayoutEngine: "dagre", Autosave: config.AutosaveAfterDelay, AutosaveDelayMS: 2500}
+	want := config.Settings{DebounceMS: 400, LayoutEngine: "dagre", Autosave: config.AutosaveAfterDelay, AutosaveDelayMS: 2500, PageWidth: "narrow"}
 
 	if err := config.SaveTo(path, want); err != nil {
 		t.Fatalf("SaveTo: %v", err)
@@ -238,5 +238,25 @@ func TestObjectSnapDefaultOff(t *testing.T) {
 	}
 	if !got.ObjectSnap {
 		t.Error("ObjectSnap did not survive a save")
+	}
+}
+
+// The page width a page shows at when neither it nor its Space sets one.
+func TestPageWidthDefaultsToWideAndRefusesOthers(t *testing.T) {
+	if got := config.Defaults().PageWidth; got != "wide" {
+		t.Errorf("default PageWidth = %q, want wide", got)
+	}
+	for value, want := range map[string]string{"narrow": "narrow", "full": "full", "huge": "wide", "": "wide"} {
+		path := filepath.Join(t.TempDir(), "settings.json")
+		if err := os.WriteFile(path, []byte(`{"pageWidth": "`+value+`"}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		settings, err := config.LoadFrom(path)
+		if err != nil {
+			t.Fatalf("pageWidth %q: %v", value, err)
+		}
+		if settings.PageWidth != want {
+			t.Errorf("pageWidth %q read as %q, want %q", value, settings.PageWidth, want)
+		}
 	}
 }

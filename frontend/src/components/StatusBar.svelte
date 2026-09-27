@@ -1,9 +1,9 @@
 <script lang="ts">
   /**
    * The Space, the page's path, then what is being worked on: the canvas's
-   * engine and node count, or the document's words and characters; the
-   * error count when there are errors, and a message when something needs noticing without
-   * interrupting, such as autosave pausing on a conflict.
+   * engine and node count, or the document's words and characters; and a
+   * message when something needs noticing without interrupting, such as
+   * autosave pausing on a conflict.
    *
    * Everything arrives as props: a component holds no IPC and no D2 knowledge,
    * so the shell reads the render result and hands the numbers down.
@@ -17,7 +17,6 @@
     /** A document's counts: given instead of engine and nodes while it is being worked on. */
     words?: number;
     characters?: number;
-    errors: number;
     message?: string;
     /** The open Space's name. */
     space?: string;
@@ -25,7 +24,7 @@
     path?: string;
   };
 
-  let { engine, nodes, words, characters, errors, message, space, path }: Props = $props();
+  let { engine, nodes, words, characters, message, space, path }: Props = $props();
 
   const count = (n: number, one: 'status.word' | 'status.character', many: 'status.words' | 'status.characters') =>
     n === 1 ? t(one) : t(many).replace('{n}', n.toLocaleString('en-US'));
@@ -52,9 +51,6 @@
       <span class="item">{count(characters, 'status.character', 'status.characters')}</span>
     {/if}
   </span>
-  {#if errors > 0}
-    <span class="item has-errors">{t('status.errors')} <b>{errors}</b></span>
-  {/if}
   {#if message}
     <span class="item message" role="status">{message}</span>
   {/if}
@@ -105,8 +101,4 @@
     color: var(--color-text-primary);
   }
 
-  .has-errors,
-  .has-errors b {
-    color: var(--color-danger);
-  }
 </style>

@@ -63,6 +63,115 @@ page with its files.
 
 The cost is accepted knowingly: a JSON block at the end of a human document.
 
+## The document
+
+**Status:** specified 2026-09-27 for Milestone 8.2, ahead of the code.
+
+The prose part of a page, everything before the canvas block, is edited as
+formatted text and written back as Markdown in one style. A page whose prose
+and settings are not changed is saved exactly as it was read. A page written by
+hand or by another tool is tidied into that style the first time its prose is
+edited and saved: what it shows in any Markdown viewer stays the same, and a
+second save changes nothing.
+
+### Front matter
+A page may open with a front matter block: lines between two `---` marks,
+first thing in the file, holding YAML. Bava keeps its own settings under a
+`bava:` key:
+
+```markdown
+---
+bava:
+  locked: true
+  width: wide
+title: Kept as it is
+---
+# Launch plan
+```
+
+- `locked`: `true` makes the page read-only until someone unlocks it.
+  Absent means unlocked.
+- `width`: `narrow`, `wide` or `full`, this page's own width. Absent means
+  the Space's default, else the user's own app setting.
+- Every other line, and every other key under `bava:`, is **kept as it is**,
+  in its order; a changed setting is rewritten on its own line. When Bava has
+  nothing to write under `bava:` it leaves the key out, and a front matter
+  that held only Bava's settings is not written. One written empty stays.
+- The block ends at a line that is `---` alone. A page that opens with `---`
+  and then an empty line opens with a divider, not front matter.
+- Its line endings are written as `\n`.
+
+### Bava's Markdown style
+Each block is separated from the next by one blank line; extra blank lines
+are not kept.
+
+| Block or mark | Written as |
+|---|---|
+| Heading 1 to 6 | `#` to `######` and a space |
+| Bulleted list | `- ` |
+| Numbered list | `1. ` for each item, counting up; from ten items on, the numbers are right-aligned (` 9.`, `10.`) and continuation lines indented to match |
+| To-do | `- [ ] ` and `- [x] ` |
+| Quote | `> ` on each line |
+| Divider | `---` |
+| Line break in a block | a trailing `\` |
+| A line wrapped by hand inside a paragraph | joined with a space |
+| Nested list item | indented under its parent by the parent marker's width |
+| Bold, italic | `**bold**`, `*italic*` |
+| Strikethrough | `~~strike~~` |
+| Inline code | `` `code` `` |
+| Link | `[text](url)`; a link written by reference (`[text][ref]`) is written inline, and its definition stays where it was |
+| Underline | `<u>text</u>` |
+| Text colour | `<span data-color="blue">text</span>` |
+| Highlight | `<span data-highlight="yellow">text</span>` |
+
+Colours are the canvas's swatch names, so they follow the theme; an unknown
+name is kept and shows uncoloured.
+
+Setext headings (a line underlined with `===` or `---`) are written as `#`
+headings, `*` and `+` bullets as `-`, `1)` numbers as `1.`, `_` emphasis as
+`*`, and an email in angle brackets as a link to it. Typed text that Markdown
+would read as something else is escaped with a backslash: `*`, `_`, `[`, `]`,
+`` ` ``, `~`, `\`, a `<` that would start a tag, a `&` that starts an entity, and `$`.
+An entity in the file (`&amp;`, `&copy;`, `&nbsp;`) is written as the
+character it stands for.
+
+Inline HTML Bava does not know (`<kbd>`, `<sup>`, a comment, a `<u>` never
+closed) is kept as it is, in its place in the text. Images, footnote
+references and `$…$` equations are kept as written too. A numbered list that starts at another number
+keeps its first number.
+
+### Invisible marks
+Formatting a block that Markdown has no form for is written as an HTML comment
+on the line just before the block. Every Markdown viewer hides it, and the
+block itself stays ordinary Markdown.
+
+```markdown
+<!-- bava: list=a -->
+1. First, shown as a.
+2. Second, shown as b.
+
+<!-- bava: color=red background=yellow -->
+A paragraph in red on yellow.
+```
+
+- `list=a` or `list=i`: a numbered list shown with letters or roman numerals.
+- `color=<swatch>` and `background=<swatch>`: a paragraph, heading, list or
+  quote in a text colour and on a background.
+- A mark with a key Bava does not know is kept, with that key, on the block;
+  known keys are written first. `list` on a block that is not a numbered list
+  is kept as written.
+- A mark with no block after it that can carry one (before a divider or a kept
+  block, or at the end) is kept as it is, where it was.
+
+### Blocks kept as they are
+A block this version cannot edit is shown in the page, read-only, and written
+back **byte for byte**: fenced code blocks (including `d2`), tables, HTML
+blocks, footnote definitions, link reference definitions, math blocks, and any
+other construct not listed above. It keeps its place among the other blocks.
+Inside a list item or a quote, its lines are written under the container's
+indent or `>`, with the container's own indent written as spaces. Later milestones make these
+editable one by one; until then nothing about them changes.
+
 ## Rules
 
 ### The canvas block is written only when there is a canvas
