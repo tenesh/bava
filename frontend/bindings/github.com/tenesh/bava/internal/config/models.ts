@@ -55,4 +55,11 @@ export interface Settings {
      * drag. Off by default, as Excalidraw's.
      */
     "objectSnap": boolean;
+
+    /**
+     * PageWidth is how wide a page shows in the Document when neither the
+     * page nor its Space sets one: narrow, wide or full. A preference of this
+     * viewer, never written into a page. Wide by default.
+     */
+    "pageWidth": string;
 }

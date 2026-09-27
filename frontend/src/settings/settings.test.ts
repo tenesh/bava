@@ -12,6 +12,7 @@ const defaults = {
   arrowBinding: true,
   midpointSnap: true,
   objectSnap: false,
+  pageWidth: 'wide',
 };
 
 function io(over: Partial<SettingsIO> = {}): SettingsIO {
@@ -167,5 +168,19 @@ describe('snapping to objects', () => {
     const settings = createSettings(io({ load: vi.fn().mockResolvedValue(older) }));
     await settings.load();
     expect(settings.objectSnap).toBe(false);
+  });
+
+  // The width a page shows at when neither it nor its Space sets one.
+  it('reads the page width, wide unless narrow or full, and saves a change', async () => {
+    const stored = io({ load: vi.fn().mockResolvedValue({ ...defaults, pageWidth: 'narrow' }) });
+    const settings = createSettings(stored);
+    expect(settings.pageWidth).toBe('wide');
+    await settings.load();
+    expect(settings.pageWidth).toBe('narrow');
+    await settings.setPageWidth('full');
+    expect(stored.save).toHaveBeenCalledWith(expect.objectContaining({ pageWidth: 'full' }));
+    const odd = createSettings(io({ load: vi.fn().mockResolvedValue({ ...defaults, pageWidth: 'huge' }) }));
+    await odd.load();
+    expect(odd.pageWidth).toBe('wide');
   });
 });

@@ -16,6 +16,12 @@ describe('editTarget', () => {
     expect(editTarget(inside('<div class="cm-editor"><div class="cm-content" contenteditable></div></div>', '.cm-content'))).toBe('source');
   });
 
+  // The page's editor is editable text too, but it keeps its own history and
+  // clipboard handling: it is not a plain field.
+  it('routes to the Document editor when the page has focus', () => {
+    expect(editTarget(inside('<div class="ProseMirror bava-doc" contenteditable><p>x</p></div>', 'p'))).toBe('document');
+  });
+
   it('routes to the field when a text input has focus', () => {
     expect(editTarget(inside('<input>', 'input'))).toBe('field');
     expect(editTarget(inside('<textarea></textarea>', 'textarea'))).toBe('field');

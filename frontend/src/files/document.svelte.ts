@@ -64,6 +64,11 @@ export function createDocument(io: DocumentIO = overIPC) {
   let isOpen = $state.raw(false);
   let path = $state.raw<string | null>(null);
   let source = $state.raw('');
+  // Counts each page that arrives (open, reload, reset, close), so the editor
+  // is handed a page when one arrives and never while it is being typed in.
+  let generation = $state.raw(0);
+  // Where the page's text lives while an editor has it (bindSource).
+  let readSource: (() => string) | null = null;
   let diagrams = $state.raw<Record<string, string>>({});
   let stamp = $state.raw<Stamp | null>(null);
   let dirty = $state.raw(false);
@@ -76,6 +81,9 @@ export function createDocument(io: DocumentIO = overIPC) {
 
   return {
     /** Whether any document, untitled or not, is open. */
+    get generation() {
+      return generation;
+    },
     get isOpen() {
       return isOpen;
     },
@@ -97,6 +105,18 @@ export function createDocument(io: DocumentIO = overIPC) {
     /** The opened scene's version and unknown top-level keys, for saving. */
     get sceneExtra(): SceneExtra {
       return sceneExtra;
+    },
+
+    /**
+     * The Document editor holds the page's text while it is open; a save
+     * reads it from there rather than being told on every keystroke. Returns
+     * a function that lets it go.
+     */
+    bindSource(read: () => string): () => void {
+      readSource = read;
+      return () => {
+        if (readSource === read) readSource = null;
+      };
     },
 
     /** Mark the document changed. Called by the canvas and the editor. */
@@ -121,6 +141,7 @@ export function createDocument(io: DocumentIO = overIPC) {
       stamp = result.stamp;
       dirty = false;
       error = null;
+      generation += 1;
       return result;
     },
 
@@ -134,6 +155,7 @@ export function createDocument(io: DocumentIO = overIPC) {
      */
     async saveAs(next: string, scene: Scene) {
       const started = revision;
+      if (readSource) source = readSource();
       const result = await io.save(next, source, scene);
       if (result.error) {
         error = result.error;
@@ -158,6 +180,7 @@ export function createDocument(io: DocumentIO = overIPC) {
 
     /** No page open: a Space shows its tree and nothing else. The caller settles unsaved work first. */
     close() {
+      generation += 1;
       isOpen = false;
       path = null;
       source = '';
@@ -170,6 +193,7 @@ export function createDocument(io: DocumentIO = overIPC) {
 
     /** Become a new, clean, untitled document. The caller settles unsaved work first. */
     reset() {
+      generation += 1;
       isOpen = true;
       path = null;
       source = '';
@@ -200,6 +224,7 @@ export function createDocument(io: DocumentIO = overIPC) {
         }
       }
 
+      if (readSource) source = readSource();
       const result = await io.save(path, source, scene);
       if (result.error) {
         error = result.error;

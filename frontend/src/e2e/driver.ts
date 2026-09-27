@@ -66,6 +66,16 @@ function click(el: HTMLElement) {
   pointer(el, 'pointerup', at);
   el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: at[0], clientY: at[1] }));
   el.click();
+  // A synthetic click places no caret; an editable page gets one at its end.
+  const editable = el.closest<HTMLElement>('[contenteditable="true"]');
+  if (editable) {
+    editable.focus();
+    const range = document.createRange();
+    range.selectNodeContents(editable);
+    range.collapse(false);
+    document.getSelection()?.removeAllRanges();
+    document.getSelection()?.addRange(range);
+  }
 }
 
 function type(text: string) {

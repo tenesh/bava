@@ -349,3 +349,62 @@ describe('a page moved or closed', () => {
     expect(doc.dirty).toBe(false);
   });
 });
+
+// The Document editor gives its text when saving, not on every keystroke.
+describe('the page text an editor holds', () => {
+  it('is what a save writes, and becomes the source', async () => {
+    const io = stubIO();
+    const doc = createDocument(io);
+    await doc.open('/w/notes.md');
+    doc.bindSource(() => '# T\n\nNew line.\n');
+    doc.touch();
+    await doc.save(emptyScene);
+    expect(io.save).toHaveBeenCalledWith('/w/notes.md', '# T\n\nNew line.\n', emptyScene);
+    expect(doc.source).toBe('# T\n\nNew line.\n');
+  });
+
+  it('is what Save As writes too', async () => {
+    const io = stubIO();
+    const doc = createDocument(io);
+    doc.reset();
+    doc.bindSource(() => 'Typed\n');
+    await doc.saveAs('/w/new.md', emptyScene);
+    expect(io.save).toHaveBeenCalledWith('/w/new.md', 'Typed\n', emptyScene);
+  });
+
+  it('is let go, so the file\'s own text is used again', async () => {
+    const io = stubIO();
+    const doc = createDocument(io);
+    await doc.open('/w/notes.md');
+    const unbind = doc.bindSource(() => 'Other\n');
+    unbind();
+    await doc.save(emptyScene, { overwrite: true });
+    expect(io.save).toHaveBeenCalledWith('/w/notes.md', '# T\n', emptyScene);
+  });
+});
+
+// The editor is handed a page when one arrives, not as it is typed in.
+describe('each page that arrives', () => {
+  it('counts a new generation on open, reset, reload and close', async () => {
+    const doc = createDocument(stubIO());
+    const seen = [doc.generation];
+    await doc.open('/w/notes.md');
+    seen.push(doc.generation);
+    await doc.reload();
+    seen.push(doc.generation);
+    doc.reset();
+    seen.push(doc.generation);
+    doc.close();
+    seen.push(doc.generation);
+    expect(new Set(seen).size).toBe(5);
+  });
+
+  it('keeps its generation through edits and saves', async () => {
+    const doc = createDocument(stubIO());
+    await doc.open('/w/notes.md');
+    const before = doc.generation;
+    doc.touch();
+    await doc.save(emptyScene);
+    expect(doc.generation).toBe(before);
+  });
+});

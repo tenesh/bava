@@ -36,6 +36,7 @@ export const SETTINGS_DEFAULTS: Settings = {
   arrowBinding: true,
   midpointSnap: true,
   objectSnap: false,
+  pageWidth: 'wide',
 };
 
 function isMode(value: string): value is AutosaveMode {
@@ -79,6 +80,11 @@ export function createSettings(io: SettingsIO = overIPC) {
     get objectSnap(): boolean {
       return values.objectSnap === true;
     },
+    /** The width a page shows at when neither it nor its Space sets one. */
+    get pageWidth(): 'narrow' | 'wide' | 'full' {
+      const w = values.pageWidth;
+      return w === 'narrow' || w === 'full' ? w : 'wide';
+    },
     /** The engine the Diagram from Code dialog opens with; one it does not know reads as TALA. */
     get layoutEngine(): LayoutEngine {
       return isLayoutEngine(values.layoutEngine) ? values.layoutEngine : 'tala';
@@ -95,6 +101,7 @@ export function createSettings(io: SettingsIO = overIPC) {
     setArrowBinding: (on: boolean) => update({ arrowBinding: on }),
     setMidpointSnap: (on: boolean) => update({ midpointSnap: on }),
     setObjectSnap: (on: boolean) => update({ objectSnap: on }),
+    setPageWidth: (width: 'narrow' | 'wide' | 'full') => update({ pageWidth: width }),
 
     /**
      * Go owns this one: it changes the live log level too. Saving it here as

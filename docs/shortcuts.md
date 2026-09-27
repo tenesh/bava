@@ -51,6 +51,8 @@ Shortcuts) lists the rest.
 | Edit | Paste | `⌘V` | `Ctrl+V` |
 | Edit | Delete | `⌫` | `⌫` |
 | Edit | Select All | `⌘A` | `Ctrl+A` |
+| Edit | Find | `⌘F` | `Ctrl+F` |
+| Edit | Find and Replace | `⌥⌘F` | `Ctrl+Alt+F` |
 | View | Document | `⌘1` | `Ctrl+1` |
 | View | Both | `⌘2` | `Ctrl+2` |
 | View | Canvas | `⌘3` | `Ctrl+3` |
@@ -101,8 +103,8 @@ still counted when the spec is checked for clashes (`RoleAccelerators` in
 
 ## Reserved
 
-`⌘B`, `⌘I`, `⌘U`, `⌘K` and `⇧⌘X` are kept free for prose formatting in
-Milestone 8. A test in `spec_test.go` fails if the menu takes one.
+`⌘B`, `⌘I`, `⌘U`, `⌘E`, `⌘K`, `⌘/` and `⇧⌘X` belong to the Document (below), so
+no menu item takes them. A test in `spec_test.go` fails if the menu takes one.
 
 ## Canvas keys
 
@@ -131,6 +133,35 @@ In the insert panel, opened from the rail's +: `↑↓←→` move, `Enter` inse
 | `Tab` / `⇧Tab` | Indent / outdent |
 | `Enter` | New line |
 | `Esc` | Finish editing and keep the code |
+
+## In the Document
+
+Active while the page has focus. On Windows and Linux, `Ctrl` for `⌘`.
+
+| Key | Action |
+|---|---|
+| `⌘B` / `⌘I` / `⌘U` | Bold / italic / underline |
+| `⇧⌘X` | Strikethrough |
+| `⌘E` | Inline code |
+| `⌘K` | Link the selection |
+| `⌘/` | The block menu for the block the caret is in |
+| `⌥F10` / `Alt+F10` | Into the formatting bubble over a selection; `←` `→` move along it, `Esc` goes back to the page |
+| `Tab` / `⇧Tab` | Indent / outdent a list item |
+| `Enter` | New block; in a list, a new item; on an empty item, leave the list |
+| `⌫` at the start of a heading | Back to text |
+| `/` at the start of a line or after a space | The block menu; `↑` `↓` choose, `Enter` inserts, `Esc` closes |
+| `⌘F` / `⌥⌘F` | Find / Find and Replace; in the bar `Enter` and `⇧Enter` step, `Esc` closes |
+
+Typed at the start of a line, then a space:
+
+| Type | Makes |
+|---|---|
+| `#` to `######` | Heading 1 to 6 |
+| `-` or `*` | Bulleted list |
+| `1.` / `a.` / `i.` | Numbered / lettered / Roman list |
+| `[]` | To-do |
+| `>` | Quote |
+| `---` (no space) | Divider |
 
 ## In the Files tree
 
@@ -190,7 +221,6 @@ person, cloud) are in the insert panel (the rail's +) and in Canvas ▸ Tools.
 
 ## Not yet implemented
 
-- Find: Milestone 15.
 - The Delete hint shows `⌫` on every platform; Windows and Linux users read it
   as Backspace, which is what it does.
 - **Not yet checked at a running window on any platform**: how a tab-separated

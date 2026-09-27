@@ -101,7 +101,7 @@ func TestNoAcceleratorWithoutAModifier(t *testing.T) {
 // Prose editing needs these. A menu item that takes one steals the key from
 // the document editor.
 func TestReservedProseShortcutsAreFree(t *testing.T) {
-	reserved := []string{"CmdOrCtrl+B", "CmdOrCtrl+I", "CmdOrCtrl+U", "CmdOrCtrl+K", "Shift+CmdOrCtrl+X"}
+	reserved := []string{"CmdOrCtrl+B", "CmdOrCtrl+I", "CmdOrCtrl+U", "CmdOrCtrl+K", "CmdOrCtrl+E", "CmdOrCtrl+/", "Shift+CmdOrCtrl+X"}
 	for _, item := range load(t).AllItems() {
 		for _, r := range reserved {
 			if strings.EqualFold(item.Accelerator, r) {
@@ -281,6 +281,7 @@ func TestOnlyTheKeptShortcutsAreBound(t *testing.T) {
 		"app.settings": true, "file.settings": true,
 		"file.new": true, "file.open": true, "file.save": true, "file.saveAs": true,
 		"edit.undo": true, "edit.redo": true, "edit.cut": true, "edit.copy": true, "edit.paste": true, "edit.selectAll": true,
+		"edit.find": true, "edit.replace": true,
 		"view.document": true, "view.both": true, "view.canvas": true,
 		"view.zoomIn": true, "view.zoomOut": true, "view.actualSize": true,
 		"canvas.group": true, "canvas.ungroup": true, "canvas.bringForward": true, "canvas.sendBackward": true,

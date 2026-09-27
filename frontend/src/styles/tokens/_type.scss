@@ -44,6 +44,15 @@
   --font-mono: 'Geist Mono', ui-monospace, monospace;
 
   --text-body: 13px;
+  // The Document's reading type: a page is read, not scanned like chrome.
+  --text-doc-body: 15px;
+  --text-doc-h1: 32px;
+  --text-doc-h2: 23px;
+  --text-doc-h3: 18px;
+  --text-doc-h4: 16px;
+  --text-doc-h5: 14px;
+  --text-doc-h6: 12.5px;
+  --text-doc-code: 13px;
   // A dialog's title.
   --text-title: 15px;
   --text-control: 12.5px;

@@ -28,6 +28,8 @@ export const COMMAND_IDS = [
   'edit.paste',
   'edit.delete',
   'edit.selectAll',
+  'edit.find',
+  'edit.replace',
   'view.document',
   'view.both',
   'view.canvas',

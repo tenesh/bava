@@ -165,8 +165,9 @@ describe('reservedByMenu', () => {
   // names; an editor that kept them would act twice.
   it('claims the keys the window menu binds too', () => {
     expect(linux({ key: 'Ctrl-m' })).toBe(true);
-    // Full screen's Ctrl+Command+F is a macOS key; elsewhere it is not Ctrl+F.
-    expect(linux({ key: 'Ctrl-f' })).toBe(false);
+    // Ctrl+F is Find's, from the Edit menu (not full screen's Ctrl+Command+F,
+    // which is a macOS key).
+    expect(linux({ key: 'Ctrl-f' })).toBe(true);
     expect(mac({ key: 'Mod-m' })).toBe(true);
     expect(mac({ key: 'Mod-h' })).toBe(true);
   });

@@ -28,6 +28,9 @@ $l-accent: #2f6ba3;
 $l-accent-contrast: #ffffff;
 $l-accent-subtle: rgba(47, 107, 163, 0.07);
 $l-selection: rgba(47, 107, 163, 0.18);
+// Addition: find's matches in a page, and the one it is on.
+$l-find-match: rgba(180, 154, 46, 0.22);
+$l-find-match-active: rgba(180, 154, 46, 0.5);
 $l-focus-ring: #2f6ba3;
 // Addition: the halo the design's focus recipe describes in prose but never
 // names: "1px accent border plus a 2px 22-25% halo".
@@ -66,6 +69,8 @@ $d-accent: #7fabd9;
 $d-accent-contrast: #10161c;
 $d-accent-subtle: rgba(127, 171, 217, 0.14);
 $d-selection: rgba(127, 171, 217, 0.22);
+$d-find-match: rgba(209, 184, 82, 0.2);
+$d-find-match-active: rgba(209, 184, 82, 0.45);
 $d-focus-ring: #7fabd9;
 $d-focus-halo: rgba(127, 171, 217, 0.25);
 $d-danger: #e57a6d;
@@ -156,6 +161,8 @@ $d-diagram-edge-label: #8b8f8a;
   --color-accent-contrast: #{$l-accent-contrast};
   --color-accent-subtle: #{$l-accent-subtle};
   --color-selection: #{$l-selection};
+  --color-find-match: #{$l-find-match};
+  --color-find-match-active: #{$l-find-match-active};
   --color-focus-ring: #{$l-focus-ring};
   --color-focus-halo: #{$l-focus-halo};
   --color-danger: #{$l-danger};
@@ -219,6 +226,8 @@ $d-diagram-edge-label: #8b8f8a;
   --color-accent-contrast: #{$d-accent-contrast};
   --color-accent-subtle: #{$d-accent-subtle};
   --color-selection: #{$d-selection};
+  --color-find-match: #{$d-find-match};
+  --color-find-match-active: #{$d-find-match-active};
   --color-focus-ring: #{$d-focus-ring};
   --color-focus-halo: #{$d-focus-halo};
   --color-danger: #{$d-danger};
