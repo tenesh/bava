@@ -56,6 +56,20 @@ describe('the smoke driver', () => {
     expect(selection.anchorOffset).toBe(selection.anchorNode!.nodeType === Node.TEXT_NODE ? 5 : selection.anchorNode!.childNodes.length);
   });
 
+  // A page's typing shortcuts ($x$, ```) react to typing, not to text put in
+  // at once as a paste is: the driver types as a person does.
+  it('types into an editable page one character at a time', async () => {
+    document.body.innerHTML = '<div id="page" contenteditable="true"><p>x</p></div>';
+    const typed: string[] = [];
+    const exec = vi.fn((_command: string, _ui: boolean, text: string) => {
+      typed.push(text);
+      return true;
+    });
+    Object.defineProperty(document, 'execCommand', { value: exec, configurable: true });
+    expect(await runScenario([{ do: 'click', target: '#page' }, { do: 'type', text: '$x$' }], env())).toBe('');
+    expect(typed).toEqual(['$', 'x', '$']);
+  });
+
   it('clicks an element by its text', async () => {
     document.body.innerHTML = '<button>Cancel</button><button>Create</button>';
     let clicked = '';
