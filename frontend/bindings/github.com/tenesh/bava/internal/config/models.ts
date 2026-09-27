@@ -4,8 +4,8 @@
 /**
  * Settings are the values a user can change.
  * 
- * The render values started life as compile-time constants in Milestone 1 and
- * are named here so a change is a preference rather than a rebuild.
+ * The render values are named here so a change is a preference rather than a
+ * rebuild.
  */
 export interface Settings {
     /**

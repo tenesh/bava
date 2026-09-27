@@ -2,6 +2,13 @@
 //
 // Anything here must resolve from a custom property. If a value is needed that
 // no token provides, add the token rather than inlining it.
+// Hidden means hidden. Ark keeps closed dialogs, menus and popovers in the
+// page with this attribute; a part styled with its own display must not show
+// through while closed.
+[hidden] {
+  display: none !important;
+}
+
 body {
   font-family: var(--font-ui);
   font-size: var(--text-body);
