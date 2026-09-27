@@ -78,7 +78,7 @@ function click(el: HTMLElement) {
   }
 }
 
-function type(text: string) {
+async function type(text: string) {
   const el = document.activeElement as HTMLElement | null;
   if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
     const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), 'value')?.set;
@@ -86,8 +86,14 @@ function type(text: string) {
     el.dispatchEvent(new Event('input', { bubbles: true }));
     return;
   }
-  // An editor that owns its text (the source pane) takes it as typed input.
-  document.execCommand('insertText', false, text);
+  // An editor that owns its text takes it as typed input, a character at a
+  // time as a person types: its typing shortcuts react to typing, and read
+  // text put in at once as a paste. The editor reads each change a moment
+  // later, so each character waits for the one before.
+  for (const char of text) {
+    document.execCommand('insertText', false, char);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
 }
 
 function key(name: string) {
@@ -107,7 +113,7 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
       return '';
     }
     case 'type':
-      type(s.text!);
+      await type(s.text!);
       return '';
     case 'key':
       key(s.text!);

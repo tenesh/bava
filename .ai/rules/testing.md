@@ -110,3 +110,10 @@ with `-tags e2e` (Go) and `VITE_BAVA_E2E=1` (the page). `release_test.go`
 fails if a default build links `internal/e2e`; CI's `release-has-no-driver`
 job fails if a normal frontend bundle contains the driver. It answers native pickers
 from its scenario, so it never needs a person.
+
+## Smoke steps type as a person types
+The smoke driver's `type` puts text in one character at a time, waiting a
+tick between them. The Document's typing shortcuts (`$x$`, ```` ``` ````, `#`)
+react to typing; a whole string put in at once is read as a paste and left as
+text, so a scenario that relies on a shortcut would fail on CI and nowhere
+else.
