@@ -211,6 +211,11 @@ jobs:
             xvfb imagemagick fonts-dejavu-core
           pkg-config --exists gtk4 webkitgtk-6.0 libsoup-3.0 gio-unix-2.0 \
             || { echo "::error::required pkg-config packages missing after install"; exit 1; }
+          # WebKit starts its web content in a sandbox that needs unprivileged
+          # user namespaces, which Ubuntu 24.04 restricts through AppArmor;
+          # without this the page never starts. Lifted on this throwaway runner
+          # only, which keeps WebKit's sandbox on.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       # screencapture needs the screen-recording permission; the runner image
       # lets the job grant it to the process that asks.
@@ -257,9 +262,15 @@ jobs:
               "$app"
             fi
           }
-          run create
-          run reopen
-          cat "$out"/*-result.txt
+          # Each run must leave a PASS: the exit code alone is not trusted, and a
+          # run that crashed before reporting leaves no result at all.
+          for scenario in create reopen; do
+            run "$scenario" || true
+            result="$out/$scenario-result.txt"
+            if [[ ! -f "$result" ]]; then echo "::error::$scenario left no result"; exit 1; fi
+            cat "$result"
+            grep -q '^PASS' "$result" || { echo "::error::$scenario failed"; exit 1; }
+          done
 
       - name: upload screenshots
         if: always()

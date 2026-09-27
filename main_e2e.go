@@ -15,7 +15,7 @@ import (
 // folder pickers answered from the scenario. BAVA_E2E_SCENARIO names the
 // scenario, BAVA_E2E_OUT where screenshots go, BAVA_E2E_SCRATCH the folder
 // the scenario may make Spaces in.
-func smokeRun(current func() *application.App) (application.Service, func(string) (string, error)) {
+func smokeRun(_ func() *application.App) (application.Service, func(string) (string, error)) {
 	vars := map[string]string{"SCRATCH": os.Getenv("BAVA_E2E_SCRATCH")}
 	scenario, err := e2e.Load(os.Getenv("BAVA_E2E_SCENARIO"), vars)
 	if err != nil {
@@ -27,12 +27,9 @@ func smokeRun(current func() *application.App) (application.Service, func(string
 		Scenario: scenario,
 		Out:      os.Getenv("BAVA_E2E_OUT"),
 		Capture:  e2e.Capture,
-		Quit: func(code int) {
-			if a := current(); a != nil {
-				a.Quit()
-			}
-			os.Exit(code)
-		},
+		// Straight to exit with the run's code: asking the app to quit first
+		// ends the process with 0 on some platforms, so a failed run would pass.
+		Quit: func(code int) { os.Exit(code) },
 	})
 	return application.NewService(service), folders.Next
 }

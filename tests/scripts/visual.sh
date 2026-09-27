@@ -25,7 +25,9 @@ if ! docker image inspect "$image" >/dev/null 2>&1; then
 fi
 
 results="$repo/frontend/tests/visual/.results"
-mkdir -p "$results" "$repo/testdata/visual"
+# The package volume mounts over frontend/node_modules, which a fresh checkout
+# (CI) does not have; Docker cannot make it inside the read-only repo.
+mkdir -p "$results" "$repo/testdata/visual" "$repo/frontend/node_modules"
 rm -rf "$results/output"
 
 mounts=(
