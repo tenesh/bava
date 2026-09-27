@@ -22,7 +22,9 @@ describe('formatAccelerator', () => {
 // The no-file state shows the keys for Open and New: whatever the menu binds.
 describe('keysFor', () => {
   it('formats the key the menu binds for a command, per platform', () => {
-    expect(keysFor(spec as MenuSpec, 'file.open', 'darwin')).toBe('⌘O');
+    // ⌘O opens a Space, ⇧⌘O a file.
+    expect(keysFor(spec as MenuSpec, 'file.openSpace', 'darwin')).toBe('⌘O');
+    expect(keysFor(spec as MenuSpec, 'file.open', 'darwin')).toBe('⇧⌘O');
     expect(keysFor(spec as MenuSpec, 'file.new', 'windows')).toBe('Ctrl+N');
   });
 
@@ -42,9 +44,9 @@ describe('shortcutGroups', () => {
 
   it('lists items only on their platforms', () => {
     const windows = shortcutGroups(spec as MenuSpec, 'windows').flatMap((g) => g.rows);
-    expect(rows.filter((r) => r.label === 'Settings…')).toHaveLength(1);
-    expect(windows.filter((r) => r.label === 'Settings…')).toHaveLength(1);
-    expect(windows.find((r) => r.label === 'Settings…')?.keys).toBe('Ctrl+,');
+    expect(rows.filter((r) => r.label === 'Settings')).toHaveLength(1);
+    expect(windows.filter((r) => r.label === 'Settings')).toHaveLength(1);
+    expect(windows.find((r) => r.label === 'Settings')?.keys).toBe('Ctrl+,');
   });
 
   it('leaves out menus with nothing to press', () => {
@@ -111,11 +113,11 @@ describe('canvas-scoped shortcuts', () => {
     expect(press('BracketRight', { metaKey: true })).toBe('canvas.bringForward');
     expect(press('KeyH', { shiftKey: true })).toBe('canvas.flipHorizontal');
     expect(press('KeyD', { metaKey: true })).toBe('canvas.duplicate');
-    // 06.15: ⌘/Ctrl+Enter edits the selected line's or arrow's points.
+    // ⌘/Ctrl+Enter edits the selected line's or arrow's points.
     expect(press('Enter', { metaKey: true })).toBe('canvas.editPoints');
   });
 
-  // Milestone 7: Alt+S turns snapping to objects on and off, on the canvas
+  // Alt+S turns snapping to objects on and off, on the canvas
   // only (in a text field, macOS's Option+S types ß). Matched by the key's
   // place, so the ß it reports on macOS does not matter.
   it.each(['darwin', 'windows', 'linux'] as const)('match Alt+S on %s, on the canvas only', (platform) => {
@@ -124,7 +126,7 @@ describe('canvas-scoped shortcuts', () => {
     expect(canvasScoped(spec as MenuSpec).has('canvas.snapToObjects')).toBe(true);
   });
 
-  // Dropped in 06.12 (decision 6): their commands stay in the menus, keyless.
+  // Keys that were dropped: their commands stay in the menus, keyless.
   it('no longer match the keys that were dropped', () => {
     const match = matchShortcut(spec as MenuSpec, 'darwin');
     const press = (code: string, mods: Partial<KeyboardEvent>) =>
@@ -152,7 +154,7 @@ describe('reservedByMenu', () => {
   });
 
   // The window's own items (Minimise, Hide, Quit...) bind keys the spec never
-  // names; an editor that kept them would act twice (06.12, from the audit).
+  // names; an editor that kept them would act twice.
   it('claims the keys the window menu binds too', () => {
     expect(linux({ key: 'Ctrl-m' })).toBe(true);
     // Full screen's Ctrl+Command+F is a macOS key; elsewhere it is not Ctrl+F.
@@ -162,7 +164,7 @@ describe('reservedByMenu', () => {
   });
 
   it('leaves the editor its own keys', () => {
-    // Help lost its key (06.12), so toggle comment is the editor's again.
+    // Help has no key, so toggle comment is the editor's again.
     expect(mac({ key: 'Mod-/' })).toBe(false);
     expect(mac({ key: 'Enter' })).toBe(false);
     expect(mac({ key: 'Mod-Enter' })).toBe(false);

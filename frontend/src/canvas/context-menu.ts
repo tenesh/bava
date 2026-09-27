@@ -2,9 +2,7 @@
  * The canvas's right-click menu, as a tree the component renders.
  *
  * Built from the menu spec, so every entry is a command the native menu also
- * has: same id, same label, same key, same handler. Groups and submenus follow
- * canvas-toolbar.md. Only what works now is listed; Lock, Copy as and Export
- * join with Milestones 6.3 and 6.4.
+ * has: same id, same label, same key, same handler. Only what works is listed.
  */
 import menuSpec from '../../../internal/app/menu/spec.json';
 import { currentPlatform, formatAccelerator, type MenuSpec, type Platform } from '../shell/shortcuts';
@@ -180,7 +178,7 @@ export function parseOverflowId(id: string): OverflowChoice | null {
     const value = Number(raw);
     return OPACITY_STEPS.includes(value) ? { kind: 'property', key, value } : null;
   }
-  // A size may be a code block's (06.17).
+  // A size may be a code block's.
   const choices = key === 'fontSize' ? [...control.options, ...controlOptions({ id: key, variant: 'code' }).options] : control.options;
   const option = choices.find((candidate) => String(candidate.value) === raw);
   return option ? { kind: 'property', key: key as PropertyKey, value: option.value } : null;

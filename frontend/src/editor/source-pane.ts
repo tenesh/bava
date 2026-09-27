@@ -5,8 +5,7 @@
  * destroyed by the caller's cleanup. It is never handed reactive props: if a
  * `$derived` ever feeds this, the design has gone wrong.
  *
- * No D2 language mode yet: plain text with diagnostics. Highlighting is
- * Milestone 3.5, before documents embed editors of their own.
+ * No D2 language mode yet: plain text with diagnostics.
  */
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, lineNumbers, keymap, highlightActiveLine, type KeyBinding } from '@codemirror/view';

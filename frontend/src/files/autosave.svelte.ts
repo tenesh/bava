@@ -27,6 +27,8 @@ export function createAutosave(options: AutosaveOptions) {
   let saving: Promise<void> | null = null;
   // A save was asked for while one was already writing.
   let again = false;
+  // A file is moving: nothing is written until it is released.
+  let held = 0;
 
   function cancel() {
     if (timer !== undefined) clearTimeout(timer);
@@ -34,7 +36,7 @@ export function createAutosave(options: AutosaveOptions) {
   }
 
   function eligible(): boolean {
-    return pauseReason === null && doc.path !== null && doc.dirty;
+    return held === 0 && pauseReason === null && doc.path !== null && doc.dirty;
   }
 
   async function run(): Promise<void> {
@@ -86,6 +88,25 @@ export function createAutosave(options: AutosaveOptions) {
     focusLost(): Promise<void> {
       if (settings().mode !== 'onFocusChange') return Promise.resolve();
       return run();
+    },
+
+    /**
+     * Before a file moves: cancel a waiting save, wait for one already
+     * writing, and write nothing more until the returned release is called,
+     * once the document knows its new path. An edit made meanwhile is saved
+     * after release.
+     */
+    async hold(): Promise<() => void> {
+      held += 1;
+      cancel();
+      if (saving) await saving;
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        held -= 1;
+        if (held === 0) this.changed();
+      };
     },
 
     /** After the user settles a conflict, or opens another document. */

@@ -1,12 +1,17 @@
 <script lang="ts">
   /**
-   * Settings. Later milestones add sections (Files, AI Providers, Updates,
-   * Keyboard, About), each with the milestone that owns it. Appearance is
-   * first because the theme layer already exists.
+   * Settings: a full-height section list on the left, one section shown at a
+   * time beside it under a header naming it. Appearance lives here; the
+   * others (Files, Canvas, Advanced) are owned elsewhere and handed in.
+   *
+   * The layout is composed inside the dialog's body: the frame's own header
+   * stays in the DOM, visually hidden, so the dialog is still named by its
+   * title.
    */
-  import type { Snippet } from 'svelte';
   import Dialog from '../components/Dialog.svelte';
   import Segments from '../components/Segments.svelte';
+  import SectionTabs, { type Section } from '../components/SectionTabs.svelte';
+  import ToolIcon from '../components/ToolIcon.svelte';
   import { t } from '../i18n/t';
   import type { ThemeChoice } from '../styles/theme.svelte';
 
@@ -15,31 +20,81 @@
     choice: ThemeChoice;
     onChoose: (choice: ThemeChoice) => void;
     onOpenChange: (open: boolean) => void;
-    /** Sections owned elsewhere: Files, from the autosave settings. */
-    sections?: Snippet;
+    /** Sections owned elsewhere, after Appearance. */
+    sections?: Section[];
   };
 
-  let { open = $bindable(), choice, onChoose, onOpenChange, sections }: Props = $props();
+  let { open = $bindable(), choice, onChoose, onOpenChange, sections = [] }: Props = $props();
 
   const themes: { value: ThemeChoice; label: string }[] = [
     { value: 'light', label: t('settings.theme.light') },
     { value: 'dark', label: t('settings.theme.dark') },
     { value: 'system', label: t('settings.theme.system') },
   ];
+
+  function close() {
+    open = false;
+    onOpenChange(false);
+  }
 </script>
 
-<Dialog bind:open title={t('settings.title')} {onOpenChange}>
+{#snippet appearance()}
   <section class="section">
-    <h3 class="heading">{t('settings.appearance')}</h3>
+    <h3 class="heading">{t('settings.appearance.group')}</h3>
     <div class="row">
       <span class="label">{t('settings.theme')}</span>
       <Segments value={choice} options={themes} label={t('settings.theme')} onValueChange={onChoose} />
     </div>
   </section>
-  {#if sections}{@render sections()}{/if}
+{/snippet}
+
+{#snippet closeButton()}
+  <button type="button" class="close" aria-label={t('dialog.close')} onclick={close}>
+    <ToolIcon id="close" size="sm" />
+  </button>
+{/snippet}
+
+<Dialog bind:open title={t('settings.title')} size="settings" flush headless {onOpenChange}>
+  <div class="bava-settings">
+    <SectionTabs
+      label={t('settings.title')}
+      heading={t('settings.title')}
+      end={closeButton}
+      sections={[
+        { value: 'appearance', label: t('settings.appearance'), icon: 'appearance', content: appearance },
+        ...sections,
+      ]}
+    />
+  </div>
 </Dialog>
 
 <style>
+  .bava-settings {
+    height: 100%;
+  }
+
+  .close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--size-row-lg);
+    height: var(--size-row-lg);
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-secondary);
+  }
+
+  .close:hover {
+    background: var(--color-accent-subtle);
+    color: var(--color-text-primary);
+  }
+
+  .close:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  }
+
   .section {
     min-width: 0;
   }
@@ -65,5 +120,4 @@
     font-size: var(--text-control);
     color: var(--color-text-secondary);
   }
-
 </style>

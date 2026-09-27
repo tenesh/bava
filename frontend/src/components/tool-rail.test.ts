@@ -28,7 +28,7 @@ describe('ToolRail', () => {
   it('renders a named, keyed icon button per tool, in a vertical toolbar', () => {
     const { app, target, buttons, named } = render();
     expect(target.querySelector('[role="toolbar"]')?.getAttribute('aria-orientation')).toBe('vertical');
-    // The tool lock (06.15), insert, seven common tools, frame, code and the eraser.
+    // Insert, seven common tools, frame, code, the eraser and the tool lock.
     expect(buttons).toHaveLength(12);
     expect(named('Rectangle').querySelector('.key')?.textContent).toBe('R');
     expect(named('Rectangle').querySelector('svg')).not.toBeNull();
@@ -88,7 +88,7 @@ describe('ToolRail focus', () => {
   });
 });
 
-// 06.15 C16: the rail's tool lock, as Excalidraw's.
+// The rail's tool lock, as Excalidraw's.
 describe("ToolRail's lock", () => {
   it('shows whether the tool is kept, and reports a press', () => {
     const target = document.createElement('div');

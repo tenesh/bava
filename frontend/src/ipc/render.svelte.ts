@@ -22,8 +22,7 @@ export type Layout = { shapes: NonNullable<WireLayout['shapes']>; connections: N
  * Milliseconds of quiet before a render is issued.
  *
  * The default, and the fallback when settings cannot be read. The user's value
- * comes from the settings file via `createRenderClient({ debounceMs })`; it
- * was a compile-time constant until Milestone 5.
+ * comes from the settings file via `createRenderClient({ debounceMs })`.
  */
 export const DEBOUNCE_MS = 250;
 

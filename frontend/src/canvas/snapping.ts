@@ -1,6 +1,5 @@
 /**
- * Snapping to objects (Milestone 7): Excalidraw's rules
- * (`.claude/work/specs/excalidraw-object-snapping.md`), with Bava's box rule.
+ * Snapping to objects: Excalidraw's rules, with Bava's box rule.
  *
  * Pure: scene data in, offsets and guides out, in scene units. The pointer
  * gathers the targets once per drag (`snapReferences`) and asks for an offset
@@ -43,7 +42,7 @@ export type Gap = {
 /**
  * What a drag snaps to. `points` are the targets; `lines` the same points by
  * their exact x and y, with each axis's values sorted, so a move looks up the
- * nearest alignment instead of comparing every point (Milestone 7, Task 8).
+ * nearest alignment instead of comparing every point.
  */
 export type References = {
   points: Point[];
@@ -200,8 +199,8 @@ export function snapReferences(scene: SceneData, moving: ElementId[], visible: B
 /**
  * The gaps between neighbours: two boxes with space between them on an axis,
  * a range shared on the other, and nothing else reaching into that space
- * within that range. Excalidraw counts every pair; neighbours only is the
- * user's choice (2026-09-27), since every pair is 90,000 gaps on a board of
+ * within that range. Excalidraw counts every pair; Bava counts neighbours
+ * only, since every pair is 90,000 gaps on a board of
  * 2,000 shapes zoomed out, and a gap across other shapes is one nobody sees.
  */
 function gapsBetween(boxes: Box[]): Gap[] {

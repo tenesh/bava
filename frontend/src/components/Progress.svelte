@@ -39,10 +39,10 @@
   }
 
   :global(.bava-progress-track) {
-    height: var(--size-progress-thickness);
+    height: var(--progress-thickness, var(--size-progress-thickness));
     overflow: hidden;
     border-radius: var(--radius-full);
-    background: var(--color-border-subtle);
+    background: var(--progress-track, var(--color-border-subtle));
   }
 
   :global(.bava-progress-range) {

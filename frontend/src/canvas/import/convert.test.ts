@@ -17,7 +17,7 @@ describe('converting a D2 layout into canvas elements', () => {
   });
 
   // A container is a frame that owns what it holds, so dragging it later
-  // carries its contents (`diagrams-as-shapes.md`).
+  // carries its contents.
   it('turns a container into a frame whose children record it', () => {
     const elements = converted();
     const frame = byLabel(elements, 'Frontend');

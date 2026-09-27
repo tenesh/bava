@@ -37,18 +37,19 @@
   /* Global: Ark renders these elements itself, so scoping cannot reach them. */
   :global(.bava-segments) {
     display: inline-flex;
-    gap: var(--space-1);
-    padding: var(--space-1);
+    gap: var(--space-half);
+    padding: var(--space-half);
     background: var(--color-surface-sunken);
-    border-radius: var(--radius-md);
+    border: var(--border-width) solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
   }
 
   :global(.bava-segment) {
     padding: 0 var(--space-3);
-    height: var(--size-row);
+    height: var(--size-row-sm);
     display: inline-flex;
     align-items: center;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     font-size: var(--text-control);
     color: var(--color-text-secondary);
     cursor: default;
@@ -57,6 +58,7 @@
   :global(.bava-segment[data-state='checked']) {
     background: var(--color-surface-raised);
     color: var(--color-text-primary);
+    box-shadow: var(--shadow-raised);
   }
 
   :global(.bava-segment:focus-within) {

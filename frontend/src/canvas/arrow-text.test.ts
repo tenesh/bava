@@ -3,7 +3,7 @@ import { freeEndAt, insertTextAtEnd } from './arrow-text';
 import { createHistory } from './history';
 import type { SceneElement } from './scene';
 
-// 06.16 B29: with the Text tool, a click by a free arrow end starts a text
+// With the Text tool, a click by a free arrow end starts a text
 // there that the end attaches to, the arrow staying where it is
 // (Excalidraw's `element/src/arrowEndpointText.ts`).
 const arrow = (over: Record<string, unknown> = {}) =>
@@ -32,7 +32,7 @@ describe('a free arrow end under the Text tool', () => {
   });
 });
 
-describe('a text at a diagonal arrow end (review of 06.16)', () => {
+describe('a text at a diagonal arrow end', () => {
   it('leaves the arrow where it was', () => {
     const history = createHistory({ elements: [arrow({ w: 100, h: 100, points: [0, 0, 100, 100] })] });
     insertTextAtEnd(history, { arrow: 'r', side: 'end' }, 'label', measure);

@@ -5,9 +5,9 @@
  * easy to get subtly wrong (additive clicks, marquee edges, keyboard
  * traversal) is testable directly.
  *
- * Keyboard traversal exists because Milestone 1 shipped an interactive
- * affordance with no keyboard path. This covers scene elements; reaching a
- * node *inside* a diagram waits for Milestone 6, when diagram elements exist.
+ * Keyboard traversal exists because every interactive affordance needs a
+ * keyboard path. This covers scene elements; a node *inside* a diagram is not
+ * reached this way.
  */
 import type { ElementId, SceneData } from './scene';
 import { isLocked } from './scene';

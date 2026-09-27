@@ -38,7 +38,7 @@ describe('palette', () => {
 
 // A picked colour is stored once and adapted to the theme it is drawn in:
 // drawn as stored where it reads against the canvas, flipped in lightness
-// where it does not (canvas-toolbar.md, "Colour").
+// where it does not.
 describe('literal colours', () => {
   const light = (name: string) => (name === '--color-canvas-bg' ? '#efefec' : `var(${name})`);
   const dark = (name: string) => (name === '--color-canvas-bg' ? '#131416' : `var(${name})`);

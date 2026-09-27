@@ -125,9 +125,42 @@ them beyond handing the parse to `internal/format`.
 | `ChangedOnDisk(path, stamp)` | bool |
 | `ChooseFileToOpen()` | `DialogResult`: a path, or empty when cancelled |
 | `ChooseFileToSave(suggestedName)` | `DialogResult`: a path, or empty when cancelled |
-| `ListWorkspace(dir)` | `ListResult`: folders then `.md`/`.d2` files, hidden entries skipped |
 | `Settings()` | the user's preferences, defaults when unreadable; since 06.16 they include `arrowBinding` and `midpointSnap`, both on by default (an older file omits them and reads as on), and since Milestone 7 `objectSnap`, off by default |
 | `SaveSettings(settings)` | an error string, empty on success |
+
+## SpaceService
+
+Added in Milestone 8.1. A Space on disk (`docs/file-format.md`, "Spaces"):
+open a folder as a Space, list its folders, and change it through **one**
+method taking an operation, so the bound surface stays small. Every change is
+a real file operation in `internal/space`; nothing keeps a second copy of the
+tree.
+
+| Method | Returns |
+|---|---|
+| `Create(parent, name)` | `SpaceInfo`: makes a folder named `name` in `parent` (an absolute path the user chose) and opens it as a Space; a taken or invalid name is refused with a `code` |
+| `Open(dir)` | `SpaceInfo`: root, name (the folder's), the Space's page width; creates `.bava/space.json` when missing |
+| `List(root, folder)` | `SpaceList`: one folder's pages (`.md`) and folders in the Space's order; never hidden entries, `.d2` files or `.bava` |
+| `Apply(root, op)` | `OpResult`: the new path, a Trash item's id, or a renamed Space's root. `op.kind` is `createPage`, `createFolder`, `rename`, `move` (`folder`, `index`; -1 for the end), `duplicate`, `trash`, `restore`, `deleteForever`, `emptyTrash`, `renameSpace` or `setPageWidth` |
+| `Trash(root)` | `TrashList`: items (where each came from, kind, when, size) and the total size |
+| `ChooseFolder(title)` | `DialogResult`: the native folder picker, which can make a folder, titled as the frontend words it (translated there); empty when cancelled |
+| `Reveal(root, path)` | an error string, empty on success: the Space's folder, or an item selected in its folder, in the file manager |
+
+**The root is checked on every call**: it must be absolute and hold `.bava/`, or the call is refused, so an empty or stale root can never act on the working folder.
+
+**Paths are relative to the Space**, with `/` between folders. One that is
+absolute, leaves the Space, or is hidden (which keeps `.bava` out of reach) is
+refused, in `Error`, and so is one that goes through a symbolic link. So is a name that already exists: nothing is overwritten (a rename that only changes case lands on the same file, and is allowed).
+
+**Errors are data**, as for `FileService`. A refusal the user can act on
+also carries `code` (`exists`, `nameEmpty`, `nameSlash`, `nameDot`,
+`intoItself`, `notFolder`, `onlyPage`, `outside`, `throughLink`, `notSpace`;
+`internal/space/errors.go`), and the frontend words it in the user's language
+(`space.error.*`). Any other failure has an empty `code` and its `error` is
+shown as it came.
+
+It replaces `FileService.ListWorkspace`, whose flat listing of a file's parent
+folder was the workspace before Spaces.
 
 ## ExportService
 
@@ -173,11 +206,6 @@ were rounded in JavaScript, and every file looked changed on disk (06.17).
 
 **Cancelling a dialog is not an error.** An empty path means the user changed
 their mind, which is a normal outcome and is not reported as a failure.
-
-**A workspace lists only what Bava edits.** A project folder is usually full of
-things Bava has no business showing, so `.md` and `.d2` only, folders first,
-and nothing beginning with a dot: that is Bava's own state or the user's
-tooling, not their documents.
 
 
 ## Menu

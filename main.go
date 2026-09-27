@@ -62,6 +62,15 @@ func main() {
 	wailsApp := application.New(appOptions(session, []application.Service{
 		application.NewService(app.NewRenderService()),
 		application.NewService(app.NewFileService()),
+		application.NewService(app.NewSpaceService(app.SpaceServiceOptions{
+			Reveal: func(path string, selectFile bool) error {
+				a := current.Load()
+				if a == nil {
+					return errors.New("the application is not running yet")
+				}
+				return a.Env.OpenFileManager(path, selectFile)
+			},
+		})),
 		application.NewService(app.NewExportService()),
 		application.NewService(menus),
 		application.NewService(logService),

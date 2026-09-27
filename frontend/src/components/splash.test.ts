@@ -23,4 +23,17 @@ describe('Splash', () => {
     expect(target.querySelector('[role="progressbar"]')?.hasAttribute('aria-valuenow')).toBe(false);
     unmount(app);
   });
+
+  // As the mockup lays it out: one centred column, the bar and its status
+  // under the wordmark, the footer on its own at the bottom.
+  it('keeps the bar in the centred column, under the wordmark', () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const app = flushSync(() => mount(Splash, { target, props: { status: 'Starting' } }));
+    const column = target.querySelector('.identity')!;
+    expect(column.querySelector('.wordmark')).not.toBeNull();
+    expect(column.querySelector('[role="progressbar"]')).not.toBeNull();
+    expect(column.querySelector('.footer')).toBeNull();
+    unmount(app);
+  });
 });

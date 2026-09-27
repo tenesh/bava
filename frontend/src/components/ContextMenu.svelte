@@ -76,7 +76,7 @@
     padding: var(--space-1);
     background: var(--color-surface-overlay);
     border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-floating);
     outline: none;
   }
@@ -88,19 +88,22 @@
   :global(.bava-menu-item) {
     display: flex;
     align-items: center;
-    gap: var(--space-4);
-    height: var(--size-row);
+    gap: var(--space-2);
+    height: var(--size-row-lg);
     padding: 0 var(--space-2);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     font-size: var(--text-control);
     color: var(--color-text-primary);
     cursor: default;
   }
 
+  /*
+   * The pointer's item and the keyboard's are one: Ark marks either as
+   * highlighted, so the fill is the focus indication too.
+   */
   :global(.bava-menu-item[data-highlighted]) {
-    background: var(--color-accent-subtle);
-    outline: var(--focus-ring-width) solid var(--color-focus-ring);
-    outline-offset: calc(var(--focus-halo-width) * -1);
+    background: var(--color-selection);
+    outline: none;
   }
 
   :global(.bava-menu-label) {
@@ -109,7 +112,7 @@
 
   .keys {
     font-family: var(--font-mono);
-    font-size: var(--text-mono-chip);
+    font-size: var(--text-menu-keys);
     color: var(--color-text-muted);
   }
 

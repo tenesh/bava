@@ -72,7 +72,7 @@ describe('scene', () => {
     expect(scene.get(a.id)?.id).toBe(a.id);
   });
 
-  // Serialisation is what undo compares and what Milestone 5 will persist, so
+  // Serialisation is what undo compares and what is persisted, so
   // it has to be deterministic rather than dependent on insertion order.
   it('serialises deterministically', () => {
     const scene = createScene();

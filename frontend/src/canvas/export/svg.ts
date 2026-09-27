@@ -29,7 +29,7 @@ export type SvgOptions = {
   read: ReadVariable;
   /** Paint the canvas colour behind the drawing. */
   background?: boolean;
-  /** A `<style>` body, for the embedded font (Task 3). */
+  /** A `<style>` body, for the embedded font. */
   css?: string;
   /**
    * Tokenised code per block, by element id. Highlighting is asynchronous (a
@@ -131,7 +131,7 @@ function body(element: SceneElement, paint: Paint, surface: string): string {
     for (let i = 0; i + 1 < routed.length; i += 2) {
       pairs.push(`${round(element.x + routed[i])} ${round(element.y + routed[i + 1])}`);
     }
-    // A closed line's fill (06.15); an arrow's paint fill is its heads'.
+    // A closed line's fill; an arrow's paint fill is its heads'.
     const fill = element.type === 'line' ? paint.fill : '';
     const label = element.type === 'arrow' && 'label' in element ? (element.label as string | undefined) : undefined;
     const mask = label ? labelMask(element, paint, label) : '';
@@ -164,7 +164,7 @@ function arrowLabel(element: SceneElement, paint: Paint, label: string): string 
     h: layout.height,
   } as SceneElement;
   const text = textElement(box, { ...paint, font: { ...paint.font, align: 'center', verticalAlign: 'middle' } }, label, 0);
-  // Turned along the arrow about its centre, as the stage turns it (06.17).
+  // Turned along the arrow about its centre, as the stage turns it.
   return layout.angle === 0
     ? text
     : `<g transform="rotate(${round(layout.angle)} ${round(element.x + layout.at.x)} ${round(element.y + layout.at.y)})">${text}</g>`;
@@ -180,7 +180,7 @@ function arrowLabelLayout(element: SceneElement, paint: Paint, label: string): L
 
 /**
  * The mask that hides an arrow's line under its label's box and a margin
- * round it, turned with it, as the stage clips it (06.16, L7; 06.17).
+ * round it, turned with it, as the stage clips it.
  */
 function labelMask(element: SceneElement, paint: Paint, label: string): string {
   const corners = labelCorners(arrowLabelLayout(element, paint, label), LABEL_CLEARANCE);

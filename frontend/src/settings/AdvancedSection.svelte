@@ -21,7 +21,7 @@
 </script>
 
 <section class="section">
-  <h3 class="heading">{t('settings.advanced')}</h3>
+  <h3 class="heading">{t('settings.advanced.group')}</h3>
   <div class="row">
     <span class="label">{t('settings.verboseLogging')}</span>
     <Segments
@@ -37,7 +37,6 @@
 <style>
   .section {
     min-width: 0;
-    margin-top: var(--space-6);
   }
 
   .heading {

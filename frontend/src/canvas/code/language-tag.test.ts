@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { languageTag } from './language-tag';
 
-// 06.17: a code block names its language on its top edge, at the left, the
+// A code block names its language on its top edge, at the left, the
 // border hidden behind the name.
 describe("a code block's language tag", () => {
   const measure = (text: string) => text.length * 6;

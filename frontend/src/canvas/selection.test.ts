@@ -66,9 +66,8 @@ describe('selection', () => {
     expect(selection.ids).toHaveLength(3);
   });
 
-  // Milestone 1 left an interactive affordance with no keyboard path. Scene
-  // elements get one here; a node *inside* a diagram waits for Milestone 6,
-  // because diagram elements do not exist yet.
+  // Every interactive affordance needs a keyboard path. Scene elements get
+  // one here; a node *inside* a diagram is not reachable this way.
   it('steps through every element with the keyboard', () => {
     const { scene, a, b, c } = sceneWithThree();
     const selection = createSelection();
@@ -126,7 +125,7 @@ describe('intersects', () => {
 });
 
 // A locked element is not selectable: a click passes through it, a marquee
-// skips it, Select All leaves it (canvas-toolbar.md, "Locking").
+// skips it, Select All leaves it.
 describe('locked elements', () => {
   const scene: SceneData = {
     elements: [

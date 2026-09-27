@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { keepsBrowserMenu } from './native-menu';
 
-// 06.17: the webview's own right-click menu (with its Reload, which lost
+// The webview's own right-click menu (with its Reload, which lost
 // unsaved work) shows only where there is text to cut, copy or paste.
 describe("the webview's right-click menu", () => {
   const make = (html: string) => {

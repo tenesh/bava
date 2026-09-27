@@ -12,9 +12,8 @@ import {
   type Guide,
 } from './snapping';
 
-// Milestone 7: snapping to objects, Excalidraw's rules
-// (.claude/work/specs/excalidraw-object-snapping.md) with the box rule: every
-// element offers its box's four corners, four side middles and centre.
+// Snapping to objects, Excalidraw's rules with the box rule: every element
+// offers its box's four corners, four side middles and centre.
 
 const rect = (id: string, x: number, y: number, w: number, h: number, extra: Record<string, unknown> = {}) =>
   ({ id, type: 'rect', x, y, w, h, z: 1, ...extra }) as unknown as SceneElement;
@@ -161,7 +160,7 @@ describe('equal spacing', () => {
     expect(snapMove(refs, points, b, 8).offset.x).toBe(3);
   });
 
-  // The user's choice (2026-09-27): only neighbours make a gap, so a large
+  // Only neighbours make a gap, so a large
   // board stays smooth. A and C have B between them: no A-to-C gap.
   it('counts only gaps between neighbours', () => {
     const refs = snapReferences(scene(rect('a', 0, 0, 40, 40), rect('b', 60, 0, 40, 40), rect('c', 130, 0, 40, 40)), [], null);
@@ -180,7 +179,7 @@ describe('equal spacing', () => {
     expect(refs.gaps.some((g) => g.axis === 'x' && g.from === 40 && g.to === 100)).toBe(false);
   });
 
-  // Review finding: a frame or a larger shape behind a row blocked every gap in it.
+  // A frame or a larger shape behind a row must not block the gaps in it.
   it.each([
     ['frame', { id: 'f', type: 'frame', x: 0, y: 0, w: 1000, h: 1000, z: 0 }],
     ['background', { id: 'bg', type: 'rect', x: 0, y: 0, w: 1000, h: 1000, z: 0 }],
@@ -191,7 +190,7 @@ describe('equal spacing', () => {
     expect(snapMove(refs, points, b, 8).offset.x).toBe(-3);
   });
 
-  // Review finding: two shapes starting at the same place are both neighbours,
+  // Two shapes starting at the same place are both neighbours,
   // whichever the scene lists first.
   it('keeps both neighbours that start at the same place', () => {
     const refs = snapReferences(scene(rect('a', 0, 0, 100, 100), rect('b', 200, 0, 40, 100), rect('c', 200, 40, 100, 20)), [], null);

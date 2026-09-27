@@ -51,3 +51,11 @@ so every save from the app dropped a stroke's points, a text element's text
 and every unknown key, while every Go round-trip test passed.
 `TestSceneSurvivesTheFrontendBridge` marshals and unmarshals the scene between
 read and write; any new format test belongs on that path too.
+
+## Space data lives in `.bava`, never a page's content
+A Space's `.bava/` holds what belongs to the Space as a whole (`space.json`:
+the order and the default page width; `trash/`; later attachments and
+templates). A page's text and canvas stay in its own `.md` file, so copying
+one page still carries all of it; `docs/file-format.md` ("Why one file rather
+than a sidecar") is the reason. Every change to a Space goes through
+`internal/space`, which refuses a path that leaves the Space or is hidden.

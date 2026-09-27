@@ -22,7 +22,7 @@ func TestResultJSONFieldNames(t *testing.T) {
 
 // The layout is what the canvas builds shapes from, so its names are a
 // contract too. Colours are deliberately not among them: a generated shape
-// arrives in Bava's own style (decided 2026-09-19).
+// arrives in Bava's own style.
 func TestLayoutJSONFieldNames(t *testing.T) {
 	b, err := json.Marshal(render.Layout{})
 	if err != nil {

@@ -11,7 +11,7 @@ import type { Box } from '../selection';
 
 /**
  * How much empty space an export keeps around its content, in scene units.
- * Fixed: the export dialog has no padding control (canvas-toolbar.md).
+ * Fixed: the export dialog has no padding control.
  */
 export const EXPORT_PADDING = 16;
 

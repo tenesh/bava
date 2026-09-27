@@ -12,6 +12,7 @@
    */
   import Dialog from './Dialog.svelte';
   import LayoutEnginePicker from './LayoutEnginePicker.svelte';
+  import { diagramStatus } from './diagram-status';
   import type { Direction, LayoutEngine } from '../settings/layout-engine';
   import { SourcePane } from '../editor/source-pane';
   import type { KeyBinding } from '@codemirror/view';
@@ -69,6 +70,7 @@
   // a diagram that does not compile, one still being rendered, and one that
   // compiled to no shapes (a file of comments still renders an empty SVG).
   const canInsert = $derived(errors.length === 0 && !pending && typed.trim().length > 0 && shapes > 0);
+  const status = $derived(diagramStatus(engine, shapes));
 
   // The dialog's content is portalled, so its host does not exist at mount:
   // the editor is created when the element appears and destroyed with it.
@@ -99,64 +101,96 @@
   });
 </script>
 
+{#snippet footer()}
+  <div class="footer">
+    <LayoutEnginePicker {engine} {direction} directionHint={t('diagram.directionHint')} {onEngine} {onDirection} />
+    <span class="buttons">
+      <button type="button" class="action" onclick={() => onOpenChange(false)}>{t('diagram.cancel')}</button>
+      <button type="button" class="action primary" disabled={!canInsert} onclick={() => onInsert()}>
+        {t('diagram.insert')}
+      </button>
+    </span>
+  </div>
+{/snippet}
+
 <!-- The editor is built when the content appears and destroyed with it, so a
      reopen starts from the source the caller gives it, not the last one. -->
-<Dialog bind:open unmountWhenClosed size="wide" title={t('diagram.title')} onOpenChange={(next) => onOpenChange(next)}>
-  <div class="layout">
-    <LayoutEnginePicker {engine} {direction} directionHint={t('diagram.directionHint')} {onEngine} {onDirection} />
-  </div>
-  <div class="panes">
-    <div class="editor" bind:this={host}></div>
-    <div class="preview-frame">
-      <!-- The SVG the caller rendered, through the one render path, with any
-           reference that would reach outside the app taken out first. -->
-      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-      <div class="bava-diagram-preview">{@html withoutRemoteRefs(preview)}</div>
+<Dialog
+  bind:open
+  unmountWhenClosed
+  size="diagram"
+  flush
+  title={t('diagram.title')}
+  subtitle={t('diagram.hint')}
+  {footer}
+  onOpenChange={(next) => onOpenChange(next)}
+>
+  <div class="bava-diagram">
+    <div class="panes">
+      <div class="editor" bind:this={host}></div>
+      <div class="preview-frame">
+        <!-- The SVG the caller rendered, through the one render path, with any
+             reference that would reach outside the app taken out first. -->
+        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+        <div class="bava-diagram-preview">{@html withoutRemoteRefs(preview)}</div>
+        {#if status}<span class="bava-diagram-status">{status}</span>{/if}
+      </div>
     </div>
-  </div>
 
-  {#if errors.length > 0}
-    <ul class="errors">
-      {#each errors as error, i (i)}
-        <li>{error.line > 0 ? `${error.line}: ` : ''}{error.message}</li>
-      {/each}
-    </ul>
-  {/if}
-
-  <div class="actions">
-    <button type="button" class="action" onclick={() => onOpenChange(false)}>{t('diagram.cancel')}</button>
-    <button type="button" class="action primary" disabled={!canInsert} onclick={() => onInsert()}>
-      {t('diagram.insert')}
-    </button>
+    {#if errors.length > 0}
+      <ul class="errors">
+        {#each errors as error, i (i)}
+          <li>{error.line > 0 ? `${error.line}: ` : ''}{error.message}</li>
+        {/each}
+      </ul>
+    {/if}
   </div>
 </Dialog>
 
 <style>
-  .layout {
-    margin-bottom: var(--space-3);
+  .bava-diagram {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
   }
 
   .panes {
     display: grid;
+    flex: 1 1 auto;
     grid-template-columns: 1fr 1fr;
-    gap: var(--space-3);
-    height: var(--size-diagram-dialog);
-    margin-bottom: var(--space-3);
+    min-height: 0;
   }
 
-  .editor,
-  .preview-frame {
+  .editor {
+    min-width: 0;
+    padding: var(--space-3) 0;
     overflow: auto;
-    border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-sunken);
+    border-right: var(--border-width) solid var(--color-border-subtle);
+    background: var(--color-surface-raised);
+  }
+
+  .editor :global(.cm-gutters) {
+    border: 0;
+    background: transparent;
   }
 
   .preview-frame {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--space-2);
+    min-width: 0;
+    padding: var(--space-5);
+    overflow: auto;
+    background-color: var(--color-canvas-bg);
+    background-image: radial-gradient(var(--color-canvas-dot) var(--size-canvas-dot), transparent var(--size-canvas-dot));
+    background-size: var(--size-canvas-grid) var(--size-canvas-grid);
+  }
+
+  .bava-diagram-preview {
+    display: flex;
+    max-width: 100%;
+    max-height: 100%;
   }
 
   .bava-diagram-preview :global(svg) {
@@ -164,31 +198,51 @@
     max-height: 100%;
   }
 
+  .bava-diagram-status {
+    position: absolute;
+    bottom: var(--space-3);
+    left: var(--space-3);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-status);
+    color: var(--color-text-muted);
+  }
+
   .errors {
+    flex: none;
     max-height: var(--size-diagram-errors);
-    margin: 0 0 var(--space-3);
-    padding: var(--space-2) var(--space-3);
+    margin: 0;
+    padding: var(--space-2) var(--space-5);
     overflow: auto;
     list-style: none;
-    border-radius: var(--radius-sm);
+    border-top: var(--border-width) solid var(--color-border-subtle);
     background: var(--color-danger-subtle);
     font-family: var(--font-mono);
     font-size: var(--text-mono-chip);
     color: var(--color-text-primary);
   }
 
-  .actions {
+  .footer {
     display: flex;
-    justify-content: flex-end;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .buttons {
+    display: flex;
     gap: var(--space-2);
+    margin-inline-start: auto;
   }
 
   .action {
+    display: inline-flex;
+    align-items: center;
     height: var(--size-row-lg);
     padding: 0 var(--space-3);
     border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background: var(--color-surface-raised);
+    font: inherit;
     font-size: var(--text-control);
     color: var(--color-text-primary);
   }

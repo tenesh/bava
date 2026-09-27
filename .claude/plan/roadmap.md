@@ -474,12 +474,26 @@ restores the attachment.
 
 ---
 
-## Milestone 8: Documents *(next; to be discussed with the user before planning)*
+## Milestone 8: Documents *(next; decided, built in parts 8.1 to 8.6)*
 
-**The user has new features to decide for this milestone (2026-09-27).** The
-scope below is the starting point for that discussion, not a settled plan:
-it is re-planned from what is agreed, with decisions recorded in
-`.claude/work/specs/` as they are made.
+**Discussed and decided (2026-09-27):** 66 decisions in
+`.claude/work/specs/08-documents.md`, mockups in Bava Design
+(https://claude.ai/artifact/RMvLeKBkbF4N2Hv89HSude). Built in six parts, each
+planned, gated and committed on its own; each specifies its file-format
+changes in `docs/file-format.md` first:
+
+| Part | Delivers |
+|---|---|
+| 8.1 Spaces and files | `.bava` folder and `space.json`; start screen, Space switcher and settings; the Files tree (order by hand, duplicate, trash); single files; one page open at a time |
+| 8.2 The Document editor | ProseMirror, saving Markdown; text blocks, lists, inline formatting and colours; typing shortcuts, `/` menu, formatting bubble, block handle; find and replace, word count; page menu, lock, width |
+| 8.3 Rich blocks | Callouts, toggles, code, equations, rich tables, contents, footnotes, emoji, date chips, `@` page links and backlinks, links to headings |
+| 8.4 Media and attachments | The attachments folder; images and videos; online media; file and link cards; the Media section and dialog |
+| 8.5 Canvas in the Document | Live frame embeds, Diagram from Code from the Document; this part carries the exit criterion below |
+| 8.6 Tags and templates | Tags and the Tags section; the Templates dialog |
+
+Export and import moved to Milestone 15, which now follows this one. The
+original outline below is kept for its exit criterion; the decisions file
+supersedes its scope.
 
 **Goal:** Prose alongside the canvas, with parts of the canvas embedded in the
 text.
@@ -504,6 +518,42 @@ green, with tests that activating an embed selects its elements on the canvas,
 and a round trip of a document containing an embed.
 
 **Depends on:** Milestone 5, Milestone 6.5.
+
+---
+
+## Milestone 15: Export, import and search *(moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
+
+**Goal:** Get work out of Bava and into it, and find things across a Space.
+
+**Scope:** From the Milestone 8 discussion (`.claude/work/specs/08-documents.md`,
+decisions 48, 49 and 58):
+- **Export** a page, a folder or a whole Space as PDF (one combined file or
+  one per page; paper size, theme, margins, scale, page numbers) or as a
+  Markdown zip laid out as in the Space. Diagram elements export **through
+  the existing `Render` path**, never a second renderer; canvas embeds are
+  already saved as images.
+- **Import** Markdown files and folders, and Bava export zips, into a chosen
+  folder; name clashes kept numbered, never overwritten.
+- **Search** across a Space, with results, jump-to-match, and the
+  `EmptyState` the design system already assumes exists for it.
+
+**Carried from Milestone 6.6:** SQL table and UML class shapes. Canvas export
+and code blocks moved forward to Milestones 6.4 and 6.7 (2026-09-18); any
+colour for shapes was built in 6.3.
+
+**Exit criterion:**
+
+```sh
+go test ./internal/export ./internal/search -v \
+  && go test ./internal/... . && go vet ./... \
+  && (cd frontend && npm run check && npm run lint && npm test)
+```
+
+green, including a test asserting an exported diagram is byte-identical to the
+`Render` output for the same source, the regression a second render path would
+cause, and a round trip of a Space through export and import.
+
+**Depends on:** Milestone 8, Milestone 5.
 
 ---
 
@@ -691,35 +741,6 @@ refresh.
 
 ---
 
-## Milestone 15: Export and search
-
-**Goal:** Get work out of Bava, and find things across a workspace.
-
-**Scope:** Export a canvas, a selection or a document to SVG, PNG and PDF, and
-copy to clipboard. Diagram elements export **through the existing `Render`
-path**, never a second renderer. Workspace search with results, jump-to-match,
-and the `EmptyState` the design system already assumes exists for it.
-
-**Carried from Milestone 6:** arbitrary hex colours for shapes, beyond the
-swatch palette. Carried from Milestone 6.6: SQL table and UML class shapes.
-Canvas export and code blocks moved forward to Milestones 6.4 and 6.7
-(2026-09-18); this milestone keeps document export and PDF.
-
-**Exit criterion:**
-
-```sh
-go test ./internal/export ./internal/search -v \
-  && go test ./internal/... . && go vet ./... \
-  && (cd frontend && npm run check && npm run lint && npm test)
-```
-
-green, including a test asserting an exported diagram is byte-identical to the
-`Render` output for the same source, the regression a second render path would
-cause.
-
-**Depends on:** Milestone 8, Milestone 5.
-
----
 
 ## Milestone 16: Release readiness
 

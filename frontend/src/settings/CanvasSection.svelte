@@ -1,8 +1,8 @@
 <script lang="ts">
   /**
    * Settings ▸ Canvas: whether arrow ends attach to shapes, whether they
-   * snap to a side's middle (Excalidraw's two toggles, 06.16), and whether
-   * shapes snap to other objects (Milestone 7).
+   * snap to a side's middle (Excalidraw's two toggles), and whether shapes
+   * snap to other objects.
    *
    * Presentational. The caller holds the values and persists changes.
    */
@@ -34,7 +34,7 @@
 </script>
 
 <section class="section">
-  <h3 class="heading">{t('settings.canvas')}</h3>
+  <h3 class="heading">{t('settings.canvas.group')}</h3>
   <div class="row">
     <span class="label">{t('settings.arrowBinding')}</span>
     <Segments
@@ -69,7 +69,6 @@
 <style>
   .section {
     min-width: 0;
-    margin-top: var(--space-6);
   }
 
   .heading {

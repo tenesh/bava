@@ -28,6 +28,7 @@
 <Dialog
   bind:open
   {title}
+  variant="alert"
   onOpenChange={(next) => {
     // Dismissing (escape, a backdrop click) is a cancel, never an accident.
     if (!next) onChoose('cancel');
@@ -50,10 +51,10 @@
 
 <style>
   .body {
-    margin: 0 0 var(--space-4);
-    font-size: var(--text-control);
-    color: var(--color-text-secondary);
+    margin: 0;
     max-width: 44ch;
+    font-size: var(--text-body);
+    color: var(--color-text-secondary);
   }
 
   .options {
@@ -66,7 +67,7 @@
     height: var(--size-row-lg);
     padding: 0 var(--space-3);
     border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background: var(--color-surface-raised);
     font: inherit;
     font-size: var(--text-control);

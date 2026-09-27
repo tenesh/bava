@@ -42,6 +42,15 @@ describe('LayoutEnginePicker', () => {
     unmount(app);
   });
 
+  it('says why there is no direction while TALA is chosen', () => {
+    const tala = render({ engine: 'tala' });
+    expect(tala.target.textContent).toContain('TALA chooses its own direction.');
+    unmount(tala.app);
+    const elk = render({ engine: 'elk' });
+    expect(elk.target.textContent).not.toContain('TALA chooses its own direction.');
+    unmount(elk.app);
+  });
+
   it('reports a direction change for another engine', () => {
     const { app, item, onDirection } = render({ engine: 'elk' });
     flushSync(() => item('Right')!.click());

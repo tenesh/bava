@@ -136,7 +136,7 @@ func TestAddingACanvasToProseKeepsTheProse(t *testing.T) {
 	}
 }
 
-// Every shape type Milestone 6 adds, with a label and all three colours, must
+// Every shape type, with a label and all three colours, must
 // read and write back byte for byte, including an unknown swatch name.
 func TestRoundTripEveryShapeWithLabelAndColours(t *testing.T) {
 	var elements []string
@@ -195,7 +195,7 @@ func TestRoundTripEveryShapeWithLabelAndColours(t *testing.T) {
 	}
 }
 
-// Milestone 6.3's keys: the writer models none of them, so they survive only
+// Style keys the writer models none of: they survive only
 // through the raw element. A regression here is silent data loss in a file
 // written by a newer Bava, or by this one after the frontend adds a key.
 func TestRoundTripStylePropertiesAndLiteralColours(t *testing.T) {
@@ -471,7 +471,7 @@ func TestRoundTripBentArrowWithAnchorsAndLabelPosition(t *testing.T) {
 	}
 }
 
-// A closed, filled line and the kind a new element is written with (06.15):
+// A closed, filled line and the kind a new element is written with:
 // plain JSON the frontend writes, kept verbatim (docs/file-format.md, "Lines,
 // arrows and strokes").
 func TestRoundTripClosedFilledLine(t *testing.T) {

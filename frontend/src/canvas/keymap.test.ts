@@ -18,7 +18,7 @@ const key = (over: Partial<KeyboardEvent> = {}) =>
   ({ key: 'a', metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, ...over }) as KeyboardEvent;
 
 describe('keymap', () => {
-  // Fewer shortcuts (06.12, decision 6): / and Tab are not canvas keys. The
+  // Fewer shortcuts: / and Tab are not canvas keys. The
   // insert panel opens from the rail; Tab is left to the browser's focus.
   it('leaves / and Tab alone', () => {
     const a = actions();
@@ -136,7 +136,7 @@ function eventFor(accelerator: string, primary: 'metaKey' | 'ctrlKey'): Keyboard
   });
 }
 
-// 06.15 C16: Q keeps the tool after drawing, as Excalidraw's.
+// Q keeps the tool after drawing, as Excalidraw's.
 describe('the tool lock key', () => {
   it('toggles the lock on Q, not with a modifier', () => {
     const a = actions();

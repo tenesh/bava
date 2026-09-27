@@ -48,7 +48,7 @@ func (t *Theme) validate() error {
 //
 // D2 has two families and they are not interchangeable. The neutrals N1-N7 run
 // darkest to lightest and carry text and canvas; the B and A families carry
-// shapes. Measured on 2026-09-16 by rendering with a distinct colour in every
+// shapes. Measured by rendering with a distinct colour in every
 // slot and reading back which reached the output:
 //
 //	reached output : N1 N2 N3 N6 N7 · B1 B2 B4 B5 · AA4

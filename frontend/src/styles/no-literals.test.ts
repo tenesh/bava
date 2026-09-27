@@ -4,9 +4,8 @@ import { compile } from 'sass';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// A gate, not a grep. The roadmap's exit criterion for this milestone is a
-// shell one-liner; a rule enforced only by a command nobody runs decays, so it
-// runs here on every commit and in CI instead.
+// A gate, not a grep. A rule enforced only by a shell one-liner nobody runs
+// decays, so it runs here on every commit and in CI instead.
 
 const SRC = fileURLToPath(new URL('..', import.meta.url));
 const TOKENS = join(SRC, 'styles', 'tokens');

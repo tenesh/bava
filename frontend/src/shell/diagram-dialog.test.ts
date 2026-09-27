@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createDiagramDialog } from './diagram-dialog.svelte';
 
-// The Diagram from Code dialog's layout state (plan 06.11): what the preview is
-// rendered with is what Insert uses, and the engine used becomes the default.
+// The Diagram from Code dialog's layout state: what the preview is rendered
+// with is what Insert uses, and the engine used becomes the default.
 function setup(defaultEngine: 'tala' | 'dagre' | 'elk' = 'tala') {
   const request = vi.fn();
   const saveDefault = vi.fn().mockResolvedValue(undefined);

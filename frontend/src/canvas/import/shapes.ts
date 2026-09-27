@@ -1,8 +1,8 @@
 /**
  * D2's shape names, mapped onto the ones Bava draws.
  *
- * The canvas set was chosen by comparing D2's shapes with Eraser's
- * (`diagrams-as-shapes.md`): everything D2 can produce either has a Bava shape
+ * The canvas set was chosen by comparing D2's shapes with Eraser's: everything
+ * D2 can produce either has a Bava shape
  * or becomes a rectangle that keeps its label. A box with the right name says
  * more than a shape nobody recognises, and far more than nothing at all.
  */

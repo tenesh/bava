@@ -38,7 +38,7 @@ const HEADS: PropertyOption[] = [
   { value: 'circle-outline', labelKey: 'option.circle-outline', icon: 'headCircle' },
   { value: 'diamond', labelKey: 'option.diamond', icon: 'headDiamond' },
   { value: 'diamond-outline', labelKey: 'option.diamond-outline', icon: 'headDiamond' },
-  // The entity-relation heads, behind More as Excalidraw's (06.16).
+  // The entity-relation heads, behind More as Excalidraw's.
   { value: 'one', labelKey: 'option.one', icon: 'headBar', more: true },
   { value: 'many', labelKey: 'option.many', icon: 'headMany', more: true },
   { value: 'oneOrMany', labelKey: 'option.oneOrMany', icon: 'headMany', more: true },
@@ -117,11 +117,11 @@ export const PROPERTY_OPTIONS: Record<PropertyKey, PropertyControl> = {
       { value: 'straight', labelKey: 'option.straight', icon: 'arrowStraight' },
       { value: 'elbow', labelKey: 'option.elbow', icon: 'arrowElbow' },
       { value: 'arc', labelKey: 'option.arc', icon: 'arrowArc' },
-      // A line: an arrow becomes one, and a line shows as one (06.16, X11).
+      // A line: an arrow becomes one, and a line shows as one.
       { value: 'line', labelKey: 'option.line', icon: 'line' },
     ],
   },
-  // Upright, or along the arrow at its place (06.17).
+  // Upright, or along the arrow at its place.
   labelDirection: {
     labelKey: 'style.labelDirection',
     icon: 'labelAlong',
@@ -134,7 +134,7 @@ export const PROPERTY_OPTIONS: Record<PropertyKey, PropertyControl> = {
   endArrowhead: { labelKey: 'style.endArrowhead', icon: 'headArrow', options: HEADS },
 };
 
-/** A code block's sizes (06.17): code is set smaller than text. */
+/** A code block's sizes: code is set smaller than text. */
 const CODE_FONT_SIZE: PropertyControl = {
   labelKey: 'style.fontSize',
   icon: 'fontSize',

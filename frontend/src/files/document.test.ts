@@ -175,10 +175,9 @@ describe('whether a document is open', () => {
 });
 
 describe('saving a new document', () => {
-  // The flow this whole milestone exists for. Every earlier test saved a
-  // document that had been opened first, which is how this went unnoticed:
-  // saving an untitled drawing opened a file that did not exist yet, failed,
-  // and never set a path to save to.
+  // Every other test saves a document that had been opened first, which is
+  // how this went unnoticed: saving an untitled drawing opened a file that
+  // did not exist yet, failed, and never set a path to save to.
   it('saves an untitled document to a chosen path', async () => {
     const io = stubIO();
     const doc = createDocument(io);
@@ -256,7 +255,7 @@ describe('the scene around the elements', () => {
   });
 });
 
-// Milestone 6.3's keys ride on the element objects. The frontend models some
+// Style keys ride on the element objects. The frontend models some
 // of them and must not drop the rest: a scene loaded and saved again is the
 // scene that came in, plus this document's edits.
 describe('style properties survive a load and a save', () => {
@@ -288,7 +287,7 @@ describe('style properties survive a load and a save', () => {
       { id: 'a2', type: 'arrow', x: 0, y: 0, w: 5, h: 5, z: 3, points: [0, 0, 5, 5], startBinding: 'r1', endBinding: 'went-away', label: 'edge label' },
       { id: 'f1', type: 'frame', x: 0, y: 0, w: 50, h: 50, z: 4, label: 'Frame' },
       { id: 'inside', type: 'rect', x: 5, y: 5, w: 10, h: 10, z: 5, frame: 'f1' },
-      // Bends, anchors and a label position (06.10).
+      // Bends, anchors and a label position.
       {
         id: 'a3',
         type: 'arrow',
@@ -306,12 +305,12 @@ describe('style properties survive a load and a save', () => {
         labelPosition: 0.25,
       },
       { id: 'l1', type: 'line', x: 0, y: 100, w: 10, h: 10, z: 7, points: [0, 0, 5, 10, 10, 0] },
-      // A closed, filled line, and a new element's kind written out (06.15).
+      // A closed, filled line, and a new element's kind written out.
       { id: 'l2', type: 'line', x: 0, y: 200, w: 10, h: 10, z: 8, points: [0, 0, 10, 0, 10, 10, 0, 0], closed: true, fill: 'blue', edges: 'round' },
       { id: 'a4', type: 'arrow', x: 0, y: 300, w: 40, h: 0, z: 9, points: [0, 0, 40, 0], arrowType: 'arc' },
-      // A crow's-foot head and a label size on an arrow (06.16).
+      // A crow's-foot head and a label size on an arrow.
       { id: 'a5', type: 'arrow', x: 0, y: 400, w: 40, h: 0, z: 10, points: [0, 0, 40, 0], endArrowhead: 'zeroOrMany', label: 'has', fontSize: 28, labelDirection: 'along' },
-      // A code block's size (06.17).
+      // A code block's size.
       { id: 'c2', type: 'code', x: 0, y: 500, w: 200, h: 40, z: 11, code: 'x', language: 'go', fontSize: 16, measuredWidth: 200, measuredHeight: 40 },
     ],
     grid: { size: 8 },
@@ -325,5 +324,28 @@ describe('style properties survive a load and a save', () => {
     const opened = await doc.open('/w/styled.md');
     const saved = sceneToSave(doc.sceneExtra, opened.scene.elements as unknown[]);
     expect(saved).toEqual(styled);
+  });
+});
+
+// A page renamed or moved in the Files tree keeps its unsaved
+// changes and its stamp; closing leaves no page open inside a Space.
+describe('a page moved or closed', () => {
+  it('follows its file to a new path, unsaved changes and all', async () => {
+    const doc = createDocument(stubIO());
+    await doc.open('/w/a.md');
+    doc.touch();
+    doc.moved('/w/F/b.md');
+    expect(doc.path).toBe('/w/F/b.md');
+    expect(doc.dirty).toBe(true);
+    expect(doc.isOpen).toBe(true);
+  });
+
+  it('closes to no page at all', async () => {
+    const doc = createDocument(stubIO());
+    await doc.open('/w/a.md');
+    doc.close();
+    expect(doc.isOpen).toBe(false);
+    expect(doc.path).toBeNull();
+    expect(doc.dirty).toBe(false);
   });
 });

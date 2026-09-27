@@ -51,17 +51,6 @@ export function ChooseFileToSave(suggestedName: string): $CancellablePromise<$mo
 }
 
 /**
- * ListWorkspace lists the Bava files and folders directly under dir.
- * 
- * Only `.md` and `.d2`: a workspace is usually a project folder full of things
- * Bava has no business showing. Folders are listed whatever they contain,
- * because the files inside are only discovered on expansion.
- */
-export function ListWorkspace(dir: string): $CancellablePromise<$models.ListResult> {
-    return $Call.ByID(3874191932, dir);
-}
-
-/**
  * Open reads and parses a file.
  */
 export function Open(path: string): $CancellablePromise<$models.OpenResult> {

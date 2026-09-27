@@ -60,7 +60,7 @@ describe('a width sized to fit its longest line', () => {
   });
 });
 
-// Review of 06.12: a wide glyph that forces a break at a space must not
+// A wide glyph that forces a break at a space must not
 // overflow the row it lands on.
 describe('a wide glyph after a break', () => {
   it('never makes a row wider than the width', () => {

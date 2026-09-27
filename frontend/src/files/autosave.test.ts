@@ -141,3 +141,54 @@ describe('autosave', () => {
     expect(autosave.paused).toBe(false);
   });
 });
+
+// A rename or move in the Files tree must not race an autosave
+// writing to the old path. hold() cancels a waiting save, waits for one
+// already writing, and holds off any later save until it is released.
+describe('settling autosave before a file moves', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('cancels a save that is waiting', async () => {
+    const { save, edit, autosave } = setup('afterDelay');
+    edit();
+    await autosave.hold();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('waits for a save already writing', async () => {
+    let finish!: () => void;
+    const doc = { path: '/w/a.md', dirty: true };
+    const save = vi.fn(() => new Promise<{ conflict: boolean; saved: boolean }>((resolve) => (finish = () => resolve({ conflict: false, saved: true }))));
+    const autosave = createAutosave({ settings: () => ({ mode: 'afterDelay', delayMs: 10 }), document: doc, save });
+    autosave.changed();
+    await vi.advanceTimersByTimeAsync(20);
+    let settled = false;
+    const settling = autosave.hold().then(() => (settled = true));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toBe(false);
+    finish();
+    await settling;
+    expect(settled).toBe(true);
+  });
+
+  it('holds off a later edit\'s save until released', async () => {
+    const { save, edit, autosave } = setup('afterDelay');
+    const release = await autosave.hold();
+    edit();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(save).not.toHaveBeenCalled();
+    release();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('writes nothing on a focus change while held', async () => {
+    const { save, autosave, doc } = setup('onFocusChange');
+    doc.dirty = true;
+    await autosave.hold();
+    await autosave.focusLost();
+    expect(save).not.toHaveBeenCalled();
+  });
+});

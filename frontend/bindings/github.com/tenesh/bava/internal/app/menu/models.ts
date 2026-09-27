@@ -36,5 +36,10 @@ export interface State {
      * ObjectSnap reports snapping to objects on, which ticks its menu item.
      */
     "objectSnap": boolean;
+
+    /**
+     * HasSpace reports a Space open, which what acts on one needs.
+     */
+    "hasSpace": boolean;
     "recents": string[] | null;
 }

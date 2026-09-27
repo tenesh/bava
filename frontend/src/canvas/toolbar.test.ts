@@ -43,7 +43,7 @@ describe('units in the toolbar', () => {
 });
 
 // The row shows only what the selection takes, grouped, and moves what does
-// not fit into More (canvas-toolbar.md, "The selection toolbar's layout").
+// not fit into More.
 describe('the adaptive row', () => {
   const scene: SceneData = {
     elements: [
@@ -64,8 +64,7 @@ describe('the adaptive row', () => {
     expect(model.controls.find((c) => c.id === 'strokeWidth')?.group).toBe('stroke');
   });
 
-  // Since 06.16 (L8) an arrow takes its label's size, and since 06.17 its
-  // direction; no other label control.
+  // An arrow takes its label's size and its direction; no other label control.
   it('gives an arrow its own controls, its label size and direction', () => {
     expect(ids(toolbarFor(scene, ['a']))).toEqual([
       'stroke', 'strokeWidth', 'strokeStyle', 'opacity', 'fontSize', 'labelDirection', 'arrowType', 'startArrowhead', 'endArrowhead',
@@ -103,10 +102,9 @@ describe('overflowing into More', () => {
   });
 });
 
-// The spec's controls table: a code block offers Language and opacity, and
-// none of the shape controls, which would mean nothing on it.
+// A code block offers Language, opacity and size, and none of the shape
+// controls, which would mean nothing on it.
 describe('the toolbar for a code block', () => {
-  // Since 06.17 its size too.
   it('offers language, opacity and size only', () => {
     const scene: SceneData = {
       elements: [
@@ -117,7 +115,7 @@ describe('the toolbar for a code block', () => {
   });
 });
 
-// 06.15 C10, P3, P19: the line actions the toolbar offers.
+// The line actions the toolbar offers.
 describe("the toolbar's line actions", () => {
   const lines: SceneData = {
     elements: [
@@ -156,7 +154,7 @@ describe('the colours of a closed line', () => {
   });
 });
 
-describe('the size control for code blocks (06.17)', () => {
+describe('the size control for code blocks', () => {
   it('offers the code sizes when only code blocks are selected', () => {
     const scene: SceneData = { elements: [{ id: 'c', type: 'code', x: 0, y: 0, w: 10, h: 10, z: 1, code: 'x' }, { id: 't', type: 'text', x: 0, y: 0, w: 10, h: 10, z: 2, text: 'x', measuredWidth: 10, measuredHeight: 10 }] as never };
     expect(toolbarFor(scene, ['c']).controls.find((c) => c.id === 'fontSize')).toMatchObject({ variant: 'code' });
@@ -164,7 +162,7 @@ describe('the size control for code blocks (06.17)', () => {
   });
 });
 
-describe('the options a control offers (06.17)', () => {
+describe('the options a control offers', () => {
   it('are the code sizes for the code variant of the size control', () => {
     expect(controlOptions({ id: 'fontSize', variant: 'code' }).options.map((o) => o.value)).toEqual([11, 13, 16, 20]);
     expect(controlOptions({ id: 'fontSize' }).options.map((o) => o.value)).toEqual([16, 20, 28, 36]);

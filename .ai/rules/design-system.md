@@ -183,39 +183,45 @@ check both before building either by hand.
 
 | Component | Why in-house |
 |---|---|
-| `Pane` ✓ | A titled region of the shell, with the small-caps header. |
+| `Pane` ✓ | A region of the shell: `titled` shows the small-caps header, `bare` (Document, Canvas) keeps only the accessible name. |
 | `ViewSwitcher` ✓ | `Document │ Both │ Canvas`, over `Segments`. |
 | `Segments` ✓ | A few exclusive choices, wrapping Ark's SegmentGroup. Use it rather than buttons with `role="radio"`, which lack arrow-key navigation. |
-| `ShortcutsDialog` ✓ | Shortcut groups, as the caller derives them from the menu spec. |
-| `StatusBar` ✓ | Engine, node count, error count, and an optional message: autosave paused, a command that failed. |
-| `FileTree` ✓ | Workspace listing. Emits a path on activation; opens nothing itself. |
+| `ShortcutsDialog` ✓ | Shortcut groups, as the caller derives them from the menu spec; each key its own keycap (`keycaps.ts`). |
+| `StatusBar` ✓ | The Space and the page's path, then, at the far end, what is being worked on: the canvas's engine and node count, or the document's words and characters (`shell/status-context.ts` picks the side); the error count when there are errors; an optional message: autosave paused, a command that failed. |
+| `SpaceTree` ✓ | The Files tree of a Space, wrapping Ark's TreeView (expand, keys, typeahead, F2 rename), with drag to move and reorder added on top; a new page or folder is named in place. Rules in `files/tree.ts`. Reports actions; opens nothing itself. |
+| `SpaceSwitcher` ✓ | The Space's name atop the side pane, opening recent Spaces and Space actions; wraps Ark's Menu. |
+| `StartScreen` ✓ | Nothing open: the mark, New Space, Open Space, Open file, recent Spaces. |
+| `TrashDialog` ✓ | A Space's Trash: restore, delete, empty, search, total size. Restore and Delete show on the hovered, focused or chosen row, hidden by opacity so Tab still reaches them. |
+| `NewSpaceDialog` ✓ | New Space: the folder's name and where it is made. |
+| `SpaceSettingsDialog` ✓ | Rename the Space, its default page width, show its folder. |
+| `SectionTabs` ✓ | Sections chosen from a list on the left, one shown at a time (Settings), each with an icon, under an optional heading; wraps Ark's Tabs, vertical. |
 | `ConfirmDialog` ✓ | A question with fixed answers. Dismissing it is a cancel, never an accident. |
 | `CanvasControls` ✓ | The zoom readout and its buttons. |
 | `CanvasSection` ✓ | Settings ▸ Canvas: attach arrows to shapes, snap ends to side middles, snap to objects (`settings/`). |
-| `ToolRail` ✓ | The canvas tool rail: grouped icon buttons, a key letter in each corner, a tooltip naming each; the tool lock (`Q`) on top. Layout in `canvas/rail.ts`. |
+| `ToolRail` ✓ | The canvas tool rail: grouped icon buttons, a key letter in each corner, a tooltip naming each; one panel, the tool lock (`Q`) last, behind a hairline. Layout in `canvas/rail.ts`. |
 | `InsertPanel` ✓ | Search, category rows (right chevron clear of the text), a category's tile grid, footer hint. State in `shell/insert.svelte.ts`. |
 | `SelectionToolbar` ✓ | Bottom-centre toolbar for a selection: `StyleBar` pickers, line actions (Edit points, Close or Open line; Done alone while a line is drawn by clicks), align and distribute, More. Model in `canvas/toolbar.ts`. |
 | `ContextMenu` ✓ | A menu opened at a point, wrapping Ark's Menu, with nested submenus. Used for right-click and More. Tree in `canvas/context-menu.ts`. |
 | `Tooltip` ✓ | Names a control (and its key) on hover and keyboard focus, wrapping Ark's Tooltip. It renders the button itself, or wraps a control the caller renders through `trigger`, which avoids a button inside a button. |
 | `ToolIcon` ✓ | Interface icons by id: Lucide (ISC), plus the in-house parallelogram. |
 | `Toolbar` | Contextual: changes with the current selection. |
-| `LayoutEnginePicker` ✓ | TALA, Dagre or ELK over `Segments`, with a direction control, and an optional hint beside it, shown only for Dagre and ELK (TALA ignores direction); the one place that rule lives in the interface. In the Diagram from Code dialog; per `diagram` element when that element exists, never per canvas. |
+| `LayoutEnginePicker` ✓ | TALA, Dagre or ELK over `Segments`, with a direction control, hidden while TALA is chosen (TALA ignores direction), when a line says TALA chooses its own direction; the one place that rule lives in the interface. In the Diagram from Code dialog; per `diagram` element when that element exists, never per canvas. |
 | `ErrorList` | D2 compiler diagnostics, click-to-jump to source line. |
 | `EmptyState` ✓ | Repeated across file tree, canvas, search, and the no-file window. `mark` adds the faded brand mark for "nothing open yet"; `hints` lists keys beside what they do. |
-| `Splash` ✓ | The launch cover: mark, wordmark, indeterminate `Progress`, a status line. The caller decides when startup is over. |
+| `Splash` ✓ | The launch cover: one centred column of mark, wordmark, indeterminate `Progress` and a status line; the footer at the bottom. The caller decides when startup is over. |
 | `Progress` ✓ | Wraps Ark's Progress. `value: null` is indeterminate: use it whenever nothing reports real progress. |
 | `Mark` ✓ | The brand mark, inlined from `src/brand/panda.svg` at one of four `--size-mark-*` sizes. |
-| `ErrorDialog` ✓ | An unexpected failure: one sentence, collapsed details, Copy details, Open logs folder. Never a stack. |
+| `ErrorDialog` ✓ | An unexpected failure: one sentence, the details shown as labels and values (`detail-rows.ts`), Copy details, Open logs folder. Never a stack. |
 | `PanelBoundary` ✓ | `<svelte:boundary>` around each shell region; a crash shows "This panel hit a problem" and Reload panel. |
 | `StyleBar` ✓ | Fill, border and text pickers as swatch chips, named by their tooltip, wrapping Ark's Popover and RadioGroup. Each popover holds the swatches and a `#rrggbb` field for any other colour. A group inside `SelectionToolbar`, which draws the surface. |
 | `OptionPicker` ✓ | One property from a few icon choices (stroke width, line style, edges, text size, alignment, arrow type, arrowheads): a chip opening a popover of radio options; options marked `more` wait behind a More row unless one is current (the crow's-foot heads). Generic over its value; options in `canvas/property-options.ts`. |
 | `OpacityPicker` ✓ | Opacity on a slider in steps of ten, in a popover, wrapping Ark's Slider. |
-| `DiagramDialog` ✓ | Write D2, see it, insert it: a `LayoutEnginePicker` above a `SourcePane` editor beside a live preview, diagnostics beneath, Insert disabled while it does not compile. The editor is created when the portalled host appears, not at mount. Uses the wide `Dialog`. |
-| `Dialog` ✓ | Wraps Ark's Dialog. `size="wide"` gives the content `--size-dialog-wide`; by default it is as wide as what it holds, which suits a question with buttons but shrinks side-by-side panes to nothing. |
+| `DiagramDialog` ✓ | Write D2, see it, insert it: a `SourcePane` editor flush beside a live preview on the dotted canvas ground, diagnostics beneath, the `LayoutEnginePicker` in the footer before Cancel and Insert, Insert disabled while it does not compile. The editor is created when the portalled host appears, not at mount. Uses `Dialog` at `size="diagram"`, `flush`. |
+| `Dialog` ✓ | Wraps Ark's Dialog. A ruled header (15px title, optional `subtitle`, `actions`, `closable` X), a padded body, and an optional ruled `footer` for the buttons. `variant="alert"` keeps a short question in one box (`align="center"` and `leading` for About). Named `size`s (`narrow`, `medium`, `wide`, and one per dialog that keeps its own size); `flush` runs the body to the edges; `headless` hides the header from sight but keeps it naming the dialog. A screen never restyles the frame from outside: add an option here instead. By default it is as wide as what it holds. |
 | `ExportDialog` ✓ | Export settings over a live preview: Only selected, Background, Dark mode, Scale, and the PNG, SVG and Copy buttons. Padding is fixed. State in `canvas/export/exporter.svelte.ts`. |
-| `Toggle` ✓ | An on/off setting, wrapping Ark's Switch. Disabled rather than hidden when it does not apply, so it still explains itself. |
-| `Disclosure` ✓ | A collapsed-by-default section, wrapping Ark's Collapsible. |
-| `AboutDialog` ✓ | Mark, wordmark, tagline, licence. No version until Milestone 16. |
+| `Toggle` ✓ | An on/off setting, wrapping Ark's Switch; `variant="row"` puts the label first and the switch at the row's end. Disabled rather than hidden when it does not apply, so it still explains itself. |
+| `Disclosure` ✓ | A collapsed-by-default section, wrapping Ark's Collapsible. Unused for now; kept for the document's toggle blocks. |
+| `AboutDialog` ✓ | Centred: mark, title, tagline, licence, Close. No version shown yet. |
 | `Icon` ✓ | Single sprite wrapper so icon sizing is tokenised. No set is bundled until Milestone 9. |
 
 ✓ marks what exists. Build the rest as screens need them, not upfront: an
@@ -224,7 +230,8 @@ unused component is an unmaintained one.
 **Wrapped from Ark so far**: `Dialog`, `Splitter`, SegmentGroup inside
 `Segments`, Collapsible inside `Disclosure`, Menu inside `ContextMenu`, and
 Popover with RadioGroup inside `StyleBar` and `OptionPicker`, Slider inside
-`OpacityPicker`, and Switch inside `Toggle`.
+`OpacityPicker`, Switch inside `Toggle`, TreeView inside `SpaceTree`, Menu
+inside `SpaceSwitcher`, and Tabs inside `SectionTabs`.
 
 **Syntax colours** are `--syntax-*` in `tokens/_color.scss`, one per run kind
 in `canvas/code/highlight.ts`, plus `--color-code-surface` for the panel. A

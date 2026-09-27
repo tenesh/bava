@@ -1,5 +1,5 @@
 /**
- * What the selection toolbar offers for a selection (canvas-toolbar.md).
+ * What the selection toolbar offers for a selection.
  *
  * A mixed selection shows every control some selected element takes; the
  * pickers show a mixed value where they differ. Align needs two units,

@@ -94,7 +94,7 @@ func TestPaneTogglesReflectState(t *testing.T) {
 	}
 }
 
-// Milestone 7: Canvas ▸ Snap to Objects is ticked when the setting is on.
+// Canvas ▸ Snap to Objects is ticked when the setting is on.
 func TestSnapToObjectsReflectsState(t *testing.T) {
 	built, _ := build(t, "darwin")
 	built.Apply(menu.State{ObjectSnap: true})
@@ -104,6 +104,24 @@ func TestSnapToObjectsReflectsState(t *testing.T) {
 	built.Apply(menu.State{ObjectSnap: false})
 	if built.Item("canvas.snapToObjects").Checked() {
 		t.Error("Snap to Objects is ticked with the setting off")
+	}
+}
+
+// What needs a Space is enabled only with one open.
+func TestSpaceItemsFollowHasSpace(t *testing.T) {
+	built, _ := build(t, "darwin")
+	ids := []string{"file.newFolder", "space.trash", "file.spaceSettings"}
+	built.Apply(menu.State{})
+	for _, id := range ids {
+		if item := built.Item(id); item == nil || item.Enabled() {
+			t.Errorf("%s is enabled (or missing) with no Space", id)
+		}
+	}
+	built.Apply(menu.State{HasSpace: true})
+	for _, id := range ids {
+		if !built.Item(id).Enabled() {
+			t.Errorf("%s is disabled with a Space open", id)
+		}
 	}
 }
 
@@ -201,7 +219,7 @@ func TestPasteStylesNeedsACopiedStyle(t *testing.T) {
 }
 
 // Export writes what is on the canvas, so it needs a document open; the two
-// selection exports need something selected (canvas-toolbar.md).
+// selection exports need something selected.
 func TestExportEntriesFollowTheState(t *testing.T) {
 	built, _ := build(t, "darwin")
 

@@ -150,8 +150,8 @@ describe('when a step fails', () => {
   });
 });
 
-// 6.6 shipped a button that did nothing because a test injected past the
-// wiring. These go through the exporter, the way the app calls it.
+// A test that injects past the wiring can pass while the button does nothing.
+// These go through the exporter, the way the app calls it.
 describe('exporting a code block', () => {
   const withCode: SceneData = {
     elements: [

@@ -3,7 +3,7 @@
    * The selection toolbar at the bottom of the canvas: the controls the
    * selection takes, grouped, then align and distribute, then More.
    *
-   * One adaptive row (canvas-toolbar.md): what does not fit moves into More
+   * One adaptive row: what does not fit moves into More
    * rather than the row wrapping or scrolling. Presentational: it reports a
    * colour, a property, a command id, or where More sits.
    */
@@ -176,18 +176,19 @@
   .toolbar {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-half);
     padding: var(--space-1);
     background: var(--color-surface-overlay);
     border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-floating);
   }
 
   .divider {
-    align-self: stretch;
+    flex: none;
     width: var(--border-width);
-    margin: var(--space-1) 0;
+    height: var(--size-toolbar-divider);
+    margin: 0 var(--size-toolbar-divider-inset);
     background: var(--color-border-subtle);
   }
 
@@ -195,11 +196,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: var(--size-row);
-    height: var(--size-row);
+    width: var(--size-row-lg);
+    height: var(--size-row-lg);
     padding: 0;
     border: 0;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--color-text-secondary);
   }

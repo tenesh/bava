@@ -64,7 +64,7 @@ describe('currentStyle', () => {
 // each copied key to every selected element that takes it, in one step.
 describe('copying and pasting a style', () => {
   it('copies the keys an element takes, a default as null', () => {
-    // Since 06.16 (X10) the other style keys too, not only colours.
+    // The other style keys too, not only colours.
     const copied = copyStyle({ id: 'r', type: 'rect', x: 0, y: 0, w: 1, h: 1, z: 1, fill: 'blue' } as never);
     expect(copied).toMatchObject({ fill: 'blue', stroke: null, color: null, strokeWidth: null, opacity: null });
     const line = copyStyle({ id: 'l', type: 'line', x: 0, y: 0, w: 1, h: 1, z: 1, points: [], stroke: 'red' } as never);
@@ -89,9 +89,8 @@ describe('copying and pasting a style', () => {
   });
 });
 
-// The style properties of Milestone 6.3, applied like colours: only to the
-// elements that take the key, in one step, with the toolbar showing what the
-// selection has.
+// Style properties, applied like colours: only to the elements that take the
+// key, in one step, with the toolbar showing what the selection has.
 describe('style properties', () => {
   const scene = (): SceneData => ({
     elements: [
@@ -165,7 +164,7 @@ describe('setting a property from a control', () => {
   });
 });
 
-// 06.15 P21: a closed line takes a fill colour; an open one does not.
+// A closed line takes a fill colour; an open one does not.
 describe('the fill of a closed line', () => {
   it('is set on a closed line and refused by an open one', () => {
     const history = createHistory({
@@ -182,12 +181,12 @@ describe('the fill of a closed line', () => {
 });
 
 describe('the properties an arrow takes', () => {
-  it('include a font size, for its label (06.16, L8)', () => {
+  it('include a font size, for its label', () => {
     expect(propertyKeysFor('arrow')).toContain('fontSize');
   });
 });
 
-// 06.16 X10: Copy and Paste Styles carry what Excalidraw's do
+// Copy and Paste Styles carry what Excalidraw's do
 // (`actions/actionStyles.ts:118-186`): colours, width, line style, opacity,
 // edges, text size and, arrow to arrow, both heads.
 describe('copying and pasting a style, as Excalidraw', () => {
@@ -209,7 +208,7 @@ describe('copying and pasting a style, as Excalidraw', () => {
   });
 });
 
-// 06.16 X11: the kind picker turns a line into an arrow and back, keeping
+// The kind picker turns a line into an arrow and back, keeping
 // its points (Excalidraw's `ConvertElementTypePopup.tsx:529-601`).
 describe('turning a line into an arrow and back', () => {
   it('makes a line an arrow of the chosen kind, its points kept', () => {
@@ -234,7 +233,7 @@ describe('turning a line into an arrow and back', () => {
     setProperty(history, ['r'], 'arrowType', 'line');
     const line = history.current.elements[1] as unknown as Record<string, unknown>;
     expect(line).toMatchObject({ type: 'line', points: [0, 0, 100, 0], edges: 'round' });
-    // A line has no label: nothing of one is left hidden in the file (review).
+    // A line has no label: nothing of one is left hidden in the file.
     for (const key of ['arrowType', 'startBinding', 'startAnchor', 'endArrowhead', 'label', 'labelPosition', 'fontSize']) expect(line).not.toHaveProperty(key);
   });
 
@@ -244,7 +243,7 @@ describe('turning a line into an arrow and back', () => {
   });
 });
 
-// 06.17: a code block's size, whose default is 13, not text's 20.
+// A code block's size, whose default is 13, not text's 20.
 describe("a code block's font size", () => {
   const block = () => createHistory({ elements: [{ id: 'c', type: 'code', x: 0, y: 0, w: 100, h: 40, z: 1, code: 'x' }] as never });
   it('is a property code takes', () => {
@@ -268,7 +267,7 @@ describe("a code block's font size", () => {
   });
 });
 
-describe("an arrow label's direction (06.17)", () => {
+describe("an arrow label's direction", () => {
   it('is a property arrows take, upright by default', () => {
     expect(propertyKeysFor('arrow')).toContain('labelDirection');
     const history = createHistory({ elements: [{ id: 'a', type: 'arrow', x: 0, y: 0, w: 10, h: 0, z: 1, points: [0, 0, 10, 0], label: 'x' }] as never });
@@ -279,7 +278,7 @@ describe("an arrow label's direction (06.17)", () => {
   });
 });
 
-// Review of 06.17: a size crosses between text and code by its step
+// A size crosses between text and code by its step
 // (small, medium, large, extra large), never as an out-of-range number.
 describe('a font size across text and code', () => {
   it('maps a text size onto a code block in a mixed selection', () => {
@@ -308,7 +307,7 @@ describe('a font size across text and code', () => {
   });
 });
 
-describe('a size that is valid in both scales (review of 06.17)', () => {
+describe('a size that is valid in both scales', () => {
   it('is read in the scale it was chosen in', () => {
     const history = createHistory({
       elements: [

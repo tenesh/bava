@@ -54,7 +54,7 @@ describe('squareBox in the mixed quadrants', () => {
   });
 });
 
-// 06.15 C12: Shift on a dragged point also snaps to the angle its segment
+// Shift on a dragged point also snaps to the angle its segment
 // started at, within 2.5°, splitting its 15° step there
 // (Excalidraw's `getLockedLinearCursorAlignSize`).
 describe('snapping to the angle a segment started at', () => {

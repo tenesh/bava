@@ -45,12 +45,12 @@ function withFreshIds(elements: SceneElement[], taken: Set<ElementId>): SceneEle
 export function createCanvasCommands(options: {
   history: History;
   selection: Selection;
-  /** Called on each element a style is pasted onto, in the same step: a code block refitted (06.17). */
+  /** Called on each element a style is pasted onto, in the same step: a code block refitted. */
   afterPasteStyle?: (element: SceneElement) => void;
 }) {
   const { history, selection } = options;
   // In-app only for now. The system clipboard carries text; a scene fragment
-  // there is Milestone 15's export format, not an ad hoc JSON blob.
+  // there would be the export format, not an ad hoc JSON blob.
   let clipboard: SceneElement[] = [];
   /** The ids that were selected when copying: their copies are selected on paste. */
   let clipboardRoots = new Set<ElementId>();

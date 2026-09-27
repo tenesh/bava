@@ -141,12 +141,12 @@ export function paintFor(element: SceneElement, read: ReadVariable): Paint {
       paint.fill = '';
       break;
     case 'line':
-      // Filled only while closed, and only with a fill of its own (06.15).
+      // Filled only while closed, and only with a fill of its own.
       paint.fill = (element as { closed?: boolean }).closed === true && (element as { fill?: string }).fill !== undefined ? style.fill : '';
       break;
     case 'arrow':
       // The heads are filled in the line's colour, and the label is written
-      // in it, as Excalidraw's (06.16, L9).
+      // in it, as Excalidraw's.
       paint.fill = style.stroke;
       paint.font.colour = style.stroke;
       break;

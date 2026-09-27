@@ -4,9 +4,9 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const MARK = resolve(__dirname, 'panda.svg');
-// SHA-256 of the delivered drawing's path data, taken when it was vendored on
-// 2026-09-17. The repo is the only copy of the art: nothing here may depend on
-// a design folder outside it.
+// SHA-256 of the delivered drawing's path data, taken when it was vendored.
+// The repo is the only copy of the art: nothing here may depend on a design
+// folder outside it.
 const DELIVERED_PATH_SHA256 = 'd0ffe06e35e82021c1229dc4ed5cd594d0587c1dd17611e0a83e2d7fb3f5387c';
 
 const read = (path: string) => readFileSync(path, 'utf8');

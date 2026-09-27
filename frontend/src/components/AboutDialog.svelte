@@ -1,9 +1,9 @@
 <script lang="ts">
   /**
-   * About Bava: the mark, the wordmark, what it is and its licence.
+   * About Bava: the mark, what it is and its licence.
    *
-   * No version, commit or licences view yet. There is no version stamping
-   * until Milestone 16, and showing a made-up number is worse than none.
+   * No version, commit or licences view yet. Nothing stamps a version yet,
+   * and showing a made-up number is worse than none.
    */
   import Dialog from './Dialog.svelte';
   import Mark from './Mark.svelte';
@@ -17,61 +17,45 @@
   let { open = $bindable(), onOpenChange }: Props = $props();
 </script>
 
-<Dialog bind:open title={t('about.title')} {onOpenChange}>
-  <div class="about">
+<Dialog bind:open title={t('about.title')} variant="alert" align="center" size="about" {onOpenChange}>
+  {#snippet leading()}
     <Mark size="about" />
-    <p class="wordmark">{t('brand.wordmark')}</p>
+  {/snippet}
+  <div class="about">
     <p class="tagline">{t('about.tagline')}</p>
     <p class="licence">{t('about.licence')}</p>
-    <div class="actions">
-      <button type="button" class="close" onclick={() => onOpenChange(false)}>{t('about.close')}</button>
-    </div>
+    <button type="button" class="close" onclick={() => onOpenChange(false)}>{t('about.close')}</button>
   </div>
 </Dialog>
 
 <style>
   .about {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-2);
+    display: contents;
+  }
+
+  .tagline,
+  .licence {
+    margin: 0;
     text-align: center;
   }
 
-  .wordmark {
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-wordmark);
-    font-weight: var(--weight-medium);
-    letter-spacing: var(--tracking-wordmark);
-    line-height: var(--leading-tight);
-    color: var(--color-text-primary);
-  }
-
   .tagline {
-    margin: 0;
-    font-size: var(--text-control);
+    font-size: var(--text-body);
     color: var(--color-text-secondary);
   }
 
   .licence {
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-status);
+    font-size: var(--text-note);
     color: var(--color-text-muted);
   }
 
-  .actions {
-    align-self: stretch;
-    display: flex;
-    justify-content: flex-end;
-    margin-top: var(--space-4);
-  }
-
   .close {
+    align-self: center;
+    margin-top: var(--space-2);
     height: var(--size-row-lg);
     padding: 0 var(--space-3);
     border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background: var(--color-surface-raised);
     font: inherit;
     font-size: var(--text-control);

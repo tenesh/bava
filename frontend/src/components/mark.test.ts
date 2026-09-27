@@ -5,7 +5,7 @@ import Mark from './Mark.svelte';
 
 let mounted: ReturnType<typeof mount> | undefined;
 
-function render(props: { size: 'chrome' | 'brand' | 'hero' | 'about'; label?: string }) {
+function render(props: { size: 'chrome' | 'brand' | 'hero' | 'start' | 'about'; label?: string }) {
   const target = document.createElement('div');
   document.body.append(target);
   mounted = flushSync(() => mount(Mark, { target, props }));
@@ -54,5 +54,10 @@ describe('Mark', () => {
     // Width follows from the drawing's own ratio. Without it a flex item's
     // SVG can take the 300px default width and the tile becomes a bar.
     expect(svg.style.aspectRatio.replace(/\s/g, '')).toBe('992.6/1009');
+  });
+
+  it('has a start-screen size', () => {
+    const target = render({ size: 'start' });
+    expect(target.querySelector('.mark')?.getAttribute('data-size')).toBe('start');
   });
 });

@@ -147,6 +147,27 @@ export function createDocument(io: DocumentIO = overIPC) {
       return { conflict: false, saved: true };
     },
 
+    /**
+     * The file was renamed or moved (the Files tree): follow it. The
+     * contents, unsaved changes and stamp stay; a rename keeps a file's
+     * modification time, so the next save's conflict check still holds.
+     */
+    moved(next: string) {
+      path = next;
+    },
+
+    /** No page open: a Space shows its tree and nothing else. The caller settles unsaved work first. */
+    close() {
+      isOpen = false;
+      path = null;
+      source = '';
+      diagrams = {};
+      sceneExtra = {};
+      stamp = null;
+      dirty = false;
+      error = null;
+    },
+
     /** Become a new, clean, untitled document. The caller settles unsaved work first. */
     reset() {
       isOpen = true;

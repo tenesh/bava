@@ -42,15 +42,24 @@ Three parts, in this order:
 
 ### Why one file rather than a sidecar
 
-The alternative (`notes.md` plus `notes.canvas`, or a `.bava/` directory)
-keeps the Markdown pristine, and loses the user's work silently. Rename the
-file in Finder, copy one file to a USB stick, `git add notes.md`: the canvas is
-gone and nothing says so. For an app whose premise is that these are the user's
-files, to be used with any tool, that is not an edge case.
+The alternative (`notes.md` plus `notes.canvas`, or the canvas kept in a
+hidden folder beside it) keeps the Markdown pristine, and loses the user's
+work silently. Rename the file in Finder, copy one file to a USB stick,
+`git add notes.md`: the canvas is gone and nothing says so. For an app whose
+premise is that these are the user's files, to be used with any tool, that is
+not an edge case.
 
 A trailing fenced block cannot be separated from its document by any of those
 actions, and every Markdown tool preserves a fenced block whose language it
 does not recognise.
+
+This holds with Spaces (below). A Space's `.bava/` folder keeps what belongs
+to the Space as a whole (page order, the Trash, and from Milestone 8.4
+attachments), never a page's text or canvas. The one thing that can be
+separated from a page copied on its own is its attachments: a trade-off
+accepted knowingly (`.claude/work/specs/08-documents.md`, decision 10),
+never silent (a missing attachment says so), and covered by exporting the
+page with its files.
 
 The cost is accepted knowingly: a JSON block at the end of a human document.
 
@@ -316,10 +325,81 @@ that was removed.
 - `frame` may carry a `label`, and takes `stroke` and `color`.
 - `group` carries `children`, a list of element ids.
 
+## Spaces
+
+**Status:** specified 2026-09-27 for Milestone 8.1, ahead of the code.
+
+A **Space** is a folder the user opens as the home of their pages. It holds
+folders and pages (`.md` files) and one hidden folder, `.bava/`, which Bava
+creates the first time the folder is opened as a Space. Pages are ordinary
+Bava files: nothing in a page changes when it is in a Space.
+
+```
+My Space/
+  Marketing/
+    Launch plan.md
+  Roadmap.md
+  .bava/
+    space.json
+    trash/
+```
+
+### `.bava/space.json`
+
+What is part of the work and belongs to the Space as a whole. It travels with
+the folder, so a teammate who opens the same folder sees the same order.
+
+```json
+{
+  "version": 1,
+  "order": {
+    "": ["Marketing", "Roadmap.md"],
+    "Marketing": ["Launch plan.md"]
+  },
+  "pageWidth": "wide"
+}
+```
+
+- `version`: 1. A newer number is read as far as it is understood.
+- `order`: for each folder, keyed by its path relative to the Space (`""` is
+  the top, `/` separates folders), the names of its pages and folders in the
+  order the user arranged them. A name not listed is shown after the listed
+  ones, by name; a listed name that no longer exists is left out, and dropped
+  from the file on the next write. Absent means every folder is by name.
+- `pageWidth`: `narrow`, `wide` or `full`, the Space's default for its pages.
+  Absent means the user's own app setting.
+- **Unknown keys are kept** through every write, as elsewhere.
+- Written whole and atomically, like a page.
+
+Per-viewer conveniences (which folders are open, the last page opened) are
+not in it: they live in `localStorage`, as below.
+
+### `.bava/trash/`
+
+A page or folder moved to the Trash goes, whole and unchanged, into
+`.bava/trash/<id>/`, beside an `item.json`:
+
+```json
+{ "path": "Marketing/Launch plan.md", "kind": "page", "deletedAt": "2026-09-27T10:12:00Z" }
+```
+
+- `path`: where it came from, relative to the Space; `kind`: `page` or
+  `folder`; `deletedAt`: RFC 3339.
+- `<id>` is opaque and unique within the Trash.
+- The order kept for a trashed folder's contents is not kept with it: a
+  restored folder comes back at the end of its parent, its contents by name.
+- Items stay until the user deletes them from the Trash or empties it;
+  nothing is removed by age. Restoring moves the item back to `path`,
+  recreating missing folders; if the name is taken it comes back numbered
+  (`Launch plan 2.md`).
+- A folder holding a `.bava/` of its own is not a Space inside a Space: Bava
+  treats only the folder opened as the Space.
+
 ## What is not in a file
 
 - No cursor position, zoom level, pane widths, or view mode. Those are
-  per-viewer conveniences and live in `localStorage`.
+  per-viewer conveniences and live in `localStorage`, as do recent Spaces and
+  files, a Space's open folders and its last page.
 - No chat transcripts. Those are Bava's own state, in the platform data
   directory as append-only JSONL; see `.ai/rules/ai.md`.
 - No credentials, ever. Those are in the OS secret store.

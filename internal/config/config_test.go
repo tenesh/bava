@@ -179,7 +179,7 @@ func TestVerboseLoggingDefaultsToOff(t *testing.T) {
 	}
 }
 
-// 06.16 B8, B12: attaching arrows and the side-middle snap are on unless the
+// Attaching arrows and the side-middle snap are on unless the
 // user turns them off, including for a settings file written before they
 // existed.
 func TestArrowSettingsDefaultOn(t *testing.T) {
@@ -209,7 +209,7 @@ func TestArrowSettingsDefaultOn(t *testing.T) {
 	}
 }
 
-// Milestone 7: snapping to objects is off unless the user turns it on
+// Snapping to objects is off unless the user turns it on
 // (Excalidraw's default), including for a settings file written before it
 // existed, and it survives a save.
 func TestObjectSnapDefaultOff(t *testing.T) {

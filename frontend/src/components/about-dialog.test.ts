@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 describe('AboutDialog', () => {
-  it('about shows the mark, wordmark and licence, and closes on Close', async () => {
+  it('about shows the mark, title, tagline and licence, and closes on Close', async () => {
     const target = document.createElement('div');
     document.body.append(target);
     const onOpenChange = vi.fn();
@@ -18,8 +18,10 @@ describe('AboutDialog', () => {
     await vi.waitFor(() => expect(document.querySelector('.about')).not.toBeNull());
     const about = document.querySelector('.about')!;
 
-    expect(about.querySelector('.mark')?.getAttribute('data-size')).toBe('about');
-    expect(about.querySelector('.wordmark')?.textContent).toBe('bava');
+    expect(document.querySelector('.bava-dialog-content .mark')?.getAttribute('data-size')).toBe('about');
+    // The title names the app; no wordmark repeats it.
+    expect(document.querySelector('.bava-dialog-title')?.textContent).toBe('About Bava');
+    expect(about.querySelector('.wordmark')).toBeNull();
     expect(about.textContent).toContain('Diagrams and documents, on your own disk.');
     expect(about.textContent).toContain('Apache-2.0');
     // Nothing is claimed that does not exist yet.

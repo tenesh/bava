@@ -435,7 +435,7 @@ describe('deleting a frame', () => {
   });
 });
 
-// Milestone 7's exit criterion: deleting a shape never deletes the arrows
+// Deleting a shape never deletes the arrows
 // attached to it. They freeze where they were and say they are detached, and
 // one undo brings the shape back with the arrows attached to it again.
 describe('deleting an attached shape', () => {
@@ -552,8 +552,7 @@ describe('inserting a diagram', () => {
   });
 });
 // A frame owns what records it, so whatever a command does to a frame it does
-// to its contents; and a group is its children. The bug table in
-// .claude/work/specs/excalidraw-comparison.md lists each of these.
+// to its contents; and a group is its children.
 describe('frames and groups in commands', () => {
   function framed() {
     const initial: SceneData = {

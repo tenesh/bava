@@ -41,7 +41,7 @@ describe('exporting to SVG', () => {
 
   it('writes a dashed line as a dash array', () => {
     const svg = svgOf([{ id: 'l', type: 'line', x: 0, y: 0, w: 50, h: 0, z: 1, points: [0, 0, 50, 0], strokeStyle: 'dashed' }]);
-    // Excalidraw's [8, 8 + width] since 06.16 (T2), and half a unit thicker.
+    // Excalidraw's [8, 8 + width], and half a unit thicker.
     expect(svg).toContain('stroke-width="2.5" stroke-dasharray="8 10"');
   });
 
@@ -69,7 +69,7 @@ describe('exporting to SVG', () => {
       { id: 'a', type: 'arrow', x: 0, y: 0, w: 40, h: 40, z: 1, points: [0, 0, 40, 40], arrowType: 'elbow' },
     ]);
     // An elbow is orthogonal, stepping out, across and in, with its corners
-    // rounded as the stage draws them (06.14 E4).
+    // rounded as the stage draws them.
     const path = pathOf([0, 0, 40, 40], 'elbow');
     const pairs = Array.from({ length: path.length / 2 }, (_, i) => `${Math.round(path[i * 2] * 1000) / 1000} ${Math.round(path[i * 2 + 1] * 1000) / 1000}`);
     expect(svg).toContain(`points="${pairs.join(' ')}"`);
@@ -77,7 +77,7 @@ describe('exporting to SVG', () => {
     expect(svg).toContain('data-head="end"');
   });
 
-  // Since 06.16 (H2, H3) a head is sized by its kind, capped by the last
+  // A head is sized by its kind, capped by the last
   // segment: the stage's own geometry, in the export.
   it("draws the head at its kind's size, capped by the arrow's length", () => {
     const svg = svgOf([{ id: 'a', type: 'arrow', x: 0, y: 0, w: 40, h: 0, z: 1, points: [0, 0, 40, 0] }]);
@@ -86,7 +86,7 @@ describe('exporting to SVG', () => {
     expect(svg).toContain(sink.d());
   });
 
-  // 06.16 H5: an outline head is filled with the canvas, hiding the line.
+  // An outline head is filled with the canvas, hiding the line.
   it('fills an outline head with the canvas colour', () => {
     const svg = svgOf([{ id: 'a', type: 'arrow', x: 0, y: 0, w: 100, h: 0, z: 1, points: [0, 0, 100, 0], endArrowhead: 'triangle-outline' }]);
     expect(svg).toMatch(/data-head="end"[^>]*><path[^>]*fill="white"/);
@@ -160,8 +160,8 @@ describe('exporting an arrow label', () => {
     expect(svg).toMatch(/<text[^>]*x="50"/);
   });
 
-  // Since 06.16 (decision 16) a label sits on the middle point; slid, it
-  // sits along the path as drawn, corners rounded (the 06.14 review).
+  // A label sits on the middle point; slid, it sits along the path as drawn,
+  // corners rounded.
   it("writes an elbow's label at its middle point, or slid along the drawn path", () => {
     const at = (over: Record<string, unknown>) =>
       svgOf([{ id: 'a', type: 'arrow', arrowType: 'elbow', x: 0, y: 0, w: 100, h: 100, z: 1, points: [0, 0, 100, 0, 100, 100], label: 'x', ...over }]);
@@ -269,7 +269,7 @@ describe('the heads of a dashed arrow', () => {
   });
 });
 
-// 06.15 P21: a closed line's fill travels into the export.
+// A closed line's fill travels into the export.
 describe('exporting a closed line', () => {
   it('fills it', () => {
     const svg = svgOf([{ id: 'l', type: 'line', x: 0, y: 0, w: 10, h: 10, z: 1, points: [0, 0, 10, 0, 10, 10, 0, 0], closed: true, fill: 'blue' }]);
@@ -286,7 +286,7 @@ describe("the line under an exported arrow's label", () => {
   });
 });
 
-// Review of 06.16: a head is capped by the arrow's own last segment, not by
+// A head is capped by the arrow's own last segment, not by
 // a drawn curve's samples or an elbow's rounded corner, in both renderers.
 describe('the size of a head on a bent arrow', () => {
   const headOf = (svg: string) => svg.match(/data-head="end"[^>]*><path d="([^"]*)"/)![1];
@@ -316,7 +316,7 @@ describe("an exported code block's language", () => {
   });
 });
 
-describe('an exported code block at another size (06.17)', () => {
+describe('an exported code block at another size', () => {
   it('draws its code at its own size and advance', () => {
     const svg = toSvg(exportArea({ elements: [{ id: 'c', type: 'code', x: 0, y: 0, w: 400, h: 80, z: 1, code: 'ab', fontSize: 26, measuredWidth: 400, measuredHeight: 80 }] as never[] }, []), {
       read: (name: string) => (({ '--text-code': '13px', '--font-mono': 'Geist Mono', '--leading-code': '1.5', '--size-code-padding': '8px' }) as Record<string, string>)[name] ?? '',
@@ -329,7 +329,7 @@ describe('an exported code block at another size (06.17)', () => {
   });
 });
 
-describe('an exported label along its arrow (06.17)', () => {
+describe('an exported label along its arrow', () => {
   it('is turned about its centre', () => {
     const svg = svgOf([{ id: 'a', type: 'arrow', x: 0, y: 0, w: 0, h: 100, z: 1, points: [0, 0, 0, 100], label: 'down', labelDirection: 'along' }]);
     expect(svg).toContain('<g transform="rotate(90 0 50)">');

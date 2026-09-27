@@ -40,7 +40,7 @@ describe('token emission', () => {
     expect(light.length).toBeGreaterThan(50);
   });
 
-  // The most likely mistake in this milestone: adding a light value and
+  // The most likely mistake here: adding a light value and
   // forgetting the dark one. Every colour token must exist in both themes.
   it('defines every colour token in both themes', () => {
     const lightColours = light.filter((p) => p.startsWith('--color-'));
@@ -162,8 +162,8 @@ describe('token emission', () => {
     }
   });
 
-  // Ark ships no z-index of its own; portalled content painted below ordinary
-  // chrome in the spike. This is the token that fixes it, so the ordering is
+  // Ark ships no z-index of its own; portalled content paints below ordinary
+  // chrome without one. This is the token that fixes it, so the ordering is
   // asserted rather than left to a reader's care.
   it('stacks portals above chrome', () => {
     const z = (name: string) => Number(block(':root').match(new RegExp(`--z-${name}: (\\d+)`))![1]);
@@ -219,10 +219,10 @@ describe('syntax colours', () => {
   });
 });
 
-// The app divides these by the zoom and hands them to the pointer (06.12); a
+// The app divides these by the zoom and hands them to the pointer; a
 // token missing from the stylesheet reads as 0, and 0 turns each feature off
 // without a word.
-describe('the canvas distances added in 06.12', () => {
+describe('the canvas distances the pointer uses', () => {
   const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
   it.each(['--size-point-handle', '--size-point-hit', '--size-bend-insert', '--size-min-linear', '--size-bend-min-segment', '--size-elbow-margin', '--size-line-confirm', '--size-point-handle-editing', '--size-snap-dot', '--size-bent-box-padding', '--size-point-hover', '--size-focus-point', '--size-point-overlap', '--size-label-drag', '--size-code-language-inset', '--size-code-language-clearance'])(
     '%s has a non-zero length',
@@ -234,7 +234,7 @@ describe('the canvas distances added in 06.12', () => {
   );
 });
 
-// 06.14 S12: a line is hit within Excalidraw's 0.85 × 8 = 6.8 screen px
+// A line is hit within Excalidraw's 0.85 × 8 = 6.8 screen px
 // (`App.tsx:6808-6816`), rounded to a whole pixel.
 describe('how near a line counts as on it', () => {
   it("is Excalidraw's 6.8 screen px, rounded to 7", () => {
@@ -243,7 +243,7 @@ describe('how near a line counts as on it', () => {
   });
 });
 
-// 06.16 B13: the attach highlight's colour in both themes, and its pulse,
+// The attach highlight's colour in both themes, and its pulse,
 // stilled under reduced motion.
 describe('the attach highlight tokens', () => {
   const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
@@ -256,7 +256,7 @@ describe('the attach highlight tokens', () => {
   });
 });
 
-// Milestone 7: snapping to objects, Excalidraw's values.
+// Snapping to objects, Excalidraw's values.
 describe('the snapping tokens', () => {
   const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
   it.each([
@@ -270,5 +270,123 @@ describe('the snapping tokens', () => {
   });
   it('has a guide colour in each theme', () => {
     expect((css.match(/--color-snap-guide:/g) ?? []).length).toBe(2);
+  });
+});
+
+// The Files tree.
+describe('the Files tree tokens', () => {
+  const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+  it.each([
+    ['--size-tree-indent', 14],
+    ['--size-tree-drop-line', 2],
+    ['--size-settings-nav', 200],
+    ['--size-start-width', 560],
+    ['--size-menu-gutter', 4],
+  ])('%s is %ipx', (name, px) => {
+    expect(css).toMatch(new RegExp(`${name}:\\s*${px}px`));
+  });
+
+  it('caps a dialog\'s list at half the window', () => {
+    expect(css).toMatch(/--size-dialog-list-max:\s*50vh/);
+  });
+});
+
+// The mockups' shared values: dialog chrome, fields, the side pane, the dot grid.
+describe('the mockup tokens', () => {
+  const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+  it.each([
+    ['--text-title', 15],
+    ['--radius-xl', 8],
+    ['--size-field', 30],
+    ['--size-field-gap', 6],
+    ['--size-field-padding', 10],
+    ['--size-button-gap', 6],
+    ['--size-keycap', 20],
+    ['--size-keycap-padding', 5],
+    ['--size-keycap-gap', 3],
+    ['--size-keycap-edge', 2],
+    ['--size-dialog-about', 380],
+    ['--text-note', 12],
+    ['--text-title-about', 17],
+    ['--text-keycap', 11],
+    ['--size-side-pane', 264],
+    ['--size-row-gap', 6],
+    ['--size-unsaved-dot', 6],
+    ['--size-space-tile', 20],
+    ['--size-space-menu', 280],
+    ['--size-space-menu-row', 30],
+    ['--radius-mark-tile-hero', 10],
+    ['--text-tile', 14],
+    ['--text-tile-sm', 11],
+    ['--size-canvas-grid', 20],
+    ['--size-canvas-dot', 1],
+    ['--space-half', 2],
+    ['--size-dialog-trash-height', 600],
+    ['--size-trash-row', 44],
+    ['--size-trash-col-icon', 24],
+    ['--size-trash-col-from', 200],
+    ['--size-trash-col-deleted', 110],
+    ['--size-trash-col-actions', 190],
+    ['--size-trash-search', 260],
+    ['--size-canvas-grid-min', 12],
+    ['--size-handle-border', 1.5],
+    ['--radius-handle', 2],
+    ['--size-toolbar-divider', 18],
+    ['--size-toolbar-divider-inset', 3],
+    ['--size-chip-ring', 3],
+    ['--size-picker-padding', 10],
+    ['--size-swatch-gap', 6],
+    ['--text-menu-keys', 10.5],
+  ])('%s is %ipx', (name, px) => {
+    expect(css).toMatch(new RegExp(`${name}:\\s*${px}px`));
+  });
+
+  it.each([
+    ['--size-row-xl', 30],
+    ['--size-toggle-track', 28],
+    ['--size-toggle-thumb', 16],
+    ['--size-toggle-dot', 12],
+    ['--size-export-preview', 260],
+    ['--size-export-settings', 240],
+    ['--size-export-checker', 16],
+  ])('%s is %ipx', (name, px) => {
+    expect(css).toMatch(new RegExp(`${name}:\\s*${px}px`));
+  });
+
+  it('sizes Settings, Export and Diagram from code within the window', () => {
+    expect(css).toMatch(/--size-settings-width:\s*min\(780px, 90vw\)/);
+    expect(css).toMatch(/--size-settings-height:\s*min\(560px, 90vh\)/);
+    expect(css).toMatch(/--size-dialog-export:\s*min\(720px, 90vw\)/);
+    expect(css).toMatch(/--size-diagram-dialog-width:\s*min\(1160px, 90vw\)/);
+    expect(css).toMatch(/--size-diagram-dialog-height:\s*min\(700px, 90vh\)/);
+  });
+
+  it('caps the shortcuts list at the window', () => {
+    expect(css).toMatch(/--size-dialog-shortcuts-width:\s*min\(960px, 90vw\)/);
+    expect(css).toMatch(/--size-dialog-shortcuts-height:\s*min\(640px, 90vh\)/);
+  });
+
+  it('has a narrow dialog width', () => {
+    expect(css).toMatch(/--size-dialog-narrow:\s*min\(520px, 90vw\)/);
+  });
+
+  it('gives floating and overlay surfaces a contact shadow in each theme', () => {
+    expect((css.match(/--shadow-floating:[^;]*,[^;]*;/g) ?? []).length).toBe(2);
+    expect((css.match(/--shadow-overlay:[^;]*,[^;]*;/g) ?? []).length).toBe(2);
+    expect((css.match(/--shadow-raised:/g) ?? []).length).toBe(2);
+  });
+});
+
+// The launch splash, as the mockup draws it.
+describe('the splash tokens', () => {
+  const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+  it.each([
+    ['--size-progress-splash', 220],
+    ['--size-progress-splash-thickness', 4],
+    ['--radius-mark-tile-splash', 20],
+    ['--size-mark-tile-splash-padding', 14],
+    ['--size-error-detail-label', 110],
+  ])('%s is %ipx', (name, px) => {
+    expect(css).toMatch(new RegExp(`${name}:\\s*${px}px`));
   });
 });

@@ -32,25 +32,16 @@ const button = (label: string) =>
   [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === label);
 
 describe('ErrorDialog', () => {
-  it('hides details until expanded, and copies them', async () => {
+  // As the mockup shows them: open, one label and value per line.
+  it('shows the details as labels and values, and copies them', async () => {
     const onCopyDetails = vi.fn();
-    const app = render({ onCopyDetails });
+    const app = render({ onCopyDetails, details: 'Error id: a1b2c3d4\nError kind: TypeError' });
     await vi.waitFor(() => expect(content()).not.toBeNull());
-
-    const details = () => document.querySelector('.bava-disclosure-content') as HTMLElement | null;
-    const shown = () => {
-      const el = details();
-      const trigger = document.querySelector('.bava-disclosure-trigger');
-      return Boolean(el && !el.hidden && trigger?.getAttribute('aria-expanded') === 'true');
-    };
-    expect(shown()).toBe(false);
-
-    flushSync(() => button('Details')!.click());
-    await vi.waitFor(() => expect(shown()).toBe(true));
-    expect(details()!.textContent).toContain('a1b2c3d4');
-
+    expect(document.querySelector('.bava-disclosure-trigger')).toBeNull();
+    const cells = [...document.querySelectorAll('.details dt, .details dd')].map((el) => el.textContent);
+    expect(cells).toEqual(['Error id', 'a1b2c3d4', 'Error kind', 'TypeError']);
     flushSync(() => button('Copy details')!.click());
-    expect(onCopyDetails).toHaveBeenCalledWith('Error id: a1b2c3d4');
+    expect(onCopyDetails).toHaveBeenCalledWith('Error id: a1b2c3d4\nError kind: TypeError');
     unmount(app);
   });
 
@@ -67,7 +58,7 @@ describe('ErrorDialog', () => {
     unmount(app);
   });
 
-  // Report Issue is hidden until the public tracker exists (Milestone 16).
+  // Report Issue is hidden until the public tracker exists.
   it('offers no Report Issue action yet', async () => {
     const app = render({});
     await vi.waitFor(() => expect(content()).not.toBeNull());

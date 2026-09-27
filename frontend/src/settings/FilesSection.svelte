@@ -28,9 +28,9 @@
 </script>
 
 <section class="section">
-  <h3 class="heading">{t('settings.files')}</h3>
+  <h3 class="heading">{t('settings.autosave')}</h3>
   <div class="row">
-    <span class="label">{t('settings.autosave')}</span>
+    <span class="label">{t('settings.autosave.when')}</span>
     <Segments value={mode} options={modes} label={t('settings.autosave')} onValueChange={onModeChange} />
   </div>
   {#if mode === 'afterDelay'}
@@ -57,7 +57,6 @@
 <style>
   .section {
     min-width: 0;
-    margin-top: var(--space-6);
   }
 
   .heading {

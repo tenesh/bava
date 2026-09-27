@@ -20,7 +20,7 @@ export type ToolId =
   | 'eraser'
   | ShapeToolId;
 
-/** The shapes added in Milestone 6, chosen from the rail's shape menu. */
+/** The further shapes, chosen from the rail's shape menu. */
 export type ShapeToolId = 'diamond' | 'cylinder' | 'hexagon' | 'parallelogram' | 'document' | 'person' | 'cloud';
 
 export type Tool = {

@@ -1,4 +1,4 @@
-// The point of the milestone, pinned: once a diagram lands it is not special.
+// Once a diagram lands it is not special.
 // Everything the canvas does to hand-drawn elements works on it, and if one of
 // these fails the conversion produced something the rest of the canvas does
 // not understand.

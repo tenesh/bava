@@ -27,8 +27,8 @@ describe('routePoints', () => {
     expect(routePoints([0, 0, 20, 100], 'elbow')).toEqual([0, 0, 0, 50, 20, 50, 20, 100]);
   });
 
-  // 06.15 V2, replacing "bows an arc to one side": a curve through two points
-  // is straight, as Excalidraw's (`element/src/shape.ts:934-935`).
+  // A curve through two points is straight, as Excalidraw's
+  // (`element/src/shape.ts:934-935`).
   it('draws a two-point arc straight', () => {
     expect(routePoints(from, 'arc')).toEqual(from);
   });
@@ -42,7 +42,7 @@ describe('routePoints', () => {
   });
 });
 
-// 06.16 H1 to H5: heads as Excalidraw draws them (`element/src/bounds.ts:710-845`,
+// Heads as Excalidraw draws them (`element/src/bounds.ts:710-845`,
 // `element/src/shape.ts:290-575`), tip at the origin, pointing along +x.
 describe('arrowhead shapes', () => {
   const sink = () => {
@@ -176,14 +176,14 @@ describe('routing through bends', () => {
     expect(path.slice(-2)).toEqual([100, 0]);
   });
 
-  // An elbow's points are its stored route (06.12, `elbow.ts`): drawn as they are.
+  // An elbow's points are its stored route (`elbow.ts`): drawn as they are.
   it('draws an elbow\'s stored route as it is', () => {
     const route = [0, 0, 50, 0, 50, 100, 100, 100];
     expect(routePoints(route, 'elbow')).toEqual(route);
   });
 });
 
-// Decision 6: a label sits at a share of the drawn path's length, and a point
+// A label sits at a share of the drawn path's length, and a point
 // dragged near the path gives the share it is at.
 describe('a label placed along the path', () => {
   const bent = [0, 0, 100, 0, 100, 100];
@@ -203,7 +203,7 @@ describe('a label placed along the path', () => {
   });
 });
 
-// 06.16 H6: strokes-only heads dot with a dotted line; filled ones stay solid.
+// Strokes-only heads dot with a dotted line; filled ones stay solid.
 describe('a head on a dotted line', () => {
   it('is dotted a little tighter when drawn in strokes, solid otherwise', () => {
     expect(headDash('arrow', 'dotted', 2)).toEqual([1.5, 6]);
@@ -212,7 +212,7 @@ describe('a head on a dotted line', () => {
   });
 });
 
-// 06.16 L2, L6: where a label sits and how wide it wraps, as Excalidraw's
+// Where a label sits and how wide it wraps, as Excalidraw's
 // (`linearElementEditor.ts:1942-1961`, `textElement.ts:511-521`).
 describe("an arrow's label", () => {
   const arrow = (over: Record<string, unknown>) => ({ id: 'a', type: 'arrow', x: 0, y: 0, w: 100, h: 300, z: 1, ...over }) as never;
@@ -235,7 +235,7 @@ describe("an arrow's label", () => {
   });
 });
 
-// 06.17: one layout for an arrow's label, which the stage, the exporter and
+// One layout for an arrow's label, which the stage, the exporter and
 // the label editor all use; `along` turns it to the arrow, never upside down.
 describe("an arrow label's layout", () => {
   const measure = (text: string) => text.length * 10;
@@ -258,7 +258,7 @@ describe("an arrow label's layout", () => {
   });
 });
 
-// 06.17: the label editor's field sits on the label, not over the arrow's box.
+// The label editor's field sits on the label, not over the arrow's box.
 describe("the field for typing an arrow's label", () => {
   const measure = (text: string) => text.length * 10;
   it('is centred on the label, as wide as it wraps, turned with it', () => {
@@ -273,7 +273,7 @@ describe("the field for typing an arrow's label", () => {
   });
 });
 
-describe('a label along a turned arrow (review of 06.17)', () => {
+describe('a label along a turned arrow', () => {
   it('stays readable on screen, the turn included', () => {
     const measure = (text: string) => text.length * 10;
     const arrow = { id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, angle: 180, points: [0, 0, 200, 0], label: 'x', labelDirection: 'along' } as never;
@@ -282,7 +282,7 @@ describe('a label along a turned arrow (review of 06.17)', () => {
   });
 });
 
-describe("the field for an arrow's label, along and turned (review of 06.17)", () => {
+describe("the field for an arrow's label, along and turned", () => {
   const measure = (text: string) => text.length * 10;
   const font = { size: 20, lineHeight: 1.25 };
   it('turns along the arrow', () => {

@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-// Retention defaults, decided 2026-09-17.
+// Retention defaults.
 const (
 	DefaultKeepSessions = 10
 	DefaultMaxBytes     = 50 << 20

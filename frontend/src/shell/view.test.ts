@@ -77,3 +77,14 @@ describe('view mode', () => {
     expect(view.mode).toBe('canvas');
   });
 });
+
+describe('the Files section', () => {
+  it('starts open, folds and unfolds, and is remembered', () => {
+    const storage = memoryStorage();
+    const view = createViewState({ storage });
+    expect(view.filesFolded).toBe(false);
+    view.toggleFilesFolded();
+    expect(view.filesFolded).toBe(true);
+    expect(createViewState({ storage }).filesFolded).toBe(true);
+  });
+});

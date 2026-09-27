@@ -113,7 +113,7 @@ describe('settings', () => {
   });
 });
 
-// The Diagram from Code dialog opens with the engine used last (plan 06.11):
+// The Diagram from Code dialog opens with the engine used last:
 // inserting saves it as the default, and an engine the app does not know
 // reads as TALA rather than reaching the renderer.
 describe('the layout engine', () => {
@@ -133,7 +133,7 @@ describe('the layout engine', () => {
   });
 });
 
-// 06.16 B8, B12: Settings ▸ Canvas.
+// Settings ▸ Canvas.
 describe('the canvas settings', () => {
   it('attach arrows and snap to side middles by default, and save a change', async () => {
     const stored = io();
@@ -149,7 +149,7 @@ describe('the canvas settings', () => {
 });
 
 
-// Milestone 7: snapping to objects is off until the user turns it on.
+// Snapping to objects is off until the user turns it on.
 describe('snapping to objects', () => {
   it('is off by default, and saves a change', async () => {
     const stored = io();

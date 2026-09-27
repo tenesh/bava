@@ -54,7 +54,7 @@ func TestContentProcessDeathLogsQueuesAndReloads(t *testing.T) {
 
 // The inset title bar positions the traffic lights for a ~52pt toolbar; Bava's
 // bar is 36px, so they sat below its content and touched its border (seen at
-// a running window, 2026-09-17). The standard hidden title bar centres them
+// a running window). The standard hidden title bar centres them
 // near a 36px bar, and the draggable strip is exactly the bar.
 func TestMacTitleBarIsStandardAndMatchesTheBar(t *testing.T) {
 	mac := app.MainWindowOptions().Mac

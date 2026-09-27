@@ -18,7 +18,7 @@ describe('what an element draws, for hit-testing', () => {
     expect(drawnPathOf(arrow({ arrowType: 'elbow' })).length).toBeGreaterThan(2);
   });
 
-  // 06.14 E4: the hit test measures the rounded corners the stage draws.
+  // The hit test measures the rounded corners the stage draws.
   it("follows an elbow's rounded corners, not the square ones", () => {
     const path = drawnPathOf(arrow({ arrowType: 'elbow', points: [0, 0, 100, 0, 100, 100] }));
     const flat = pathOf([0, 0, 100, 0, 100, 100], 'elbow');
@@ -33,7 +33,7 @@ describe('what an element draws, for hit-testing', () => {
 });
 
 // A diagonal line's box is mostly empty space: clicking the corner of it must
-// not select the line (.ai/rules/canvas.md, carried from 06.2.1).
+// not select the line (.ai/rules/canvas.md).
 describe('hitting a line by its path', () => {
   it('hits near the line and misses the empty corner of its box', () => {
     expect(nearElement(arrow(), { x: 50, y: 52 }, 3)).toBe(true);
@@ -50,8 +50,8 @@ describe('hitting a line by its path', () => {
 
 describe('the box around what is drawn', () => {
   // An arc curves away from its points: the box has to hold the curve, or
-  // selection and export cut it off. Since 06.15 (V2) a two-point arc is
-  // straight, so its box is flat.
+  // selection and export cut it off. A two-point arc is straight, so its box
+  // is flat.
   it('covers an arc curve, and nothing more for a two-point one', () => {
     const bent = pathBounds(drawnPathOf(arrow({ points: [0, 0, 50, 40, 100, 0], h: 40, arrowType: 'arc' })));
     const cornered = pathBounds(drawnPathOf(arrow({ points: [0, 0, 50, 40, 100, 0], h: 40 })));
@@ -64,7 +64,7 @@ describe('the box around what is drawn', () => {
   });
 });
 
-// 06.15 P21: a filled closed line is grabbed from inside, as a shape is.
+// A filled closed line is grabbed from inside, as a shape is.
 describe('inside a closed line', () => {
   it('counts as on it when filled, not when hollow', () => {
     const loop = { id: 'l', type: 'line', x: 0, y: 0, w: 100, h: 100, z: 1, points: [0, 0, 100, 0, 100, 100, 0, 100, 0, 0], closed: true } as never as SceneElement;

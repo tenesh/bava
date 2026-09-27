@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ISSUE_TRACKER_URL, REPORT_ISSUE_ENABLED, issueUrl } from './report-issue';
 
 describe('report issue', () => {
-  // Hidden until Milestone 16 confirms the public tracker (decision 2026-09-17).
+  // Hidden until the public tracker is confirmed.
   it('is not enabled yet', () => {
     expect(REPORT_ISSUE_ENABLED).toBe(false);
   });

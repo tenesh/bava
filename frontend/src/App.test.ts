@@ -14,6 +14,13 @@ vi.mock('../bindings/github.com/tenesh/bava/internal/app', () => ({
   MenuService: {
     SetState: vi.fn().mockResolvedValue(undefined),
   },
+  SpaceService: {
+    ChooseFolder: vi.fn().mockResolvedValue({ path: '/w/Acme', error: '' }),
+    Open: vi.fn().mockResolvedValue({ root: '/w/Acme', name: 'Acme', pageWidth: '', error: '' }),
+    List: vi.fn().mockResolvedValue({ entries: [{ name: 'Roadmap.md', path: 'Roadmap.md', kind: 'page' }], error: '' }),
+    Apply: vi.fn().mockResolvedValue({ path: '', id: '', root: '', error: '' }),
+    Create: vi.fn().mockResolvedValue({ root: '/w/Beta', name: 'Beta', pageWidth: '', error: '' }),
+  },
   LogService: {
     Report: vi.fn().mockResolvedValue(undefined),
     TakeNotices: vi.fn().mockResolvedValue([]),
@@ -24,6 +31,8 @@ vi.mock('../bindings/github.com/tenesh/bava/internal/app', () => ({
 }));
 
 import App from './App.svelte';
+import { SpaceService } from '../bindings/github.com/tenesh/bava/internal/app';
+import { PENDING } from './files/tree';
 
 // A native menu click, as Go delivers it.
 function menuCommand(id: string) {
@@ -56,8 +65,7 @@ describe('App', () => {
 
     const app = mount(App, { target });
 
-    // The shell replaced Milestone 1's two-pane layout; panes are labelled
-    // from the message catalogue now.
+    // Panes are labelled from the message catalogue.
     expect(target.querySelector('[aria-label="Document"]')).not.toBeNull();
     expect(target.querySelector('[aria-label="Diagram"]')).not.toBeNull();
     expect(target.querySelector('[aria-label="Files"]')).not.toBeNull();
@@ -113,21 +121,29 @@ describe('App shell integration', () => {
   });
 
   // The status bar names the engine the document is laid out with, which is
-  // the configured one, not a literal (plan 06.11).
-  it('names the configured engine in the status bar', async () => {
+  // the configured one, not a literal.
+  // The status bar describes the canvas while it is worked on.
+  it('names the configured engine in the status bar on the canvas', async () => {
     const { FileService } = await import('../bindings/github.com/tenesh/bava/internal/app');
     vi.mocked(FileService.Settings).mockResolvedValueOnce({ debounceMs: 250, layoutEngine: 'elk', autosave: 'off', autosaveDelayMs: 1000 } as never);
     const { target, app } = mountApp();
     menuCommand('file.new');
+    menuCommand('view.canvas');
     await vi.waitFor(() => expect(target.querySelector('footer')?.textContent).toContain('elk'));
+    expect(target.querySelector('footer')?.textContent).not.toContain('words');
+    menuCommand('view.both');
     unmount(app);
   });
 
-  it('renders the status bar', async () => {
+  // And the document's words while the document is.
+  it('counts the document\'s words in the status bar in the document', async () => {
     const { target, app } = mountApp();
-    expect(target.querySelector('footer')?.textContent).toContain('Errors');
+    expect(target.querySelector('footer')?.textContent).not.toContain('Errors');
     menuCommand('file.new');
-    await vi.waitFor(() => expect(target.querySelector('footer')?.textContent).toContain('Engine'));
+    menuCommand('view.document');
+    await vi.waitFor(() => expect(target.querySelector('footer')?.textContent).toContain('0 words'));
+    expect(target.querySelector('footer')?.textContent).not.toContain('Engine');
+    menuCommand('view.both');
     unmount(app);
   });
 });
@@ -154,6 +170,87 @@ describe('launch', () => {
     const hints = [...target.querySelectorAll('.hints li')].map((li) => li.textContent);
     expect(hints.some((h) => h?.includes('Open a file'))).toBe(true);
     expect(hints.some((h) => h?.includes('New file'))).toBe(true);
+    unmount(app);
+  });
+
+  it('Open Space opens the chosen folder and lists it in the Files tree', async () => {
+    const { target, app } = mountApp();
+    menuCommand('file.openSpace');
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
+    expect(target.textContent).toContain('Acme');
+    unmount(app);
+  });
+
+  // A new page is named in the tree, so the tree has to show.
+  it('New Page in a Space shows a hidden Files pane with the row being named', async () => {
+    const { target, app } = mountApp();
+    menuCommand('file.openSpace');
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
+    menuCommand('view.files');
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).toBeNull());
+    menuCommand('file.new');
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
+    const naming = [...target.querySelectorAll<HTMLElement>('[data-path]')].some((row) => row.dataset.path === PENDING);
+    expect(naming).toBe(true);
+    unmount(app);
+  });
+
+  // The Files header offers New page and New folder from one menu button.
+  it('the Files header opens a menu to make a page or a folder', async () => {
+    const { target, app } = mountApp();
+    menuCommand('file.openSpace');
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
+    const more = target.querySelector<HTMLButtonElement>('button[aria-label="Add to Files"]');
+    expect(more).not.toBeNull();
+    expect(target.querySelector('button[aria-label="New page"]')).toBeNull();
+    more!.click();
+    await vi.waitFor(() => {
+      const labels = [...document.querySelectorAll('.bava-menu[data-state="open"] .bava-menu-item')].map((el) => el.textContent?.trim());
+      expect(labels).toEqual(['New page', 'New folder']);
+    });
+    unmount(app);
+  });
+
+  // New Space asks for a name and a place, then makes the folder there.
+  it('New Space makes a named folder in the chosen place', async () => {
+    const { target, app } = mountApp();
+    menuCommand('file.openSpace');
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
+    target.querySelector<HTMLElement>('.bava-space-switcher')!.click();
+    const item = () =>
+      [...document.querySelectorAll<HTMLElement>('.bava-menu[data-state="open"] .bava-menu-item')].find((el) => el.textContent?.trim() === 'New Space');
+    await vi.waitFor(() => expect(item()).toBeDefined());
+    item()!.click();
+    const field = () => document.querySelector<HTMLInputElement>('#new-space-name');
+    await vi.waitFor(() => expect(field()).not.toBeNull());
+    // Beside the Space open now, until another place is chosen.
+    expect(document.body.textContent).toContain('/w');
+    const button = (label: string) => [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)!;
+    button('Choose').click();
+    await vi.waitFor(() => expect(document.querySelector('.bava-dialog-content .path')?.textContent).toBe('/w/Acme'));
+    field()!.value = 'Beta';
+    field()!.dispatchEvent(new Event('input', { bubbles: true }));
+    flushSync();
+    button('Create').click();
+    await vi.waitFor(() => expect(SpaceService.Create).toHaveBeenCalledWith('/w/Acme', 'Beta'));
+    await vi.waitFor(() => expect(SpaceService.Open).toHaveBeenCalledWith('/w/Beta'));
+    unmount(app);
+  });
+
+  // The Files section folds under its header, and a new page unfolds it.
+  it('folds the Files section, and unfolds it for a new page', async () => {
+    localStorage.clear();
+    const { target, app } = mountApp();
+    menuCommand('file.openSpace');
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
+    const fold = target.querySelector<HTMLButtonElement>('.files-fold')!;
+    expect(fold.getAttribute('aria-expanded')).toBe('true');
+    fold.click();
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).toBeNull());
+    expect(fold.getAttribute('aria-expanded')).toBe('false');
+    menuCommand('file.new');
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
+    localStorage.clear();
     unmount(app);
   });
 
@@ -201,7 +298,7 @@ describe('launch', () => {
   });
 
   // The AI toggle reads as a button: bordered, with an icon, pressed while
-  // the pane shows (canvas-toolbar.md, Title bar).
+  // the pane shows.
   it('the AI button is a bordered icon button, pressed while the pane shows', async () => {
     const { target, app } = mountApp();
     menuCommand('file.new');

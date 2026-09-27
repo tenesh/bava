@@ -88,8 +88,8 @@ func TestChangedOnDiskNoticesAnotherWriter(t *testing.T) {
 	}
 }
 
-// The same guard that caught a rename in Milestone 1: TypeScript consumes
-// these names, and a Go field rename would compile and break the frontend.
+// TypeScript consumes these names, and a Go field rename would compile and
+// break the frontend.
 func TestFileResultJSONFieldNames(t *testing.T) {
 	assertKeys(t, "OpenResult", mustMarshal(t, app.OpenResult{}),
 		[]string{"diagrams", "error", "path", "scene", "source", "stamp"})
@@ -104,56 +104,4 @@ func mustMarshal(t *testing.T, value any) []byte {
 		t.Fatalf("marshal: %v", err)
 	}
 	return b
-}
-
-func TestListWorkspaceShowsOnlyBavaFiles(t *testing.T) {
-	dir := t.TempDir()
-	for _, name := range []string{"notes.md", "arch.d2", "photo.png", "README"} {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := os.Mkdir(filepath.Join(dir, "sub"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	result := app.NewFileService().ListWorkspace(dir)
-
-	if result.Error != "" {
-		t.Fatalf("Error = %q", result.Error)
-	}
-	var names []string
-	for _, entry := range result.Entries {
-		names = append(names, entry.Name)
-	}
-	// Folders first, then Bava files, each alphabetically.
-	want := []string{"sub", "arch.d2", "notes.md"}
-	if strings.Join(names, ",") != strings.Join(want, ",") {
-		t.Errorf("entries = %v, want %v", names, want)
-	}
-}
-
-// A workspace is usually a project folder. Bava's own state and the user's
-// tooling are not the user's documents.
-func TestListWorkspaceSkipsHiddenEntries(t *testing.T) {
-	dir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(dir, ".bava"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, ".hidden.md"), []byte("x"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	result := app.NewFileService().ListWorkspace(dir)
-
-	if len(result.Entries) != 0 {
-		t.Errorf("entries = %+v, want none", result.Entries)
-	}
-}
-
-func TestListWorkspaceReportsAMissingDirectory(t *testing.T) {
-	result := app.NewFileService().ListWorkspace(filepath.Join(t.TempDir(), "nope"))
-	if result.Error == "" {
-		t.Error("expected an error for a directory that does not exist")
-	}
 }

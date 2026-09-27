@@ -24,10 +24,10 @@
   <div class="identity">
     <Mark size="splash" />
     <p class="wordmark">{t('brand.wordmark')}</p>
-  </div>
-  <div class="progress">
-    <Progress label={status} value={null} />
-    <p class="status" aria-hidden="true">{status}</p>
+    <div class="progress">
+      <Progress label={status} value={null} />
+      <p class="status" aria-hidden="true">{status}</p>
+    </div>
   </div>
   <p class="footer">{t('launch.footer')}</p>
 </div>
@@ -41,7 +41,7 @@
     color: var(--color-text-primary);
   }
 
-  /* The identity sits at the window's centre; the bar and footer below it. */
+  /* One column at the window's centre: mark, wordmark, then the bar. */
   .identity {
     position: absolute;
     inset: 0;
@@ -49,41 +49,40 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: var(--space-4);
+    gap: var(--space-6);
   }
 
   .wordmark {
     margin: 0;
     font-size: var(--text-wordmark);
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-semibold);
     letter-spacing: var(--tracking-wordmark);
     line-height: var(--leading-tight);
   }
 
   .progress {
     --progress-width: var(--size-progress-splash);
-    position: absolute;
-    inset-inline: 0;
-    bottom: var(--space-8);
+    --progress-thickness: var(--size-progress-splash-thickness);
+    --progress-track: var(--color-surface-sunken);
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--space-2);
   }
 
-  .status,
-  .footer {
+  .status {
     margin: 0;
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-chip);
+    font-size: var(--text-note);
     color: var(--color-text-muted);
   }
 
   .footer {
     position: absolute;
     inset-inline: 0;
-    bottom: var(--space-2);
+    bottom: var(--space-6);
+    margin: 0;
     text-align: center;
-    color: var(--color-text-faint);
+    font-size: var(--text-meta);
+    color: var(--color-text-muted);
   }
 </style>
