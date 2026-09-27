@@ -19,7 +19,7 @@ wrong), and scoped (it belongs to some paths, not all).
 | `editors.md` | `frontend/src/editor/**`, `frontend/src/docs/**` |
 | `file-format.md` | `internal/store/**`, `internal/format/**`, `internal/space/**`, `docs/file-format.md` |
 | `ipc.md` | `internal/app/bindings*.go`, `internal/app/space*.go`, `internal/app/file*.go`, `internal/app/menu*.go`, `frontend/src/ipc/**`, `frontend/src/shell/commands*.ts` |
-| `testing.md` | `**/*_test.go`, `testdata/**` |
+| `testing.md` | `**/*_test.go`, `testdata/**`, `tests/**`, `frontend/tests/**`, `internal/e2e/**`, `frontend/src/e2e/**`, `**/*.test.ts` |
 | `ai.md` | `internal/ai/**`, `frontend/src/ai/**` |
 | `updates.md` | `internal/update/**` |
 | `logging.md` | `internal/logs/**`, `internal/app/log*.go`, `internal/app/recover*.go`, `internal/app/privacy*_test.go`, `main.go`, `frontend/src/ipc/log*.ts`, `frontend/src/shell/errors*` |

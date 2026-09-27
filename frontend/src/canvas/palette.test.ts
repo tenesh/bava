@@ -36,29 +36,28 @@ describe('palette', () => {
 
 });
 
-// A picked colour is stored once and adapted to the theme it is drawn in:
-// drawn as stored where it reads against the canvas, flipped in lightness
-// where it does not.
+// A picked colour shows as picked on a light canvas, and on a dark canvas is
+// shown as Excalidraw's dark mode shows it: inverted, hue turned back.
 describe('literal colours', () => {
   const light = (name: string) => (name === '--color-canvas-bg' ? '#efefec' : `var(${name})`);
   const dark = (name: string) => (name === '--color-canvas-bg' ? '#131416' : `var(${name})`);
 
-  it('keeps a colour that reads against the canvas', () => {
-    expect(resolveStyle({ fill: '#e03131' }, light).fill).toBe('#e03131');
-    expect(resolveStyle({ fill: '#ffd43b' }, light).fill).toBe('#ffd43b');
+  it('shows as picked on a light canvas, pale or not', () => {
+    for (const colour of ['#e03131', '#ffd43b', '#fbfbf9', '#e6eef7', '#1a1d21']) {
+      expect(resolveStyle({ fill: colour }, light).fill).toBe(colour);
+    }
   });
 
-  it('lifts a near-black off a dark canvas, keeping its hue', () => {
-    const adapted = resolveStyle({ stroke: '#1a1d21' }, dark).stroke;
-    expect(adapted).not.toBe('#1a1d21');
-    expect(adapted).toMatch(/^#[0-9a-f]{6}$/);
-    expect(luminance(adapted)).toBeGreaterThan(luminance('#131416'));
+  it('inverts white and black on a dark canvas as Excalidraw does', () => {
+    expect(resolveStyle({ fill: '#ffffff' }, dark).fill).toBe('#121212');
+    expect(resolveStyle({ stroke: '#000000' }, dark).stroke).toBe('#ededed');
   });
 
-  it('darkens a near-white on a light canvas', () => {
-    const adapted = resolveStyle({ fill: '#fbfbf9' }, light).fill;
-    expect(adapted).not.toBe('#fbfbf9');
-    expect(luminance(adapted)).toBeLessThan(luminance('#efefec'));
+  it('turns a pale fill dark on a dark canvas, keeping its hue', () => {
+    const adapted = resolveStyle({ fill: '#e6eef7' }, dark).fill;
+    expect(luminance(adapted)).toBeLessThan(0.3);
+    const [r, , b] = [1, 3, 5].map((i) => parseInt(adapted.slice(i, i + 2), 16));
+    expect(b).toBeGreaterThan(r);
   });
 
   it('draws a malformed value as the default', () => {

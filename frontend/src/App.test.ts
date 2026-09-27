@@ -254,6 +254,16 @@ describe('launch', () => {
     unmount(app);
   });
 
+  // A Space open with no page open is not an untitled page.
+  it('says no page is open in the title bar when a Space has none open', async () => {
+    const { target, app } = mountApp();
+    menuCommand('file.openSpace');
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
+    expect(target.querySelector('header')?.textContent).toContain('No page open');
+    expect(target.querySelector('header')?.textContent).not.toContain('untitled');
+    unmount(app);
+  });
+
   it('New opens an untitled document', async () => {
     const { target, app } = mountApp();
     menuCommand('file.new');

@@ -21,6 +21,10 @@ type SpaceServiceOptions struct {
 	// Reveal opens a folder in the platform's file manager, or with
 	// selectFile shows an item inside its folder.
 	Reveal func(path string, selectFile bool) error
+	// ChooseFolder answers the folder picker instead of showing the native
+	// one: the smoke test build takes its answers from the scenario. Nil
+	// shows the native picker.
+	ChooseFolder func(title string) (string, error)
 }
 
 // NewSpaceService constructs the service registered with the application.
@@ -181,6 +185,13 @@ func (s *SpaceService) Trash(root string) TrashList {
 // folder, titled as the frontend words it. An empty path means the user
 // cancelled.
 func (s *SpaceService) ChooseFolder(title string) DialogResult {
+	if s.options.ChooseFolder != nil {
+		path, err := s.options.ChooseFolder(title)
+		if err != nil {
+			return DialogResult{Error: err.Error()}
+		}
+		return DialogResult{Path: path}
+	}
 	dialog := application.Get().Dialog.OpenFile()
 	dialog.SetTitle(title)
 	dialog.CanChooseFiles(false)

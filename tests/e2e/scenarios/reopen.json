@@ -1,0 +1,14 @@
+{
+  "name": "reopen",
+  "folders": ["${SCRATCH}/Smoke"],
+  "steps": [
+    { "do": "wait", "target": "header", "timeoutMs": 30000 },
+    { "do": "menu", "target": "file.openSpace" },
+    { "do": "wait", "target": "[data-path='First page.md']" },
+    { "do": "click", "target": "[data-path='First page.md']" },
+    { "do": "wait", "target": "header", "text": "First page" },
+    { "do": "menu", "target": "view.canvas" },
+    { "do": "wait", "target": "footer", "text": "Nodes 1" },
+    { "do": "shot", "name": "reopened" }
+  ]
+}

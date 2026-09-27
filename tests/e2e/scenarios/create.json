@@ -1,0 +1,26 @@
+{
+  "name": "create",
+  "folders": ["${SCRATCH}"],
+  "steps": [
+    { "do": "wait", "target": "text=New Space", "timeoutMs": 30000 },
+    { "do": "shot", "name": "start" },
+    { "do": "click", "target": "text=New Space" },
+    { "do": "wait", "target": "#new-space-name" },
+    { "do": "type", "text": "Smoke" },
+    { "do": "click", "target": "text=Choose" },
+    { "do": "click", "target": "text=Create" },
+    { "do": "wait", "target": ".bava-space-switcher", "text": "Smoke" },
+    { "do": "menu", "target": "file.new" },
+    { "do": "wait", "target": "input.rename" },
+    { "do": "type", "text": "First page" },
+    { "do": "key", "text": "Enter" },
+    { "do": "wait", "target": "header", "text": "First page" },
+    { "do": "menu", "target": "view.canvas" },
+    { "do": "menu", "target": "tool.rect" },
+    { "do": "drag", "target": "[data-side='canvas'] .konvajs-content", "from": [200, 160], "to": [360, 260] },
+    { "do": "menu", "target": "file.save" },
+    { "do": "wait", "target": "header", "text": "saved" },
+    { "do": "wait", "target": "footer", "text": "Nodes 1" },
+    { "do": "shot", "name": "saved" }
+  ]
+}

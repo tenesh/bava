@@ -21,14 +21,6 @@ export function isSwatch(name: unknown): name is Swatch {
   return typeof name === 'string' && (SWATCHES as readonly string[]).includes(name);
 }
 
-/**
- * The smallest difference in relative luminance a colour needs against the
- * canvas to be drawn as stored. Chosen so the palette's own extremes read: a
- * yellow on the light canvas differs by 0.11 and stays itself, while a
- * near-black on the dark canvas differs by 0.03 and is lifted.
- */
-const MIN_CONTRAST = 0.1;
-
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 /** Whether a value is a literal colour rather than a swatch name. */
@@ -54,29 +46,28 @@ function toHex([r, g, b]: [number, number, number]): string {
   return `#${part(r)}${part(g)}${part(b)}`;
 }
 
+// How far dark mode inverts a picked colour: Excalidraw's invert(93%).
+const INVERT = 0.93;
+
 /**
- * A picked colour, adapted to the canvas it is drawn on.
+ * A picked colour, as the canvas it is drawn on shows it.
  *
- * Drawn as stored where it differs enough in luminance from the canvas. Where
- * it does not, its lightness is mirrored about the middle, keeping the hue,
- * and lifted further if that still reads poorly. The rule uses only the value
- * and the canvas, so the file never records which theme it was picked in.
+ * On a light canvas, exactly as picked. On a dark one, as Excalidraw's dark
+ * mode shows it: inverted (93%, so white is not quite black) and its hue
+ * turned 180 degrees back, so a pale blue fill becomes a deep blue one. The
+ * rule uses only the value and the canvas, so the file never records which
+ * theme it was picked in. Named swatches have their own designed dark values
+ * and never come here.
  */
 export function adaptLiteral(hex: string, canvas: string): string {
-  if (!HEX.test(canvas)) return hex;
-  const against = luminance(canvas);
-  if (Math.abs(luminance(hex) - against) >= MIN_CONTRAST) return hex;
-
-  const [r, g, b] = channels(hex);
-  const mirrored: [number, number, number] = [1 - r, 1 - g, 1 - b];
-  let adapted = toHex(mirrored);
-  // Mirroring a mid grey lands near itself; push away from the canvas until it
-  // reads, or give up at the extreme.
-  const away = against > 0.5 ? -1 : 1;
-  for (let step = 0; step < 10 && Math.abs(luminance(adapted) - against) < MIN_CONTRAST; step += 1) {
-    adapted = toHex(channels(adapted).map((value) => value + away * 0.08) as [number, number, number]);
-  }
-  return adapted;
+  if (!HEX.test(canvas) || luminance(canvas) >= 0.5) return hex;
+  const [r, g, b] = channels(hex).map((c) => INVERT - (2 * INVERT - 1) * c);
+  // CSS hue-rotate(180deg), as a matrix.
+  return toHex([
+    -0.574 * r + 1.43 * g + 0.144 * b,
+    0.426 * r + 0.43 * g + 0.144 * b,
+    0.426 * r + 1.43 * g - 0.856 * b,
+  ]);
 }
 
 function pick(value: unknown, part: 'fill' | 'stroke' | 'text', read: ReadVariable): string {

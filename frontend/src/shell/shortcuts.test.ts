@@ -49,6 +49,14 @@ describe('shortcutGroups', () => {
     expect(windows.find((r) => r.label === 'Settings')?.keys).toBe('Ctrl+,');
   });
 
+  // A submenu is its own group, so no group outgrows a column of the
+  // shortcuts dialog and each column starts with a heading.
+  it('gives each submenu its own group, under its menu\'s name', () => {
+    const tools = groups.find((g) => g.title === 'Canvas: Tools');
+    expect(tools?.rows.map((r) => r.label)).toContain('Rectangle');
+    expect(groups.find((g) => g.title === 'Canvas')?.rows.map((r) => r.label) ?? []).not.toContain('Rectangle');
+  });
+
   it('leaves out menus with nothing to press', () => {
     expect(groups.every((g) => g.rows.length > 0)).toBe(true);
   });

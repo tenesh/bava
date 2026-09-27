@@ -7,6 +7,7 @@
  *
  * No D2 language mode yet: plain text with diagnostics.
  */
+import { editorTheme } from './theme';
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, lineNumbers, keymap, highlightActiveLine, type KeyBinding } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, redo, selectAll, undo } from '@codemirror/commands';
@@ -44,6 +45,7 @@ export class SourcePane {
 
   mount(host: HTMLElement, options: SourcePaneOptions): void {
     const extensions: Extension[] = [
+      editorTheme,
       lineNumbers(),
       highlightActiveLine(),
       history(),

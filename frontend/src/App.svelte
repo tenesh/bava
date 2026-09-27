@@ -1303,7 +1303,8 @@
   let sourceHost: HTMLDivElement;
   let canvasHost: HTMLDivElement;
 
-  const nodeCount = $derived(Object.keys(client.state.nodeMap).length);
+  // What is on the canvas: every element, as the status bar counts it.
+  const nodeCount = $derived(published.elements.length);
 
   // The status bar describes the side being worked on: the one last pressed
   // or focused, when both show.

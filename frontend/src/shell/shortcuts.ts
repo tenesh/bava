@@ -58,26 +58,25 @@ function onPlatform(entry: { platforms?: string[] }, platform: Platform): boolea
 }
 
 export function shortcutGroups(spec: MenuSpec, platform: Platform): ShortcutGroup[] {
-  return spec.menus
-    .filter((menu) => onPlatform(menu, platform))
-    .map((menu) => {
-      const rows: ShortcutGroup['rows'] = [];
-      const walk = (items: SpecItem[] = []) => {
-        for (const item of items) {
-          if (!onPlatform(item, platform)) continue;
-          const combo = item.accelerator ?? item.shortcut;
-          if (item.label && combo) {
-            rows.push({ label: item.label, keys: formatAccelerator(combo, platform) });
-          } else if (item.label && item.hint) {
-            rows.push({ label: item.label, keys: item.hint });
-          }
-          walk(item.items);
-        }
-      };
-      walk(menu.items);
-      return { title: menu.label, rows };
-    })
-    .filter((group) => group.rows.length > 0);
+  const groups: ShortcutGroup[] = [];
+  // A submenu is its own group ("Canvas: Tools"), after its menu's own rows,
+  // so no group is taller than a column of the shortcuts dialog.
+  const collect = (title: string, items: SpecItem[] = []) => {
+    const group: ShortcutGroup = { title, rows: [] };
+    groups.push(group);
+    for (const item of items) {
+      if (!onPlatform(item, platform)) continue;
+      const combo = item.accelerator ?? item.shortcut;
+      if (item.label && combo) {
+        group.rows.push({ label: item.label, keys: formatAccelerator(combo, platform) });
+      } else if (item.label && item.hint) {
+        group.rows.push({ label: item.label, keys: item.hint });
+      }
+      if (item.items) collect(`${title}: ${item.label}`, item.items);
+    }
+  };
+  for (const menu of spec.menus.filter((m) => onPlatform(m, platform))) collect(menu.label, menu.items);
+  return groups.filter((group) => group.rows.length > 0);
 }
 
 /** The platform the webview runs on, for formatting. */
