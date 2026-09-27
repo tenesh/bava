@@ -51,6 +51,17 @@ describe('the smoke driver', () => {
     expect(clicked).toBe('Create');
   });
 
+  // A closed menu keeps its items in the page, hidden: "New Space" is both a
+  // start-screen button and a hidden switcher item, and the button is meant.
+  it('clicks the match that is showing, not a hidden one with the same text', async () => {
+    document.body.innerHTML = '<button id="start">New Space</button><div hidden><span id="menu">New Space</span></div>';
+    let clicked = '';
+    for (const el of document.querySelectorAll('#start, #menu')) el.addEventListener('click', () => (clicked = el.id));
+    const e = { ...env(), visible: (el: HTMLElement) => el.isConnected && !el.closest('[hidden]') };
+    expect(await runScenario([{ do: 'click', target: 'text=New Space' }], e)).toBe('');
+    expect(clicked).toBe('start');
+  });
+
   it('sends menu commands and takes shots in order', async () => {
     const e = env();
     await runScenario([{ do: 'menu', target: 'file.save' }, { do: 'shot', name: 'saved' }], e);

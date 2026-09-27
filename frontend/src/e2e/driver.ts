@@ -26,12 +26,18 @@ export type DriverEnv = {
 
 const SERVICE = 'github.com/tenesh/bava/internal/e2e.Service';
 
-/** Finds a target: a CSS selector, or `text=…` for the innermost element showing that text. */
-function find(target: string): HTMLElement | null {
-  if (!target.startsWith('text=')) return document.querySelector<HTMLElement>(target);
+/**
+ * Everything a target names: a CSS selector's matches, or for `text=…` the
+ * innermost elements showing exactly that text. A closed menu keeps its items
+ * in the page, hidden, so a step always takes the first match that shows.
+ */
+function candidates(target: string): HTMLElement[] {
+  if (!target.startsWith('text=')) return [...document.querySelectorAll<HTMLElement>(target)];
   const text = target.slice('text='.length);
   const all = [...document.querySelectorAll<HTMLElement>('button, a, [role], li, span, div, label')];
-  return all.filter((el) => el.textContent?.trim() === text).at(-1) ?? null;
+  const exact = all.filter((el) => el.textContent?.trim() === text);
+  // Innermost: drop any match that contains another match.
+  return exact.filter((el) => !exact.some((other) => other !== el && el.contains(other)));
 }
 
 /** Laid out and in the page: what a person could see. */
@@ -85,8 +91,8 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
   const visible = env.visible ?? laidOut;
   switch (s.do) {
     case 'click': {
-      let el: HTMLElement | null = null;
-      if (!(await until(() => (el = find(s.target!)) !== null && visible(el), timeout))) return 'not found';
+      let el: HTMLElement | undefined;
+      if (!(await until(() => (el = candidates(s.target!).find(visible)) !== undefined, timeout))) return 'not found';
       click(el!);
       return '';
     }
@@ -100,18 +106,18 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
       env.menu(s.target!);
       return '';
     case 'wait': {
-      const ok = await until(() => {
-        const el = find(s.target!);
-        return el !== null && visible(el) && (!s.text || (el.textContent ?? '').includes(s.text));
-      }, timeout);
+      const ok = await until(
+        () => candidates(s.target!).some((el) => visible(el) && (!s.text || (el.textContent ?? '').includes(s.text))),
+        timeout,
+      );
       return ok ? '' : s.text ? `never showed "${s.text}"` : 'never showed';
     }
     case 'gone':
-      return (await until(() => find(s.target!) === null, timeout)) ? '' : 'still there';
+      return (await until(() => !candidates(s.target!).some(visible), timeout)) ? '' : 'still there';
     case 'shot':
       return env.shot(s.name!);
     case 'drag': {
-      const el = find(s.target!);
+      const el = candidates(s.target!).find(visible);
       if (!el) return 'not found';
       const box = el.getBoundingClientRect();
       const at = ([x, y]: [number, number]): [number, number] => [box.left + x, box.top + y];
