@@ -162,3 +162,130 @@ jobs:
 
       - name: wails3 build
         run: wails3 build
+
+  # Layer 2: every screen, drawn by the same browser in the same pinned
+  # container as on the developer's Mac (arm64 both), compared with the
+  # approved screenshots in testdata/visual. On a failure the differences are
+  # uploaded for someone to look at.
+  visual:
+    name: screen checks
+    runs-on: ubuntu-24.04-arm
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: npm run visual
+        run: tests/scripts/visual.sh
+
+      - name: upload differences
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screen-check-differences
+          path: frontend/tests/visual/.results/
+          retention-days: 14
+
+  # Layer 3: the real app, built with the smoke driver (-tags e2e), makes a
+  # Space in a scratch folder, a page and a shape, saves, quits, reopens, and
+  # checks it is all still there, taking screenshots on the way.
+  smoke:
+    name: smoke run (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      VITE_BAVA_E2E: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux webview dependencies and a virtual screen
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config \
+            libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev libglib2.0-dev \
+            xvfb imagemagick fonts-dejavu-core
+          pkg-config --exists gtk4 webkitgtk-6.0 libsoup-3.0 gio-unix-2.0 \
+            || { echo "::error::required pkg-config packages missing after install"; exit 1; }
+
+      # screencapture needs the screen-recording permission; the runner image
+      # lets the job grant it to the process that asks.
+      - name: Allow screenshots on macOS
+        if: runner.os == 'macOS'
+        run: |
+          for db in "$HOME/Library/Application Support/com.apple.TCC/TCC.db" "/Library/Application Support/com.apple.TCC/TCC.db"; do
+            sudo sqlite3 "$db" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier, flags) VALUES ('kTCCServiceScreenCapture', '/usr/sbin/screencapture', 1, 2, 4, 1, 'UNUSED', 0);" || true
+          done
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install wails3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.20
+
+      - name: build with the smoke driver
+        run: wails3 build EXTRA_TAGS=e2e
+
+      - name: run the smoke scenarios
+        shell: bash
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/smoke-out"; scratch="$RUNNER_TEMP/smoke-scratch"
+          mkdir -p "$out" "$scratch"
+          export BAVA_E2E_OUT="$out" BAVA_E2E_SCRATCH="$scratch"
+          app=bin/bava; [[ "$RUNNER_OS" == "Windows" ]] && app=bin/bava.exe
+          run() {
+            export BAVA_E2E_SCENARIO="tests/e2e/scenarios/$1.json"
+            if [[ "$RUNNER_OS" == "Linux" ]]; then
+              # WebKitGTK without a GPU: software drawing, or the window is blank.
+              WEBKIT_DISABLE_DMABUF_RENDERER=1 GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 \
+                xvfb-run -a -s "-screen 0 1440x900x24" "$app"
+            else
+              "$app"
+            fi
+          }
+          run create
+          run reopen
+          cat "$out"/*-result.txt
+
+      - name: upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-${{ matrix.os }}
+          path: ${{ runner.temp }}/smoke-out/
+          retention-days: 14
+
+  # A normal build must not contain the smoke driver: its frontend bundle is
+  # checked here, its Go side by release_test.go.
+  release-has-no-driver:
+    name: release bundle has no driver
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+          if grep -rl "internal/e2e.Service" dist; then
+            echo "::error::the release bundle contains the smoke driver"; exit 1
+          fi

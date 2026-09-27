@@ -30,3 +30,6 @@ gradlew text eol=lf
 *.svg text eol=lf
 *.d2  text eol=lf
 *.md  text eol=lf
+
+# Test references stay in the repo but out of source archives
+testdata/visual/** export-ignore

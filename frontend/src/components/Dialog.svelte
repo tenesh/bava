@@ -76,6 +76,11 @@
     onOpenChange,
     children,
   }: Props = $props();
+
+  // Opening focuses what the dialog marks `data-autofocus` (its first field),
+  // else Ark's default, the first thing focusable.
+  const uid = $props.id();
+  const initialFocus = () => document.querySelector<HTMLElement>(`[data-dialog="${uid}"] [data-autofocus]`);
 </script>
 
 <Dialog.Root
@@ -83,11 +88,12 @@
   lazyMount={unmountWhenClosed}
   unmountOnExit={unmountWhenClosed}
   onOpenChange={(details) => onOpenChange?.(details.open)}
+  initialFocusEl={() => initialFocus()}
 >
   <Portal container={portalRoot()}>
     <Dialog.Backdrop class="bava-dialog-backdrop" />
     <Dialog.Positioner class="bava-dialog-positioner">
-      <Dialog.Content class="bava-dialog-content" data-size={size} data-variant={variant} data-align={align}>
+      <Dialog.Content class="bava-dialog-content" data-dialog={uid} data-size={size} data-variant={variant} data-align={align}>
         {#if variant === 'alert'}
           {#if leading}{@render leading()}{/if}
           <Dialog.Title class="bava-dialog-title">{title}</Dialog.Title>

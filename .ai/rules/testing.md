@@ -63,3 +63,50 @@ its own rect never saw that the app computed a 1x1 one; an export test that
 passed its own runs never saw that the app passed none; a `CodeEditor` test
 never saw that nothing could open it. Where a value crosses from the app into
 a module, one test has to come the way the app comes, even if the rest inject.
+
+## Three layers, and where each runs
+1. **Logic tests** (`go test`, `vitest`): behaviour, no drawing. The user's
+   Mac and CI.
+2. **Screen checks** (`npm run visual`): the interface in a real WebKit
+   browser, the Go side replaced by the stand-in in
+   `frontend/tests/visual/harness/`, screenshots compared with the approved
+   references in `testdata/visual/`. The user's Mac, in the container
+   `tests/docker/visual.Dockerfile`, and CI in the same container.
+3. **Smoke runs** of the real app, built with `-tags e2e`, walking
+   `tests/e2e/scenarios/*.json` on Linux, macOS and Windows. CI only, after a
+   push. Never on the user's Mac.
+
+jsdom has no layout and applies no stylesheet that matters, so layer 1 cannot
+see a thing drawn wrong: closed dialogs once covered the window at launch
+with every logic test green. That is layer 2's job.
+
+## A change to what is drawn gets a screen check
+Any change that alters what the user sees (a component, a style, a token, a
+layout, a string) runs `npm run visual` before it is called done. Every
+screenshot it reports as changed is opened and read, in both themes. A
+passing check with no changed images is evidence only for the screens the
+walks cover: a new screen or dialog gets a walk in the same change.
+
+## A reference changes only when it has been looked at
+`npm run visual:update` is for an intended change. Open every new or changed
+image under `testdata/visual/` before keeping it, and list them in the report
+so the user sees them too. Regenerating because the check went red is how a
+drawing regression becomes the new expected state, exactly as with goldens.
+
+## References are small and named by where they are
+`testdata/visual/<area>/<screen>--<state>--<theme>.png`, areas `start`,
+`shell`, `space`, `dialogs`, `settings`, `canvas`. Crop each to its screen or
+dialog at 1x; never the whole desktop. They live on `main`; source archives
+leave them out (`.gitattributes` `export-ignore`).
+
+## The stand-in answers as Go does
+The layer 2 fakes return what the real services return, error codes
+included; a test fails when the app imports a binding the fakes lack. A fake
+that drifts from its service makes screens that cannot happen.
+
+## The smoke driver never ships
+Layer 3's driver (`internal/e2e`, `frontend/src/e2e/`) exists only in a build
+with `-tags e2e` (Go) and `VITE_BAVA_E2E=1` (the page). `release_test.go`
+fails if a default build links `internal/e2e`; CI's `release-has-no-driver`
+job fails if a normal frontend bundle contains the driver. It answers native pickers
+from its scenario, so it never needs a person.

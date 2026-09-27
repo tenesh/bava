@@ -36,8 +36,7 @@
   <form id="new-space-form" class="form" onsubmit={create}>
     <div class="section">
       <label class="heading" for="new-space-name">{t('space.newName')}</label>
-      <!-- svelte-ignore a11y_autofocus -->
-      <input id="new-space-name" class="field" bind:value={typed} autocomplete="off" autofocus />
+      <input id="new-space-name" class="field" bind:value={typed} autocomplete="off" data-autofocus />
     </div>
     <div class="section">
       <span class="heading">{t('space.newLocation')}</span>

@@ -96,9 +96,11 @@
     <div class="identity">
       <Mark size="chrome" label={t('brand.name')} />
       <span class="filename">
-        {#if open}
+        {#if pageOpen}
           {title}
           <span class="state">{dirty ? t('file.dirty') : t('file.saved')}</span>
+        {:else if open}
+          {t('empty.noPage.title')}
         {:else}
           {t('empty.noFile.title')}
         {/if}

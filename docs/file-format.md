@@ -179,11 +179,12 @@ file: `gray`, `blue`, `green`, `yellow`, `orange`, `red`, `purple`, `pink`.
 **An unknown swatch name renders as the default and is written back
 unchanged**, like any unknown value: a newer Bava may add swatches.
 
-A **literal colour** is what the user picked. It is drawn as stored where it
-reads against that theme's canvas, and where it does not, its lightness is
-flipped and nudged until it does, keeping its hue. The rule works from the
-value alone, so the file never records which theme it was picked in and a file
-written in one theme reads in the other. A malformed `#` value draws as the
+A **literal colour** is what the user picked. In the light theme it is drawn
+exactly as stored. In the dark theme it is drawn as Excalidraw's dark mode
+draws it: inverted by 93% and its hue turned 180 degrees back, so a pale fill
+becomes a deep one of the same hue. The rule works from the value alone, so
+the file never records which theme it was picked in and a file written in one
+theme reads in the other. A malformed `#` value draws as the
 default and is written back unchanged.
 
 ### Style properties

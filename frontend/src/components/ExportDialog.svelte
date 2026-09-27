@@ -105,15 +105,17 @@
     overflow: hidden;
   }
 
+  /* The picture fills the frame's inside and keeps its proportions (the
+     SVG's own viewBox centres and scales it), so nothing is cut off. */
   .bava-export-preview {
     display: flex;
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: 100%;
   }
 
   .bava-export-preview :global(svg) {
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: 100%;
   }
 
   .settings {

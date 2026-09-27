@@ -72,6 +72,8 @@ himself. Read-only git (status, diff, log, rev-parse) is fine.
 | Svelte types | `npm run check` |
 | JS/TS lint | `npm run lint` |
 | Frontend tests | `npm test` |
+| Screen checks (layer 2) | `(cd frontend && npm run visual)` |
+| Accept intended screen changes | `(cd frontend && npm run visual:update)`, then open every changed image |
 | Dev loop | `wails3 dev` |
 | Env check | `wails3 doctor` |
 
@@ -86,7 +88,8 @@ where a red-first cycle proves nothing.
 | File format: reading, writing, round-tripping | Failing test first, always. Format bugs corrupt user data silently and are unrecoverable once shipped. |
 | Diagram output | Golden file. Add the fixture, watch it fail, implement, then review the generated SVG **by eye** before committing the golden. A golden blessed without looking at it asserts nothing. |
 | Wails bindings, config, build scripts | Implement, then a contract test pinning the outcome. |
-| Design system components | Build against `.ai/rules/design-system.md`. Verify with `npm run check` and `npm run lint`, plus a manual keyboard pass (tab order, escape, arrow keys) before done. |
+| Design system components | Build against `.ai/rules/design-system.md`. Verify with `npm run check` and `npm run lint`, a screen check (`npm run visual`, every changed image opened and read), plus a keyboard pass (tab order, escape, arrow keys) before done. |
+| Anything drawn: a style, token, layout, string, new screen or dialog | A screen check. A new screen or dialog gets a walk in `frontend/tests/visual/specs/` in the same change; references change only through `visual:update` after looking. |
 | Canvas interaction, editor wiring | Tests where real logic exists: coordinate math, staleness handling, debounce, selection state. Not for markup. |
 
 Test quality: one behavior per test, named for the behavior. Before writing a
@@ -191,7 +194,7 @@ Before any claim of done, passing, fixed or working:
 | Bug fixed | The original failing test, now green |
 | Component done | Keyboard pass performed, both themes checked |
 | Spike cleaned up | Restored state **shown** to match, not asserted: diff the touched files against their pre-spike state, confirm the dependency is gone from `package.json`, the lockfile *and* `node_modules`, and check the bundle size returned to baseline. A backup taken after an install restores the install. |
-| Visual behaviour verified | Seen by a human in a running window. Geometry and DOM measurements from inside the webview are evidence about layout, not about appearance. |
+| Visual behaviour verified | `npm run visual` green, and every changed screenshot opened and read in both themes; the real app's CI smoke run for anything that crosses into Go. Feel (scrolling, gestures, native menus) is still a human's call at a running window. |
 | Builds on all platforms | CI matrix result, not a local `wails3 build` |
 | Subagent finished | The diff, read, not the agent's own success report |
 
@@ -314,7 +317,9 @@ wrong facts. When a milestone closes, update this section in the same change.
 | `go test ./internal/render -run Golden` | exit 0; goldens under `testdata/golden/` |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; about 1,700 tests across 130 files |
+| `npm test` | exit 0; about 1,750 tests across 137 files |
+| `npm run visual` (layer 2) | exit 0; 54 walks, 52 references in `testdata/visual/`; needs OrbStack running |
+| CI `smoke` (layer 3) | not yet run: needs a push |
 | `wails3 build` | macOS only, unverified elsewhere |
 
 ### Open problems

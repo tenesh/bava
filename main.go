@@ -59,7 +59,9 @@ func main() {
 	})
 
 	menus := app.NewMenuService()
-	wailsApp := application.New(appOptions(session, []application.Service{
+	// Only a -tags e2e build has a driver and answers pickers itself.
+	driver, chooseFolder := smokeRun(current.Load)
+	services := []application.Service{
 		application.NewService(app.NewRenderService()),
 		application.NewService(app.NewFileService()),
 		application.NewService(app.NewSpaceService(app.SpaceServiceOptions{
@@ -70,11 +72,16 @@ func main() {
 				}
 				return a.Env.OpenFileManager(path, selectFile)
 			},
+			ChooseFolder: chooseFolder,
 		})),
 		application.NewService(app.NewExportService()),
 		application.NewService(menus),
 		application.NewService(logService),
-	}, emit))
+	}
+	if chooseFolder != nil {
+		services = append(services, driver)
+	}
+	wailsApp := application.New(appOptions(session, services, emit))
 	current.Store(wailsApp)
 
 	// After application.New: native role items need the application.

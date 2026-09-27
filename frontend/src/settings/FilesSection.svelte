@@ -68,6 +68,11 @@
     color: var(--color-text-muted);
   }
 
+  /* Each setting is apart from the one before, hint or not. */
+  .row + .row {
+    margin-top: var(--space-3);
+  }
+
   .row {
     display: flex;
     align-items: center;

@@ -43,7 +43,7 @@ Shortcuts) lists the rest.
 | File | Open File | `⇧⌘O` | `Ctrl+Shift+O` |
 | File | Save | `⌘S` | `Ctrl+S` |
 | File | Save As | `⇧⌘S` | `Ctrl+Shift+S` |
-| File | Settings | none | `Ctrl+,` |
+| File: Preferences | Settings | none | `Ctrl+,` |
 | Edit | Undo | `⌘Z` | `Ctrl+Z` |
 | Edit | Redo | `⇧⌘Z` | `Ctrl+Shift+Z` |
 | Edit | Cut | `⌘X` | `Ctrl+X` |
@@ -57,22 +57,22 @@ Shortcuts) lists the rest.
 | View | Zoom In | `⌘=` | `Ctrl+=` |
 | View | Zoom Out | `⌘-` | `Ctrl+-` |
 | View | Actual Size | `⌘0` | `Ctrl+0` |
-| Canvas | Select | `V` | `V` |
-| Canvas | Rectangle | `R` | `R` |
-| Canvas | Ellipse | `O` | `O` |
-| Canvas | Arrow | `A` | `A` |
-| Canvas | Line | `L` | `L` |
-| Canvas | Draw | `D` | `D` |
-| Canvas | Text | `T` | `T` |
-| Canvas | Frame | `F` | `F` |
-| Canvas | Code | `C` | `C` |
-| Canvas | Eraser | `E` | `E` |
+| Canvas: Tools | Select | `V` | `V` |
+| Canvas: Tools | Rectangle | `R` | `R` |
+| Canvas: Tools | Ellipse | `O` | `O` |
+| Canvas: Tools | Arrow | `A` | `A` |
+| Canvas: Tools | Line | `L` | `L` |
+| Canvas: Tools | Draw | `D` | `D` |
+| Canvas: Tools | Text | `T` | `T` |
+| Canvas: Tools | Frame | `F` | `F` |
+| Canvas: Tools | Code | `C` | `C` |
+| Canvas: Tools | Eraser | `E` | `E` |
 | Canvas | Group | `⌘G` | `Ctrl+G` |
 | Canvas | Ungroup | `⇧⌘G` | `Ctrl+Shift+G` |
-| Canvas | Bring Forward | `⌘]` | `Ctrl+]` |
-| Canvas | Send Backward | `⌘[` | `Ctrl+[` |
-| Canvas | Flip Horizontal | `⇧H` | `Shift+H` |
-| Canvas | Flip Vertical | `⇧V` | `Shift+V` |
+| Canvas: Arrange | Bring Forward | `⌘]` | `Ctrl+]` |
+| Canvas: Arrange | Send Backward | `⌘[` | `Ctrl+[` |
+| Canvas: Flip | Flip Horizontal | `⇧H` | `Shift+H` |
+| Canvas: Flip | Flip Vertical | `⇧V` | `Shift+V` |
 | Canvas | Duplicate | `⌘D` | `Ctrl+D` |
 | Canvas | Edit Points | `⌘Enter` | `Ctrl+Enter` |
 | Canvas | Lock | `⇧⌘L` | `Ctrl+Shift+L` |

@@ -350,6 +350,12 @@
     display: none;
   }
 
+  /* The field shows its own focus; the row's ring around it would double it. */
+  :global(.space-tree .row:has(.rename:not([hidden]))) {
+    box-shadow: none;
+    background: transparent;
+  }
+
   :global(.space-tree .rename) {
     flex-grow: 1;
     min-width: 0;

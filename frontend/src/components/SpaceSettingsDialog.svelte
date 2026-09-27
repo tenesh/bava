@@ -63,7 +63,7 @@
   <form id="space-settings-form" class="sections" onsubmit={save}>
     <div class="section">
       <label class="heading" for="space-name">{t('space.settings.name')}</label>
-      <input id="space-name" class="field" bind:value={typed} autocomplete="off" />
+      <input id="space-name" data-autofocus class="field" bind:value={typed} autocomplete="off" />
       <p class="hint">{t('space.settings.renameHint')}</p>
     </div>
     <div class="section">

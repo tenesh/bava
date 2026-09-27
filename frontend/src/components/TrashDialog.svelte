@@ -45,7 +45,7 @@
   {/snippet}
   <div class="trash">
     <div class="bar">
-      <input class="search" type="search" placeholder={t('trash.search')} aria-label={t('trash.search')} bind:value={query} />
+      <input class="search" type="search" data-autofocus placeholder={t('trash.search')} aria-label={t('trash.search')} bind:value={query} />
       <span class="total">{t('trash.total').replace('{size}', total)}</span>
     </div>
     <div class="columns row" aria-hidden="true">
