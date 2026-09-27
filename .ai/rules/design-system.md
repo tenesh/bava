@@ -138,6 +138,11 @@ change how components and their tests are written:
 
 ## Component rules
 
+- **`hidden` always wins.** Ark keeps closed dialogs, menus and popovers in
+  the page with the `hidden` attribute. A wrapper that sets `display` on one
+  of those parts would show every closed one at once and cover the window, a
+  failure jsdom tests cannot see. `base.scss` forces `[hidden]` to
+  `display: none !important`; never remove it, and never undo it on a part.
 - **A pane fills its region.** `Pane` is `height: 100%`; the regions are blocks,
   so without it a pane shrinks to its header and the canvas stage inside is
   zero tall, which also clips the tool rail. jsdom does no layout, so no unit

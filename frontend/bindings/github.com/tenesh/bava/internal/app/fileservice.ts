@@ -74,8 +74,7 @@ export function SaveSettings(settings: config$0.Settings): $CancellablePromise<s
 /**
  * Settings returns the user's preferences, falling back to defaults.
  * 
- * The frontend reads these once at start-up: the debounce and the default
- * layout engine were compile-time constants until Milestone 5.
+ * The frontend reads these once at start-up.
  */
 export function Settings(): $CancellablePromise<config$0.Settings> {
     return $Call.ByID(267895474);

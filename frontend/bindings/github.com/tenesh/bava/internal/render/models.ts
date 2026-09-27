@@ -17,9 +17,8 @@ export interface Diagnostic {
  * It is what the diagram *is*, not how D2 painted it: position, size, label,
  * nesting and the route of each connection. Colours, opacity, dashes, icons,
  * tooltips and links are deliberately absent. A diagram inserted on the canvas
- * arrives in Bava's own style (decided 2026-09-19), and leaving D2's palette
- * out of this contract is what keeps that true: nothing downstream can come to
- * depend on it.
+ * arrives in Bava's own style, and leaving D2's palette out of this contract
+ * is what keeps that true: nothing downstream can come to depend on it.
  * 
  * The SVG in the same result is for previewing. These two never disagree,
  * because both come from the one compile.
