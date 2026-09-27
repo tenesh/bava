@@ -25,10 +25,13 @@ func Capture(path string) error {
 			`$g=[System.Drawing.Graphics]::FromImage($i);`+
 			`$g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size);`+
 			`$i.Save('%s',[System.Drawing.Imaging.ImageFormat]::Png)`, path)
-		cmd = exec.Command("powershell", "-NoProfile", "-Command", script)
+		cmd = exec.Command("powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", script)
 	default:
 		return fmt.Errorf("no screenshot on %s", runtime.GOOS)
 	}
+	// PowerShell would otherwise open a console window over the very screen
+	// it photographs.
+	hideWindow(cmd)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("%v: %s", err, out)
 	}
