@@ -85,6 +85,21 @@ describe('DiagramDialog', () => {
     unmount(empty.app);
   });
 
+  it('says which engine laid the preview out, and how many shapes it holds', async () => {
+    const { app } = await render({ engine: 'tala', shapes: 3 });
+    expect(document.querySelector('.bava-diagram-status')?.textContent).toBe('Laid out by TALA · 3 shapes');
+    unmount(app);
+  });
+
+  // The engine choice sits in the footer, beside the buttons it decides.
+  it('keeps the engine picker in the footer', async () => {
+    const { app } = await render({ engine: 'tala' });
+    const footer = document.querySelector('.bava-dialog-footer')!;
+    expect(footer.textContent).toContain('TALA');
+    expect(footer.textContent).toContain('Insert');
+    unmount(app);
+  });
+
   it('reports a cancel, so the caller can close it', async () => {
     const { app, button, onOpenChange } = await render();
     button('Cancel')!.click();
@@ -134,9 +149,9 @@ describe('closing and reopening', () => {
 // The dialog has no width of its own by default, so its two panes shrank to
 // their content and the code area was a sliver. It asks for the wide size.
 describe('the Diagram from Code dialog size', () => {
-  it('uses the wide dialog', async () => {
+  it('uses the diagram dialog\'s own size', async () => {
     const { app } = await render();
-    expect(document.querySelector('.bava-dialog-content')!.getAttribute('data-size')).toBe('wide');
+    expect(document.querySelector('.bava-dialog-content')!.getAttribute('data-size')).toBe('diagram');
     unmount(app);
   });
 });

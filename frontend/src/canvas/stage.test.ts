@@ -248,7 +248,7 @@ describe('CanvasStage', () => {
     stage.destroy();
   });
 
-  // Milestone 7: the guides snapping draws, Excalidraw's, screen-sized.
+  // The guides snapping draws, Excalidraw's, screen-sized.
   describe('snap guides', () => {
     const guideTheme = reader({
       '--color-snap-guide': 'tomato',
@@ -396,8 +396,8 @@ describe('CanvasStage', () => {
   });
 });
 
-// Milestone 6.3's style properties, drawn. Konva nodes are inspected, never
-// only the scene: Milestone 6 shipped every shape unstyled with green tests.
+// Style properties, drawn. Konva nodes are inspected, never only the scene:
+// a scene can hold every style while every shape is drawn unstyled.
 describe('style properties on the stage', () => {
   const theme = reader({
     '--color-shape-fill': 'ivory',
@@ -414,7 +414,7 @@ describe('style properties on the stage', () => {
     const stage = mounted(theme);
     stage.render(one({ type: 'rect', x: 0, y: 0, w: 100, h: 60, strokeWidth: 4, strokeStyle: 'dashed', edges: 'round', opacity: 40 }));
     const body = stage.bodyFor('e1') as Konva.Rect;
-    // Dashed: half a unit thicker since 06.16 (T2).
+    // Dashed: half a unit thicker.
     expect(body.strokeWidth()).toBe(4.5);
     expect(body.dash().length).toBeGreaterThan(0);
     expect(body.cornerRadius()).toBeGreaterThan(0);
@@ -489,8 +489,8 @@ describe('style properties on the stage', () => {
     stage.destroy();
   });
 
-  // 06.14 E4: orthogonal segments with rounded corners, the path the hit
-  // test and the exporter use too (it replaces "orthogonal segments").
+  // Orthogonal segments with rounded corners, the path the hit test and the
+  // exporter use too.
   it('draws an elbow arrow along its route, corners rounded', () => {
     const stage = mounted(theme);
     stage.render(one({ type: 'arrow', x: 0, y: 0, w: 100, h: 60, points: [0, 0, 100, 60], arrowType: 'elbow' }));
@@ -623,14 +623,14 @@ describe('the rotate handle and what cannot rotate', () => {
     stage.render(one({ type: 'arrow', x: 0, y: 0, w: 40, h: 20, points: [0, 0, 40, 20], arrowType: 'elbow' }));
     stage.setSelection(['e1']);
     expect(stage.rotateHandle()).toBeNull();
-    // No box handles either since 06.12: an elbow shows only its ends.
+    // No box handles either: an elbow shows only its ends.
     expect(stage.selectionHandleCount()).toBe(0);
     stage.destroy();
   });
 });
 
 // A binding whose target is gone freezes the endpoint and says so, rather
-// than the arrow moving or vanishing (canvas-architecture.md).
+// than the arrow moving or vanishing.
 describe('an arrow whose target has gone', () => {
   const read = reader({
     '--color-shape-stroke': 'slategray',
@@ -689,8 +689,8 @@ describe('an arrow with a label', () => {
     stage.render(one({ type: 'arrow', x: 10, y: 20, w: 100, h: 0, points: [0, 0, 100, 0], label: 'sends to' }));
     const label = stage.labelFor('e1')!;
     expect(label.text()).toBe('sends to');
-    // Centred on the midpoint, which is (60, 20) on the canvas. Since 06.17
-    // the label is placed by its centre, so it can turn about it.
+    // Centred on the midpoint, which is (60, 20) on the canvas. The label is
+    // placed by its centre, so it can turn about it.
     expect(label.getAbsolutePosition()).toEqual({ x: 60, y: 20 });
     expect(label.getClientRect().x + label.getClientRect().width / 2).toBeCloseTo(60, 5);
     stage.destroy();
@@ -708,7 +708,7 @@ describe('an arrow with a label', () => {
 // While an arrow is being drawn onto a shape, that shape is highlighted, so
 // the user can see the attachment before letting go.
 describe('the attachment highlight', () => {
-  // 06.16 B13: the shape's own outline in the highlight colour, as wide as
+  // The shape's own outline in the highlight colour, as wide as
   // its stroke within 1.75 and 4 screen px (Excalidraw's
   // `interactiveScene.ts:292-557`).
   it('outlines the candidates it is given, and clears them', () => {
@@ -733,7 +733,7 @@ describe('the attachment highlight', () => {
     expect(stage.bindingHighlights()).toHaveLength(0);
     stage.destroy();
   });
-  // 06.14 E5: while an elbow end is dragged, the spots it can snap to show
+  // While an elbow end is dragged, the spots it can snap to show
   // as dots (Excalidraw's 4 px radius midpoints).
   it('draws the snap spots it is given as dots, and clears them', () => {
     const stage = new CanvasStage({ read: reader({ '--color-selection-handle': 'dodgerblue', '--size-snap-dot': '8px' }) });
@@ -1039,7 +1039,7 @@ describe('fonts arriving', () => {
 describe('the bend handles of a selected arrow', () => {
   const read = reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px', '--size-bend-min-segment': '40px' });
 
-  // Since 06.13 a bent one offers its middles only in point editing.
+  // A bent one offers its middles only in point editing.
   it('draws a handle per point, and middles only while editing its points', () => {
     const stage = new CanvasStage({ read });
     stage.mount(host());
@@ -1069,9 +1069,9 @@ describe('the bend handles of a selected arrow', () => {
     stage.destroy();
   });
 
-  // 06.14 E7, S3: an elbow shows a handle at the middle of each segment, for
-  // dragging it: hollow when free, filled when fixed, none on a segment under
-  // 5 screen px, and not hidden by the label (S8).
+  // An elbow shows a handle at the middle of each segment, for dragging it:
+  // hollow when free, filled when fixed, none on a segment under 5 screen px,
+  // and not hidden by the label.
   it("draws an elbow's segment handles, filled when fixed", () => {
     const stage = new CanvasStage({ read: reader({ '--color-selection-handle': 'dodgerblue', '--color-surface': 'white', '--size-point-handle': '10px' }) });
     stage.mount(host());
@@ -1127,7 +1127,7 @@ describe('the handles of a turned line', () => {
   });
 });
 
-// 06.14 S8, reversing 06.13: the middle keeps precedence over the label.
+// The middle keeps precedence over the label.
 describe('the middle handle under a label', () => {
   it('is drawn, since a press on it bends the arrow', () => {
     const read = reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px', '--size-bend-min-segment': '40px', '--text-body': '16px', '--leading-tight': '1.2' });
@@ -1140,9 +1140,9 @@ describe('the middle handle under a label', () => {
   });
 });
 
-// Decision 3 of 06.12, as Excalidraw shows it (transformHandles.ts:328-354): a
-// two-point line or arrow, or an elbow, has no box; a bent one has the box
-// with four corners and the rotate handle.
+// As Excalidraw shows it (transformHandles.ts:328-354): a two-point line or
+// arrow, or an elbow, has no box; a bent one has the box with four corners
+// and the rotate handle.
 describe('what a selected line or arrow shows', () => {
   const read = reader({
     '--color-selection-handle': 'dodgerblue',
@@ -1190,7 +1190,7 @@ describe('what a selected line or arrow shows', () => {
     stage.destroy();
   });
 
-  // 06.14 S2: a bent line's box stands 10 px clear of its points
+  // A bent line's box stands 10 px clear of its points
   // (Excalidraw's `transformHandles.ts:312-316`); other boxes are tight.
   it("pads a bent line's box by 10 px, its handles with it", () => {
     const stage = selected({ type: 'line', x: 0, y: 0, w: 200, h: 80, points: [0, 0, 100, 80, 200, 0] });
@@ -1199,7 +1199,7 @@ describe('what a selected line or arrow shows', () => {
     stage.destroy();
   });
 
-  // 06.14 S6: a point on top of the one before it is drawn twice the size
+  // A point on top of the one before it is drawn twice the size
   // and hollow (1.5 times in point editing), so both can be seen and grabbed
   // (Excalidraw's `interactiveScene.ts:268-289`, `:1120-1127`).
   it('draws a point on its neighbour larger and hollow', () => {
@@ -1212,7 +1212,7 @@ describe('what a selected line or arrow shows', () => {
     stage.destroy();
   });
 
-  // 06.14 S7: a translucent disc under the handle the pointer is over.
+  // A translucent disc under the handle the pointer is over.
   it('draws a disc under the hovered handle, and clears it', () => {
     const stage = selected({ type: 'line', x: 0, y: 0, w: 200, h: 0, points: [0, 0, 200, 0] });
     stage.setHoverHandle({ x: 200, y: 0 });
@@ -1225,7 +1225,7 @@ describe('what a selected line or arrow shows', () => {
     stage.destroy();
   });
 
-  // 06.14 S9: each attached end's anchor, a disc with a dashed line to the end.
+  // Each attached end's anchor, a disc with a dashed line to the end.
   it("draws each attached end's anchor, clear of the end", () => {
     const stage = new CanvasStage({ read });
     stage.mount(host());
@@ -1249,10 +1249,10 @@ describe('what a selected line or arrow shows', () => {
   });
 });
 
-// Review of 06.12: a code block's height is its code's, so it has no top or
+// A code block's height is its code's, so it has no top or
 // bottom handles, and none that would move its top.
 describe('the handles of a selected code block', () => {
-  // Since 06.14 its bottom edge too: it can be made taller (decision 10).
+  // Its bottom edge too: it can be made taller.
   it('are its sides, its bottom and its bottom corners', () => {
     const stage = new CanvasStage({ read: reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px', '--size-rotate-gap': '16px' }) });
     stage.mount(host());
@@ -1280,7 +1280,7 @@ describe('a line in point editing', () => {
   });
 });
 
-// 06.16 L7: the line is hidden under its label's box plus 5, as Excalidraw's
+// The line is hidden under its label's box plus 5, as Excalidraw's
 // `renderElement.ts:787-817`.
 describe("the line under an arrow's label", () => {
   it('is clipped out where the label sits, and only when there is one', () => {
@@ -1294,7 +1294,7 @@ describe("the line under an arrow's label", () => {
   });
 });
 
-// Review of 06.16: the highlight's pulse starts with a candidate, stops when
+// The highlight's pulse starts with a candidate, stops when
 // there is none or the stage goes, and never starts under reduced motion.
 describe("the attach highlight's pulse", () => {
   const scene = { elements: [{ id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 60, z: 1 }] as SceneElement[] };
@@ -1320,7 +1320,7 @@ describe("the attach highlight's pulse", () => {
   });
 });
 
-// 06.17: the language on a code block's top edge, the border broken for it.
+// The language on a code block's top edge, the border broken for it.
 describe("a code block's language on the canvas", () => {
   const read = reader({ '--text-code-language': '10px', '--size-code-language-inset': '12px', '--size-code-language-clearance': '4px', '--color-text-muted': 'gray', '--leading-tight': '1.2' });
   it('names the language on the top edge, and breaks the border behind it', () => {
@@ -1331,7 +1331,7 @@ describe("a code block's language on the canvas", () => {
     expect(tag.text()).toBe('Go');
     expect(tag.x()).toBe(12);
     // The body keeps its fill and loses its stroke; the border is drawn apart,
-    // with a hole from 4 before the name to 4 after it (review of 06.17).
+    // with a hole from 4 before the name to 4 after it.
     expect(stage.bodyFor('e1')!.strokeEnabled()).toBe(false);
     const rects: number[][] = [];
     (stage.codeBorder('e1')!.getParent() as Konva.Group).clipFunc()!({ rect: (...args: number[]) => rects.push(args) } as never, undefined as never);
@@ -1344,11 +1344,114 @@ describe("a code block's language on the canvas", () => {
   });
 });
 
-describe('a label along its arrow (06.17)', () => {
+describe('a label along its arrow', () => {
   it('turns with the arrow', () => {
     const stage = mounted();
     stage.render(one({ type: 'arrow', x: 0, y: 0, w: 0, h: 100, points: [0, 0, 0, 100], label: 'down', labelDirection: 'along' }));
     expect(stage.labelFor('e1')!.rotation()).toBeCloseTo(90, 5);
+    stage.destroy();
+  });
+});
+
+describe('the dot grid', () => {
+  const gridRead = reader({
+    '--color-canvas-dot': 'gainsboro',
+    '--size-canvas-grid': '20px',
+    '--size-canvas-dot': '1px',
+    '--size-canvas-grid-min': '12px',
+  });
+
+  it('draws beneath every element, on a layer nothing hit-tests', () => {
+    const stage = mounted(gridRead);
+    stage.render(one({ type: 'rect', x: 0, y: 0, w: 100, h: 50 }));
+    const grid = stage.gridLayer()!;
+    expect(grid).not.toBeNull();
+    expect(grid.zIndex()).toBe(0);
+    expect(grid.listening()).toBe(false);
+    expect(grid.getChildren().every((node) => !node.listening())).toBe(true);
+    stage.destroy();
+  });
+
+  it('draws one square per dot in view, in the dot colour, sized for the zoom', () => {
+    const stage = mounted(gridRead);
+    const rect = vi.spyOn(Konva.Context.prototype, 'rect');
+    stage.setViewport({ zoom: 2, pan: { x: 0, y: 0 } });
+    stage.gridLayer()!.draw();
+    // 800 x 600 at 2x is 400 x 300 of drawing: 21 columns by 16 rows.
+    expect(rect).toHaveBeenCalledTimes(21 * 16);
+    // A 1px radius on screen is 1 unit across at 2x.
+    expect(rect.mock.calls[0].slice(2)).toEqual([1, 1]);
+    rect.mockRestore();
+    stage.destroy();
+  });
+
+  it('is left out of an image of the stage, and shown again after', () => {
+    const stage = mounted(gridRead);
+    const seen: boolean[] = [];
+    const grid = stage.gridLayer()!;
+    const original = Konva.Stage.prototype.toCanvas;
+    const spy = vi.spyOn(Konva.Stage.prototype, 'toCanvas').mockImplementation(function (this: Konva.Stage, config) {
+      seen.push(grid.visible());
+      return original.call(this, config);
+    });
+    stage.toCanvas();
+    expect(seen).toEqual([false]);
+    expect(grid.visible()).toBe(true);
+    spy.mockRestore();
+    stage.destroy();
+  });
+
+  it('is not drawn at all on a stage that asks for none', () => {
+    const stage = new CanvasStage({ read: gridRead, grid: false });
+    stage.mount(host());
+    expect(stage.gridLayer()).toBeNull();
+    stage.destroy();
+  });
+});
+
+describe('the selection handles', () => {
+  const handleRead = reader({
+    '--color-selection-handle': 'dodgerblue',
+    '--color-surface-raised': 'white',
+    '--size-selection-handle': '8px',
+    '--size-handle-border': '1.5px',
+    '--radius-handle': '2px',
+    '--size-point-handle': '10px',
+    '--size-rotate-gap': '16px',
+  });
+
+  it('draws resize handles raised, bordered and rounded, their border inside their size', () => {
+    const stage = mounted(handleRead);
+    stage.render(one({ type: 'rect', x: 0, y: 0, w: 100, h: 50 }));
+    stage.setSelection(['e1']);
+    const square = stage.selectionHandles()[0];
+    expect(square.fill()).toBe('white');
+    expect(square.stroke()).toBe('dodgerblue');
+    expect(square.strokeWidth()).toBe(1.5);
+    expect(square.cornerRadius()).toBe(2);
+    expect(square.width() + square.strokeWidth()).toBe(8);
+    stage.destroy();
+  });
+
+  it('draws the rotate handle at the point handle size, with the same border and fill', () => {
+    const stage = mounted(handleRead);
+    stage.render(one({ type: 'rect', x: 0, y: 0, w: 100, h: 50 }));
+    stage.setSelection(['e1']);
+    const rotate = stage.rotateHandle()!;
+    expect(rotate.fill()).toBe('white');
+    expect(rotate.strokeWidth()).toBe(1.5);
+    expect(rotate.radius() * 2 + rotate.strokeWidth()).toBe(10);
+    stage.destroy();
+  });
+
+  it('keeps handles screen-sized at any zoom', () => {
+    const stage = mounted(handleRead);
+    stage.render(one({ type: 'rect', x: 0, y: 0, w: 100, h: 50 }));
+    stage.setSelection(['e1']);
+    stage.setViewport({ zoom: 2, pan: { x: 0, y: 0 } });
+    const square = stage.selectionHandles()[0];
+    expect(square.strokeWidth()).toBe(0.75);
+    expect(square.cornerRadius()).toBe(1);
     stage.destroy();
   });
 });

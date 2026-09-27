@@ -45,8 +45,6 @@ describe('tools', () => {
 
   it('covers the tools the design shows', () => {
     expect(TOOLS.map((t) => t.id).sort()).toEqual(
-      // The eraser joined in 06.2 and the code block in 06.7
-      // (canvas-toolbar.md).
       ['arrow', 'code', 'ellipse', 'eraser', 'frame', 'line', 'pen', 'rect', 'select', 'text'].sort(),
     );
   });
@@ -87,7 +85,7 @@ describe('the code tool', () => {
   });
 });
 
-// 06.15 C16: the tool lock, as Excalidraw's.
+// The tool lock, as Excalidraw's.
 describe('the tool lock', () => {
   it('toggles, and survives a change of tool', () => {
     const tools = createTools();

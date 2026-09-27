@@ -5,9 +5,8 @@ import { setProperty } from './style';
 import { pathOf } from './arrows';
 import type { SceneData, SceneElement } from './scene';
 
-// Decision 2 of 06.12 and .claude/work/specs/excalidraw-elbow-routing.md: an
-// elbow keeps the side each end was dropped on and routes around the shapes,
-// and its route is stored in its points (decision 5).
+// An elbow keeps the side each end was dropped on and routes around the
+// shapes, and its route is stored in its points.
 const box = (id: string, x: number, y: number, w = 100, h = 60) =>
   ({ id, type: 'rect', x, y, w, h, z: 1 }) as unknown as SceneElement;
 
@@ -114,8 +113,8 @@ describe('an elbow arrow', () => {
   });
 });
 
-// Decision 5: switching to elbow replaces bends with the route; switching away
-// keeps only the ends.
+// Switching to elbow replaces bends with the route; switching away keeps only
+// the ends.
 describe('switching an arrow to and from elbow', () => {
   it('keeps only its ends when it stops being an elbow', () => {
     const history = createHistory({ elements: [elbow({ points: [0, 0, 100, 0, 100, 100, 200, 100], w: 200, h: 100 })] });
@@ -125,8 +124,8 @@ describe('switching an arrow to and from elbow', () => {
   });
 });
 
-// Review of 06.12: shapes that overlap, touch or nearly touch, both ends on
-// one shape, and a turned shape.
+// Shapes that overlap, touch or nearly touch, both ends on one shape, and a
+// turned shape.
 describe('an elbow between awkward shapes', () => {
   const rect = (id: string, x: number, y: number, w = 100, h = 60, over: Record<string, unknown> = {}) =>
     ({ id, type: 'rect', x, y, w, h, z: 1, ...over }) as unknown as SceneElement;
@@ -200,9 +199,8 @@ describe('switching a pinned arrow to elbow', () => {
   });
 });
 
-// 06.14, inventory section 4: the shape of an elbow's route, as Excalidraw's.
 describe('an elbow shaped as Excalidraw draws it', () => {
-  // E2: Excalidraw grows the shape by 10 on its heading side (30 with a
+  // Excalidraw grows the shape by 10 on its heading side (30 with a
   // head) and pads by 40 less that, so a route keeps 40 clear on every side,
   // head or not (`elbowArrow.ts:1308-1394`).
   it('keeps 40 clear of the shape it leaves', () => {
@@ -217,7 +215,7 @@ describe('an elbow shaped as Excalidraw draws it', () => {
     expect(Math.min(...points.filter((_, i) => i % 2 === 1))).toBe(-40);
   });
 
-  // E6: an end at a box corner leaves by a side, never along the edge.
+  // An end at a box corner leaves by a side, never along the edge.
   it('leaves a corner anchor outward, not along the edge', () => {
     const points = routed({
       elements: [box('a', 0, 0), elbow({ points: [0, 0, 400, 300], startBinding: 'a', startAnchor: [0, 0] })],
@@ -230,7 +228,7 @@ describe('an elbow shaped as Excalidraw draws it', () => {
 });
 
 describe('elbow corners', () => {
-  // E4: each corner drawn as a curve of radius min(16, half each neighbour).
+  // Each corner drawn as a curve of radius min(16, half each neighbour).
   it('are rounded when drawn, the stored route kept square', () => {
     const route = [0, 0, 100, 0, 100, 100];
     const drawn = pathOf(route, 'elbow');
@@ -250,7 +248,7 @@ describe('elbow corners', () => {
   });
 });
 
-// 06.14 E11: a dragged (fixed) segment stays where it was put when a shape
+// A dragged (fixed) segment stays where it was put when a shape
 // moves; only the legs at the ends adapt.
 describe('an elbow with a fixed segment', () => {
   const scene = (bY = 200): SceneData => ({
@@ -281,7 +279,7 @@ describe('an elbow with a fixed segment', () => {
     expect(arrow.fixedSegments).toEqual([{ index: 2, start: arrow.points.slice(2, 4), end: arrow.points.slice(4, 6) }]);
   });
 
-  // Review of 06.14: the stub pair shifts the indices; the kept segment
+  // The stub pair shifts the indices; the kept segment
   // must be checked against the new route, not the old one.
   it('keeps it when the start moves to a side that needs a stub', () => {
     const moved = scene();
@@ -299,8 +297,7 @@ describe('an elbow with a fixed segment', () => {
   });
 });
 
-// 06.14 E14, E15: switching kinds as Excalidraw does
-// (`actionProperties.tsx:2077-2221`).
+// Switching kinds as Excalidraw does (`actionProperties.tsx:2077-2221`).
 describe('switching kinds, as Excalidraw does', () => {
   it('to elbow: two points, its turn and its fixed segments gone', () => {
     const history = createHistory({

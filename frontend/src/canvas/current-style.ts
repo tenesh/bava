@@ -4,8 +4,8 @@
  * per session, held in memory: it is not document state, and nothing of it is
  * written anywhere but into the elements it styles.
  *
- * It starts with arrows curved and lines round, as Excalidraw's do (06.12
- * decision 13). A value equal to its file-format default is written as
+ * It starts with arrows curved and lines round, as Excalidraw's do. A value
+ * equal to its file-format default is written as
  * nothing, so an element carries only what differs from an absent key.
  */
 import type { SceneElement } from './scene';

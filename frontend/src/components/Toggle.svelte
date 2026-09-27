@@ -15,22 +15,33 @@
     checked: boolean;
     /** Shown but inert, so the setting still explains itself. */
     disabled?: boolean;
+    /**
+     * `inline` puts the switch before its label; `row` fills its width with
+     * the label first and the switch at the end, as a list of settings reads.
+     */
+    variant?: 'inline' | 'row';
     onChange: (checked: boolean) => void;
   };
 
-  let { label, checked, disabled = false, onChange }: Props = $props();
+  let { label, checked, disabled = false, variant = 'inline', onChange }: Props = $props();
 </script>
 
 <Switch.Root
   {checked}
   {disabled}
   class="bava-toggle"
+  data-variant={variant}
   onCheckedChange={(details) => onChange(details.checked)}
 >
+  {#if variant === 'row'}
+    <Switch.Label class="bava-toggle-label">{label}</Switch.Label>
+  {/if}
   <Switch.Control class="bava-toggle-track">
     <Switch.Thumb class="bava-toggle-thumb" />
   </Switch.Control>
-  <Switch.Label class="bava-toggle-label">{label}</Switch.Label>
+  {#if variant === 'inline'}
+    <Switch.Label class="bava-toggle-label">{label}</Switch.Label>
+  {/if}
   <Switch.HiddenInput />
 </Switch.Root>
 
@@ -44,6 +55,13 @@
     cursor: default;
   }
 
+  :global(.bava-toggle[data-variant='row']) {
+    justify-content: space-between;
+    gap: var(--space-4);
+    min-height: var(--size-row-xl);
+    color: var(--color-text-secondary);
+  }
+
   :global(.bava-toggle[data-disabled]) {
     color: var(--color-text-muted);
   }
@@ -53,10 +71,12 @@
     display: flex;
     align-items: center;
     width: var(--size-toggle-track);
+    flex: none;
     height: var(--size-toggle-thumb);
-    padding: var(--border-width);
+    padding: var(--space-half);
+    box-sizing: border-box;
     border-radius: var(--radius-full);
-    background: var(--color-border-subtle);
+    background: var(--color-border-strong);
     transition: background var(--motion-fast) var(--easing-standard);
   }
 
@@ -78,6 +98,6 @@
   }
 
   :global(.bava-toggle-thumb[data-state='checked']) {
-    translate: calc(var(--size-toggle-track) - var(--size-toggle-dot) - var(--border-width) * 2) 0;
+    translate: calc(var(--size-toggle-track) - var(--size-toggle-dot) - var(--space-half) * 2) 0;
   }
 </style>

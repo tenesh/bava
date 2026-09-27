@@ -1,6 +1,8 @@
 // Spacing. 4px unit, desktop density, calibrated against Linear and Zed, not
 // against web layouts.
 :root {
+  // Hairline gaps: between a segmented control's options, a toolbar's buttons.
+  --space-half: 2px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -21,14 +23,50 @@
   --size-row-sm: 22px;
   --size-row: 26px;
   --size-row-lg: 28px;
+  // A settings row, and an item in Settings' section list.
+  --size-row-xl: 30px;
   --size-toolbar: 32px;
   --size-titlebar: 36px;
   --size-statusbar: 24px;
+  // A text field in a dialog.
+  --size-field: 30px;
+  // Between a field's label and its control.
+  --size-field-gap: 6px;
+  // A text field's inner space at each side.
+  --size-field-padding: 10px;
+  // Between buttons side by side on a row (the Trash's Restore and Delete).
+  --size-button-gap: 6px;
+  // A keycap in the shortcuts list: its least side, its inner space at each
+  // side, the gap between caps, and its thicker bottom edge.
+  --size-keycap: 20px;
+  --size-keycap-padding: 5px;
+  --size-keycap-gap: 3px;
+  --size-keycap-edge: 2px;
+  // The side pane: the Space switcher and the Files tree.
+  --size-side-pane: 264px;
+  // Between a row's icon and its label: the Files tree, the Space switcher.
+  --size-row-gap: 6px;
+  // The dot marking a page with unsaved changes.
+  --size-unsaved-dot: 6px;
+  // A Space's initial tile on the switcher's trigger.
+  --size-space-tile: 20px;
+  // The Space switcher's menu.
+  --size-space-menu: 280px;
+  // A row in the Space switcher's menu.
+  --size-space-menu-row: 30px;
+  // The canvas's dot grid: one dot every 20px of the drawing.
+  --size-canvas-grid: 20px;
+  --size-canvas-dot: 1px;
+  // Zoomed out, the grid drops every other dot until they stand this far
+  // apart on screen, rather than drawing thousands.
+  --size-canvas-grid-min: 12px;
 
   // Space between a label and its shape's edge.
   --size-label-inset: 6px;
   // A selection handle's side on screen, whatever the zoom.
   --size-selection-handle: 8px;
+  // The border on a selection handle and the rotate handle, on screen.
+  --size-handle-border: 1.5px;
   // How far an elbow's route keeps from the shapes it joins (canvas/elbow.ts).
   --size-elbow-margin: 40px;
   // How near a line counts as a click on it: Excalidraw's 0.85 × 8 = 6.8 px.
@@ -47,7 +85,11 @@
   // The spots an elbow end snaps to, shown while one is dragged: Excalidraw's
   // 4 px radius (this is the diameter).
   --size-snap-dot: 8px;
-  // Snapping to objects (Milestone 7), Excalidraw's values: the reach,
+  // The Files tree: how far each folder level indents, and the
+  // line showing where a dragged row will land.
+  --size-tree-indent: 14px;
+  --size-tree-drop-line: 2px;
+  // Snapping to objects, Excalidraw's values: the reach,
   // 8 px on screen at any zoom; a guide line's width; the cross at each
   // aligned point, 2 px each way (this is end to end); and a spacing
   // guide's end ticks, 8 px each way, and its two middle marks, 4 px each
@@ -68,7 +110,7 @@
   --size-point-overlap: 2px;
   // How far an arrow's label is dragged before it slides (Excalidraw's 10).
   --size-label-drag: 10px;
-  // How far from a code block's left corner its language is named (06.17).
+  // How far from a code block's left corner its language is named.
   --size-code-language-inset: 12px;
   // How far round that name its border is hidden.
   --size-code-language-clearance: 4px;
@@ -88,6 +130,14 @@
   --size-marquee-dash: 4px;
   // The eraser trail's width on screen, whatever the zoom.
   --size-eraser-trail: 6px;
+  // The selection toolbar's divider: its height, and the room either side.
+  --size-toolbar-divider: 18px;
+  --size-toolbar-divider-inset: 3px;
+  // The border colour chip: a ring in the colour with a clear middle.
+  --size-chip-ring: 3px;
+  // A colour picker popover's padding, and the gap between its swatches.
+  --size-picker-padding: 10px;
+  --size-swatch-gap: 6px;
   // A tool rail button, square.
   --size-rail-button: 32px;
   // The insert panel beside the rail, and a tile in its grid.
@@ -113,20 +163,31 @@
   --size-mark-splash: 88px;
 
   // The launch splash's progress bar: a short, thin rule.
-  --size-progress-splash: 148px;
+  // An error's detail labels, the narrow column beside their values.
+  --size-error-detail-label: 110px;
+  --size-progress-splash: 220px;
+  --size-progress-splash-thickness: 4px;
+  // The padding of the mark's tile at splash size.
+  --size-mark-tile-splash-padding: 14px;
   --size-progress-thickness: 2px;
 
-  // The diagram dialog: its editor and preview, and the error list beneath.
-  --size-diagram-dialog: 480px;
+  // The diagram dialog: its size, never larger than the window allows, and
+  // the error list beneath its panes.
+  --size-diagram-dialog-width: min(1160px, 90vw);
+  --size-diagram-dialog-height: min(700px, 90vh);
   --size-diagram-errors: 96px;
 
-  // The export dialog's preview panel.
-  --size-export-preview: 220px;
+  // The export dialog: its width, the preview's height, the settings column
+  // beside it, and the checkerboard square behind a transparent picture.
+  --size-dialog-export: min(720px, 90vw);
+  --size-export-preview: 260px;
+  --size-export-settings: 240px;
+  --size-export-checker: 16px;
 
   // An on/off switch: its track, its height, and the dot that slides.
-  --size-toggle-track: 30px;
-  --size-toggle-thumb: 18px;
-  --size-toggle-dot: 14px;
+  --size-toggle-track: 28px;
+  --size-toggle-thumb: 16px;
+  --size-toggle-dot: 12px;
 
   // Space inside a code block's panel, on every side.
   --size-code-padding: 8px;
@@ -140,6 +201,36 @@
   // A dialog whose panes share its width (Diagram from Code): room to write
   // in, never wider than the window allows.
   --size-dialog-wide: min(1100px, 90vw);
+  // Trash, Space settings and Settings share a medium width;
+  // Settings' section list; the start screen's column.
+  --size-dialog-medium: min(760px, 90vw);
+  // A dialog of a few fields: New Space, Space settings.
+  --size-dialog-narrow: min(520px, 90vw);
+  // The Trash keeps its size as items come and go.
+  --size-dialog-trash-width: min(880px, 90vw);
+  --size-dialog-trash-height: 600px;
+  // The Trash's rows and columns: an icon, the name (the rest), where it
+  // was, when it was deleted, and its buttons; and its search field.
+  --size-trash-row: 44px;
+  --size-trash-col-icon: 24px;
+  --size-trash-col-from: 200px;
+  --size-trash-col-deleted: 110px;
+  --size-trash-col-actions: 190px;
+  --size-trash-search: 260px;
+  // The About dialog, a narrow centred card.
+  --size-dialog-about: 380px;
+  // The shortcuts list: three columns of keys, never larger than the window.
+  --size-dialog-shortcuts-width: min(960px, 90vw);
+  --size-dialog-shortcuts-height: min(640px, 90vh);
+  // Settings keeps one size whichever section is shown.
+  --size-settings-width: min(780px, 90vw);
+  --size-settings-height: min(560px, 90vh);
+  --size-settings-nav: 200px;
+  --size-start-width: 560px;
+  // How far a menu opens from its trigger; read at runtime by the positioner.
+  --size-menu-gutter: 4px;
+  // A list inside a dialog (the Trash) scrolls past half the window.
+  --size-dialog-list-max: 50vh;
   // A short numeric field: milliseconds, a zoom percentage.
   --size-field-number: 10ch;
 }

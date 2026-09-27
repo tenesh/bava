@@ -63,11 +63,15 @@
       <Tooltip label={picker.label} placement="top" {triggerId}>
         {#snippet trigger(tipProps)}
           {#snippet chipButton(popoverProps: typeof tipProps)}
+            {@const ring = picker.part === 'stroke' && picker.current !== 'mixed'}
             <button {...tipProps(popoverProps())} class="bava-style-trigger" aria-label={picker.label}>
+              <!-- A border colour is shown as a ring in it, with a clear middle. -->
               <span
                 class="chip"
                 class:mixed={picker.current === 'mixed'}
-                style:background={chip(picker.current, picker.part)}
+                class:ring
+                style:background={ring ? 'transparent' : chip(picker.current, picker.part)}
+                style:border-color={ring ? chip(picker.current, picker.part) : undefined}
               ></span>
             </button>
           {/snippet}
@@ -85,12 +89,14 @@
               aria-label={picker.label}
             >
               {#each [DEFAULT, ...SWATCHES] as swatch (swatch)}
-                <RadioGroup.Item value={swatch} class="bava-swatch">
+                {@const name = swatch === DEFAULT ? t('swatch.default') : swatchName(swatch)}
+                <RadioGroup.Item value={swatch} class="bava-swatch" title={name}>
                   <RadioGroup.ItemControl
                     class="bava-swatch-control"
                     style={`background: ${swatch === DEFAULT ? `var(--color-shape-${picker.part})` : `var(--swatch-${swatch}-${picker.part})`}`}
                   />
-                  <RadioGroup.ItemText class="bava-swatch-name">{swatch === DEFAULT ? t('swatch.default') : swatchName(swatch)}</RadioGroup.ItemText>
+                  <!-- Named for assistive technology and in the tooltip, not on screen. -->
+                  <RadioGroup.ItemText class="bava-swatch-name">{name}</RadioGroup.ItemText>
                   <RadioGroup.ItemHiddenInput />
                 </RadioGroup.Item>
               {/each}
@@ -131,28 +137,37 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: var(--size-row);
-    height: var(--size-row);
+    width: var(--size-row-lg);
+    height: var(--size-row-lg);
     padding: 0;
     border: 0;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background: transparent;
     font: inherit;
     font-size: var(--text-meta);
     color: var(--color-text-secondary);
   }
 
-  :global(.bava-style-trigger:focus-visible),
-  :global(.bava-swatch[data-focus-visible]) {
+  :global(.bava-style-trigger:focus-visible) {
     outline: var(--focus-ring-width) solid var(--color-focus-ring);
     outline-offset: calc(var(--focus-halo-width) * -1);
   }
 
+  :global(.bava-swatch[data-focus-visible] .bava-swatch-control) {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+    outline-offset: var(--focus-halo-width);
+  }
+
   .chip {
-    width: var(--space-3);
-    height: var(--space-3);
+    box-sizing: border-box;
+    width: var(--space-4);
+    height: var(--space-4);
     border: var(--border-width) solid var(--color-border-strong);
     border-radius: var(--radius-sm);
+  }
+
+  .chip.ring {
+    border-width: var(--size-chip-ring);
   }
 
   .chip.mixed {
@@ -161,17 +176,17 @@
 
   :global(.bava-style-popover) {
     z-index: var(--z-portal);
-    padding: var(--space-2);
+    padding: var(--size-picker-padding);
     background: var(--color-surface-overlay);
     border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-floating);
   }
 
   :global(.bava-swatches) {
-    display: grid;
-    grid-template-columns: repeat(3, auto);
-    gap: var(--space-1);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-swatch-gap);
   }
 
   :global(.bava-custom) {
@@ -202,27 +217,31 @@
   }
 
   :global(.bava-swatch) {
+    position: relative;
     display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--radius-sm);
     cursor: default;
   }
 
-  :global(.bava-swatch[data-state='checked']) {
-    background: var(--color-accent-subtle);
-  }
-
   :global(.bava-swatch-control) {
-    width: var(--space-4);
-    height: var(--space-4);
-    border: var(--border-width) solid var(--color-border-strong);
-    border-radius: var(--radius-sm);
+    box-sizing: border-box;
+    width: var(--size-row-sm);
+    height: var(--size-row-sm);
+    border: var(--border-width) solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
   }
 
+  :global(.bava-swatch[data-state='checked'] .bava-swatch-control) {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 var(--focus-halo-width) var(--color-selection);
+  }
+
+  /* Hidden from sight, still the radio's accessible name. */
   :global(.bava-swatch-name) {
-    font-size: var(--text-meta);
-    color: var(--color-text-primary);
+    position: absolute;
+    width: var(--border-width);
+    height: var(--border-width);
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 </style>

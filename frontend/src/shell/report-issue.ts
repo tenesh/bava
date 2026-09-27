@@ -5,7 +5,7 @@
  * Nothing is attached or sent. The template asks for what happened and names
  * the build; the user pastes diagnostics or attaches a log file themselves.
  *
- * **Hidden until Milestone 16** (decision 2026-09-17): the destination must be
+ * **Hidden until the public tracker is confirmed**: the destination must be
  * a confirmed public tracker. Enabling it means flipping the flag and adding
  * the menu item in the same change.
  */

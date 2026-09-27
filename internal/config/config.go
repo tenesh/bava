@@ -17,8 +17,8 @@ import (
 
 // Settings are the values a user can change.
 //
-// The render values started life as compile-time constants in Milestone 1 and
-// are named here so a change is a preference rather than a rebuild.
+// The render values are named here so a change is a preference rather than a
+// rebuild.
 type Settings struct {
 	// DebounceMS is the quiet period before a render is issued. 250 is the
 	// measured value: dagre 12ms, elk 7ms, TALA 96ms on a ~25 node diagram.

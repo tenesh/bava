@@ -20,6 +20,8 @@ type Persisted = {
   mode: ViewMode;
   showsFiles: boolean;
   showsAI: boolean;
+  // The Files section folded under its header, the tree hidden.
+  filesFolded: boolean;
 };
 
 const DEFAULTS: Persisted = {
@@ -28,6 +30,7 @@ const DEFAULTS: Persisted = {
   // Collapsed until a provider is configured: an empty pane taking a quarter
   // of the window teaches the user nothing.
   showsAI: false,
+  filesFolded: false,
 };
 
 function isMode(value: unknown): value is ViewMode {
@@ -44,6 +47,7 @@ function parse(raw: string | null): Persisted {
       mode: isMode(c.mode) ? c.mode : DEFAULTS.mode,
       showsFiles: typeof c.showsFiles === 'boolean' ? c.showsFiles : DEFAULTS.showsFiles,
       showsAI: typeof c.showsAI === 'boolean' ? c.showsAI : DEFAULTS.showsAI,
+      filesFolded: typeof c.filesFolded === 'boolean' ? c.filesFolded : DEFAULTS.filesFolded,
     };
   } catch {
     return DEFAULTS;
@@ -88,12 +92,18 @@ export function createViewState(options: { storage?: ViewStorage } = {}) {
     get showsAI() {
       return state.showsAI;
     },
+    get filesFolded() {
+      return state.filesFolded;
+    },
 
     setMode(mode: ViewMode) {
       update({ ...state, mode });
     },
     toggleFiles() {
       update({ ...state, showsFiles: !state.showsFiles });
+    },
+    toggleFilesFolded() {
+      update({ ...state, filesFolded: !state.filesFolded });
     },
     toggleAI() {
       update({ ...state, showsAI: !state.showsAI });

@@ -1,6 +1,6 @@
 /**
  * The tool rail's contents: common tools only, in groups. Every other shape
- * is reached from the insert panel (canvas-toolbar.md). Data, not markup, so
+ * is reached from the insert panel. Data, not markup, so
  * the layout decision is tested once and the component only draws it.
  */
 import type { MessageKey } from '../i18n/messages';

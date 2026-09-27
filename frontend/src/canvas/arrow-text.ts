@@ -1,7 +1,7 @@
 /**
  * Text at a free arrow end: with the Text tool, a click by an unattached end
  * starts a text there that the end attaches to, the arrow staying where it is
- * (Excalidraw's `element/src/arrowEndpointText.ts`, 06.16).
+ * (Excalidraw's `element/src/arrowEndpointText.ts`).
  */
 import { drawnPoints, gapOf, type Point } from './binding';
 import type { History } from './history';

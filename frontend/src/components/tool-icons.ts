@@ -20,6 +20,12 @@ import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
 import ArrowUpDown from '@lucide/svelte/icons/arrow-up-down';
 import Baseline from '@lucide/svelte/icons/baseline';
 import ChevronRight from '@lucide/svelte/icons/chevron-right';
+import ChevronDown from '@lucide/svelte/icons/chevron-down';
+import FilePlus from '@lucide/svelte/icons/file-plus';
+import Folder from '@lucide/svelte/icons/folder';
+import FolderOpen from '@lucide/svelte/icons/folder-open';
+import FolderPlus from '@lucide/svelte/icons/folder-plus';
+import Settings from '@lucide/svelte/icons/settings';
 import CircleDashed from '@lucide/svelte/icons/circle-dashed';
 import CircleSmall from '@lucide/svelte/icons/circle-small';
 import CornerDownRight from '@lucide/svelte/icons/corner-down-right';
@@ -42,6 +48,7 @@ import Diamond from '@lucide/svelte/icons/diamond';
 import Ellipsis from '@lucide/svelte/icons/ellipsis';
 import Eraser from '@lucide/svelte/icons/eraser';
 import File from '@lucide/svelte/icons/file';
+import Hash from '@lucide/svelte/icons/hash';
 import Hexagon from '@lucide/svelte/icons/hexagon';
 import Layers from '@lucide/svelte/icons/layers';
 import Minus from '@lucide/svelte/icons/minus';
@@ -107,7 +114,7 @@ export const LUCIDE_ICONS = {
   alignBottom: AlignEndHorizontal,
   distributeHorizontal: AlignHorizontalDistributeCenter,
   distributeVertical: AlignVerticalDistributeCenter,
-  // Milestone 6.3's property controls.
+  // The property controls.
   strokeWidth: Minus,
   strokeStyle: CircleDashed,
   edges: SquareRoundCorner,
@@ -137,13 +144,24 @@ export const LUCIDE_ICONS = {
   labelAlong: MoveUpRight,
   headExactlyOne: Equal,
   headZero: CircleDot,
-  // Milestone 6.15's line actions and the tool lock.
+  // The line actions and the tool lock.
   finishLine: Check,
   editPoints: PencilLine,
   closeLine: Pentagon,
   openLine: Waypoints,
   lock: Lock,
   lockOpen: LockOpen,
+  // Spaces and the Files tree.
+  page: File,
+  folder: Folder,
+  folderOpen: FolderOpen,
+  newPage: FilePlus,
+  newFolder: FolderPlus,
+  chevronDown: ChevronDown,
+  settings: Settings,
+  // Settings' sections.
+  appearance: Contrast,
+  grid: Hash,
 } satisfies Record<string, Component>;
 
 export type IconId = keyof typeof LUCIDE_ICONS | 'parallelogram';

@@ -53,21 +53,6 @@
   bind:this={rail}
   onkeydown={onKeydown}
 >
-  <div class="group">
-    <Tooltip
-      label={t('rail.lock')}
-      keys="Q"
-      type="button"
-      class="bava-rail-button"
-      aria-label={t('rail.lock')}
-      aria-pressed={locked}
-      data-active={locked}
-      onclick={onLock}
-    >
-      <ToolIcon id={locked ? 'lock' : 'lockOpen'} />
-      <span class="key" aria-hidden="true">Q</span>
-    </Tooltip>
-  </div>
   {#each RAIL_GROUPS as group, i (i)}
     <div class="group">
       {#each group as item (item.id)}
@@ -106,20 +91,31 @@
       {/each}
     </div>
   {/each}
+  <!-- The lock ends the rail, set off from the tools by a hairline. -->
+  <div class="lock">
+    <Tooltip
+      label={t('rail.lock')}
+      keys="Q"
+      type="button"
+      class="bava-rail-button"
+      aria-label={t('rail.lock')}
+      aria-pressed={locked}
+      data-active={locked}
+      onclick={onLock}
+    >
+      <ToolIcon id={locked ? 'lock' : 'lockOpen'} />
+      <span class="key" aria-hidden="true">Q</span>
+    </Tooltip>
+  </div>
 </div>
 
 <style>
+  /* One panel: the groups run on inside it, and the lock is set off beneath. */
   .rail {
     position: absolute;
     top: var(--space-3);
     left: var(--space-3);
     z-index: var(--z-floating);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .group {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
@@ -128,6 +124,18 @@
     border: var(--border-width) solid var(--color-border-subtle);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-floating);
+  }
+
+  .group,
+  .lock {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .lock {
+    padding-top: var(--space-1);
+    border-top: var(--border-width) solid var(--color-border-subtle);
   }
 
   :global(.bava-rail-button) {

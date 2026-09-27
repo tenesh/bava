@@ -631,6 +631,17 @@ deliberately at `5.24.2` or later.
   (ArrowDown, Enter); RadioGroup items accept a click. Popovers render closed
   content unless `lazyMount`.
 
+### Milestone 8.1 findings (Spaces and files), 2026-09-27
+
+- **Gates green; not seen at a running window.** Plan
+  `.claude/work/plans/08.1-spaces-and-files.md`.
+- A Space is a folder with `.bava/` (`space.json`, `trash/`), in
+  `internal/space`; `SpaceService` replaced `FileService.ListWorkspace`.
+  Bindings regenerated. The Files tree is Ark's TreeView (`SpaceTree`).
+- Menu ids added: `file.newFolder`, `file.openSpace` (⌘O), `space.trash`,
+  `file.spaceSettings`; `file.open` is ⇧⌘O. A menu id ending `.settings`
+  is counted as the app's Settings by a spec test: name others differently.
+
 ### Plans and roadmap reconciled, 2026-09-27
 
 - The Milestone 6 plans (6 and 6.1 to 6.17) are one file,

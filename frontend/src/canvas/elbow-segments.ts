@@ -1,10 +1,9 @@
 /**
  * Segments of an elbow the user dragged, and how the route keeps them.
  *
- * Excalidraw's fixed segments (`.claude/work/specs/excalidraw-elbow-segments.md`,
- * `element/src/elbowArrow.ts:113-900`), in Bava's own code. A fixed segment is
- * an index: segment `i` runs from point `i - 1` to point `i`, and the points
- * say where it is. Once any segment is fixed the arrow is no longer routed
+ * Excalidraw's fixed segments (`element/src/elbowArrow.ts:113-900`), in
+ * Bava's own code. A fixed segment is an index: segment `i` runs from point
+ * `i - 1` to point `i`, and the points say where it is. Once any segment is fixed the arrow is no longer routed
  * whole: it keeps its interior and only the legs at its ends adapt.
  *
  * Pure: scene-space points in, points out. `binding.ts` converts at the

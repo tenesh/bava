@@ -3,8 +3,7 @@
    * The app shell: title bar, four regions, status bar.
    *
    * It owns layout and wiring only. The editor, canvas and AI pane are handed
-   * in as snippets, so this file has no IPC and no D2 knowledge and the regions
-   * can be built out milestone by milestone.
+   * in as snippets, so this file has no IPC and no D2 knowledge.
    *
    * View state and the settings dialog's open flag are handed in too: the
    * native menu changes both, and it reaches them through App's commands.
@@ -22,6 +21,7 @@
   import StatusBar from '../components/StatusBar.svelte';
   import ViewSwitcher from '../components/ViewSwitcher.svelte';
   import SettingsDialog from '../settings/SettingsDialog.svelte';
+  import type { Section } from '../components/SectionTabs.svelte';
   import { t } from '../i18n/t';
   import type { ViewState } from './view.svelte';
   import type { ThemeChoice } from '../styles/theme.svelte';
@@ -34,9 +34,12 @@
     title: string;
     /** Shown beside the filename: saved, or unsaved changes. */
     dirty?: boolean;
-    /** Engine and node count describe a document; omitted when none is open. */
+    /** The canvas's engine and node count, while the canvas is being worked on. */
     engine?: string;
     nodes?: number;
+    /** The document's counts, while it is being worked on. */
+    words?: number;
+    characters?: number;
     errors: number;
     /** A message for the status bar, when something needs noticing. */
     status?: string;
@@ -48,8 +51,15 @@
     files?: Snippet;
     view: ViewState;
     settingsOpen?: boolean;
-    /** Extra sections for the settings dialog, after Appearance. */
-    settings?: Snippet;
+    /** Sections for the settings dialog, after Appearance. */
+    settings?: Section[];
+    /** What shows with nothing open: the start screen. */
+    start?: Snippet;
+    /** Whether a page is open. A Space with none shows its tree and a hint. */
+    pageOpen?: boolean;
+    /** The Space's name and the page's path, for the status bar. */
+    space?: string;
+    path?: string;
     /** A panel crashed while rendering. The shell keeps it contained. */
     onPanelError?: (panel: string, error: unknown) => void;
   };
@@ -61,6 +71,8 @@
     dirty = false,
     engine,
     nodes,
+    words,
+    characters,
     errors,
     status,
     themeChoice,
@@ -70,7 +82,11 @@
     files: filesPane,
     view,
     settingsOpen = $bindable(false),
-    settings,
+    settings = [],
+    start,
+    pageOpen = true,
+    space,
+    path,
     onPanelError = () => {},
   }: Props = $props();
 </script>
@@ -82,7 +98,7 @@
       <span class="filename">
         {#if open}
           {title}
-          <span class="state" class:dirty>{dirty ? t('file.dirty') : t('file.saved')}</span>
+          <span class="state">{dirty ? t('file.dirty') : t('file.saved')}</span>
         {:else}
           {t('empty.noFile.title')}
         {/if}
@@ -101,22 +117,25 @@
 
   {#if !open}
     <main class="no-file">
-      <EmptyState title={t('empty.noFile.title')} mark {hints} />
+      {#if start}
+        {@render start()}
+      {:else}
+        <EmptyState title={t('empty.noFile.title')} mark {hints} />
+      {/if}
     </main>
   {/if}
 
   <div class="regions" class:hidden={!open}>
     {#if view.showsFiles}
-      <div class="region region-files">
-        <Pane title={t('pane.files')}>
-          <PanelBoundary name={t('pane.files')} onError={(error) => onPanelError('files', error)}>
-            {#if filesPane}
-              {@render filesPane()}
-            {:else}
-              <EmptyState title={t('empty.files.title')} body={t('empty.files.body')} />
-            {/if}
-          </PanelBoundary>
-        </Pane>
+      <!-- No titled pane: the Space switcher heads it. -->
+      <div class="region region-files side" role="region" aria-label={t('pane.files')}>
+        <PanelBoundary name={t('pane.files')} onError={(error) => onPanelError('files', error)}>
+          {#if filesPane}
+            {@render filesPane()}
+          {:else}
+            <EmptyState title={t('empty.files.title')} body={t('empty.files.body')} />
+          {/if}
+        </PanelBoundary>
       </div>
     {/if}
 
@@ -126,16 +145,22 @@
       mounted once; letting a view switch unmount them would destroy the
       editor and take its undo history and cursor with it.
     -->
-    <div class="region region-main" class:hidden={!view.showsDocument}>
-      <Pane title={t('pane.document')}>
+    {#if !pageOpen}
+      <main class="region region-main no-page">
+        <EmptyState title={t('empty.noPage.title')} body={t('empty.noPage.body')} {hints} />
+      </main>
+    {/if}
+
+    <div class="region region-main" data-side="document" class:hidden={!pageOpen || !view.showsDocument}>
+      <Pane title={t('pane.document')} variant="bare">
         <PanelBoundary name={t('pane.document')} onError={(error) => onPanelError('document', error)}>
           {@render documentPane()}
         </PanelBoundary>
       </Pane>
     </div>
 
-    <div class="region region-main" class:hidden={!view.showsCanvas}>
-      <Pane title={t('pane.canvas')}>
+    <div class="region region-main" data-side="canvas" class:hidden={!pageOpen || !view.showsCanvas}>
+      <Pane title={t('pane.canvas')} variant="bare">
         <PanelBoundary name={t('pane.canvas')} onError={(error) => onPanelError('canvas', error)}>
           {@render canvasPane()}
         </PanelBoundary>
@@ -153,7 +178,7 @@
     {/if}
   </div>
 
-  <StatusBar {engine} {nodes} {errors} message={status} />
+  <StatusBar {engine} {nodes} {words} {characters} {errors} {space} {path} message={status} />
 </div>
 
 <SettingsDialog
@@ -188,13 +213,10 @@
 
   .state {
     margin-inline-start: var(--space-2);
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-chip);
-    color: var(--color-text-faint);
-  }
-
-  .state.dirty {
-    color: var(--color-accent);
+    font-family: var(--font-ui);
+    font-size: var(--text-meta);
+    font-weight: var(--weight-regular);
+    color: var(--color-text-muted);
   }
 
   .identity {
@@ -205,8 +227,9 @@
   }
 
   .filename {
-    font-size: var(--text-control);
-    color: var(--color-text-secondary);
+    font-size: var(--text-body);
+    font-weight: var(--weight-medium);
+    color: var(--color-text-primary);
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -223,7 +246,7 @@
     height: var(--size-row);
     padding: 0 var(--space-3);
     border: var(--border-width) solid transparent;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background: transparent;
     font: inherit;
     font-size: var(--text-control);
@@ -234,7 +257,9 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
-    border-color: var(--color-border-strong);
+    border-color: var(--color-border-subtle);
+    background: var(--color-surface-raised);
+    color: var(--color-text-primary);
   }
 
   .action[aria-pressed='true'] {
@@ -269,7 +294,21 @@
   }
 
   .region-files {
-    flex: 0 0 18%;
+    flex: 0 0 var(--size-side-pane);
+  }
+
+  /* The side pane: the Space switcher, then Files; it scrolls on its own. */
+  .side {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface-nav);
+    overflow: auto;
+  }
+
+  .no-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .region-main {

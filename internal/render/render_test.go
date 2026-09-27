@@ -85,7 +85,7 @@ func first(s string, n int) string {
 }
 
 // Direction comes from the dialog's control. It applies only when the source
-// sets none: the code the user wrote wins (plan 06.11). dagre honours
+// sets none: the code the user wrote wins. dagre honours
 // direction; TALA ignores it, which is why the control hides for TALA.
 func TestRenderAppliesDirection(t *testing.T) {
 	cases := []struct {

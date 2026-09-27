@@ -148,7 +148,7 @@ describe('copying keeps bindings and containment inside the copy', () => {
     expect(child.frame).toBe(frame.id);
   });
 
-  // B23 of the Excalidraw inventory: copying only the arrow lets go of the
+  // Copying only the arrow lets go of the
   // shapes it was drawn between. Kept, re-aiming pulled the copy back onto
   // the original's shapes, on top of the original.
   it('lets go of a shape that was not copied', () => {
@@ -167,7 +167,7 @@ describe('copying keeps bindings and containment inside the copy', () => {
     expect(copy.endBinding).toBe('gone');
   });
 
-  // Review of 06.14: a copy replaced to let go keeps its place in the stack.
+  // A copy replaced to let go keeps its place in the stack.
   it('keeps the copies stacked as the originals are', () => {
     const scene = createScene({
       elements: [
@@ -246,7 +246,7 @@ describe('duplicate with an offset and names', () => {
   });
 });
 
-// 06.16 B21: arrow keys leave an attached arrow alone unless its shapes move
+// Arrow keys leave an attached arrow alone unless its shapes move
 // too (Excalidraw's `App.tsx:5812-5835`).
 describe('what arrow keys move', () => {
   it('leaves out an arrow whose shape is not moving with it', () => {
@@ -263,7 +263,7 @@ describe('what arrow keys move', () => {
   });
 });
 
-// 06.16 H8, X5: flipping as Excalidraw's `actionFlip.ts:110-195`.
+// Flipping as Excalidraw's `actionFlip.ts:110-195`.
 describe('flipping, as Excalidraw', () => {
   it('swaps the heads of a selection of attached arrows only, moving nothing', () => {
     const scene = createScene({
@@ -292,7 +292,7 @@ describe('flipping, as Excalidraw', () => {
   });
 });
 
-describe('what arrow keys move, with frames (review of 06.16)', () => {
+describe('what arrow keys move, with frames', () => {
   it('moves an arrow whose shape moves inside a selected frame', () => {
     const scene = {
       elements: [

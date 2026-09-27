@@ -34,61 +34,74 @@
 
   let { open = $bindable(), hasSelection, settings, preview, onSettings, onExport, onCopy }: Props = $props();
 
-  /** The scales the spec offers. PNG only: an SVG has no pixels to multiply. */
+  /** The scales offered. PNG only: an SVG has no pixels to multiply. */
   const SCALES = ['1', '2', '3'];
 </script>
 
-<Dialog bind:open title={t('export.title')}>
-  <div class="preview-frame">
-    <!-- The caller draws this with the same writer that exports the file, so
-         the preview is the export rather than an impression of it. Remote
-         references are taken out: a preview makes no network call. -->
-    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-    <div class="bava-export-preview">{@html withoutRemoteRefs(preview)}</div>
-  </div>
+{#snippet footer()}
+  <button type="button" class="action" onclick={() => onCopy()}>{t('export.copy')}</button>
+  <button type="button" class="action" onclick={() => onExport('svg')}>{t('export.svg')}</button>
+  <button type="button" class="action primary" onclick={() => onExport('png')}>{t('export.png')}</button>
+{/snippet}
 
-  <div class="settings">
-    <Toggle
-      label={t('export.onlySelected')}
-      checked={settings.onlySelected && hasSelection}
-      disabled={!hasSelection}
-      onChange={(onlySelected) => onSettings({ onlySelected })}
-    />
-    <Toggle
-      label={t('export.background')}
-      checked={settings.background}
-      onChange={(background) => onSettings({ background })}
-    />
-    <Toggle label={t('export.dark')} checked={settings.dark} onChange={(dark) => onSettings({ dark })} />
-    <div class="scale">
-      <span class="scale-label">{t('export.scalePng')}</span>
-      <Segments
-        label={t('export.scale')}
-        value={String(settings.scale)}
-        options={SCALES.map((value) => ({ value, label: `${value}×` }))}
-        onValueChange={(value) => onSettings({ scale: Number(value) })}
-      />
+<Dialog bind:open title={t('export.title')} subtitle={t('export.subtitle')} size="export" {footer}>
+  <div class="bava-export">
+    <div class="preview-frame">
+      <!-- The caller draws this with the same writer that exports the file, so
+           the preview is the export rather than an impression of it. Remote
+           references are taken out: a preview makes no network call. -->
+      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+      <div class="bava-export-preview">{@html withoutRemoteRefs(preview)}</div>
     </div>
-  </div>
 
-  <div class="actions">
-    <button type="button" class="action" onclick={() => onCopy()}>{t('export.copy')}</button>
-    <button type="button" class="action" onclick={() => onExport('svg')}>{t('export.svg')}</button>
-    <button type="button" class="action primary" onclick={() => onExport('png')}>{t('export.png')}</button>
+    <div class="settings">
+      <Toggle
+        variant="row"
+        label={t('export.onlySelected')}
+        checked={settings.onlySelected && hasSelection}
+        disabled={!hasSelection}
+        onChange={(onlySelected) => onSettings({ onlySelected })}
+      />
+      <Toggle
+        variant="row"
+        label={t('export.background')}
+        checked={settings.background}
+        onChange={(background) => onSettings({ background })}
+      />
+      <Toggle variant="row" label={t('export.dark')} checked={settings.dark} onChange={(dark) => onSettings({ dark })} />
+      <div class="scale">
+        <span class="scale-label">{t('export.scalePng')}</span>
+        <Segments
+          label={t('export.scale')}
+          value={String(settings.scale)}
+          options={SCALES.map((value) => ({ value, label: `${value}×` }))}
+          onValueChange={(value) => onSettings({ scale: Number(value) })}
+        />
+      </div>
+    </div>
   </div>
 </Dialog>
 
 <style>
+  .bava-export {
+    display: flex;
+    gap: var(--space-5);
+  }
+
   .preview-frame {
     display: flex;
+    flex: 1 1 0;
     align-items: center;
     justify-content: center;
+    min-width: 0;
     height: var(--size-export-preview);
-    margin-bottom: var(--space-4);
     padding: var(--space-2);
+    box-sizing: border-box;
     border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-sunken);
+    border-radius: var(--radius-lg);
+    /* A checkerboard, so a transparent background reads as one. */
+    background: repeating-conic-gradient(var(--color-surface-sunken) 0 25%, var(--color-surface-raised) 0 50%) 0 0 /
+      var(--size-export-checker) var(--size-export-checker);
     overflow: hidden;
   }
 
@@ -105,34 +118,34 @@
 
   .settings {
     display: flex;
+    flex: none;
     flex-direction: column;
-    gap: var(--space-3);
-    margin-bottom: var(--space-5);
+    gap: var(--space-1);
+    width: var(--size-export-settings);
   }
 
   .scale {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--space-3);
+    min-height: var(--size-row-xl);
   }
 
   .scale-label {
     font-size: var(--text-control);
-    color: var(--color-text-primary);
-  }
-
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-2);
+    color: var(--color-text-secondary);
   }
 
   .action {
+    display: inline-flex;
+    align-items: center;
     height: var(--size-row-lg);
     padding: 0 var(--space-3);
     border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background: var(--color-surface-raised);
+    font: inherit;
     font-size: var(--text-control);
     color: var(--color-text-primary);
   }

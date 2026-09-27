@@ -104,30 +104,27 @@
 </Popover.Root>
 
 <style>
-
-
-
   :global(.bava-options) {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-half);
   }
 
   :global(.bava-option) {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    height: var(--size-row);
+    height: var(--size-row-lg);
     padding: 0 var(--space-2);
-    border-radius: var(--radius-sm);
-    font-size: var(--text-meta);
+    border-radius: var(--radius-md);
+    font-size: var(--text-control);
     color: var(--color-text-primary);
     cursor: default;
   }
 
   :global(.bava-option[data-state='checked']) {
-    background: var(--color-accent-subtle);
-    color: var(--color-accent);
+    background: var(--color-selection);
+    color: var(--color-text-primary);
   }
 
   :global(.bava-option[data-focus-visible]) {
@@ -138,14 +135,14 @@
   /* The row that reveals the rest of a long list (the crow's-foot heads). */
   .bava-options-more {
     width: 100%;
-    height: var(--size-row);
-    margin-top: var(--space-1);
+    height: var(--size-row-lg);
+    margin-top: var(--space-half);
     padding: 0 var(--space-2);
     border: 0;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background: none;
     font: inherit;
-    font-size: var(--text-meta);
+    font-size: var(--text-control);
     color: var(--color-text-secondary);
     text-align: left;
   }

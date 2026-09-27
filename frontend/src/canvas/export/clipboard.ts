@@ -2,8 +2,7 @@
  * Putting an export on the system clipboard.
  *
  * SVG is text, so it goes through the Wails clipboard, which behaves the same
- * on all three platforms and asks no permission (`docs/decisions.md`,
- * 2026-09-17).
+ * on all three platforms and asks no permission.
  *
  * A picture cannot: the pinned Wails clipboard carries text only. So a PNG
  * goes the way Excalidraw does it, through the webview's own clipboard with an

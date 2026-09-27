@@ -12,6 +12,7 @@ function doc(over: Record<string, unknown> = {}) {
     saveAs: vi.fn().mockResolvedValue({ conflict: false, saved: true }),
     reload: vi.fn().mockResolvedValue({ error: '' }),
     reset: vi.fn(),
+    close: vi.fn(),
     ...over,
   };
 }
@@ -187,5 +188,28 @@ describe('reporting the outcome', () => {
   it('create resolves true only when a new document was started', async () => {
     expect(await actionsFor(doc(), answering('cancel')).create()).toBe(true);
     expect(await actionsFor(doc({ dirty: true }), answering('cancel')).create()).toBe(false);
+  });
+});
+
+// Opening a Space, or trashing the open page, closes the page
+// first; unsaved work is settled the same way as for any other replacement.
+describe('closing the page', () => {
+  it('closes straight away when nothing is unsaved', async () => {
+    const d = doc();
+    expect(await actionsFor(d, answering('cancel')).close()).toBe(true);
+    expect(d.close).toHaveBeenCalled();
+  });
+
+  it('keeps the page when cancelled', async () => {
+    const d = doc({ dirty: true });
+    expect(await actionsFor(d, answering('cancel')).close()).toBe(false);
+    expect(d.close).not.toHaveBeenCalled();
+  });
+
+  it('discards when told to', async () => {
+    const d = doc({ dirty: true });
+    expect(await actionsFor(d, answering('discard')).close()).toBe(true);
+    expect(d.save).not.toHaveBeenCalled();
+    expect(d.close).toHaveBeenCalled();
   });
 });

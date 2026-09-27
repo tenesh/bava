@@ -46,7 +46,7 @@ export function commitCode(history: History, id: ElementId, code: string, metric
 /**
  * A block re-measured in place, at the metrics it now draws with (a new font
  * size): its width is the user's, its code re-wraps to it, and it grows when
- * the code needs more height (06.17).
+ * the code needs more height.
  */
 export function fitToCode(element: SceneElement, metrics: CodeMetrics): void {
   if (element.type !== 'code') return;
@@ -68,7 +68,7 @@ export type CodeEditorRequest = {
   angle?: number;
   /** The canvas zoom, so the typed text matches the code underneath. */
   zoom?: number;
-  /** The block's size over the base code size, so the text matches it (06.17). */
+  /** The block's size over the base code size, so the text matches it. */
   fontScale?: number;
   /**
    * The on-screen size of the block that would hold `code`: the editor grows

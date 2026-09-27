@@ -37,12 +37,13 @@ Shortcuts) lists the rest.
 
 | Menu | Item | macOS | Windows / Linux |
 |---|---|---|---|
-| Bava | Settings… | `⌘,` | none |
-| File | New | `⌘N` | `Ctrl+N` |
-| File | Open… | `⌘O` | `Ctrl+O` |
+| Bava | Settings | `⌘,` | none |
+| File | New Page | `⌘N` | `Ctrl+N` |
+| File | Open Space | `⌘O` | `Ctrl+O` |
+| File | Open File | `⇧⌘O` | `Ctrl+Shift+O` |
 | File | Save | `⌘S` | `Ctrl+S` |
-| File | Save As… | `⇧⌘S` | `Ctrl+Shift+S` |
-| File | Settings… | none | `Ctrl+,` |
+| File | Save As | `⇧⌘S` | `Ctrl+Shift+S` |
+| File | Settings | none | `Ctrl+,` |
 | Edit | Undo | `⌘Z` | `Ctrl+Z` |
 | Edit | Redo | `⇧⌘Z` | `Ctrl+Shift+Z` |
 | Edit | Cut | `⌘X` | `Ctrl+X` |
@@ -130,6 +131,19 @@ In the insert panel, opened from the rail's +: `↑↓←→` move, `Enter` inse
 | `Tab` / `⇧Tab` | Indent / outdent |
 | `Enter` | New line |
 | `Esc` | Finish editing and keep the code |
+
+## In the Files tree
+
+| Key or gesture | Action |
+|---|---|
+| `↑` `↓` | Move between rows |
+| `→` `←` | Open or close a folder (or move into and out of it) |
+| `Enter` or a click | Open a page; open or close a folder |
+| `F2` | Rename the row (a page keeps its `.md`) |
+| `⌫` / `Delete` | Move the row to the Trash |
+| Typing letters | Jump to a row starting with them |
+| Drag a row | Onto a folder's middle: move it in. Between rows: put it there, as the line shows |
+| `⌘N` / `Ctrl+N` | New page beside the open one, named in the tree first |
 
 ## On the canvas
 

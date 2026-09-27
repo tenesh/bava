@@ -2,8 +2,8 @@
  * A D2 layout, converted into ordinary canvas elements.
  *
  * D2 lays the diagram out once and Bava takes the geometry; from then on the
- * shapes *are* the diagram, and the source is not kept
- * (`diagrams-as-shapes.md`). Nothing marks an element as generated, because
+ * shapes *are* the diagram, and the source is not kept. Nothing marks an
+ * element as generated, because
  * from the moment it lands it is not: it moves, restyles, connects and
  * deletes like anything drawn by hand.
  *

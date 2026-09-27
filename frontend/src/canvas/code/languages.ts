@@ -25,7 +25,7 @@ export type LanguageEntry = {
 };
 
 /**
- * The set agreed on 2026-09-19. A language that is not here is still kept in
+ * The bundled languages. A language that is not here is still kept in
  * the file and drawn as plain text.
  */
 export const LANGUAGES: LanguageEntry[] = [

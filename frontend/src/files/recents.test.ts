@@ -64,3 +64,66 @@ describe('recent files', () => {
     expect(recents.paths).toEqual(['/a.md']);
   });
 });
+
+// Recents hold Spaces as well as files, with when each was
+// opened, for the start screen and the Space switcher.
+describe('recent Spaces and files', () => {
+  it('records the kind and when it was opened', () => {
+    let now = 1000;
+    const recents = createRecents({ storage: memoryStorage(), now: () => now });
+    recents.add('/w/Acme', 'space');
+    now = 2000;
+    recents.add('/w/notes.md', 'file');
+    expect(recents.entries).toEqual([
+      { path: '/w/notes.md', kind: 'file', openedAt: 2000 },
+      { path: '/w/Acme', kind: 'space', openedAt: 1000 },
+    ]);
+    expect(recents.spaces.map((e) => e.path)).toEqual(['/w/Acme']);
+  });
+
+  it('reads an older list of paths as files', () => {
+    const storage = memoryStorage({ [RECENTS_KEY]: JSON.stringify(['/x.md']) });
+    expect(createRecents({ storage }).entries).toEqual([{ path: '/x.md', kind: 'file', openedAt: 0 }]);
+  });
+
+  it('forgets a path, and follows a renamed Space', () => {
+    const recents = createRecents({ storage: memoryStorage(), now: () => 5 });
+    recents.add('/w/Acme', 'space');
+    recents.add('/w/Old', 'space');
+    recents.rename('/w/Old', '/w/New');
+    recents.remove('/w/Acme');
+    expect(recents.entries).toEqual([{ path: '/w/New', kind: 'space', openedAt: 5 }]);
+  });
+});
+
+// Opening pages must not push the Space off the list.
+describe('recents by kind', () => {
+  it('keeps Spaces however many pages are opened', () => {
+    const recents = createRecents({ storage: memoryStorage(), now: () => 1 });
+    recents.add('/w/Acme', 'space');
+    for (let i = 0; i < RECENTS_LIMIT + 3; i += 1) recents.add(`/w/Acme/p${i}.md`, 'file');
+    expect(recents.spaces.map((e) => e.path)).toEqual(['/w/Acme']);
+    expect(recents.entries.filter((e) => e.kind === 'file')).toHaveLength(RECENTS_LIMIT);
+  });
+
+  it('moves every entry under a renamed Space', () => {
+    const recents = createRecents({ storage: memoryStorage(), now: () => 1 });
+    recents.add('/w/Old/a.md', 'file');
+    recents.add('/w/Old', 'space');
+    recents.add('/w/Older/b.md', 'file');
+    recents.renamePrefix('/w/Old', '/w/New');
+    expect(recents.paths).toEqual(['/w/New', '/w/New/a.md', '/w/Older/b.md'].sort((a, b) => recents.paths.indexOf(a) - recents.paths.indexOf(b)));
+    expect(recents.paths).toContain('/w/New/a.md');
+    expect(recents.paths).toContain('/w/Older/b.md');
+    expect(recents.paths).not.toContain('/w/Old/a.md');
+  });
+
+  it('forgets an item and everything under it', () => {
+    const recents = createRecents({ storage: memoryStorage() });
+    recents.add('/w/Acme', 'space');
+    recents.add('/w/Acme/Old/a.md');
+    recents.add('/w/Acme/Older/b.md');
+    recents.removePrefix('/w/Acme/Old');
+    expect(recents.paths).toEqual(['/w/Acme/Older/b.md', '/w/Acme']);
+  });
+});

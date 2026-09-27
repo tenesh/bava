@@ -58,7 +58,7 @@ describe('how an element paints', () => {
     expect(paint.font.size).toBe(20);
   });
 
-  // 06.16 T2: Excalidraw's patterns, scaled by the stroke width, and a
+  // Excalidraw's patterns, scaled by the stroke width, and a
   // non-solid line drawn half a unit thicker (`element/src/shape.ts:168-216`).
   it('turns a line style into a dash pattern that grows with the width', () => {
     expect(paintFor(el({ strokeStyle: 'dashed' }), theme).dash).toEqual([8, 10]);
@@ -117,7 +117,7 @@ describe('how an element paints', () => {
   });
 });
 
-// 06.15 P21: a closed line takes a fill; an open one never shows one.
+// A closed line takes a fill; an open one never shows one.
 describe('the fill of a line', () => {
   const loop = { id: 'l', type: 'line', x: 0, y: 0, w: 10, h: 10, z: 1, points: [0, 0, 10, 0, 10, 10, 0, 0], fill: 'blue' };
   it('is drawn while the line is closed', () => {
@@ -129,7 +129,7 @@ describe('the fill of a line', () => {
   });
 });
 
-// 06.16 L8, L9: an arrow's label takes its own size and the arrow's colour.
+// An arrow's label takes its own size and the arrow's colour.
 describe("an arrow's label paint", () => {
   it("is the size set on the arrow, in the arrow's stroke colour", () => {
     const arrow = el({ type: 'arrow', fontSize: 28, stroke: 'blue', points: [0, 0, 10, 0] } as never);

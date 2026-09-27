@@ -24,6 +24,8 @@ export type FileActionDocument = {
   reload(): Promise<unknown>;
   /** Become a new untitled document. */
   reset(): void;
+  /** No page open. */
+  close(): void;
 };
 
 export type FileActionOptions = {
@@ -95,5 +97,12 @@ export function createFileActions(options: FileActionOptions) {
     return true;
   }
 
-  return { open, create, save, saveAs };
+  /** Resolves true when no page is open any more (opening a Space, trashing the page). */
+  async function close(): Promise<boolean> {
+    if (!(await settleUnsaved())) return false;
+    doc.close();
+    return true;
+  }
+
+  return { open, create, save, saveAs, close };
 }

@@ -97,7 +97,7 @@ describe('routing an attached arrow', () => {
     expect(inScene(arrow, routed, 2)).toEqual([300, 30]);
   });
 
-  // The rule of canvas-architecture.md: the arrow stays, the endpoint freezes,
+  // The arrow stays, the endpoint freezes,
   // and the binding is kept with the id it had.
   it('freezes an end whose target is gone, and says it is detached', () => {
     const data = scene();
@@ -178,7 +178,7 @@ describe('re-routing after a change', () => {
   // An unbound arrow keeps its points, but its box is still settled around
   // what it draws: that is how an arc's bow gets inside its own bounds, which
   // selection, the marquee, the eraser and the export all test.
-  // Since 06.15 (V2) a two-point arc is straight, so the curve is a bent one.
+  // A two-point arc is straight, so the curve is a bent one.
   it('settles an unbound arc box around its curve, keeping the points', () => {
     const data: SceneData = {
       elements: [
@@ -270,8 +270,8 @@ describe('re-aiming a bent, anchored arrow', () => {
   });
 });
 
-// Decision 4 in .claude/work/specs/arrows.md: an end aims through the spot it
-// was dropped on, towards its neighbour, and stops on the outline.
+// An end aims through the spot it was dropped on, towards its neighbour, and
+// stops on the outline.
 describe('an end with an anchor', () => {
   const box = (over: Record<string, unknown>) => ({ type: 'rect', z: 1, ...over }) as never as SceneElement;
   const world = (arrow: SceneElement, points: number[], index: number) => [
@@ -326,9 +326,9 @@ describe('an end with an anchor', () => {
   });
 });
 
-// Appendix A2 of the Excalidraw comparison: a target is found by how near its
-// outline is, from inside or out, within a reach that grows as the view zooms
-// out, rather than only by the pointer being strictly inside its box.
+// As in Excalidraw, a target is found by how near its outline is, from inside
+// or out, within a reach that grows as the view zooms out, rather than only by
+// the pointer being strictly inside its box.
 describe('finding what an end attaches to', () => {
   const shape = (over: Record<string, unknown>) => ({ type: 'rect', z: 1, ...over }) as never as SceneElement;
   const two = {
@@ -367,7 +367,7 @@ describe('finding what an end attaches to', () => {
   });
 });
 
-// Review of 06.10: a spot outside the drawn outline (an ellipse's or a
+// A spot outside the drawn outline (an ellipse's or a
 // diamond's box corner) must still leave the end on its shape as it moves.
 describe('an anchor near a curved or pointed shape', () => {
   const round = (over: Record<string, unknown> = {}) =>
@@ -402,7 +402,7 @@ describe('an anchor near a curved or pointed shape', () => {
   });
 });
 
-describe('review of 06.10: targets, snaps and kept bends', () => {
+describe('targets, snaps and kept bends', () => {
   const shape = (over: Record<string, unknown>) => ({ type: 'rect', z: 1, ...over }) as never as SceneElement;
 
   it('snaps to the nearest side middle, not the first within reach', () => {
@@ -445,7 +445,7 @@ describe('review of 06.10: targets, snaps and kept bends', () => {
   });
 });
 
-// Decision 7 (06.13): an end pinned inside a shape sits at its anchor, inside
+// An end pinned inside a shape sits at its anchor, inside
 // the shape, and moves with it; the other end aims at it.
 describe('an end pinned inside a shape', () => {
   const rect = (id: string, x: number, y: number, over: Record<string, unknown> = {}) =>
@@ -492,7 +492,7 @@ describe('an Alt-pinned end outside its shape', () => {
   });
 });
 
-// E5: an elbow end snaps to a side's middle within a band of 5% of the side
+// An elbow end snaps to a side's middle within a band of 5% of the side
 // (clamped 5 to reach), from inside or out; a diamond also to its edges' middles.
 describe('where an elbow end snaps', () => {
   const rect = { id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 } as never as SceneElement;
@@ -512,7 +512,7 @@ describe('where an elbow end snaps', () => {
   });
 });
 
-// Review of 06.14: every spot an elbow end snaps to shows as a dot, a
+// Every spot an elbow end snaps to shows as a dot, a
 // diamond's edge middles included.
 describe('the spots an elbow end shows', () => {
   it("are a diamond's corners and its edge middles", () => {
@@ -522,7 +522,7 @@ describe('the spots an elbow end shows', () => {
   });
 });
 
-// 06.16 B2, B3, B5, B6: what an end attaches to, as Excalidraw's
+// What an end attaches to, as Excalidraw's
 // `getHoveredElementForBinding` (`element/src/collision.ts:346-478`).
 describe('the shape an end attaches to', () => {
   const rect = (id: string, x: number, y: number, w: number, h: number, z: number, over: Record<string, unknown> = {}) =>
@@ -566,7 +566,7 @@ describe('the shape an end attaches to', () => {
   });
 });
 
-// 06.16 B10: the gap is 5 plus half the target's stroke width, as
+// The gap is 5 plus half the target's stroke width, as
 // Excalidraw's `getBindingGap` (`element/src/binding.ts:117`, `:125-131`).
 describe('the gap an attached end keeps', () => {
   it('grows with the shape’s stroke width', () => {
@@ -578,7 +578,7 @@ describe('the gap an attached end keeps', () => {
   });
 });
 
-// 06.16 B11: an end attached at the edge is stored as the drop point carried
+// An end attached at the edge is stored as the drop point carried
 // onto the shape's nearer diagonal (centre lines for a curved shape), along
 // the line from the arrow's other end (`projectFixedPointOntoDiagonal`,
 // `element/src/utils.ts:810-903`).
@@ -604,7 +604,7 @@ describe('where an edge anchor is stored', () => {
   });
 });
 
-// 06.16 B18: an arrow never turns inside out: an end whose outline point is
+// An arrow never turns inside out: an end whose outline point is
 // inside the other, overlapping shape, or an arrow under 10 long, sits at its
 // anchor instead (`element/src/binding.ts:2037-2094`).
 describe('an arrow between overlapping shapes', () => {
@@ -623,7 +623,7 @@ describe('an arrow between overlapping shapes', () => {
   });
 });
 
-// Review of 06.16: the inside-out guard applies only between shapes of like
+// The inside-out guard applies only between shapes of like
 // size (Excalidraw's area test), so a child's arrow to its container still
 // leaves the child's edge.
 describe('an arrow from a child to its container', () => {

@@ -1,22 +1,29 @@
 <script lang="ts">
-  /** A titled region of the shell. Presentational: props in, nothing else. */
+  /**
+   * A region of the shell, named by its title. `titled` shows the title in a
+   * small-caps header; `bare` keeps it as the region's accessible name only.
+   * Presentational: props in, nothing else.
+   */
   import type { Snippet } from 'svelte';
 
   type Props = {
     title: string;
+    variant?: 'titled' | 'bare';
     /** Shown at the right of the header: a count, a state, a control. */
     meta?: string;
     children: Snippet;
   };
 
-  let { title, meta, children }: Props = $props();
+  let { title, variant = 'titled', meta, children }: Props = $props();
 </script>
 
 <section class="pane" aria-label={title}>
-  <header class="header">
-    <span class="title">{title}</span>
-    {#if meta}<span class="meta">{meta}</span>{/if}
-  </header>
+  {#if variant === 'titled'}
+    <header class="header">
+      <span class="title">{title}</span>
+      {#if meta}<span class="meta">{meta}</span>{/if}
+    </header>
+  {/if}
   <div class="body">
     {@render children()}
   </div>

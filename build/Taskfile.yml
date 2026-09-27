@@ -196,7 +196,7 @@ tasks:
     # Windows a full-bleed square it masks itself. An empty output filename
     # tells `wails3 generate icons` to skip that platform.
     # No -iconcomposerinput: Assets.car needs Xcode's actool, and a stale one
-    # would win over icons.icns on macOS 26. See .claude/work/specs/brand.md.
+    # would win over icons.icns on macOS 26.
     run: once
     dir: build
     sources:

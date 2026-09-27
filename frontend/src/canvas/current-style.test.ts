@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createCurrentStyle } from './current-style';
 
-// 06.15 C13, C14: a new element takes the style last chosen, as Excalidraw's
+// A new element takes the style last chosen, as Excalidraw's
 // `currentItem*`, starting with arrows curved and lines round.
 describe('the style a new element takes', () => {
   it('starts with arrows curved and lines round, and nothing for a shape', () => {
@@ -36,7 +36,7 @@ describe('the style a new element takes', () => {
   });
 });
 
-describe('a remembered size across text and code (review of 06.17)', () => {
+describe('a remembered size across text and code', () => {
   it('is carried by its step, never out of range', () => {
     const style = createCurrentStyle();
     style.remember('fontSize', 11, 'code');
@@ -46,7 +46,7 @@ describe('a remembered size across text and code (review of 06.17)', () => {
   });
 });
 
-describe('a remembered size valid in both scales (review of 06.17)', () => {
+describe('a remembered size valid in both scales', () => {
   it('is read in the scale it was chosen in', () => {
     const style = createCurrentStyle();
     style.remember('fontSize', 20, 'code');

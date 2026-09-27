@@ -69,7 +69,7 @@ describe('SelectionToolbar', () => {
 });
 
 // The row shows the controls the model gives it, and moves what does not fit
-// into More (canvas-toolbar.md).
+// into More.
 describe('SelectionToolbar controls', () => {
   const controls = [
     { id: 'fill', group: 'colour', kind: 'colour' },
@@ -132,7 +132,7 @@ describe('SelectionToolbar controls', () => {
   });
 });
 
-// 06.15 C10, P3, P19: a button for each line action, reported by name.
+// A button for each line action, reported by name.
 describe("SelectionToolbar's line actions", () => {
   it('shows each one it is given and reports it when pressed', () => {
     const onLine = vi.fn();

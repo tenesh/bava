@@ -66,7 +66,7 @@ describe('OptionPicker', () => {
   });
 });
 
-// 06.16 H1: the crow's-foot heads sit behind a More row, as Excalidraw's.
+// The crow's-foot heads sit behind a More row, as Excalidraw's.
 describe("OptionPicker's More row", () => {
   const heads = PROPERTY_OPTIONS.endArrowhead;
   const items = () => document.querySelectorAll('[data-part="item"]').length;
@@ -88,7 +88,7 @@ describe("OptionPicker's More row", () => {
     const more = [...document.querySelectorAll('button')].find((b) => b.textContent?.includes(t('option.more'))) as HTMLElement;
     flushSync(() => more.click());
     await vi.waitFor(() => expect(items()).toBe(heads.options.length));
-    // Focus goes to the first revealed choice, not the page (review of 06.16).
+    // Focus goes to the first revealed choice, not the page.
     await vi.waitFor(() => expect((document.activeElement as HTMLInputElement | null)?.value).toBe('one'));
     unmount(app);
   });

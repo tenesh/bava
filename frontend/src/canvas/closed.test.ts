@@ -3,7 +3,7 @@ import { closeLine, openLine } from './closed';
 import { createHistory } from './history';
 import { drawnPoints } from './binding';
 
-// 06.15 P19: Close line and Open line, as Excalidraw's polygon toggle
+// Close line and Open line, as Excalidraw's polygon toggle
 // (`element/src/shape.ts:1138-1180`, `actions/actionLinearEditor.tsx:106-212`).
 const line = (points: number[], over: Record<string, unknown> = {}) =>
   createHistory({ elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 100, h: 100, z: 1, points, ...over }] as never });
@@ -40,7 +40,7 @@ describe('opening a line', () => {
   });
 });
 
-// Review of 06.15: a turned line stays where it is drawn when closed.
+// A turned line stays where it is drawn when closed.
 describe('closing a turned line', () => {
   it('keeps its points where they are drawn', () => {
     const history = line([0, 0, 100, 0, 100, 100, 10, 10], { angle: 45, edges: 'round' });

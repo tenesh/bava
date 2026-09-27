@@ -152,8 +152,8 @@ describe('configurable debounce', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  // The debounce was a compile-time constant until Milestone 5. It now comes
-  // from the settings file, with the constant as the fallback.
+  // The debounce comes from the settings file, with the constant as the
+  // fallback.
   it('uses a supplied debounce rather than the default', async () => {
     const send = vi.fn().mockResolvedValue(ok('<svg/>'));
     const client = createRenderClient({ send, debounceMs: 600 });

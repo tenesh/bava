@@ -3,7 +3,7 @@
  *
  * Pure geometry over the stored `points`, so the routing is tested directly.
  * The file keeps the ends the user drew; the route is derived each time, which
- * is what lets an arrow re-route when Milestone 6.5 attaches it to a shape.
+ * is what lets an arrow re-route when it is attached to a shape.
  */
 import type { PathSink } from './shapes';
 import type { SceneElement } from './scene';
@@ -85,7 +85,7 @@ export function routePoints(points: number[], type: string | undefined): number[
       : [x1, y1, x1, (y1 + y2) / 2, x2, (y1 + y2) / 2, x2, y2];
   }
 
-  // A curve through two points is straight, as Excalidraw's (06.15, V2).
+  // A curve through two points is straight, as Excalidraw's.
   return points;
 }
 
@@ -290,7 +290,7 @@ export function pathLength(points: number[]): number {
  * the user slid it (`labelPosition`, along the drawn path's length), or else
  * the middle point, the middle one of an odd number of points or the middle
  * of the middle segment, on the curve for a curved arrow (Excalidraw's
- * `linearElementEditor.ts:1942-1961`; 06.12 decision 16). `tension` is the
+ * `linearElementEditor.ts:1942-1961`). `tension` is the
  * line's smoothing (`hit.ts`, `tensionOf`).
  */
 export function labelSpot(element: SceneElement, tension: number, drawn?: number[]): { x: number; y: number } {
@@ -317,7 +317,7 @@ export type LabelLayout = { at: { x: number; y: number }; lines: string[]; width
  * An arrow's label laid out, in the arrow's own coordinates: on its spot
  * (`labelSpot`), wrapped as Excalidraw wraps it, and with
  * `labelDirection: along` turned to the path's direction there, flipped so it
- * never reads upside down (06.17). The stage, the exporter and the label
+ * never reads upside down. The stage, the exporter and the label
  * editor all lay it out here, so the three agree.
  */
 export function labelLayout(
@@ -341,7 +341,7 @@ export function labelLayout(
 /**
  * Where the field for typing an arrow's label sits, in scene space: centred
  * on the label, as wide as the label wraps, at least a line tall, turned with
- * it (06.17). The editor opened over the arrow's whole box before.
+ * it, not over the arrow's whole box.
  */
 export function labelField(
   element: SceneElement,

@@ -98,7 +98,7 @@ describe('StyleBar chip wiring', () => {
 });
 
 // A colour of the user's own, beside the swatches: stored as picked and
-// adapted per theme (canvas-toolbar.md, "Colour").
+// adapted per theme.
 describe('the colour picker', () => {
   it('offers a hex field beside the swatches and reports a literal colour', async () => {
     const { target, app, onApply } = render({});

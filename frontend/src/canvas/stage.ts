@@ -37,10 +37,16 @@ import { handleCentre, rotateHandleCentre } from './resize';
 import { chromeFor, elbowSegmentHandles, focusSpots, grown, offersMiddles } from './selection-chrome';
 import { angleOfElement, centreOf, selectionFrame } from './rotate';
 import type { Guide } from './snapping';
+import { gridDots } from './grid';
 
 export type CanvasStageOptions = {
   /** Reads a CSS custom property. Injected so tests need no stylesheet. */
   read?: ReadVariable;
+  /**
+   * Draw the dot grid behind the drawing. On by default; an export's stage
+   * turns it off, since the grid is chrome and never part of the image.
+   */
+  grid?: boolean;
 };
 
 /**
@@ -113,6 +119,11 @@ type Entry = {
 export class CanvasStage {
   #stage: Konva.Stage | null = null;
   #layer: Konva.Layer | null = null;
+  /** Beneath the scene: the dot grid. Chrome, never scene data. */
+  #gridLayer: Konva.Layer | null = null;
+  #grid: boolean;
+  /** The grid's tokens, read at mount and on a theme change. */
+  #gridStyle = { colour: '', step: 0, dot: 0, minGap: 0 };
   /** Above the scene: the selection outline and its handles. */
   #overlay: Konva.Layer | null = null;
   #selected: ElementId[] = [];
@@ -126,7 +137,7 @@ export class CanvasStage {
   #hover: Konva.Circle | null = null;
   #focus: Konva.Circle[] = [];
   #focusLines: Konva.Line[] = [];
-  /** The line or arrow in point editing, and its selected points (06.13). */
+  /** The line or arrow in point editing, and its selected points. */
   #pointEditing: { id: ElementId; selected: number[] } | null = null;
   /** Outlines on the shapes an arrow being drawn would attach to. */
   #candidates: Konva.Shape[] = [];
@@ -137,7 +148,7 @@ export class CanvasStage {
   /** Tokenised code per block, handed in by the caller. */
   #codeRuns = new Map<ElementId, Run[][]>();
   #marquee: Konva.Rect | null = null;
-  /** The guides snapping to objects draws (Milestone 7), and their lines. */
+  /** The guides snapping to objects draws, and their lines. */
   #snapGuides: Guide[] = [];
   #snapGuideLines: Konva.Line[] = [];
   #trail: Konva.Line | null = null;
@@ -155,6 +166,37 @@ export class CanvasStage {
 
   constructor(options: CanvasStageOptions = {}) {
     this.#read = options.read ?? readRootVariable;
+    this.#grid = options.grid ?? true;
+  }
+
+  #readGrid(read: ReadVariable): void {
+    this.#gridStyle = {
+      colour: read('--color-canvas-dot').trim(),
+      step: number(read, '--size-canvas-grid'),
+      dot: number(read, '--size-canvas-dot'),
+      minGap: number(read, '--size-canvas-grid-min'),
+    };
+  }
+
+  /**
+   * Paint the grid's dots that fall in the view, in drawing coordinates, so
+   * they pan and zoom with the scene while each stays the same size on
+   * screen. One path, one fill: thousands of separate shapes would each be
+   * a node to draw.
+   */
+  #drawGrid(context: Konva.Context, stage: Konva.Stage): void {
+    const { colour, step, dot, minGap } = this.#gridStyle;
+    if (!colour || dot <= 0) return;
+    const zoom = stage.scaleX();
+    const { xs, ys } = gridDots({ zoom, pan: stage.position(), ...stage.size() }, step, minGap);
+    if (xs.length === 0 || ys.length === 0) return;
+    // The token is the dot's radius on screen.
+    const side = (dot * 2) / zoom;
+    const half = side / 2;
+    context.beginPath();
+    for (const x of xs) for (const y of ys) context.rect(x - half, y - half, side, side);
+    context.setAttr('fillStyle', colour);
+    context.fill();
   }
 
   mount(host: HTMLDivElement): void {
@@ -165,6 +207,23 @@ export class CanvasStage {
     });
     // Not listening: all input is DOM events through the pointer handler, so a
     // hit canvas redrawn every frame and read on every mouse move buys nothing.
+    if (this.#grid) {
+      // Beneath every element, and never hit-tested: nothing reads it.
+      this.#readGrid(cached(this.#read));
+      this.#gridLayer = new Konva.Layer({ listening: false });
+      this.#gridLayer.add(
+        new Konva.Shape({
+          listening: false,
+          perfectDrawEnabled: false,
+          sceneFunc: (context, shape) => {
+            const stage = shape.getStage();
+            if (stage) this.#drawGrid(context, stage);
+          },
+        }),
+      );
+      this.#stage.add(this.#gridLayer);
+      this.#gridLayer.batchDraw();
+    }
     this.#layer = new Konva.Layer({ listening: false });
     this.#stage.add(this.#layer);
     this.#overlay = new Konva.Layer({ listening: false });
@@ -253,6 +312,11 @@ export class CanvasStage {
 
   selectionHandleCount(): number {
     return this.#handles.length;
+  }
+
+  /** The resize handles on the selection's frame. */
+  selectionHandles(): Konva.Rect[] {
+    return this.#handles;
   }
 
   /**
@@ -526,6 +590,8 @@ export class CanvasStage {
 
     const colour = read('--color-selection-handle').trim();
     const surface = read('--color-surface').trim();
+    // The resize and rotate handles sit on a raised surface, bordered.
+    const raised = read('--color-surface-raised').trim();
     // One element's frame carries its angle, so the outline and the handles
     // sit on the shape; several have no shared angle and stay upright.
     const frame = selectionFrame(selected);
@@ -558,16 +624,20 @@ export class CanvasStage {
     }
 
     const size = number(read, '--size-selection-handle') * scale;
+    const border = number(read, '--size-handle-border') * scale;
     for (const handle of chrome.handles) {
       const at = handleCentre(bounds, handle);
+      // The border is inside the square, as the design draws it, so the
+      // handle's outer edge is its size.
       const square = new Konva.Rect({
-        x: at.x - size / 2,
-        y: at.y - size / 2,
-        width: size,
-        height: size,
-        fill: surface,
+        x: at.x - size / 2 + border / 2,
+        y: at.y - size / 2 + border / 2,
+        width: size - border,
+        height: size - border,
+        cornerRadius: number(read, '--radius-handle') * scale,
+        fill: raised,
         stroke: colour,
-        strokeWidth: scale,
+        strokeWidth: border,
       });
       this.#handles.push(turn(square) as Konva.Rect);
       this.#overlay.add(square);
@@ -615,7 +685,7 @@ export class CanvasStage {
         count >= 2 && offersMiddles(linear, editingThis)
           ? middlesAlong(drawn, (linear as SceneElement & ArrowProps).arrowType, tensionOf(linear))
           : [];
-      // A middle is offered under the label too: a press on it bends (S8).
+      // A middle is offered under the label too: a press on it bends.
       middles.forEach((middle, i) => {
         const [x1, y1, x2, y2] = drawn.slice(i * 2, i * 2 + 4);
         if (Math.hypot(x2 - x1, y2 - y1) < shortest) return;
@@ -675,10 +745,10 @@ export class CanvasStage {
       new Konva.Circle({
         x: at.x,
         y: at.y,
-        radius: size / 2,
-        fill: surface,
+        radius: (number(read, '--size-point-handle') / 2) * scale - border / 2,
+        fill: raised,
         stroke: colour,
-        strokeWidth: scale,
+        strokeWidth: border,
       }),
     ) as Konva.Circle;
     this.#overlay.add(this.#rotate);
@@ -853,6 +923,12 @@ export class CanvasStage {
   /** Match the host element's size, when the window or a pane changes. */
   resize(width: number, height: number): void {
     this.#stage?.size({ width, height });
+    this.#gridLayer?.batchDraw();
+  }
+
+  /** The grid's layer, beneath the scene; null when the stage draws none. */
+  gridLayer(): Konva.Layer | null {
+    return this.#gridLayer;
   }
 
   /**
@@ -861,7 +937,14 @@ export class CanvasStage {
    */
   toCanvas(pixelRatio = 1): HTMLCanvasElement {
     if (!this.#stage) throw new Error('canvas: the stage is not mounted');
-    return this.#stage.toCanvas({ pixelRatio });
+    // The grid is chrome: never in an image.
+    const shown = this.#gridLayer?.visible() ?? false;
+    this.#gridLayer?.visible(false);
+    try {
+      return this.#stage.toCanvas({ pixelRatio });
+    } finally {
+      if (shown) this.#gridLayer?.visible(true);
+    }
   }
 
   size(): { width: number; height: number } {
@@ -879,6 +962,10 @@ export class CanvasStage {
       }
     }
     this.#layer?.batchDraw();
+    if (this.#gridLayer) {
+      this.#readGrid(read);
+      this.#gridLayer.batchDraw();
+    }
     this.#drawSelection(read);
     if (this.#snapGuides.length > 0) this.#drawSnapGuides(read);
   }
@@ -944,6 +1031,7 @@ export class CanvasStage {
     this.#stage?.destroy();
     this.#stage = null;
     this.#layer = null;
+    this.#gridLayer = null;
     this.#overlay = null;
     this.#outline = null;
     this.#handles = [];
@@ -966,7 +1054,7 @@ export class CanvasStage {
     const runs: Konva.Text[] = [];
     const drawnRuns: Run[][] | null = null;
     // A line's body sits in a group of its own, which clips it out from
-    // under its label (06.16, L7); the heads and label stay outside it.
+    // under its label; the heads and label stay outside it.
     if (element.type === 'arrow' || element.type === 'line') {
       const clip = new Konva.Group();
       clip.add(body);
@@ -1073,7 +1161,7 @@ export class CanvasStage {
         const paint = paintFor(element, read);
         const measure = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
         // One layout for the stage, the exporter and the label editor, turned
-        // along the arrow when it says so (06.17).
+        // along the arrow when it says so.
         const layout = labelLayout(element, routed, paint.tension, paint.font, measure, label);
         entry.label.text(layout.lines.join('\n'));
         entry.label.align('center');
@@ -1191,8 +1279,8 @@ export class CanvasStage {
    * A marker on an end whose binding names an element that is not there.
    *
    * The endpoint has frozen where it last was, and the file still holds the
-   * id: the user drew this arrow, so nothing is removed on their behalf
-   * (`canvas-architecture.md`). The marker is how they can see it.
+   * id: the user drew this arrow, so nothing is removed on their behalf. The
+   * marker is how they can see it.
    */
   #drawDetached(entry: Entry, element: SceneElement, read: ReadVariable): void {
     for (const marker of entry.detached) marker.destroy();
@@ -1289,7 +1377,7 @@ export class CanvasStage {
 
     body.stroke(paint.stroke);
     body.fill(element.type === 'text' ? paint.font.colour : paint.fill);
-    // A closed line with a fill is drawn as a filled loop (06.15).
+    // A closed line with a fill is drawn as a filled loop.
     if (element.type === 'line') (body as Konva.Line).closed(paint.fill !== '');
     body.strokeWidth(paint.strokeWidth);
 

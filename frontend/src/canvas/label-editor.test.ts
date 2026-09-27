@@ -344,7 +344,7 @@ describe('labelBox', () => {
   });
 });
 
-// Review of 06.17: an arrow label's field grows about its middle as lines
+// An arrow label's field grows about its middle as lines
 // are typed, so nothing typed is hidden.
 describe('a field that grows about its middle', () => {
   it('grows taller, staying centred on where it opened', () => {

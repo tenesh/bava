@@ -129,7 +129,7 @@ describe('keeping proportions at the limits', () => {
 });
 
 // The rotate handle sits above the selection, clear of the top edge, so it is
-// never confused with the top-middle resize handle (canvas-toolbar.md).
+// never confused with the top-middle resize handle.
 describe('the rotate handle', () => {
   const box = { x: 20, y: 40, w: 100, h: 60 };
 

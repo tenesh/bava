@@ -11,8 +11,8 @@
   import { MARK } from '../brand/mark';
 
   type Props = {
-    /** chrome: title bar · brand: the placement floor · hero: empty states · about · splash: launch. Sizes are `--size-mark-*` tokens. */
-    size: 'chrome' | 'brand' | 'hero' | 'about' | 'splash';
+    /** chrome: title bar · brand: the placement floor · hero: empty states · start: the start screen, hero height in a roomier tile · about · splash: launch. Sizes are `--size-mark-*` tokens. */
+    size: 'chrome' | 'brand' | 'hero' | 'start' | 'about' | 'splash';
     /** Accessible name. Omit when the mark is decorative. */
     label?: string;
   };
@@ -60,13 +60,21 @@
     height: var(--size-mark-hero);
   }
 
+  [data-size='start'] {
+    padding: var(--space-2);
+    border-radius: var(--radius-mark-tile-hero);
+  }
+
+  [data-size='start'] svg {
+    height: var(--size-mark-hero);
+  }
+
   [data-size='about'] svg {
     height: var(--size-mark-about);
   }
 
-  /* On light, the tile at this size is the brand sheet's squircle. */
   [data-size='splash'] {
-    padding: var(--space-6);
+    padding: var(--size-mark-tile-splash-padding);
     border-radius: var(--radius-mark-tile-splash);
   }
 

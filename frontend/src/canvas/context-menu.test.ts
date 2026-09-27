@@ -46,9 +46,7 @@ describe('the right-click menu', () => {
     expect(ids(contextMenuFor({ ...base, units: 0 }))).toEqual(['edit.paste', 'edit.selectAll']);
   });
 
-  // No dead items. Until Milestone 6.4 that meant listing no export entry at
-  // all; now the rule is the enduring one: everything offered is a command the
-  // app actually handles.
+  // No dead items: everything offered is a command the app actually handles.
   it('offers only commands the app handles', () => {
     const offered = ids(contextMenuFor({ ...base, units: 3, canGroup: true, canUngroup: true, hasLocked: true }))
       .map((id) => id.replace(/^\s+/, '').replace(/▸$/, ''))
@@ -129,8 +127,7 @@ describe('what a right-click acts on', () => {
 });
 
 // A control pushed out of the toolbar row has to stay reachable: More is
-// where it goes (canvas-toolbar.md, "the controls that do not fit move into
-// the More menu"). Without this, a narrow window hid them entirely.
+// where it goes. Without this, a narrow window hid them entirely.
 describe('controls that overflow the toolbar row', () => {
   it('offers each one as a submenu of its choices', () => {
     const nodes = overflowMenu([

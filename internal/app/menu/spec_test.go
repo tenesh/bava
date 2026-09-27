@@ -98,14 +98,14 @@ func TestNoAcceleratorWithoutAModifier(t *testing.T) {
 	}
 }
 
-// Milestone 8 needs these for prose editing. Taking one now means breaking an
-// existing shortcut later.
+// Prose editing needs these. A menu item that takes one steals the key from
+// the document editor.
 func TestReservedProseShortcutsAreFree(t *testing.T) {
 	reserved := []string{"CmdOrCtrl+B", "CmdOrCtrl+I", "CmdOrCtrl+U", "CmdOrCtrl+K", "Shift+CmdOrCtrl+X"}
 	for _, item := range load(t).AllItems() {
 		for _, r := range reserved {
 			if strings.EqualFold(item.Accelerator, r) {
-				t.Errorf("%s takes %q, reserved for prose editing in Milestone 8", item.ID, r)
+				t.Errorf("%s takes %q, reserved for prose editing", item.ID, r)
 			}
 		}
 	}
@@ -274,9 +274,8 @@ func TestCanvasScopedShortcutsAreNeverNative(t *testing.T) {
 	}
 }
 
-// Only the shortcuts decided with the user on 2026-09-26 are bound (06.12,
-// decision 6); every other command stays reachable from its menu without a
-// key. A shortcut added later has to be added here on purpose.
+// Only the shortcuts chosen with the user are bound; every other command
+// stays reachable from its menu without a key. A shortcut added later has to be added here on purpose.
 func TestOnlyTheKeptShortcutsAreBound(t *testing.T) {
 	kept := map[string]bool{
 		"app.settings": true, "file.settings": true,
@@ -286,10 +285,12 @@ func TestOnlyTheKeptShortcutsAreBound(t *testing.T) {
 		"view.zoomIn": true, "view.zoomOut": true, "view.actualSize": true,
 		"canvas.group": true, "canvas.ungroup": true, "canvas.bringForward": true, "canvas.sendBackward": true,
 		"canvas.flipHorizontal": true, "canvas.flipVertical": true, "canvas.duplicate": true, "canvas.lock": true,
-		// 06.15: the user asked for it (06.12 decision 14).
+		// The user asked for it.
 		"canvas.editPoints": true,
-		// Milestone 7: the user chose Excalidraw's Alt+S (2026-09-27).
+		// The user chose Excalidraw's Alt+S.
 		"canvas.snapToObjects": true,
+		// ⌘O opens a Space, ⇧⌘O a file.
+		"file.openSpace": true,
 	}
 	bound := map[string]bool{}
 	for _, item := range load(t).AllItems() {

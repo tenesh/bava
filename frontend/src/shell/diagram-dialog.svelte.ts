@@ -4,7 +4,7 @@
  *
  * The engine opens at the configured default and, once a diagram is inserted
  * with another, that one becomes the default. The direction is per diagram and
- * not kept. TALA ignores direction (CLAUDE.md), so none is sent for it.
+ * not kept. TALA ignores direction, so none is sent for it.
  */
 import type { Direction, LayoutEngine } from '../settings/layout-engine';
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cursorFor, ROTATE_CURSOR } from './cursor';
 
-// 06.14 S10, S11: the canvas cursor, as Excalidraw's (`App.tsx:8322-8555`).
+// The canvas cursor, as Excalidraw's (`App.tsx:8322-8555`).
 describe('the canvas cursor', () => {
   const select = { tool: 'select' as const };
 

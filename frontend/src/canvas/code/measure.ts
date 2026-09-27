@@ -1,8 +1,8 @@
 /**
  * How big a code block is.
  *
- * Its width is the user's and its height comes from its code (decided
- * 2026-09-26, replacing "sized by its code"): lines wrap to the width
+ * Its width is the user's and its height comes from its code: lines wrap to
+ * the width
  * (`wrap.ts`) and the height is the wrapped line count, so nothing it holds is
  * ever hidden. A new block starts as wide as its longest line, at least
  * `MIN_COLUMNS`.

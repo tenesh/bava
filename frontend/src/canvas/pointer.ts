@@ -291,10 +291,10 @@ export function createPointerHandler(options: PointerHandlerOptions) {
    * (`App.tsx:10142-10148`, `:10404`); the release decides the other end.
    */
   let pressed = { alt: false, mod: false };
-  // Point editing (06.13): the line or arrow whose points are being edited,
+  // Point editing: the line or arrow whose points are being edited,
   // and which of them are selected, by index.
   let pointEditing: { id: ElementId; selected: number[] } | null = null;
-  // Click-by-click drawing (06.13): the line or arrow being drawn, its points
+  // Click-by-click drawing: the line or arrow being drawn, its points
   // so far in scene space, and the id it will have.
   let clicking: { type: 'line' | 'arrow'; points: Point[]; id: string } | null = null;
   // Whether the last release finished a line drawn click by click: the
@@ -356,7 +356,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   function aimedPoint(point: Point, drag: Drag, at: Point, neighbour: Point | null): Point {
     const aimed = { x: point.x + at.x - drag.origin.x, y: point.y + at.y - drag.origin.y };
     if (!shift || !neighbour) return aimed;
-    // The angle the segment had at the press is a step of its own (C12).
+    // The angle the segment had at the press is a step of its own.
     const own = (Math.atan2(at.y - neighbour.y, at.x - neighbour.x) * 180) / Math.PI;
     return snapAngle(neighbour, aimed, ANGLE_STEP, own);
   }
@@ -609,7 +609,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         // An elbow's segment handle.
         const segment = end ? null : segmentAt(point);
         // Every handle beats the label over it, a middle included, so a
-        // labelled arrow can still be bent (Excalidraw's, S8); the rest of the
+        // labelled arrow can still be bent (as Excalidraw's); the rest of the
         // label slides it.
         const label = end || focus || segment || bend ? null : labelAt(point);
         if (end || focus || bend || segment || label) {
@@ -1356,7 +1356,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const { id, side, original, offset } = started.focus;
       if (!farEnough(started.origin, point)) return null;
       const aimed = { x: point.x - offset.x, y: point.y - offset.y };
-      // The other end's shape too: both ends may be on one (B16).
+      // The other end's shape too: both ends may be on one.
       const target = attaching() ? targetAt(history.current, aimed, id, reach()) : undefined;
       const [key, anchorKey, modeKey] = [`${side}Binding`, `${side}Anchor`, `${side}Mode`];
       // Off every shape, the end itself goes there, free.
@@ -1781,7 +1781,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
    * wrapped to that width (`docs/file-format.md`, "Code blocks").
    */
   function codeResized(element: SceneElement): SceneElement {
-    // At the block's own size (06.17).
+    // At the block's own size.
     const metrics = codeMetrics(element);
     const block = element as SceneElement & { code: string };
     const w = Math.max(element.w, MIN_RESIZE_COLUMNS * metrics.advance + metrics.padding * 2);
@@ -2115,7 +2115,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     const end = attaching(mod) ? targetAt(history.current, to, id, reach()) : undefined;
     // An elbow end snaps by the elbow's rule and is never pinned.
     const elbow = drawsElbow();
-    // Both ends on one shape: both pinned where they are (B16); an elbow
+    // Both ends on one shape: both pinned where they are; an elbow
     // routes round it.
     const same = Boolean(start && end && start.id === end.id);
     const startInside = Boolean(start) && !elbow && (same || pinnedAt(start!, from, undefined, pressed.alt));

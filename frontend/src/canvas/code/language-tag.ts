@@ -1,6 +1,6 @@
 /**
  * A code block's language, named on its top edge near the left, the border
- * hidden behind it (06.17, the user's request). The stage and the exporter
+ * hidden behind it. The stage and the exporter
  * both lay it out here, so the name and the break in the border agree.
  */
 import type { SceneElement } from '../scene';

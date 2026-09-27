@@ -1,7 +1,7 @@
 /**
  * The insert panel's state: search, category, highlight, and what a key does.
  *
- * Only categories that work are listed (canvas-toolbar.md): today, Shape.
+ * Only categories that work are listed: today, Shape.
  * Kept out of markup so navigation, which is easy to get subtly wrong, is
  * tested directly.
  */

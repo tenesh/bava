@@ -6,20 +6,25 @@ import * as FileService from "./fileservice.js";
 import * as LogService from "./logservice.js";
 import * as MenuService from "./menuservice.js";
 import * as RenderService from "./renderservice.js";
+import * as SpaceService from "./spaceservice.js";
 export {
     ExportService,
     FileService,
     LogService,
     MenuService,
-    RenderService
+    RenderService,
+    SpaceService
 };
 
 export type {
     DialogResult,
-    Entry,
-    ListResult,
     LogEntry,
     Notice,
+    OpResult,
     OpenResult,
-    SaveResult
+    Operation,
+    SaveResult,
+    SpaceInfo,
+    SpaceList,
+    TrashList
 } from "./models.js";

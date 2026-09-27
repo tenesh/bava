@@ -6,9 +6,8 @@
  * computes it. That is what makes the canvas free-placement rather than a
  * layout engine with a visual skin.
  *
- * This model is deliberately close to what Milestone 5 will persist, but it is
- * **not** the file format. The format is specified there, in
- * `docs/file-format.md`, before anything writes it.
+ * This model is deliberately close to what is persisted, but it is **not**
+ * the file format. The format is specified in `docs/file-format.md`.
  */
 
 export type ElementId = string;
@@ -67,7 +66,7 @@ export type ArrowProps = {
    */
   startAnchor?: [number, number];
   endAnchor?: [number, number];
-  /** `along`: the label lies along the arrow, turned to stay readable (06.17). */
+  /** `along`: the label lies along the arrow, turned to stay readable. */
   labelDirection?: 'upright' | 'along';
   /** `inside`: the end is pinned at its anchor, inside the element. */
   startMode?: 'inside';
@@ -99,7 +98,7 @@ export type ShapeElement = Base & Styled & StyleProps & { type: ShapeType };
 export type RectElement = ShapeElement & { type: 'rect' };
 export type EllipseElement = ShapeElement & { type: 'ellipse' };
 /** `points` are relative to the element's `x` and `y`. */
-/** `closed`: a loop, its last point on its first; only then does `fill` draw (06.15). */
+/** `closed`: a loop, its last point on its first; only then does `fill` draw. */
 export type LineElement = Base & StyleProps & { type: 'line'; points: number[]; stroke?: string; fill?: string; closed?: boolean };
 export type ArrowElement = Base & StyleProps & ArrowProps & { type: 'arrow'; points: number[]; stroke?: string };
 export type FrameElement = Base & StyleProps & { type: 'frame'; label?: string; stroke?: string; color?: string };
@@ -166,7 +165,7 @@ export type SceneData = {
 
 let counter = 0;
 
-/** Ids are unique within a session; Milestone 5 decides what persists. */
+/** Ids are unique within a session. */
 function nextId(): ElementId {
   counter += 1;
   return `e${counter}`;

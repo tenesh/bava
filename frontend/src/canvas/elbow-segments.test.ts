@@ -3,8 +3,7 @@ import { adaptEnds, moveSegment, releaseSegment, renormalise, type SegmentEnd } 
 import { routeElbow } from './elbow';
 import type { Point } from './binding';
 
-// 06.14 E8 to E11: segments of an elbow the user dragged, kept by index
-// (`.claude/work/specs/excalidraw-elbow-segments.md`).
+// Segments of an elbow the user dragged, kept by index.
 
 const p = (x: number, y: number): Point => ({ x, y });
 

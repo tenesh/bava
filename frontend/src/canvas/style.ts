@@ -75,7 +75,7 @@ export function currentStyle(scene: SceneData, ids: ElementId[], key: StyleKey):
 
 /** A copied style: each key the source takes, `null` where it used the default. */
 export type CopiedStyle = Partial<Record<StyleKey | PropertyKey, string | number | null>> & {
-  /** The scale a copied size is on: the source's (review of 06.17). */
+  /** The scale a copied size is on: the source's. */
   sizeScale?: SizeScale;
 };
 
@@ -113,7 +113,7 @@ export function pasteStyle(
       for (const key of keys) {
         if (!(key in style)) continue;
         const copied = style[key as keyof CopiedStyle];
-        // A size in the element's own scale (review of 06.17).
+        // A size in the element's own scale.
         const value = copied !== null && copied !== undefined && key === 'fontSize' ? fontSizeFor(element.type, copied, style.sizeScale) : copied;
         if (value === null || value === undefined || value === defaultFor(key as PropertyKey, element.type)) {
           if (key in styled) delete styled[key];
@@ -158,14 +158,14 @@ export function propertyKeysFor(type: string): PropertyKey[] {
   if (isShapeType(type)) keys.push(...STROKE_KEYS, ...LABEL_KEYS);
   switch (type) {
     case 'line':
-      // The kind picker turns a line into an arrow (06.16, X11).
+      // The kind picker turns a line into an arrow.
       keys.push(...STROKE_KEYS, 'arrowType');
       break;
     case 'stroke':
       keys.push(...STROKE_KEYS);
       break;
     case 'arrow':
-      // A label's size too (06.16, L8).
+      // A label's size too.
       keys.push(...STROKE_KEYS, 'arrowType', 'startArrowhead', 'endArrowhead', 'fontSize', 'labelDirection');
       break;
     case 'frame':
@@ -176,8 +176,8 @@ export function propertyKeysFor(type: string): PropertyKey[] {
       break;
     case 'code':
       // A code block's look comes from its language and the theme; the shape
-      // controls would mean nothing on it (canvas-toolbar.md).
-      // Its size too, from the code sizes (06.17).
+      // controls would mean nothing on it.
+      // Its size too, from the code sizes.
       keys.push('language', 'fontSize');
       break;
     default:
@@ -296,7 +296,7 @@ export function currentProperty(
   const selected = new Set(ids);
   const values = scene.elements
     .filter((e) => selected.has(e.id) && propertyKeysFor(e.type).includes(key))
-    // A line's kind is Line (06.16, X11).
+    // A line's kind is Line.
     .map((e) => (key === 'arrowType' && e.type === 'line' ? 'line' : ((e as unknown as Record<string, PropertyValue | undefined>)[key] ?? null)));
   if (values.length === 0) return 'unavailable';
   return values.every((value) => value === values[0]) ? values[0] : 'mixed';

@@ -6,6 +6,9 @@
 import * as format$0 from "../format/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as space$0 from "../space/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as store$0 from "../store/models.js";
 
 /**
@@ -13,23 +16,6 @@ import * as store$0 from "../store/models.js";
  */
 export interface DialogResult {
     "path": string;
-    "error": string;
-}
-
-/**
- * Entry is a file or folder in a workspace.
- */
-export interface Entry {
-    "name": string;
-    "path": string;
-    "isDir": boolean;
-}
-
-/**
- * ListResult is a workspace listing.
- */
-export interface ListResult {
-    "entries": Entry[] | null;
     "error": string;
 }
 
@@ -68,6 +54,18 @@ export interface Notice {
 }
 
 /**
+ * OpResult is what an operation made: the item's new path, a Trash item's id,
+ * or a renamed Space's new root.
+ */
+export interface OpResult {
+    "path": string;
+    "id": string;
+    "root": string;
+    "error": string;
+    "code": string;
+}
+
+/**
  * OpenResult is a file, parsed.
  * 
  * Problems the user can act on (a missing file, a permission denial, a
@@ -85,10 +83,64 @@ export interface OpenResult {
 }
 
 /**
+ * Operation is one change to a Space. Kind is createPage, createFolder,
+ * rename, move, duplicate, trash, restore, deleteForever, emptyTrash,
+ * renameSpace or setPageWidth; the other fields are what it needs.
+ */
+export interface Operation {
+    "kind": string;
+    "path": string;
+    "folder": string;
+    "name": string;
+
+    /**
+     * Index is where in Folder a move lands; -1 for the end.
+     */
+    "index": number;
+    "id": string;
+    "width": string;
+}
+
+/**
  * SaveResult reports a completed write.
  */
 export interface SaveResult {
     "path": string;
     "stamp": store$0.Stamp;
     "error": string;
+}
+
+/**
+ * SpaceInfo is an opened Space.
+ */
+export interface SpaceInfo {
+    "root": string;
+    "name": string;
+    "pageWidth": string;
+    "error": string;
+
+    /**
+     * Code names a refusal the frontend words itself (space.Code); "" for
+     * any other failure, whose Error is shown as it is.
+     */
+    "code": string;
+}
+
+/**
+ * SpaceList is one folder of a Space, in the Space's order.
+ */
+export interface SpaceList {
+    "entries": space$0.Entry[] | null;
+    "error": string;
+    "code": string;
+}
+
+/**
+ * TrashList is the Space's Trash and its total size in bytes.
+ */
+export interface TrashList {
+    "items": space$0.TrashItem[] | null;
+    "size": number;
+    "error": string;
+    "code": string;
 }

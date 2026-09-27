@@ -3,10 +3,6 @@ package app
 import (
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -115,8 +111,7 @@ func (s *FileService) ChangedOnDisk(path string, stamp store.Stamp) bool {
 
 // Settings returns the user's preferences, falling back to defaults.
 //
-// The frontend reads these once at start-up: the debounce and the default
-// layout engine were compile-time constants until Milestone 5.
+// The frontend reads these once at start-up.
 func (s *FileService) Settings() config.Settings {
 	settings, err := config.Load()
 	if err != nil {
@@ -174,66 +169,4 @@ func (s *FileService) ChooseFileToSave(suggestedName string) DialogResult {
 type DialogResult struct {
 	Path  string `json:"path"`
 	Error string `json:"error"`
-}
-
-// Entry is a file or folder in a workspace.
-type Entry struct {
-	Name  string `json:"name"`
-	Path  string `json:"path"`
-	IsDir bool   `json:"isDir"`
-}
-
-// ListWorkspace lists the Bava files and folders directly under dir.
-//
-// Only `.md` and `.d2`: a workspace is usually a project folder full of things
-// Bava has no business showing. Folders are listed whatever they contain,
-// because the files inside are only discovered on expansion.
-func (s *FileService) ListWorkspace(dir string) ListResult {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return ListResult{Error: err.Error()}
-	}
-
-	var out []Entry
-	for _, entry := range entries {
-		name := entry.Name()
-		// Hidden entries are Bava's own state or the user's tooling.
-		if strings.HasPrefix(name, ".") {
-			continue
-		}
-		if !entry.IsDir() && !isBavaFile(name) {
-			continue
-		}
-		out = append(out, Entry{
-			Name:  name,
-			Path:  filepath.Join(dir, name),
-			IsDir: entry.IsDir(),
-		})
-	}
-
-	// Folders first, then files, each alphabetically: the order a person
-	// scanning a sidebar expects.
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].IsDir != out[j].IsDir {
-			return out[i].IsDir
-		}
-		return strings.ToLower(out[i].Name) < strings.ToLower(out[j].Name)
-	})
-
-	return ListResult{Entries: out}
-}
-
-// ListResult is a workspace listing.
-type ListResult struct {
-	Entries []Entry `json:"entries"`
-	Error   string  `json:"error"`
-}
-
-func isBavaFile(name string) bool {
-	switch strings.ToLower(filepath.Ext(name)) {
-	case ".md", ".d2":
-		return true
-	default:
-		return false
-	}
 }

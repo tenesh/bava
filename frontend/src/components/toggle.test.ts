@@ -44,3 +44,19 @@ describe('Toggle', () => {
     unmount(app);
   });
 });
+
+// Export lists its settings as rows: the name first, the switch at the end.
+describe('Toggle as a row', () => {
+  it('puts the label before the switch and keeps it as the accessible name', () => {
+    const { app, target, input, onChange } = render({ variant: 'row' });
+    const root = target.querySelector('.bava-toggle')!;
+    expect(root.getAttribute('data-variant')).toBe('row');
+    const label = root.querySelector('.bava-toggle-label')!;
+    const track = root.querySelector('.bava-toggle-track')!;
+    expect(label.compareDocumentPosition(track) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(input.labels?.[0]?.textContent).toContain('Background');
+    flushSync(() => input.click());
+    expect(onChange).toHaveBeenCalledWith(true);
+    unmount(app);
+  });
+});

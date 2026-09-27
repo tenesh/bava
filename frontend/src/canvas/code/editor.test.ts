@@ -97,7 +97,7 @@ describe('committing a code block', () => {
     const block = history.current.elements[0] as unknown as Record<string, number | string>;
     expect(block.code).toBe('a\nbb\nccc');
     expect(block.h).toBe(3 * 20 + 16);
-    // The width is the user's, kept through an edit (06.12).
+    // The width is the user's, kept through an edit.
     expect(block.w).toBe(50);
     expect(block.measuredWidth).toBe(block.w);
     expect(block.measuredHeight).toBe(block.h);
@@ -228,7 +228,7 @@ describe('committing code to a block of a chosen width', () => {
   });
 });
 
-// From the shortcut audit (06.12): the code block editor drops the keys the
+// The code block editor drops the keys the
 // menu owns, as the source pane does, and Tab indents rather than leaving.
 describe('keys in the code block editor', () => {
   it('drops a key the menu reserves', async () => {
@@ -286,7 +286,7 @@ describe('committing code to a taller block', () => {
   });
 });
 
-describe("the editor over a block at another size (06.17)", () => {
+describe("the editor over a block at another size", () => {
   it("scales its text with the block's size as well as the zoom", async () => {
     const editor = new CodeEditor(host());
     await editor.open({ code: 'x', zoom: 2, fontScale: 1.5, rect: { x: 0, y: 0, width: 100, height: 40 }, onCommit: vi.fn() });
@@ -296,7 +296,7 @@ describe("the editor over a block at another size (06.17)", () => {
   });
 });
 
-describe('a code block refitted to its code (06.17)', () => {
+describe('a code block refitted to its code', () => {
   it('grows to its code at a larger size, keeping its width', () => {
     const block = { id: 'c', type: 'code', x: 0, y: 0, w: 200, h: 36, z: 1, code: 'a\nb', measuredWidth: 200, measuredHeight: 36 } as never;
     fitToCode(block, { advance: 12, lineHeight: 40, padding: 8 });

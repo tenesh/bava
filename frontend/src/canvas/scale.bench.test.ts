@@ -1,11 +1,10 @@
 /**
- * Milestone 7, Task 8: whether a spatial index is needed. Times the per-move
+ * Whether a spatial index is needed. Times the per-move
  * work of snapping and attaching on a 2,000-element scene. Skipped by
  * default; run by hand with
  * `BAVA_BENCH=/path/to/results.json npx vitest run src/canvas/scale.bench.test.ts`,
  * which writes the times, in ms, to that file (the test runner hides
  * console output). The budget is 4 ms a move, a quarter of a 60 Hz frame.
- * Results on 2026-09-27 are in `docs/decisions.md` ("No spatial index").
  */
 import { describe, expect, it } from 'vitest';
 import { writeFileSync } from 'node:fs';
@@ -25,8 +24,8 @@ function scene(): SceneData {
     const h = 40 + Math.round(random() * 80);
     elements.push({ id: `e${i}`, type: 'rect', x: (i % 60) * 220 + Math.round(random() * 20), y: Math.floor(i / 60) * 160, w, h, z: i + 1 } as SceneElement);
   }
-  // Two bars across the whole board, a swim lane's edges: the review found
-  // that a side never covered made gathering slow (239 ms), so they stay in.
+  // Two bars across the whole board, a swim lane's edges: a side never
+  // covered made gathering slow (239 ms), so they stay in.
   elements.push({ id: 'tall', type: 'rect', x: -60, y: 0, w: 20, h: 6000, z: COUNT + 1 } as SceneElement);
   elements.push({ id: 'wide', type: 'rect', x: 0, y: -60, w: 14000, h: 20, z: COUNT + 2 } as SceneElement);
   return { elements };

@@ -2,13 +2,13 @@
  * Routing an elbow arrow: right angles only, leaving each attached shape from
  * the side its end is on, going around both shapes.
  *
- * Excalidraw's method (`.claude/work/specs/excalidraw-elbow-routing.md`,
- * `element/src/elbowArrow.ts`), in Bava's own code: each shape is grown by a
- * margin and treated as an obstacle; each end steps out of its grown shape in
- * its heading (the "dongle"); the edges of the grown shapes, the line midway
- * between them and a border around everything make a grid; and a shortest
- * path over that grid, with each bend costing more than any length could,
- * gives the fewest bends first and the shortest route second.
+ * Excalidraw's method (`element/src/elbowArrow.ts`), in Bava's own code: each
+ * shape is grown by a margin and treated as an obstacle; each end steps out
+ * of its grown shape in its heading (the "dongle"); the edges of the grown
+ * shapes, the line midway between them and a border around everything make a
+ * grid; and a shortest path over that grid, with each bend costing more than
+ * any length could, gives the fewest bends first and the shortest route
+ * second.
  *
  * Pure: points in, points out. The caller (`binding.ts`, `reroute`) decides
  * where the ends are and which way they face, and stores the route.

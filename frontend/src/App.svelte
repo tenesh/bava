@@ -32,8 +32,11 @@
   import { toElements } from './canvas/import/convert';
   import { createTheme } from './styles/theme.svelte';
   import Shell from './shell/Shell.svelte';
+  import { countText, statusContext, type StatusSide } from './shell/status-context';
+  import { statusLocation } from './shell/status-location';
   import { createDocument, sceneToSave } from './files/document.svelte';
-  import { createWorkspace } from './files/workspace.svelte';
+  import { createSpace, type TrashEntry } from './files/space.svelte';
+  import { folderOf, followMove, formatBytes, launchTarget, pageTitle, spaceChoices, treeMenu, unsavedBody, within } from './files/space-helpers';
   import { createHistory } from './canvas/history';
   import { createSelection } from './canvas/selection';
   import { createPointerHandler } from './canvas/pointer';
@@ -58,7 +61,13 @@
   import { closeLine, openLine } from './canvas/closed';
   import { readRootVariable } from './canvas/palette';
   import type { SceneData, SceneElement } from './canvas/scene';
-  import FileTree from './components/FileTree.svelte';
+  import SpaceTree from './components/SpaceTree.svelte';
+  import ToolIcon from './components/ToolIcon.svelte';
+  import SpaceSwitcher from './components/SpaceSwitcher.svelte';
+  import StartScreen from './components/StartScreen.svelte';
+  import TrashDialog from './components/TrashDialog.svelte';
+  import SpaceSettingsDialog from './components/SpaceSettingsDialog.svelte';
+  import NewSpaceDialog from './components/NewSpaceDialog.svelte';
   import ConfirmDialog from './components/ConfirmDialog.svelte';
   import { createFileActions, type Choice, type PromptKind } from './files/actions.svelte';
   import EmptyState from './components/EmptyState.svelte';
@@ -91,6 +100,7 @@
   import { Clipboard, Events } from '@wailsio/runtime';
   import { ExportService, FileService, LogService, MenuService } from '../bindings/github.com/tenesh/bava/internal/app';
   import { t } from './i18n/t';
+  import type { MessageKey } from './i18n/messages';
 
   const client = createRenderClient();
   const theme = createTheme();
@@ -101,7 +111,7 @@
   const canvas = new CanvasStage();
   const viewport = createViewport();
   const doc = createDocument();
-  const workspace = createWorkspace();
+  const space = createSpace();
   const tools = createTools();
   const history = createHistory({ elements: [] });
   const selection = createSelection();
@@ -112,7 +122,7 @@
     void tools.active;
     cursorUpdate?.();
   });
-  // The style a new element takes: the last chosen, for this session (06.15).
+  // The style a new element takes: the last chosen, for this session.
   const newElementStyle = createCurrentStyle();
   const pointer = createPointerHandler({
     history,
@@ -121,7 +131,7 @@
     newStyle: (type) => newElementStyle.for(type),
     bindingEnabled: () => settingsState.arrowBinding,
     midpointSnap: () => settingsState.midpointSnap,
-    // Snapping to objects (Milestone 7): its reach is 8 screen px at any zoom,
+    // Snapping to objects: its reach is 8 screen px at any zoom,
     // and only what is on screen is snapped to.
     objectSnap: () => settingsState.objectSnap,
     snapDistance: () => (parseFloat(readRootVariable('--size-snap-distance')) || 0) / viewport.zoom,
@@ -159,7 +169,7 @@
     // A placed code block is sized the way a committed one is.
     codeMetrics,
   });
-  // A code block pasted a new size re-wraps and grows to its code (06.17).
+  // A code block pasted a new size re-wraps and grows to its code.
   const canvasCommands = createCanvasCommands({ history, selection, afterPasteStyle: (element) => fitToCode(element, codeMetrics(element)) });
 
   /** How near a click counts as hitting a line, in scene units at the current zoom. */
@@ -172,7 +182,7 @@
 
   /**
    * The metrics a code block is measured and drawn with, from the tokens, at
-   * the block's own size when given one (06.17).
+   * the block's own size when given one.
    */
   function codeMetrics(element?: SceneElement) {
     // Absent means the file format's 13, as the stage draws it.
@@ -451,13 +461,13 @@
     hasSelection = canvasCommands.hasSelection;
     selectedIds = selection.ids;
     canvas.setSelection(selection.ids);
-    // Point editing (06.13) is drawn with the selection it belongs to.
+    // Point editing is drawn with the selection it belongs to.
     canvas.setPointEditing(pointer.editingPoints);
     drawingByClicks = pointer.drawingPoints;
     editingPointsOf = pointer.editingPoints?.id ?? null;
   }
 
-  /** A line action from the toolbar (06.15). */
+  /** A line action from the toolbar. */
   function onLineAction(action: LineAction) {
     if (action === 'finishLine') {
       pointer.finishPoints();
@@ -540,6 +550,10 @@
       },
       save: (scene, options) => doc.save(scene, options),
       saveAs: (path, scene) => doc.saveAs(path, scene),
+      close: () => {
+        doc.close();
+        loadScene([]);
+      },
       reset: () => {
         doc.reset();
         loadScene([]);
@@ -559,13 +573,83 @@
     },
   });
 
-  // Every way of opening a document ends here: the menu, recents, the tree.
+  // The open Space, and the last one, reopened at launch.
+  const LAST_SPACE_KEY = 'bava.lastSpace';
+  // Spaces that failed to open this session: the start screen marks them.
+  let missingSpaces = $state.raw<string[]>([]);
+
+  function rememberLastSpace(root: string | null) {
+    try {
+      if (root) localStorage.setItem(LAST_SPACE_KEY, root);
+      else localStorage.removeItem(LAST_SPACE_KEY);
+    } catch {
+      // A convenience: launch shows the start screen instead.
+    }
+  }
+
+  // The open page relative to its Space, or null for no page or a loose one.
+  const openRel = $derived(doc.path ? space.relative(doc.path) : null);
+
+  /**
+   * Open a folder as a Space, closing the page first, and reopen its last
+   * page. With `keepPage`, the loose page open now stays open and becomes
+   * the Space's page instead.
+   */
+  async function openSpace(dir: string, keepPage = false): Promise<boolean> {
+    if (!keepPage) {
+      if (doc.isOpen && !(await fileActions.close())) return false;
+      loadScene([]);
+    }
+    const error = await space.open(dir);
+    if (error) {
+      if (!missingSpaces.includes(dir)) missingSpaces = [...missingSpaces, dir];
+      notify(error);
+      return false;
+    }
+    missingSpaces = missingSpaces.filter((path) => path !== dir);
+    recents.add(space.root!, 'space');
+    rememberLastSpace(space.root);
+    const kept = keepPage && doc.path ? space.relative(doc.path) : null;
+    if (kept !== null) {
+      space.rememberPage(kept);
+      await showInTree(kept);
+      return true;
+    }
+    const last = space.lastPage;
+    if (last) await openPath(space.absolute(last));
+    return true;
+  }
+
+  // Every way of opening a page ends here: the menu, recents, the tree.
   async function openPath(path: string) {
+    if (recents.kindOf(path) === 'space') {
+      await openSpace(path);
+      return;
+    }
     if (!(await fileActions.open(path))) return;
-    recents.add(path);
+    recents.add(path, 'file');
     autosave.resume();
-    // Opening a file also opens the folder it lives in, so its siblings appear.
-    await workspace.open(path.replace(/[\\/][^\\/]*$/, ''));
+    const rel = space.relative(path);
+    if (rel === null) {
+      // A page on its own: no Space around it.
+      space.close();
+      rememberLastSpace(null);
+      return;
+    }
+    space.rememberPage(rel);
+    await showInTree(rel);
+  }
+
+  /** Open every folder a page is in, so its row shows. */
+  async function showInTree(rel: string) {
+    const parts = folderOf(rel).split('/').filter(Boolean);
+    for (let i = 1; i <= parts.length; i += 1) await space.expand(parts.slice(0, i).join('/'));
+  }
+
+  // A new row is named in the tree, so the tree must be showing.
+  function showFiles() {
+    if (!view.showsFiles) view.toggleFiles();
+    if (view.filesFolded) view.toggleFilesFolded();
   }
 
   async function openFile() {
@@ -573,13 +657,253 @@
     if (chosen.path) await openPath(chosen.path);
   }
 
+  // New Space: a name, and the place its folder is made in, which starts
+  // beside the Space open now or the last one opened.
+  let newSpaceOpen = $state.raw(false);
+  let newSpaceLocation = $state.raw('');
+
+  function openNewSpace() {
+    const near = space.root ?? recents.spaces[0]?.path ?? '';
+    newSpaceLocation = near ? near.replace(/[\\/][^\\/]*$/, '') : '';
+    newSpaceOpen = true;
+  }
+
+  async function chooseNewSpaceLocation() {
+    const chosen = await space.chooseFolder(t('space.chooseLocation'));
+    if (chosen.error) notify(chosen.error);
+    else if (chosen.path) newSpaceLocation = chosen.path;
+  }
+
+  async function createNewSpace(name: string) {
+    const made = await space.create(newSpaceLocation, name);
+    if (made.error) {
+      notify(made.error);
+      return;
+    }
+    newSpaceOpen = false;
+    await openSpace(made.root);
+  }
+
+  async function chooseSpace() {
+    const chosen = await space.chooseFolder(t('space.open'));
+    if (chosen.error) notify(chosen.error);
+    else if (chosen.path) await openSpace(chosen.path);
+  }
+
   async function afterSave(saved: boolean) {
     if (!saved) return;
     // A save by hand settles whatever paused autosave.
     autosave.resume();
-    if (doc.path) recents.add(doc.path);
-    await workspace.refresh();
+    if (doc.path) recents.add(doc.path, 'file');
+    await space.refresh();
   }
+
+  /** ⌘N: a page beside the open one in a Space, else an untitled one. */
+  async function newPage() {
+    if (space.root) {
+      showFiles();
+      space.beginNew('page', folderOf(openRel));
+    } else if (await fileActions.create()) loadScene([]);
+  }
+
+  function newFolder() {
+    if (!space.root) return;
+    showFiles();
+    space.beginNew('folder', folderOf(openRel));
+  }
+
+  async function commitNew(name: string) {
+    const kind = space.pending?.kind;
+    const made = await space.commitNew(name);
+    if (made.error) {
+      notify(made.error);
+      return;
+    }
+    if (kind === 'page') await openPath(space.absolute(made.path));
+  }
+
+  /** A rename or move in the tree; the open page follows its file. */
+  async function relocate(op: { kind: 'rename' | 'move'; path: string; name?: string; folder?: string; index?: number }) {
+    const rel = openRel;
+    // Nothing may write to the old path once the file has moved.
+    const release = rel && within(rel, op.path) ? await autosave.hold() : () => {};
+    try {
+      const result = await space.apply(op, {
+        // The page follows its file before the tree is re-read.
+        before: (outcome) => {
+          recents.renamePrefix(space.absolute(op.path), space.absolute(outcome.path));
+          space.followMove(op.path, outcome.path);
+          const moved = rel ? followMove(rel, op.path, outcome.path) : null;
+          if (!moved) return;
+          doc.moved(space.absolute(moved));
+          space.rememberPage(moved);
+        },
+      });
+      if (result.error) notify(result.error);
+    } finally {
+      release();
+    }
+  }
+
+  async function trashPath(path: string) {
+    // The open page, or the folder it is in, goes to the Trash closed.
+    if (openRel && within(openRel, path)) {
+      if (!(await fileActions.close())) return;
+      loadScene([]);
+      space.rememberPage(null);
+    }
+    const result = await space.apply({ kind: 'trash', path });
+    if (result.error) notify(result.error);
+    else recents.removePrefix(space.absolute(path));
+    if (trashOpen) await refreshTrash();
+  }
+
+  async function duplicatePath(path: string) {
+    // The copy is made from disk, so unsaved edits are saved into it first.
+    if (openRel === path && doc.dirty && !(await fileActions.save())) return;
+    const result = await space.apply({ kind: 'duplicate', path });
+    if (result.error) notify(result.error);
+  }
+
+  async function revealPath(path = '') {
+    const error = await space.reveal(path);
+    if (error) notify(error);
+  }
+
+  // The tree's right-click menu, and a rename it asks for.
+  // The Files header's menu: a page or a folder beside the open page.
+  let filesMenuAt = $state.raw<{ x: number; y: number } | null>(null);
+  let treeMenuAt = $state.raw<{ path: string | null; anchor: { x: number; y: number } } | null>(null);
+  let renameRequest = $state.raw<string | null>(null);
+  const treeMenuKind = $derived.by(() => {
+    const path = treeMenuAt?.path;
+    if (!path) return null;
+    return space.rows.find((row) => row.entry.path === path)?.entry.kind ?? null;
+  });
+
+  function onTreeMenu(id: string) {
+    const target = treeMenuAt?.path ?? null;
+    treeMenuAt = null;
+    const folder = target === null ? '' : treeMenuKind === 'folder' ? target : folderOf(target);
+    switch (id) {
+      case 'tree.newPage':
+        space.beginNew('page', folder);
+        break;
+      case 'tree.newFolder':
+        space.beginNew('folder', folder);
+        break;
+      case 'tree.rename':
+        renameRequest = target;
+        break;
+      case 'tree.duplicate':
+        if (target) void duplicatePath(target);
+        break;
+      case 'tree.reveal':
+        void revealPath(target ?? '');
+        break;
+      case 'tree.trash':
+        if (target) void trashPath(target);
+        break;
+    }
+  }
+
+  // The Trash dialog.
+  let trashOpen = $state.raw(false);
+  let trashItems = $state.raw<TrashEntry[]>([]);
+  let trashSize = $state.raw(0);
+
+  async function refreshTrash() {
+    const list = await space.trash();
+    if (list.error) notify(list.error);
+    trashItems = list.items ?? [];
+    trashSize = list.size;
+  }
+
+  async function openTrash() {
+    if (!space.root) return;
+    trashOpen = true;
+    await refreshTrash();
+  }
+
+  async function restoreItem(id: string) {
+    const result = await space.apply({ kind: 'restore', id });
+    if (result.error) notify(result.error);
+    await refreshTrash();
+  }
+
+  async function deleteItem(id: string) {
+    const item = trashItems.find((entry) => entry.id === id);
+    const name = item ? (pageTitle(item.path) ?? item.path) : '';
+    if (!(await confirm(t('trash.confirmDelete.title').replace('{name}', name), t('trash.confirmDelete.body')))) return;
+    const result = await space.apply({ kind: 'deleteForever', id });
+    if (result.error) notify(result.error);
+    await refreshTrash();
+  }
+
+  async function emptyTrash() {
+    if (!(await confirm(t('trash.confirmEmpty.title'), t('trash.confirmEmpty.body')))) return;
+    const result = await space.apply({ kind: 'emptyTrash' });
+    if (result.error) notify(result.error);
+    await refreshTrash();
+  }
+
+  // A yes-or-no question for what cannot be undone.
+  let confirming = $state.raw<{ title: string; body: string; resolve: (yes: boolean) => void } | null>(null);
+  function confirm(title: string, body: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      confirming = { title, body, resolve };
+    });
+  }
+
+  // Space settings.
+  let spaceSettingsOpen = $state.raw(false);
+
+  async function renameSpace(name: string) {
+    const oldRoot = space.root;
+    if (!oldRoot) return;
+    const rel = openRel;
+    // Nothing may write to the old path until the page knows its new one.
+    const release = rel ? await autosave.hold() : () => {};
+    try {
+      // The old root is gone once this succeeds, so nothing re-reads it.
+      const result = await space.apply({ kind: 'renameSpace', name }, { refresh: false });
+      if (result.error) {
+        notify(result.error);
+        return;
+      }
+      const newRoot = result.root!;
+      // The page follows at once, whether or not the Space reopens.
+      if (rel && doc.path) doc.moved(newRoot + doc.path.slice(oldRoot.length));
+      space.carryTo(newRoot);
+      recents.renamePrefix(oldRoot, newRoot);
+      rememberLastSpace(newRoot);
+      const error = await space.open(newRoot);
+      if (error) notify(error);
+      else if (rel) space.rememberPage(rel);
+    } finally {
+      release();
+    }
+  }
+
+  async function setSpacePageWidth(width: string) {
+    const error = await space.setPageWidth(width);
+    if (error) notify(error);
+  }
+
+  // Reopen the last Space at launch; a folder that is gone falls
+  // back to the start screen, marked missing there.
+  void (async () => {
+    let last: string | null;
+    try {
+      last = localStorage.getItem(LAST_SPACE_KEY);
+    } catch {
+      last = null;
+    }
+    if (!last) return;
+    const opened = await openSpace(last);
+    if (launchTarget(last, opened) === 'start') rememberLastSpace(null);
+  })();
+
 
   // With nothing open there is nothing to save.
   const save = async () => {
@@ -613,7 +937,7 @@
     // text will be drawn.
     const lineWidth = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
     // An arrow's label is typed where it is drawn: on its spot, at its wrap
-    // width, turned with it (06.17); it opened over the arrow's box before.
+    // width, turned with it.
     const field = isArrow ? arrowLabelField(element, paint, lineWidth) : null;
     const box = field ?? labelBox(element, parseFloat(readRootVariable('--size-label-inset')) || 0);
     const topLeft = viewport.sceneToScreen({ x: box.x, y: box.y });
@@ -662,7 +986,7 @@
     const measure = measurerFor(null);
     const paint = paintFor({ type: 'text' } as SceneElement, readRootVariable);
     // By a free arrow end, decided now, so the field opens where the text
-    // will land: its side the arrow points at on the tip (06.16, B29).
+    // will land: its side the arrow points at on the tip.
     const end = freeEndAt(history.current, point, (parseFloat(readRootVariable('--size-point-hit')) || 0) / viewport.zoom);
     const placement = end ? endTextPlacement(history.current, end) : null;
     const line = paint.font.size * paint.font.lineHeight;
@@ -681,7 +1005,7 @@
       zoom: viewport.zoom,
       onCommit: (value) => {
         // By a free arrow end, the text is that end's, and the end attaches
-        // to it (06.16, B29); anywhere else, free text where it was clicked.
+        // to it; anywhere else, free text where it was clicked.
         const placed = end ? insertTextAtEnd(history, end, value, measure) : insertText(history, point, value, measure);
         if (placed) commit();
       },
@@ -809,10 +1133,14 @@
     'app.settings': () => {
       settingsOpen = true;
     },
-    'file.new': async () => {
-      await fileActions.create();
-    },
+    'file.new': newPage,
+    'file.newFolder': newFolder,
+    'file.openSpace': chooseSpace,
     'file.open': openFile,
+    'space.trash': openTrash,
+    'file.spaceSettings': () => {
+      if (space.root) spaceSettingsOpen = true;
+    },
     'file.openRecent': async (path) => {
       if (path) await openPath(path);
     },
@@ -829,7 +1157,7 @@
         source: () => focusedSource().undo(),
         code: () => codeEditor?.undo(),
         field: fieldCommand('undo'),
-        // Not mid-gesture, a line drawn by clicks included (06.16, O1).
+        // Not mid-gesture, a line drawn by clicks included.
         canvas: () => {
           if (!pointer.holdsHistory) canvasEdit(canvasCommands.undo)();
         },
@@ -852,7 +1180,7 @@
         code: () => codeEditor?.selectAll(),
         field: fieldCommand('selectAll'),
         canvas: () => {
-          // In point editing, Select All does nothing (06.15, as Excalidraw).
+          // In point editing, Select All does nothing, as in Excalidraw.
           if (pointer.selectAll()) return;
           canvasCommands.selectAll();
           syncSelection();
@@ -910,13 +1238,13 @@
     'canvas.sendBackward': canvasEdit(canvasCommands.sendBackward),
     'canvas.flipHorizontal': canvasEdit(canvasCommands.flipHorizontal),
     'canvas.flipVertical': canvasEdit(canvasCommands.flipVertical),
-    // Edit the selected line's or arrow's points (06.15, P2); not an elbow's.
+    // Edit the selected line's or arrow's points; not an elbow's.
     'canvas.editPoints': () => {
       const [id] = selection.ids;
       if (!canvasShown() || selection.ids.length !== 1 || id === undefined) return;
       if (pointer.editPoints(id)) syncSelection();
     },
-    // In point editing, the selected points (06.15, P16); otherwise the selection.
+    // In point editing, the selected points; otherwise the selection.
     'canvas.duplicate': () => {
       if (canvasShown() && pointer.duplicatePoints()) {
         commit();
@@ -926,7 +1254,7 @@
     },
     'canvas.lock': canvasEdit(canvasCommands.lock),
     'canvas.unlockAll': canvasEdit(canvasCommands.unlockAll),
-    // Alt+S, or Canvas ▸ Snap to Objects: the setting, saved (Milestone 7).
+    // Alt+S, or Canvas ▸ Snap to Objects: the setting, saved.
     'canvas.snapToObjects': () => void settingsState.setObjectSnap(!settingsState.objectSnap).then(reportSettingsError),
     'canvas.copyPng': () => {
       if (canvasShown()) void exporter.copyFromMenu('png');
@@ -976,6 +1304,24 @@
   let canvasHost: HTMLDivElement;
 
   const nodeCount = $derived(Object.keys(client.state.nodeMap).length);
+
+  // The status bar describes the side being worked on: the one last pressed
+  // or focused, when both show.
+  let lastWorkedIn = $state.raw<StatusSide>('document');
+  const statusSide = $derived(statusContext(view.mode, lastWorkedIn));
+  const documentCounts = $derived(countText(doc.source));
+  $effect(() => {
+    const note = (event: Event) => {
+      const side = (event.target as Element | null)?.closest?.('[data-side]')?.getAttribute('data-side');
+      if (side === 'document' || side === 'canvas') lastWorkedIn = side;
+    };
+    document.addEventListener('pointerdown', note, true);
+    document.addEventListener('focusin', note, true);
+    return () => {
+      document.removeEventListener('pointerdown', note, true);
+      document.removeEventListener('focusin', note, true);
+    };
+  });
 
   onMount(() => {
     // Captured: `bind:this` is nulled when the snippet's DOM is torn down,
@@ -1076,12 +1422,12 @@
     // handle it is on (none while dragging), and the cursor.
     const drawHover = frameThrottle((point: { x: number; y: number }, alt: boolean, shift: boolean) => {
       canvas.setHoverHandle(pointer.hoveredHandle(point));
-      // In point editing, Alt shows the point an Alt-click would add (06.15, P14).
+      // In point editing, Alt shows the point an Alt-click would add.
       if (pointer.editingPoints && !pointer.dragging) canvas.render((alt ? pointer.appendPreview(point, { shift }) : null) ?? history.current);
       updateCursor();
-      // With the Arrow tool, the shape a press would start on (06.15, C18).
+      // With the Arrow tool, the shape a press would start on.
       if (!pointer.dragging && !pointer.drawingPoints) canvas.setBindingCandidates(pointer.bindingCandidates);
-      // With a tool that places a box, where its start would snap (Milestone 7).
+      // With a tool that places a box, where its start would snap.
       if (!pointer.dragging) canvas.setSnapGuides(pointer.snapGuides);
     });
     const drawClicking = frameThrottle((point: { x: number; y: number }, shift: boolean) => {
@@ -1126,7 +1472,7 @@
         return;
       }
       if (tools.active === 'text') {
-        // Placed where the click snaps, as a drawn box starts (Milestone 7).
+        // Placed where the click snaps, as a drawn box starts.
         const point = pointer.snapPlacement(scenePoint(event), { mod: event.metaKey || event.ctrlKey });
         canvas.setSnapGuides([]);
         tools.escape();
@@ -1170,8 +1516,8 @@
     const onDoubleClick = (event: MouseEvent) => {
       if (labelEditor?.contains(event.target)) return;
       // A double-click on a fixed segment of the selected elbow lets it go,
-      // before it could open the label editor. On a bend it removes nothing
-      // (06.15, as Excalidraw).
+      // before it could open the label editor. On a bend it removes nothing,
+      // as in Excalidraw.
       if (pointer.releaseSegmentAt(scenePoint(event as PointerEvent))) {
         commit();
         return;
@@ -1241,11 +1587,14 @@
     window.addEventListener('keyup', onModifier);
     window.addEventListener('blur', releaseSpace);
     // The webview's own menu (Reload and all) only where there is text to
-    // cut, copy or paste; the canvas opens Bava's menu itself (06.17).
+    // cut, copy or paste; the canvas opens Bava's menu itself.
     const onAnyContextMenu = (event: MouseEvent) => {
       if (!keepsBrowserMenu(event.target as Element | null)) event.preventDefault();
     };
     window.addEventListener('contextmenu', onAnyContextMenu);
+    // Files may have changed outside Bava (Finder, sync): re-read the tree.
+    const onWindowFocus = () => void space.refresh();
+    window.addEventListener('focus', onWindowFocus);
 
     // The stage is sized at mount; follow the pane as the window or the
     // splitters change it.
@@ -1281,7 +1630,7 @@
         nudge: (dx, dy) => {
           // A frame carries its contents and a group its children, by keyboard
           // exactly as by mouse.
-          // An attached arrow whose shape is not selected stays put (06.16, B21).
+          // An attached arrow whose shape is not selected stays put.
           const ids = new Set(carriedWith(history.current, nudged(history.current, selection.ids)).map((element) => element.id));
           if (ids.size === 0) return;
           history.mutate((draft) => {
@@ -1391,6 +1740,7 @@
       codeEditor = null;
       labelEditor = null;
       window.removeEventListener('contextmenu', onAnyContextMenu);
+      window.removeEventListener('focus', onWindowFocus);
       window.removeEventListener('keydown', onSpace);
       window.removeEventListener('keyup', onSpace);
       window.removeEventListener('keydown', onModifier);
@@ -1408,10 +1758,9 @@
   // Effects belong at initialisation, not inside onMount: an effect created in
   // a mount callback is orphaned and Svelte throws.
   //
-  // The D2 preview is not wired to the canvas in this milestone. The canvas is
-  // a drawing surface now, and a rendered diagram becomes an element on it in
-  // Milestone 6. The pipeline still runs (diagnostics below prove it), but
-  // nothing paints it. Recorded as a known regression.
+  // The D2 preview is not wired to the canvas: the canvas is a drawing
+  // surface. The pipeline still runs (diagnostics below prove it), but
+  // nothing paints it.
   $effect(() => {
     pane.setDiagnostics(client.state.errors);
   });
@@ -1430,6 +1779,7 @@
       hasLocked: published.elements.some(isLocked),
       hasDocument: doc.path !== null || published.elements.length > 0,
       showsCanvas: view.showsCanvas,
+      hasSpace: space.root !== null,
       objectSnap: settingsState.objectSnap,
       recents: recents.paths,
     };
@@ -1453,15 +1803,46 @@
   });
 </script>
 
+{#snippet filesSettings()}
+  <FilesSection
+    mode={settingsState.autosave}
+    delayMs={settingsState.autosaveDelayMs}
+    onModeChange={(mode) => void settingsState.setAutosave(mode).then(reportSettingsError)}
+    onDelayChange={(ms) => void settingsState.setAutosaveDelay(ms).then(reportSettingsError)}
+  />
+{/snippet}
+
+{#snippet canvasSettings()}
+  <CanvasSection
+    arrowBinding={settingsState.arrowBinding}
+    midpointSnap={settingsState.midpointSnap}
+    objectSnap={settingsState.objectSnap}
+    onArrowBindingChange={(on) => void settingsState.setArrowBinding(on).then(reportSettingsError)}
+    onMidpointSnapChange={(on) => void settingsState.setMidpointSnap(on).then(reportSettingsError)}
+    onObjectSnapChange={(on) => void settingsState.setObjectSnap(on).then(reportSettingsError)}
+  />
+{/snippet}
+
+{#snippet advancedSettings()}
+  <AdvancedSection
+    verbose={settingsState.verboseLogging}
+    onVerboseChange={(on) => void settingsState.setVerboseLogging(on).then(reportSettingsError)}
+  />
+{/snippet}
+
 <!-- Inert while the splash covers it: no focus or reading behind the cover. -->
 <div class="app" inert={!launch.ready}>
 <Shell
-  open={doc.isOpen}
+  open={doc.isOpen || space.root !== null}
+  pageOpen={doc.isOpen}
+  {...statusLocation({ spaceRoot: space.root, spaceName: space.name, pagePath: openRel, filePath: doc.path ?? null })}
   hints={noFileHints}
-  title={doc.path ?? t('file.untitled')}
+  title={pageTitle(doc.path) ?? t('file.untitled')}
   dirty={doc.dirty}
-  engine={doc.isOpen ? settingsState.layoutEngine : undefined}
-  nodes={doc.isOpen ? nodeCount : undefined}
+  engine={doc.isOpen && statusSide === 'canvas' ? settingsState.layoutEngine : undefined}
+  nodes={doc.isOpen && statusSide === 'canvas' ? nodeCount : undefined}
+  words={doc.isOpen && statusSide === 'document' ? documentCounts.words : undefined}
+  characters={doc.isOpen && statusSide === 'document' ? documentCounts.characters : undefined}
   errors={client.state.errors.length}
   status={notice ??
     (autosave.pauseReason === 'conflict'
@@ -1473,36 +1854,89 @@
   onChooseTheme={(choice) => theme.set(choice)}
   {view}
   bind:settingsOpen
+  settings={[
+    { value: 'files', label: t('settings.files'), icon: 'folder', content: filesSettings },
+    { value: 'canvas', label: t('settings.canvas'), icon: 'grid', content: canvasSettings },
+    { value: 'advanced', label: t('settings.advanced'), icon: 'code', content: advancedSettings },
+  ]}
   onPanelError={(panel, error) => void report(error, `panel:${panel}`)}
 >
-  {#snippet settings()}
-    <FilesSection
-      mode={settingsState.autosave}
-      delayMs={settingsState.autosaveDelayMs}
-      onModeChange={(mode) => void settingsState.setAutosave(mode).then(reportSettingsError)}
-      onDelayChange={(ms) => void settingsState.setAutosaveDelay(ms).then(reportSettingsError)}
-    />
-    <CanvasSection
-      arrowBinding={settingsState.arrowBinding}
-      midpointSnap={settingsState.midpointSnap}
-      objectSnap={settingsState.objectSnap}
-      onArrowBindingChange={(on) => void settingsState.setArrowBinding(on).then(reportSettingsError)}
-      onMidpointSnapChange={(on) => void settingsState.setMidpointSnap(on).then(reportSettingsError)}
-      onObjectSnapChange={(on) => void settingsState.setObjectSnap(on).then(reportSettingsError)}
-    />
-    <AdvancedSection
-      verbose={settingsState.verboseLogging}
-      onVerboseChange={(on) => void settingsState.setVerboseLogging(on).then(reportSettingsError)}
+
+
+  {#snippet start()}
+    <StartScreen
+      recents={spaceChoices(recents.entries, missingSpaces).map((choice) => ({
+        path: choice.path,
+        name: choice.name,
+        when: choice.openedAt ? new Date(choice.openedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '',
+        missing: choice.missing,
+      }))}
+      onNewSpace={openNewSpace}
+      onOpenSpace={() => void chooseSpace()}
+      onOpenFile={() => void openFile()}
+      onOpenRecent={(path) => void openPath(path)}
     />
   {/snippet}
 
   {#snippet files()}
-    {#if workspace.root}
-      <FileTree
-        entries={workspace.entries}
-        activePath={doc.path}
-        onActivate={(path) => void openPath(path)}
+    {#if space.root}
+      <SpaceSwitcher
+        name={space.name}
+        root={space.root}
+        recents={spaceChoices(recents.entries, []).map(({ path, name }) => ({ path, name }))}
+        onSelect={(id) => {
+          if (id.startsWith('recent:')) void openSpace(id.slice('recent:'.length));
+          else if (id === 'space.new') openNewSpace();
+          else if (id === 'space.open') void chooseSpace();
+          else if (id === 'file.open') void openFile();
+          else if (id === 'space.trash') void openTrash();
+          else if (id === 'space.settings') spaceSettingsOpen = true;
+        }}
       />
+      <div class="files-header">
+        <button type="button" class="files-fold" aria-expanded={!view.filesFolded} onclick={() => view.toggleFilesFolded()}>
+          <span class="files-chevron" class:folded={view.filesFolded}><ToolIcon id="chevronDown" size="sm" /></span>
+          <span class="files-title">{t('pane.files')}</span>
+        </button>
+        <button
+          type="button"
+          class="files-button"
+          aria-label={t('tree.add')}
+          title={t('tree.add')}
+          aria-haspopup="menu"
+          onclick={(event) => {
+            const box = event.currentTarget.getBoundingClientRect();
+            filesMenuAt = { x: box.left, y: box.bottom };
+          }}
+        >
+          <ToolIcon id="more" size="sm" />
+        </button>
+      </div>
+      {#if !view.filesFolded}
+        <SpaceTree
+          folders={space.folders}
+          rows={space.rows}
+          expanded={space.expanded}
+          pending={space.pending}
+          activePath={openRel}
+          unsavedPath={doc.dirty ? openRel : null}
+          {renameRequest}
+          onRenameStarted={() => (renameRequest = null)}
+          onToggle={(folder) => void space.toggle(folder)}
+          onOpen={(path) => void openPath(space.absolute(path))}
+          onRename={(path, name) => void relocate({ kind: 'rename', path, name })}
+          onCommitNew={(name) => void commitNew(name)}
+          onCancelNew={() => space.cancelNew()}
+          onMove={(path, folder, index) => void relocate({ kind: 'move', path, folder, index })}
+          onTrash={(path) => void trashPath(path)}
+          onContextMenu={(path, anchor) => (treeMenuAt = { path, anchor })}
+        />
+      {/if}
+    {:else if doc.path}
+      <div class="not-in-space">
+        <EmptyState title={t('tree.notInSpace')} body={t('tree.notInSpaceBody')} />
+        <button type="button" class="files-action" onclick={() => void openSpace(doc.path!.replace(/[\\/][^\\/]*$/, ''), true)}>{t('tree.openAsSpace')}</button>
+      </div>
     {:else}
       <EmptyState title={t('file.noFolder')} body={t('file.noFolderBody')} mark />
     {/if}
@@ -1527,7 +1961,7 @@
             capacity={toolbarCapacity}
             onProperty={(key, value) => {
               // A code block at a new size re-wraps and grows to its code, in
-              // the same step (06.17).
+              // the same step.
               setProperty(history, selectedIds, key, value, key === 'fontSize' ? (element) => fitToCode(element, codeMetrics(element)) : undefined);
               // Which sizes it was chosen from: the code ones only for code alone.
               const codeSizes = toolbar.controls.some((control) => control.id === 'fontSize' && control.variant === 'code');
@@ -1677,11 +2111,83 @@
 
 <AboutDialog bind:open={aboutOpen} onOpenChange={(open) => (aboutOpen = open)} />
 
+<TrashDialog
+  bind:open={trashOpen}
+  items={trashItems.map((item) => ({ ...item, size: formatBytes(item.size) }))}
+  total={formatBytes(trashSize)}
+  onRestore={(id) => void restoreItem(id)}
+  onDelete={(id) => void deleteItem(id)}
+  onEmpty={() => void emptyTrash()}
+  onOpenChange={(open) => (trashOpen = open)}
+/>
+
+{#if space.root}
+  <SpaceSettingsDialog
+    bind:open={spaceSettingsOpen}
+    name={space.name}
+    root={space.root}
+    pageWidth={(space.pageWidth as '' | 'narrow' | 'wide' | 'full') ?? ''}
+    onRename={(name) => void renameSpace(name)}
+    onPageWidth={(width) => void setSpacePageWidth(width)}
+    onReveal={() => void revealPath()}
+    onOpenChange={(open) => (spaceSettingsOpen = open)}
+  />
+{/if}
+
+<NewSpaceDialog
+  bind:open={newSpaceOpen}
+  location={newSpaceLocation}
+  onChooseLocation={() => void chooseNewSpaceLocation()}
+  onCreate={(name) => void createNewSpace(name)}
+  onOpenChange={(open) => (newSpaceOpen = open)}
+/>
+
+<ContextMenu
+  items={treeMenu(null, (key) => t(key as MessageKey))}
+  open={filesMenuAt !== null}
+  anchor={filesMenuAt}
+  onSelect={(id) => {
+    filesMenuAt = null;
+    if (id === 'tree.newPage') void newPage();
+    else if (id === 'tree.newFolder') newFolder();
+  }}
+  onOpenChange={(open) => {
+    if (!open) filesMenuAt = null;
+  }}
+/>
+
+<ContextMenu
+  items={treeMenu(treeMenuKind, (key) => t(key as MessageKey))}
+  open={treeMenuAt !== null}
+  anchor={treeMenuAt?.anchor ?? null}
+  onSelect={onTreeMenu}
+  onOpenChange={(open) => {
+    if (!open) treeMenuAt = null;
+  }}
+/>
+
+{#if confirming}
+  <ConfirmDialog
+    open
+    title={confirming.title}
+    body={confirming.body}
+    options={[
+      { value: 'cancel', label: t('file.cancel') },
+      { value: 'yes', label: t('trash.confirm'), primary: true },
+    ]}
+    onChoose={(choice) => {
+      const pending = confirming;
+      confirming = null;
+      pending?.resolve(choice === 'yes');
+    }}
+  />
+{/if}
+
 {#if prompt?.kind === 'unsaved'}
   <ConfirmDialog
     open
     title={t('file.unsaved.title')}
-    body={t('file.unsaved.body')}
+    body={unsavedBody(doc.path)}
     options={[
       { value: 'cancel', label: t('file.cancel') },
       { value: 'discard', label: t('file.unsaved.discard') },
@@ -1704,6 +2210,97 @@
 {/if}
 
 <style>
+  /* The Files section's heading in the side pane, with its Add menu. */
+  .files-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-4) var(--space-1);
+  }
+
+  .files-fold {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-muted);
+    font: inherit;
+  }
+
+  .files-fold:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  }
+
+  .files-chevron {
+    display: inline-flex;
+    transition: transform var(--duration-fast) var(--ease-out);
+  }
+
+  .files-chevron.folded {
+    transform: rotate(-90deg);
+  }
+
+  .files-title {
+    font-size: var(--text-label);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .files-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--size-row);
+    height: var(--size-row);
+    margin-inline-start: auto;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-secondary);
+  }
+
+  .files-button:hover {
+    background: var(--color-accent-subtle);
+    color: var(--color-text-primary);
+  }
+
+  .files-button:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  }
+
+  /* A loose page: the prompt to open its folder as a Space. */
+  .not-in-space {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding-block-end: var(--space-6);
+  }
+
+  .files-action {
+    height: var(--size-row-lg);
+    padding: 0 var(--space-3);
+    border: var(--border-width) solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-raised);
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: var(--text-control);
+  }
+
+  .files-action:hover {
+    background: var(--color-accent-subtle);
+  }
+
+  .files-action:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  }
+
   .fill {
     height: 100%;
   }

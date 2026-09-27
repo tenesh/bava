@@ -8,11 +8,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-row);
-  height: var(--size-row);
+  width: var(--size-row-lg);
+  height: var(--size-row-lg);
   padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text-secondary);
 }
@@ -28,6 +28,6 @@
   padding: var(--space-1);
   background: var(--color-surface-overlay);
   border: var(--border-width) solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-floating);
 }

@@ -20,7 +20,7 @@ export type PngOptions = {
   read?: ReadVariable;
   /** The theme to export in, when no reader is given. */
   theme?: 'light' | 'dark';
-  /** Pixels per scene unit: 1x, 2x or 3x (canvas-toolbar.md). */
+  /** Pixels per scene unit: 1x, 2x or 3x. */
   scale: number;
   /** Paint the canvas colour behind the drawing. */
   background?: boolean;
@@ -67,7 +67,8 @@ export async function toPng(area: ExportArea, options: PngOptions): Promise<Blob
     });
     document.body.append(host);
 
-    const stage = new CanvasStage({ read });
+    // The dot grid is chrome, never part of the image.
+    const stage = new CanvasStage({ read, grid: false });
     try {
       stage.mount(host);
       stage.resize(box.w, box.h);

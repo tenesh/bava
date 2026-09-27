@@ -190,7 +190,7 @@ func (s *LogService) addNotice(n Notice) {
 func buildVersion() string {
 	info, ok := debug.ReadBuildInfo()
 	if !ok || info.Main.Version == "" || info.Main.Version == "(devel)" {
-		// There is no version stamping until Milestone 16. A made-up number
+		// There is no version stamping yet. A made-up number
 		// here would be a false fact in the one place people look for truth.
 		return "unstamped development build"
 	}
