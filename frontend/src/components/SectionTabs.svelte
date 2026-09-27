@@ -108,6 +108,10 @@
     background: var(--color-accent-subtle);
   }
 
+  :global(.bava-section-tab:active) {
+    background: linear-gradient(var(--color-control-active), var(--color-control-active)), var(--color-accent-subtle);
+  }
+
   :global(.bava-section-tab[data-selected]) {
     background: var(--color-selection);
     color: var(--color-text-primary);

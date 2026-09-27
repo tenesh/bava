@@ -87,6 +87,10 @@
     background: var(--color-accent-subtle);
   }
 
+  :global(.bava-space-switcher:active) {
+    background: linear-gradient(var(--color-control-active), var(--color-control-active)), var(--color-accent-subtle);
+  }
+
   :global(.bava-space-switcher[data-state='open']) {
     background: var(--color-selection);
   }

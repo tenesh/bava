@@ -41,7 +41,7 @@
 
 <Dialog bind:open title={t('trash.title')} subtitle={t('trash.subtitle')} size="trash" flush closable {onOpenChange}>
   {#snippet actions()}
-    <button type="button" class="button danger" disabled={items.length === 0} onclick={onEmpty}>{t('trash.empty')}</button>
+    <button type="button" class="bava-button danger" disabled={items.length === 0} onclick={onEmpty}>{t('trash.empty')}</button>
   {/snippet}
   <div class="trash">
     <div class="bar">
@@ -69,8 +69,8 @@
             <span class="meta">{folderOf(item.path)}</span>
             <span class="meta">{when(item.deletedAt)}</span>
             <span class="buttons">
-              <button type="button" class="button" onclick={() => onRestore(item.id)}>{t('trash.restore')}</button>
-              <button type="button" class="button danger" onclick={() => onDelete(item.id)}>{t('trash.delete')}</button>
+              <button type="button" class="bava-button" aria-label={t('trash.restoreItem').replace('{name}', nameOf(item.path))} onclick={() => onRestore(item.id)}>{t('trash.restore')}</button>
+              <button type="button" class="bava-button danger" aria-label={t('trash.deleteItem').replace('{name}', nameOf(item.path))} onclick={() => onDelete(item.id)}>{t('trash.delete')}</button>
             </span>
           </li>
         {/each}
@@ -115,8 +115,8 @@
 
   .search:focus {
     outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 var(--focus-halo-width) var(--color-accent-subtle);
+    border-color: var(--color-focus-ring);
+    box-shadow: 0 0 0 var(--focus-halo-width) var(--color-focus-halo);
   }
 
   .total {
@@ -194,30 +194,6 @@
   .item:focus-within .buttons,
   .item.selected .buttons {
     opacity: 1;
-  }
-
-  .button {
-    height: var(--size-row-lg);
-    padding: 0 var(--space-3);
-    border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-raised);
-    color: var(--color-text-primary);
-    font: inherit;
-    font-size: var(--text-control);
-  }
-
-  .button.danger {
-    color: var(--color-danger);
-  }
-
-  .button:disabled {
-    opacity: var(--opacity-disabled);
-  }
-
-  .button:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus-ring);
-    outline-offset: var(--focus-halo-width);
   }
 
   .none {

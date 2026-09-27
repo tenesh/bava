@@ -10,7 +10,7 @@
  * a conflict is worse than no autosave. The status bar says so, and the next
  * save the user makes by hand decides the conflict and resumes it.
  */
-export type AutosaveMode = 'off' | 'afterDelay' | 'onFocusChange';
+export type AutosaveMode = "off" | "afterDelay" | "onFocusChange";
 
 export type AutosaveOptions = {
   settings(): { mode: AutosaveMode; delayMs: number };
@@ -23,12 +23,14 @@ export function createAutosave(options: AutosaveOptions) {
   const { settings, document: doc, save } = options;
 
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let pauseReason = $state.raw<'conflict' | 'error' | null>(null);
+  let pauseReason = $state.raw<"conflict" | "error" | null>(null);
   let saving: Promise<void> | null = null;
   // A save was asked for while one was already writing.
   let again = false;
   // A file is moving: nothing is written until it is released.
   let held = 0;
+  // Torn down: nothing is ever written again.
+  let destroyed = false;
 
   function cancel() {
     if (timer !== undefined) clearTimeout(timer);
@@ -36,7 +38,13 @@ export function createAutosave(options: AutosaveOptions) {
   }
 
   function eligible(): boolean {
-    return held === 0 && pauseReason === null && doc.path !== null && doc.dirty;
+    return (
+      !destroyed &&
+      held === 0 &&
+      pauseReason === null &&
+      doc.path !== null &&
+      doc.dirty
+    );
   }
 
   async function run(): Promise<void> {
@@ -48,11 +56,11 @@ export function createAutosave(options: AutosaveOptions) {
     saving = (async () => {
       try {
         const outcome = await save();
-        if (outcome.conflict) pauseReason = 'conflict';
+        if (outcome.conflict) pauseReason = "conflict";
       } catch {
         // Nothing awaits a timer. Pause and say so, rather than retrying into
         // the same failure on every keystroke.
-        pauseReason = 'error';
+        pauseReason = "error";
       } finally {
         saving = null;
       }
@@ -70,13 +78,13 @@ export function createAutosave(options: AutosaveOptions) {
     },
 
     /** Why autosave stopped: another program wrote the file, or a save failed. */
-    get pauseReason(): 'conflict' | 'error' | null {
+    get pauseReason(): "conflict" | "error" | null {
       return pauseReason;
     },
 
     /** Call after every edit to the document. */
     changed(): void {
-      if (settings().mode !== 'afterDelay' || !eligible()) return;
+      if (settings().mode !== "afterDelay" || !eligible()) return;
       cancel();
       timer = setTimeout(() => {
         timer = undefined;
@@ -86,7 +94,7 @@ export function createAutosave(options: AutosaveOptions) {
 
     /** Call when the window loses focus. */
     focusLost(): Promise<void> {
-      if (settings().mode !== 'onFocusChange') return Promise.resolve();
+      if (settings().mode !== "onFocusChange") return Promise.resolve();
       return run();
     },
 
@@ -115,6 +123,7 @@ export function createAutosave(options: AutosaveOptions) {
     },
 
     destroy(): void {
+      destroyed = true;
       cancel();
     },
   };

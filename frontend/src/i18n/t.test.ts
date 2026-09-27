@@ -4,7 +4,7 @@ import { messages } from './messages';
 
 describe('t', () => {
   it('returns the message for a key', () => {
-    expect(t('pane.source')).toBe('D2 source');
+    expect(t('pane.files')).toBe('Files');
     expect(t('pane.canvas')).toBe('Diagram');
   });
 

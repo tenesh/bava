@@ -205,6 +205,19 @@
     color: var(--color-text-secondary);
   }
 
+  :global(.bava-toolbar-button:hover:not(:disabled)) {
+    background: var(--color-control-hover);
+    color: var(--color-text-primary);
+  }
+
+  :global(.bava-toolbar-button:active:not(:disabled)) {
+    background: var(--color-control-active);
+  }
+
+  :global(.bava-toolbar-button:disabled) {
+    opacity: var(--opacity-disabled);
+  }
+
   :global(.bava-toolbar-button:focus-visible) {
     outline: var(--focus-ring-width) solid var(--color-focus-ring);
     outline-offset: calc(var(--focus-halo-width) * -1);

@@ -102,6 +102,15 @@ export interface Operation {
 }
 
 /**
+ * Problem is a failure the user may see: its message for the log, and a code
+ * the frontend words (space.Code), empty for any other failure.
+ */
+export interface Problem {
+    "error": string;
+    "code": string;
+}
+
+/**
  * SaveResult reports a completed write.
  */
 export interface SaveResult {

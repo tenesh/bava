@@ -126,4 +126,18 @@ describe('recents by kind', () => {
     recents.removePrefix('/w/Acme/Old');
     expect(recents.paths).toEqual(['/w/Acme/Older/b.md', '/w/Acme']);
   });
+
+  // A rename onto a path already listed (a stale entry for a folder deleted
+  // outside Bava) keeps one entry, the one just moved.
+  it('never lists a path twice after a rename', () => {
+    const recents = createRecents({ storage: memoryStorage() });
+    recents.add('/w/B', 'space');
+    recents.add('/w/A', 'space');
+    recents.renamePrefix('/w/A', '/w/B');
+    expect(recents.paths).toEqual(['/w/B']);
+    recents.add('/w/x.md');
+    recents.add('/w/y.md');
+    recents.rename('/w/y.md', '/w/x.md');
+    expect(recents.paths.filter((p) => p === '/w/x.md')).toHaveLength(1);
+  });
 });

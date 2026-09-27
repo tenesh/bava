@@ -327,7 +327,7 @@ that was removed.
 
 ## Spaces
 
-**Status:** specified 2026-09-27 for Milestone 8.1, ahead of the code.
+**Status:** built (`internal/space`).
 
 A **Space** is a folder the user opens as the home of their pages. It holds
 folders and pages (`.md` files) and one hidden folder, `.bava/`, which Bava
@@ -367,7 +367,8 @@ the folder, so a teammate who opens the same folder sees the same order.
   ones, by name; a listed name that no longer exists is left out, and dropped
   from the file on the next write. Absent means every folder is by name.
 - `pageWidth`: `narrow`, `wide` or `full`, the Space's default for its pages.
-  Absent means the user's own app setting.
+  Absent means the user's own app setting (arriving with the document
+  editor; until then, absent changes nothing).
 - **Unknown keys are kept** through every write, as elsewhere.
 - Written whole and atomically, like a page.
 

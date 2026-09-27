@@ -153,7 +153,8 @@ non-negotiable 2). The chosen form:
   (images, videos, PDFs, other) and **Unused**; search by name; sort by
   name, size or date added; grid or list; upload without placing on a page;
   and an action that finds unused attachments and moves them to Bava's
-  trash (restorable for 30 days).
+  trash (restorable until the user deletes them: decision 70 dropped the
+  30-day period).
 - **Laid out in two places:** a Media section stacked under Files in the
   side pane (collapsible, resizable, compact; drag an item into the page),
   and a button on it opening a large Media dialog for tidying up.
@@ -591,8 +592,8 @@ Document and Canvas side by side.
 
 *Changed the same day by the user: "remove templates and trash from the side
 pane. It should be accessible from the app menu which opens the dialogs or
-placed elsewhere." They open from the native app menu (File ▸ Templates…,
-File ▸ Trash…) and from the Space switcher's menu; the side pane has no
+placed elsewhere." They open from the native app menu (File ▸ Templates,
+File ▸ Trash) and from the Space switcher's menu; the side pane has no
 buttons for them.*
 
 Buttons at the bottom of the side pane open a large **Trash** dialog (browse,
@@ -691,6 +692,26 @@ the Space, so folder sync and Git carry it until emptied.
   the top of the Space when none is open), named in the tree first
   (decision 69). With no Space open it makes an untitled page, as today.
 
+### 72. New Space asks for a name and a place (2026-09-27)
+
+- **One dialog:** the Space's name, and its Location (starting beside the
+  open Space; Choose opens the folder picker). Bava makes the folder there
+  and opens it; a taken name is refused, never merged. Open Space still
+  opens an existing folder.
+
+### 73. The Files header, and Space settings apply on Save (2026-09-27)
+
+- **Files header:** a chevron folds the section (remembered per viewer);
+  one Add menu holds New page and New folder.
+- **Space settings** hold the name and page width until Save; Cancel, the
+  close button and Escape discard. The width keeps a "Your setting" option.
+
+### 74. The status bar follows what is being worked on (2026-09-27)
+
+- The Space and the page path, then the canvas's engine and node count
+  while the canvas is worked on, or the document's words and characters
+  while the document is. In Both, the side last pressed or focused.
+
 ## Features
 
 Chosen from Notion's editor, one question at a time (decisions 12 to 50),
@@ -716,4 +737,5 @@ saved as HTML in the Markdown, since plain Markdown has no size.
 - None from the discussion. Left to the file format, where each is
   specified before code writes it: the forms of lettered lists, callouts,
   toggles, colours, rich tables, media attributes, cards, date chips,
-  contents blocks and embeds; `.bava/space.json`'s keys.
+  contents blocks and embeds. (`.bava/space.json`'s keys are specified and
+  built.)

@@ -136,7 +136,7 @@
   :global(.bava-dialog-content) {
     display: flex;
     flex-direction: column;
-    max-height: 90vh;
+    max-height: var(--size-dialog-max-height);
     background: var(--color-surface-overlay);
     color: var(--color-text-primary);
     border: var(--border-width) solid var(--color-border-subtle);
@@ -249,8 +249,12 @@
   }
 
   :global(.bava-dialog-close:hover) {
-    background: var(--color-accent-subtle);
+    background: var(--color-control-hover);
     color: var(--color-text-primary);
+  }
+
+  :global(.bava-dialog-close:active) {
+    background: var(--color-control-active);
   }
 
   :global(.bava-dialog-close:focus-visible) {

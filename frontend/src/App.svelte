@@ -36,7 +36,7 @@
   import { statusLocation } from './shell/status-location';
   import { createDocument, sceneToSave } from './files/document.svelte';
   import { createSpace, type TrashEntry } from './files/space.svelte';
-  import { folderOf, followMove, formatBytes, launchTarget, pageTitle, spaceChoices, treeMenu, unsavedBody, within } from './files/space-helpers';
+  import { folderOf, followMove, formatBytes, launchTarget, pageTitle, saveSpaceSettings, spaceChoices, treeMenu, unsavedBody, within } from './files/space-helpers';
   import { createHistory } from './canvas/history';
   import { createSelection } from './canvas/selection';
   import { createPointerHandler } from './canvas/pointer';
@@ -1900,7 +1900,7 @@
         </button>
         <button
           type="button"
-          class="files-button"
+          class="bava-icon-button files-button"
           aria-label={t('tree.add')}
           title={t('tree.add')}
           aria-haspopup="menu"
@@ -1935,7 +1935,7 @@
     {:else if doc.path}
       <div class="not-in-space">
         <EmptyState title={t('tree.notInSpace')} body={t('tree.notInSpaceBody')} />
-        <button type="button" class="files-action" onclick={() => void openSpace(doc.path!.replace(/[\\/][^\\/]*$/, ''), true)}>{t('tree.openAsSpace')}</button>
+        <button type="button" class="bava-button" onclick={() => void openSpace(doc.path!.replace(/[\\/][^\\/]*$/, ''), true)}>{t('tree.openAsSpace')}</button>
       </div>
     {:else}
       <EmptyState title={t('file.noFolder')} body={t('file.noFolderBody')} mark />
@@ -2127,8 +2127,7 @@
     name={space.name}
     root={space.root}
     pageWidth={(space.pageWidth as '' | 'narrow' | 'wide' | 'full') ?? ''}
-    onRename={(name) => void renameSpace(name)}
-    onPageWidth={(width) => void setSpacePageWidth(width)}
+    onSave={(changes) => void saveSpaceSettings(changes, { setWidth: setSpacePageWidth, rename: renameSpace })}
     onReveal={() => void revealPath()}
     onOpenChange={(open) => (spaceSettingsOpen = open)}
   />
@@ -2227,6 +2226,15 @@
     background: transparent;
     color: var(--color-text-muted);
     font: inherit;
+    border-radius: var(--radius-sm);
+  }
+
+  .files-fold:hover:not(:disabled) {
+    background: var(--color-control-hover);
+  }
+
+  .files-fold:active:not(:disabled) {
+    background: var(--color-control-active);
   }
 
   .files-fold:focus-visible {
@@ -2251,26 +2259,9 @@
   }
 
   .files-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     width: var(--size-row);
     height: var(--size-row);
     margin-inline-start: auto;
-    padding: 0;
-    border: 0;
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--color-text-secondary);
-  }
-
-  .files-button:hover {
-    background: var(--color-accent-subtle);
-    color: var(--color-text-primary);
-  }
-
-  .files-button:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus-ring);
   }
 
   /* A loose page: the prompt to open its folder as a Space. */
@@ -2280,25 +2271,6 @@
     align-items: center;
     gap: var(--space-3);
     padding-block-end: var(--space-6);
-  }
-
-  .files-action {
-    height: var(--size-row-lg);
-    padding: 0 var(--space-3);
-    border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-raised);
-    color: var(--color-text-primary);
-    font: inherit;
-    font-size: var(--text-control);
-  }
-
-  .files-action:hover {
-    background: var(--color-accent-subtle);
-  }
-
-  .files-action:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus-ring);
   }
 
   .fill {

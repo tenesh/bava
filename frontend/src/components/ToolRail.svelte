@@ -152,6 +152,15 @@
     color: var(--color-text-secondary);
   }
 
+  :global(.bava-rail-button:not([data-active='true']):hover:not(:disabled)) {
+    background: var(--color-control-hover);
+    color: var(--color-text-primary);
+  }
+
+  :global(.bava-rail-button:active:not(:disabled)) {
+    background: var(--color-control-active);
+  }
+
   :global(.bava-rail-button[data-active='true']) {
     background: var(--color-accent-subtle);
     color: var(--color-accent);

@@ -65,6 +65,9 @@ describe('the Files tree', () => {
     const row = target.querySelector('[data-path="Marketing/Launch plan.md"]');
     expect(row?.hasAttribute('data-selected')).toBe(true);
     expect(row?.querySelector('.dot')).not.toBeNull();
+    // Announced, not only drawn.
+    expect(row?.querySelector('.dot')?.getAttribute('role')).toBe('img');
+    expect(row?.querySelector('.dot')?.getAttribute('aria-label')).toBeTruthy();
     unmount(app);
   });
 

@@ -9,6 +9,30 @@
   display: none !important;
 }
 
+// Controls point; one that cannot act refuses. Ark marks its own disabled
+// parts with `data-disabled`.
+button,
+[role='button'],
+[role='menuitem'],
+[role='menuitemradio'],
+[role='menuitemcheckbox'],
+[role='tab'],
+[role='radio'],
+[role='switch'],
+[role='treeitem'],
+[role='option'],
+summary,
+select,
+label[for] {
+  cursor: pointer;
+}
+
+:disabled,
+[aria-disabled='true'],
+[data-disabled] {
+  cursor: not-allowed;
+}
+
 body {
   font-family: var(--font-ui);
   font-size: var(--text-body);

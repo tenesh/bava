@@ -285,10 +285,6 @@ describe('the Files tree tokens', () => {
   ])('%s is %ipx', (name, px) => {
     expect(css).toMatch(new RegExp(`${name}:\\s*${px}px`));
   });
-
-  it('caps a dialog\'s list at half the window', () => {
-    expect(css).toMatch(/--size-dialog-list-max:\s*50vh/);
-  });
 });
 
 // The mockups' shared values: dialog chrome, fields, the side pane, the dot grid.
@@ -364,6 +360,10 @@ describe('the mockup tokens', () => {
   it('caps the shortcuts list at the window', () => {
     expect(css).toMatch(/--size-dialog-shortcuts-width:\s*min\(960px, 90vw\)/);
     expect(css).toMatch(/--size-dialog-shortcuts-height:\s*min\(640px, 90vh\)/);
+  });
+
+  it('caps a dialog\'s height', () => {
+    expect(css).toMatch(/--size-dialog-max-height:\s*90vh/);
   });
 
   it('has a narrow dialog width', () => {

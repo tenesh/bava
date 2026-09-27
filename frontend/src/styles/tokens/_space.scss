@@ -206,6 +206,8 @@
   --size-dialog-medium: min(760px, 90vw);
   // A dialog of a few fields: New Space, Space settings.
   --size-dialog-narrow: min(520px, 90vw);
+  // No dialog is taller than this share of the window.
+  --size-dialog-max-height: 90vh;
   // The Trash keeps its size as items come and go.
   --size-dialog-trash-width: min(880px, 90vw);
   --size-dialog-trash-height: 600px;
@@ -229,8 +231,6 @@
   --size-start-width: 560px;
   // How far a menu opens from its trigger; read at runtime by the positioner.
   --size-menu-gutter: 4px;
-  // A list inside a dialog (the Trash) scrolls past half the window.
-  --size-dialog-list-max: 50vh;
   // A short numeric field: milliseconds, a zoom percentage.
   --size-field-number: 10ch;
 }

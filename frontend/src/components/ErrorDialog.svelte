@@ -43,10 +43,10 @@
     {/if}
     <div class="actions">
       {#if details}
-        <button type="button" class="action" onclick={() => onCopyDetails(details)}>{t('error.copyDetails')}</button>
+        <button type="button" class="bava-button" onclick={() => onCopyDetails(details)}>{t('error.copyDetails')}</button>
       {/if}
-      <button type="button" class="action" onclick={onOpenLogs}>{t('error.openLogs')}</button>
-      <button type="button" class="action primary" onclick={onClose}>{t('error.close')}</button>
+      <button type="button" class="bava-button" onclick={onOpenLogs}>{t('error.openLogs')}</button>
+      <button type="button" class="bava-button primary" onclick={onClose}>{t('error.close')}</button>
     </div>
   </div>
 </Dialog>
@@ -95,27 +95,5 @@
     display: flex;
     justify-content: flex-end;
     gap: var(--space-2);
-  }
-
-  .action {
-    height: var(--size-row-lg);
-    padding: 0 var(--space-3);
-    border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-raised);
-    font: inherit;
-    font-size: var(--text-control);
-    color: var(--color-text-primary);
-  }
-
-  .action.primary {
-    background: var(--color-accent);
-    border-color: var(--color-accent);
-    color: var(--color-accent-contrast);
-  }
-
-  .action:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus-ring);
-    outline-offset: var(--focus-halo-width);
   }
 </style>

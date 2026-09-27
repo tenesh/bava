@@ -56,9 +56,9 @@ export function Open(dir: string): $CancellablePromise<$models.SpaceInfo> {
 
 /**
  * Reveal shows the Space's folder, or with a path, that item selected in its
- * folder, in the platform's file manager. Returns an error message, or "".
+ * folder, in the platform's file manager. A zero Problem means it worked.
  */
-export function Reveal(root: string, path: string): $CancellablePromise<string> {
+export function Reveal(root: string, path: string): $CancellablePromise<$models.Problem> {
     return $Call.ByID(1424773362, root, path);
 }
 

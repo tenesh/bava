@@ -43,14 +43,14 @@
       <span class="heading">{t('space.newLocation')}</span>
       <div class="row">
         <span class="path" class:empty={!location}>{location || t('space.newNoLocation')}</span>
-        <button type="button" class="button" onclick={onChooseLocation}>{t('space.newChoose')}</button>
+        <button type="button" class="bava-button" onclick={onChooseLocation}>{t('space.newChoose')}</button>
       </div>
       <p class="hint">{t('space.newHint')}</p>
     </div>
   </form>
   {#snippet footer()}
-    <button type="button" class="button" onclick={() => onOpenChange(false)}>{t('file.cancel')}</button>
-    <button type="submit" form="new-space-form" class="button primary" disabled={!ready}>{t('space.newCreate')}</button>
+    <button type="button" class="bava-button" onclick={() => onOpenChange(false)}>{t('file.cancel')}</button>
+    <button type="submit" form="new-space-form" class="bava-button primary" disabled={!ready}>{t('space.newCreate')}</button>
   {/snippet}
 </Dialog>
 
@@ -95,8 +95,8 @@
 
   .field:focus {
     outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 var(--focus-halo-width) var(--color-accent-subtle);
+    border-color: var(--color-focus-ring);
+    box-shadow: 0 0 0 var(--focus-halo-width) var(--color-focus-halo);
   }
 
   .path {
@@ -120,31 +120,5 @@
     margin: 0;
     font-size: var(--text-meta);
     color: var(--color-text-muted);
-  }
-
-  .button {
-    height: var(--size-row-lg);
-    padding: 0 var(--space-3);
-    border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-raised);
-    font: inherit;
-    font-size: var(--text-control);
-    color: var(--color-text-primary);
-  }
-
-  .button.primary {
-    background: var(--color-accent);
-    border-color: var(--color-accent);
-    color: var(--color-accent-contrast);
-  }
-
-  .button:disabled {
-    opacity: var(--opacity-disabled);
-  }
-
-  .button:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus-ring);
-    outline-offset: var(--focus-halo-width);
   }
 </style>

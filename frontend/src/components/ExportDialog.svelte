@@ -39,9 +39,9 @@
 </script>
 
 {#snippet footer()}
-  <button type="button" class="action" onclick={() => onCopy()}>{t('export.copy')}</button>
-  <button type="button" class="action" onclick={() => onExport('svg')}>{t('export.svg')}</button>
-  <button type="button" class="action primary" onclick={() => onExport('png')}>{t('export.png')}</button>
+  <button type="button" class="bava-button" onclick={() => onCopy()}>{t('export.copy')}</button>
+  <button type="button" class="bava-button" onclick={() => onExport('svg')}>{t('export.svg')}</button>
+  <button type="button" class="bava-button primary" onclick={() => onExport('png')}>{t('export.png')}</button>
 {/snippet}
 
 <Dialog bind:open title={t('export.title')} subtitle={t('export.subtitle')} size="export" {footer}>
@@ -135,29 +135,5 @@
   .scale-label {
     font-size: var(--text-control);
     color: var(--color-text-secondary);
-  }
-
-  .action {
-    display: inline-flex;
-    align-items: center;
-    height: var(--size-row-lg);
-    padding: 0 var(--space-3);
-    border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-raised);
-    font: inherit;
-    font-size: var(--text-control);
-    color: var(--color-text-primary);
-  }
-
-  .action:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus-ring);
-    outline-offset: var(--focus-halo-width);
-  }
-
-  .action.primary {
-    border-color: var(--color-accent);
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
   }
 </style>

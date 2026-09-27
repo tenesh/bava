@@ -148,6 +148,15 @@
     color: var(--color-text-secondary);
   }
 
+  :global(.bava-style-trigger:hover:not(:disabled)) {
+    background: var(--color-control-hover);
+    color: var(--color-text-primary);
+  }
+
+  :global(.bava-style-trigger:active:not(:disabled)) {
+    background: var(--color-control-active);
+  }
+
   :global(.bava-style-trigger:focus-visible) {
     outline: var(--focus-ring-width) solid var(--color-focus-ring);
     outline-offset: calc(var(--focus-halo-width) * -1);

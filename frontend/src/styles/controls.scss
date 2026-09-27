@@ -17,6 +17,15 @@
   color: var(--color-text-secondary);
 }
 
+.bava-control-trigger:hover:not(:disabled) {
+  background: var(--color-control-hover);
+  color: var(--color-text-primary);
+}
+
+.bava-control-trigger:active:not(:disabled) {
+  background: var(--color-control-active);
+}
+
 .bava-control-trigger:focus-visible {
   outline: var(--focus-ring-width) solid var(--color-focus-ring);
   outline-offset: calc(var(--focus-halo-width) * -1);
@@ -30,4 +39,123 @@
   border: var(--border-width) solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-floating);
+}
+
+// A button with words: bordered on a raised surface. `primary` fills with the
+// accent, `danger` names something that cannot be undone, `ghost` drops the
+// border until the pointer is over it. Every state is here, so a screen never
+// restyles a button: it picks one of these.
+.bava-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--size-row-lg);
+  padding: 0 var(--space-3);
+  border: var(--border-width) solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--text-control);
+  white-space: nowrap;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.bava-button:hover:not(:disabled) {
+  background: linear-gradient(var(--color-control-hover), var(--color-control-hover)), var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+}
+
+.bava-button:active:not(:disabled) {
+  background: linear-gradient(var(--color-control-active), var(--color-control-active)), var(--color-surface-raised);
+}
+
+.bava-button:disabled {
+  opacity: var(--opacity-disabled);
+}
+
+.bava-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-halo-width);
+}
+
+.bava-button.primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+.bava-button.primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+.bava-button.primary:active:not(:disabled) {
+  background: var(--color-accent-active);
+  border-color: var(--color-accent-active);
+}
+
+.bava-button.danger {
+  color: var(--color-danger);
+}
+
+.bava-button.danger:hover:not(:disabled) {
+  background: var(--color-danger-subtle);
+  border-color: var(--color-danger);
+}
+
+.bava-button.danger:active:not(:disabled) {
+  background: var(--color-danger-active);
+}
+
+.bava-button.ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.bava-button.ghost:hover:not(:disabled) {
+  background: var(--color-control-hover);
+  border-color: transparent;
+  color: var(--color-text-primary);
+}
+
+.bava-button.ghost:active:not(:disabled) {
+  background: var(--color-control-active);
+}
+
+// An icon on its own, named by its label: no border until the pointer is over it.
+.bava-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-row-lg);
+  height: var(--size-row-lg);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.bava-icon-button:hover:not(:disabled) {
+  background: var(--color-control-hover);
+  color: var(--color-text-primary);
+}
+
+.bava-icon-button:active:not(:disabled) {
+  background: var(--color-control-active);
+}
+
+.bava-icon-button:disabled {
+  opacity: var(--opacity-disabled);
+}
+
+.bava-icon-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(var(--focus-halo-width) * -1);
 }

@@ -105,8 +105,8 @@
   <div class="footer">
     <LayoutEnginePicker {engine} {direction} directionHint={t('diagram.directionHint')} {onEngine} {onDirection} />
     <span class="buttons">
-      <button type="button" class="action" onclick={() => onOpenChange(false)}>{t('diagram.cancel')}</button>
-      <button type="button" class="action primary" disabled={!canInsert} onclick={() => onInsert()}>
+      <button type="button" class="bava-button" onclick={() => onOpenChange(false)}>{t('diagram.cancel')}</button>
+      <button type="button" class="bava-button primary" disabled={!canInsert} onclick={() => onInsert()}>
         {t('diagram.insert')}
       </button>
     </span>
@@ -232,33 +232,5 @@
     display: flex;
     gap: var(--space-2);
     margin-inline-start: auto;
-  }
-
-  .action {
-    display: inline-flex;
-    align-items: center;
-    height: var(--size-row-lg);
-    padding: 0 var(--space-3);
-    border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-raised);
-    font: inherit;
-    font-size: var(--text-control);
-    color: var(--color-text-primary);
-  }
-
-  .action:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus-ring);
-    outline-offset: var(--focus-halo-width);
-  }
-
-  .action.primary {
-    border-color: var(--color-accent);
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
-  }
-
-  .action:disabled {
-    opacity: var(--opacity-disabled);
   }
 </style>

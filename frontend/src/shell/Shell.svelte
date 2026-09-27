@@ -107,7 +107,7 @@
     {#if open}
       <ViewSwitcher value={view.mode} onValueChange={(mode) => view.setMode(mode)} />
       <div class="actions">
-        <button type="button" class="action bordered" onclick={() => view.toggleAI()} aria-pressed={view.showsAI}>
+        <button type="button" class="bava-button ai-toggle" onclick={() => view.toggleAI()} aria-pressed={view.showsAI}>
           <ToolIcon id="ai" size="sm" />
           {t('pane.ai')}
         </button>
@@ -242,34 +242,21 @@
     gap: var(--space-1);
   }
 
-  .action {
+  /* The titlebar's AI toggle: a shorter button, accented while the pane shows. */
+  .ai-toggle {
     height: var(--size-row);
-    padding: 0 var(--space-3);
-    border: var(--border-width) solid transparent;
-    border-radius: var(--radius-md);
-    background: transparent;
-    font: inherit;
-    font-size: var(--text-control);
-    color: var(--color-text-secondary);
-  }
-
-  .action.bordered {
-    display: inline-flex;
-    align-items: center;
     gap: var(--space-1);
-    border-color: var(--color-border-subtle);
-    background: var(--color-surface-raised);
-    color: var(--color-text-primary);
   }
 
-  .action[aria-pressed='true'] {
+  .ai-toggle[aria-pressed='true'],
+  .ai-toggle[aria-pressed='true']:hover:not(:disabled) {
     background: var(--color-accent-subtle);
     border-color: var(--color-accent);
     color: var(--color-accent);
   }
 
-  .action:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  .ai-toggle[aria-pressed='true']:active:not(:disabled) {
+    background: linear-gradient(var(--color-control-active), var(--color-control-active)), var(--color-accent-subtle);
   }
 
   .regions {

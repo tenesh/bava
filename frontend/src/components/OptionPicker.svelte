@@ -147,8 +147,12 @@
     text-align: left;
   }
 
-  .bava-options-more:hover {
+  .bava-options-more:hover:not(:disabled) {
     background: var(--color-surface-sunken);
+  }
+
+  .bava-options-more:active:not(:disabled) {
+    background: linear-gradient(var(--color-control-active), var(--color-control-active)), var(--color-surface-sunken);
   }
 
   .bava-options-more:focus-visible {

@@ -16,9 +16,9 @@ under `:root[data-theme="dark"]`, and the app sets `data-theme` on `<html>`.
 | File | Holds |
 |---|---|
 | `_color.scss` | semantic colour only; see below |
-| `_space.scss` | `--space-1` … `--space-12` (4px unit), `--border-width`, fixed chrome heights |
+| `_space.scss` | `--space-half`, `--space-1` … `--space-12` (4px unit), `--border-width`, fixed chrome heights and named sizes |
 | `_type.scss` | family, size, weight, line-height, letter-spacing |
-| `_radius.scss` | `--radius-sm/md/lg/full` |
+| `_radius.scss` | `--radius-sm/md/lg/xl/full`, and named radii (handles, round shapes, the mark's tiles) |
 | `_elevation.scss` | shadows and overlay layering |
 | `_motion.scss` | durations and easings |
 | `_z.scss` | named stacking levels; see Stacking below |
@@ -138,6 +138,13 @@ change how components and their tests are written:
 
 ## Component rules
 
+- **Every button answers the pointer.** A text button is `.bava-button`
+  (`primary`, `danger`, `ghost`), an icon on its own is `.bava-icon-button`,
+  both in `styles/controls.scss` with hover, pressed, disabled and focus
+  states and the `--color-control-*` / `--color-accent-*` tokens. Buttons
+  point and disabled controls refuse (`base.scss`). A button that must look
+  different keeps its own class but styles `:hover` and `:active` itself;
+  `styles/buttons.test.ts` fails any that does not.
 - **`hidden` always wins.** Ark keeps closed dialogs, menus and popovers in
   the page with the `hidden` attribute. A wrapper that sets `display` on one
   of those parts would show every closed one at once and cover the window, a
@@ -232,7 +239,7 @@ check both before building either by hand.
 ✓ marks what exists. Build the rest as screens need them, not upfront: an
 unused component is an unmaintained one.
 
-**Wrapped from Ark so far**: `Dialog`, `Splitter`, SegmentGroup inside
+**Wrapped from Ark so far**: `Dialog`, `Splitter` (unused for now), `Tooltip`, `Progress`, SegmentGroup inside
 `Segments`, Collapsible inside `Disclosure`, Menu inside `ContextMenu`, and
 Popover with RadioGroup inside `StyleBar` and `OptionPicker`, Slider inside
 `OpacityPicker`, Switch inside `Toggle`, TreeView inside `SpaceTree`, Menu

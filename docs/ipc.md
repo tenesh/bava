@@ -144,7 +144,7 @@ tree.
 | `Apply(root, op)` | `OpResult`: the new path, a Trash item's id, or a renamed Space's root. `op.kind` is `createPage`, `createFolder`, `rename`, `move` (`folder`, `index`; -1 for the end), `duplicate`, `trash`, `restore`, `deleteForever`, `emptyTrash`, `renameSpace` or `setPageWidth` |
 | `Trash(root)` | `TrashList`: items (where each came from, kind, when, size) and the total size |
 | `ChooseFolder(title)` | `DialogResult`: the native folder picker, which can make a folder, titled as the frontend words it (translated there); empty when cancelled |
-| `Reveal(root, path)` | an error string, empty on success: the Space's folder, or an item selected in its folder, in the file manager |
+| `Reveal(root, path)` | `Problem` (`error`, `code`), both empty on success: the Space's folder, or an item selected in its folder, in the file manager; `revealUnavailable` when there is no file manager to call |
 
 **The root is checked on every call**: it must be absolute and hold `.bava/`, or the call is refused, so an empty or stale root can never act on the working folder.
 
@@ -153,8 +153,9 @@ absolute, leaves the Space, or is hidden (which keeps `.bava` out of reach) is
 refused, in `Error`, and so is one that goes through a symbolic link. So is a name that already exists: nothing is overwritten (a rename that only changes case lands on the same file, and is allowed).
 
 **Errors are data**, as for `FileService`. A refusal the user can act on
-also carries `code` (`exists`, `nameEmpty`, `nameSlash`, `nameDot`,
-`intoItself`, `notFolder`, `onlyPage`, `outside`, `throughLink`, `notSpace`;
+also carries `code` (`exists`, `nameEmpty`, `nameSlash`, `nameDot`, `nameReserved`,
+`intoItself`, `notFolder`, `onlyPage`, `outside`, `throughLink`, `notSpace`,
+`revealUnavailable`;
 `internal/space/errors.go`), and the frontend words it in the user's language
 (`space.error.*`). Any other failure has an empty `code` and its `error` is
 shown as it came.

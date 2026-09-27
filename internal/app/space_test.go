@@ -104,15 +104,19 @@ func TestSpaceRevealShowsTheFolderOrSelectsAnItem(t *testing.T) {
 	var revealed [2]string
 	s := spaceService(&revealed)
 	s.Open(root)
-	if msg := s.Reveal(root, ""); msg != "" || revealed[0] != root || revealed[1] != "" {
-		t.Errorf("Reveal(space) = %q, %v", msg, revealed)
+	if res := s.Reveal(root, ""); res.Error != "" || revealed[0] != root || revealed[1] != "" {
+		t.Errorf("Reveal(space) = %+v, %v", res, revealed)
 	}
 	s.Apply(root, app.Operation{Kind: "createPage", Name: "a"})
-	if msg := s.Reveal(root, "a.md"); msg != "" || revealed[0] != filepath.Join(root, "a.md") || revealed[1] != "select" {
-		t.Errorf("Reveal(page) = %q, %v", msg, revealed)
+	if res := s.Reveal(root, "a.md"); res.Error != "" || revealed[0] != filepath.Join(root, "a.md") || revealed[1] != "select" {
+		t.Errorf("Reveal(page) = %+v, %v", res, revealed)
 	}
-	if msg := s.Reveal(root, "../elsewhere"); msg == "" {
-		t.Error("revealing outside the Space was allowed")
+	// A refusal comes with its code, for the frontend to word.
+	if res := s.Reveal(root, "../elsewhere"); res.Code != "outside" {
+		t.Errorf("revealing outside the Space = %+v, want code outside", res)
+	}
+	if res := app.NewSpaceService(app.SpaceServiceOptions{}).Reveal(root, ""); res.Code != "revealUnavailable" {
+		t.Errorf("Reveal with no file manager = %+v, want code revealUnavailable", res)
 	}
 }
 
@@ -152,7 +156,7 @@ func TestSpaceServiceRefusesARootThatIsNotASpace(t *testing.T) {
 		if trash := s.Trash(root); trash.Error == "" {
 			t.Errorf("Trash(%q) was allowed", root)
 		}
-		if msg := s.Reveal(root, ""); msg == "" {
+		if res := s.Reveal(root, ""); res.Error == "" {
 			t.Errorf("Reveal(%q) was allowed", root)
 		}
 	}

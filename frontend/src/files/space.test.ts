@@ -30,7 +30,7 @@ function fakeIO(folders: Record<string, Entry[]>) {
     trash: vi.fn(async () => ({ items: [], size: 0, error: '' })),
     chooseFolder: vi.fn(async () => ({ path: '', error: '' })),
     create: vi.fn(async (parent: string, name: string) => ({ root: `${parent}/${name}`, name, pageWidth: '', error: '' })),
-    reveal: vi.fn(async () => ''),
+    reveal: vi.fn(async () => ({ error: '', code: '' })),
   };
   return io as typeof io & SpaceIO;
 }
@@ -248,5 +248,32 @@ describe('a Space, under refusals, moves and overlapping refreshes', () => {
     const made = await space.create('/w', 'Acme');
     expect(made.root).toBe('');
     expect(made.error).not.toContain('"Acme"');
+  });
+
+  // The tree must not see a new listing while the row being named is still
+  // there, or it starts naming that row again.
+  it('stops naming before it re-reads the tree', async () => {
+    const io = fakeIO(tree());
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    space.beginNew('page', '');
+    let pendingWhenListed: unknown = 'not listed';
+    io.list.mockImplementationOnce(async (_root: string, folder: string) => {
+      pendingWhenListed = space.pending;
+      return { entries: tree()[folder as ''] ?? [], error: '' };
+    });
+    await space.commitNew('Budget');
+    expect(pendingWhenListed).toBeNull();
+  });
+
+  it('words a refused reveal', async () => {
+    const io = fakeIO(tree());
+    io.reveal.mockResolvedValueOnce({ error: 'showing folders is unavailable', code: 'revealUnavailable' });
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    const message = await space.reveal();
+    expect(typeof message).toBe('string');
+    expect(message).not.toBe('');
+    expect(message).not.toBe('showing folders is unavailable');
   });
 });

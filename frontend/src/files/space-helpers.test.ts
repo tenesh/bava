@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { folderOf, followMove, formatBytes, launchTarget, pageTitle, spaceChoices, spaceMessage, treeMenu, unsavedBody, within } from './space-helpers';
+import { describe, expect, it, vi } from 'vitest';
+import { folderOf, followMove, formatBytes, launchTarget, pageTitle, saveSpaceSettings, spaceChoices, spaceMessage, treeMenu, unsavedBody, within } from './space-helpers';
 
 describe('the open page when something moves', () => {
   it('follows its own rename or move', () => {
@@ -97,5 +97,30 @@ describe('a refusal from the Space, in the user\'s language', () => {
     expect(spaceMessage({ error: '"b.md" already exists', code: 'exists' })).not.toBe('');
     expect(spaceMessage({ error: 'permission denied', code: '' })).toBe('permission denied');
     expect(spaceMessage({ error: 'odd', code: 'unheardOf' })).toBe('odd');
+  });
+});
+
+describe('saving Space settings', () => {
+  // The width is saved into the Space's folder, so it goes first: renaming the
+  // folder first would leave the width's save pointing at a folder now gone.
+  it('saves the width, waits for it, then renames', async () => {
+    const order: string[] = [];
+    let finishWidth!: () => void;
+    const setWidth = vi.fn(() => new Promise<void>((resolve) => (finishWidth = () => { order.push('width'); resolve(); })));
+    const rename = vi.fn(async () => void order.push('rename'));
+    const saving = saveSpaceSettings({ name: 'Acme Two', width: 'wide' }, { setWidth, rename });
+    await Promise.resolve();
+    expect(rename).not.toHaveBeenCalled();
+    finishWidth();
+    await saving;
+    expect(order).toEqual(['width', 'rename']);
+  });
+
+  it('does only what changed', async () => {
+    const setWidth = vi.fn(async () => {});
+    const rename = vi.fn(async () => {});
+    await saveSpaceSettings({ name: 'Acme Two' }, { setWidth, rename });
+    expect(setWidth).not.toHaveBeenCalled();
+    expect(rename).toHaveBeenCalledWith('Acme Two');
   });
 });

@@ -304,7 +304,9 @@ describe('launch', () => {
     menuCommand('file.new');
     await vi.waitFor(() => expect(target.textContent).toContain('untitled'));
     const ai = [...target.querySelectorAll('header button')].find((b) => b.textContent?.trim() === 'AI')!;
-    expect(ai.classList.contains('bordered')).toBe(true);
+    // The shared bordered button, not its borderless ghost.
+    expect(ai.classList.contains('bava-button')).toBe(true);
+    expect(ai.classList.contains('ghost')).toBe(false);
     expect(ai.querySelector('svg')).not.toBeNull();
     expect(ai.getAttribute('aria-pressed')).toBe('false');
     menuCommand('view.ai');

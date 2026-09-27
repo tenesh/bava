@@ -55,6 +55,15 @@
     cursor: default;
   }
 
+  :global(.bava-segment:not([data-state='checked']):not([data-disabled]):hover) {
+    background: var(--color-control-hover);
+    color: var(--color-text-primary);
+  }
+
+  :global(.bava-segment:not([data-state='checked']):not([data-disabled]):active) {
+    background: var(--color-control-active);
+  }
+
   :global(.bava-segment[data-state='checked']) {
     background: var(--color-surface-raised);
     color: var(--color-text-primary);
