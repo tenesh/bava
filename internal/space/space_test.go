@@ -356,3 +356,37 @@ func TestCreateRefusesATakenOrBadName(t *testing.T) {
 		t.Error("Create accepted a relative place")
 	}
 }
+
+// Names Windows cannot hold are refused everywhere, so a Space moves between
+// machines intact: on NTFS "a:b" would write a hidden stream, not a page.
+func TestNamesWindowsCannotHoldAreRefused(t *testing.T) {
+	s := newSpace(t)
+	for _, name := range []string{"a:b", "why?", "star*", `say "hi"`, "a<b", "a>b", "a|b", "trailing.", "CON", "nul", "com1", "LPT9"} {
+		if _, err := s.CreatePage("", name); !errors.Is(err, space.ErrNameReserved) {
+			t.Errorf("CreatePage(%q) = %v, want ErrNameReserved", name, err)
+		}
+	}
+	for _, name := range []string{"Console", "a.b", "notes-2026", "con tract"} {
+		if _, err := s.CreatePage("", name); err != nil {
+			t.Errorf("CreatePage(%q) refused: %v", name, err)
+		}
+	}
+}
+
+// A link named like a page is not listed: every operation refuses a path
+// through a link, so listing it would show a page nothing can change.
+func TestALinkIsNotListedAsAPage(t *testing.T) {
+	s := newSpace(t, "real.md")
+	if err := os.Symlink(filepath.Join(s.Root, "real.md"), filepath.Join(s.Root, "link.md")); err != nil {
+		t.Skip("symlinks unavailable:", err)
+	}
+	entries, err := s.List("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.Name == "link.md" {
+			t.Error("a link was listed as a page")
+		}
+	}
+}

@@ -34,9 +34,9 @@
     </header>
 
     <div class="actions">
-      <button type="button" class="action primary" onclick={onNewSpace}><ToolIcon id="insert" size="sm" />{t('space.new')}</button>
-      <button type="button" class="action" onclick={onOpenSpace}><ToolIcon id="folder" size="sm" />{t('space.open')}</button>
-      <button type="button" class="action" onclick={onOpenFile}><ToolIcon id="page" size="sm" />{t('space.openFile')}</button>
+      <button type="button" class="bava-button action primary" onclick={onNewSpace}><ToolIcon id="insert" size="sm" />{t('space.new')}</button>
+      <button type="button" class="bava-button action" onclick={onOpenSpace}><ToolIcon id="folder" size="sm" />{t('space.open')}</button>
+      <button type="button" class="bava-button action" onclick={onOpenFile}><ToolIcon id="page" size="sm" />{t('space.openFile')}</button>
     </div>
 
     {#if recents.length > 0}
@@ -101,27 +101,12 @@
     gap: var(--space-2);
   }
 
+  /* The start screen's actions stand taller than a dialog's. */
   .action {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
     height: var(--size-toolbar);
     padding: 0 var(--space-4);
-    border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-raised);
-    color: var(--color-text-primary);
-    font: inherit;
-    font-size: var(--text-control);
   }
 
-  .action.primary {
-    border-color: var(--color-accent);
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
-  }
-
-  .action:focus-visible,
   .recent:focus-visible {
     outline: var(--focus-ring-width) solid var(--color-focus-ring);
     outline-offset: var(--focus-ring-width);
@@ -159,6 +144,10 @@
   .recent:hover:not(:disabled),
   .recent:focus-visible {
     background: var(--color-selection);
+  }
+
+  .recent:active:not(:disabled) {
+    background: linear-gradient(var(--color-control-active), var(--color-control-active)), var(--color-selection);
   }
 
   .recent:disabled {

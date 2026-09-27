@@ -10,7 +10,7 @@ afterEach(() => {
 function render(props: Record<string, unknown> = {}) {
   const target = document.createElement('div');
   document.body.append(target);
-  const handlers = { onRename: vi.fn(), onPageWidth: vi.fn(), onReveal: vi.fn(), onOpenChange: vi.fn() };
+  const handlers = { onSave: vi.fn(), onReveal: vi.fn(), onOpenChange: vi.fn() };
   const app = flushSync(() =>
     mount(SpaceSettingsDialog, {
       target,
@@ -37,12 +37,11 @@ describe('the Space settings dialog', () => {
     await vi.waitFor(() => expect(field()).not.toBeNull());
     type('  Acme Product  ');
     flushSync(() => segment('Wide')!.click());
-    expect(handlers.onRename).not.toHaveBeenCalled();
-    expect(handlers.onPageWidth).not.toHaveBeenCalled();
+    expect(handlers.onSave).not.toHaveBeenCalled();
 
     flushSync(() => button('Save')!.click());
-    expect(handlers.onRename).toHaveBeenCalledWith('Acme Product');
-    expect(handlers.onPageWidth).toHaveBeenCalledWith('wide');
+    // One save with both, so the app can apply them one after the other.
+    expect(handlers.onSave).toHaveBeenCalledWith({ name: 'Acme Product', width: 'wide' });
     expect(handlers.onOpenChange).toHaveBeenCalledWith(false);
     unmount(app);
   });
@@ -52,8 +51,7 @@ describe('the Space settings dialog', () => {
     await vi.waitFor(() => expect(field()).not.toBeNull());
     flushSync(() => segment('Your setting')!.click());
     flushSync(() => button('Save')!.click());
-    expect(handlers.onRename).not.toHaveBeenCalled();
-    expect(handlers.onPageWidth).toHaveBeenCalledWith('');
+    expect(handlers.onSave).toHaveBeenCalledWith({ width: '' });
     unmount(app);
   });
 
@@ -63,8 +61,7 @@ describe('the Space settings dialog', () => {
     type('Something else');
     flushSync(() => segment('Full')!.click());
     flushSync(() => button('Cancel')!.click());
-    expect(handlers.onRename).not.toHaveBeenCalled();
-    expect(handlers.onPageWidth).not.toHaveBeenCalled();
+    expect(handlers.onSave).not.toHaveBeenCalled();
     expect(handlers.onOpenChange).toHaveBeenCalledWith(false);
     unmount(app);
   });

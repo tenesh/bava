@@ -3,6 +3,7 @@ package space
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -116,7 +117,9 @@ func (s Space) children(rel string) (map[string]string, error) {
 	out := map[string]string{}
 	for _, item := range items {
 		name := item.Name()
-		if strings.HasPrefix(name, ".") {
+		// Hidden entries and links are not listed: every operation refuses a
+		// path through a link.
+		if strings.HasPrefix(name, ".") || item.Type()&fs.ModeSymlink != 0 {
 			continue
 		}
 		switch {
@@ -277,8 +280,27 @@ func validName(name string) (string, error) {
 		return "", refuse(ErrNameSlash, "%q: a name cannot hold / or \\", name)
 	case strings.HasPrefix(name, "."):
 		return "", refuse(ErrNameDot, "%q: a name cannot start with a dot", name)
+	case strings.ContainsAny(name, `:*?"<>|`) || strings.HasSuffix(name, "."):
+		return "", refuse(ErrNameReserved, "%q: a name cannot hold : * ? \" < > | or end with a dot", name)
+	case reservedOnWindows(name):
+		return "", refuse(ErrNameReserved, "%q is a name Windows keeps for devices", name)
 	}
 	return name, nil
+}
+
+// reservedOnWindows reports a device name Windows refuses as a file name,
+// with or without an extension: CON, PRN, AUX, NUL, COM1-9, LPT1-9. Refused on
+// every platform so a Space opens intact wherever it is copied.
+func reservedOnWindows(name string) bool {
+	base := strings.ToUpper(strings.TrimSpace(strings.SplitN(name, ".", 2)[0]))
+	switch base {
+	case "CON", "PRN", "AUX", "NUL":
+		return true
+	}
+	if len(base) == 4 && (strings.HasPrefix(base, "COM") || strings.HasPrefix(base, "LPT")) {
+		return base[3] >= '1' && base[3] <= '9'
+	}
+	return false
 }
 
 // join puts a name in a folder, as a relative path.

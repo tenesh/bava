@@ -249,7 +249,7 @@ Catch yourself thinking any of these and stop. The thought is the signal.
 
 ## Current repo state
 
-Facts that affect the gates, **verified 2026-09-16**. This is the only place
+Facts that affect the gates, **verified 2026-09-27**. This is the only place
 volatile facts live: `CLAUDE.md` and `.ai/rules/` state intent and settled
 decisions; this section states what is true in the tree today. Re-verify
 before trusting any line; every session that trusts a stale line starts from
@@ -257,175 +257,77 @@ wrong facts. When a milestone closes, update this section in the same change.
 
 ### Milestones
 
-- **6.1 to 6.6 pass their gates** (2026-09-19) and are committed through 6.5;
-  6.6 is uncommitted at the time of writing. None is complete: every one owes
-  the hand check at a running window, in both themes, that its plan's
-  Verification section describes. The plans under `.claude/work/plans/` carry
-  an "As built" section each, with the deviations and the spec-review outcome.
-  - **6.2/6.2.1** interface: icon rail, insert panel, selection toolbar,
-    right-click menu, constrained drags.
-  - **6.3** styles and rotation: eleven optional style keys, literal colours
-    with theme adaptation, locking, rotation.
-  - **6.4** export: PNG and SVG through the canvas's own drawing code
-    (`canvas/paint.ts`, `canvas/export/`), font embedded in an SVG.
-  - **6.5** connections and containers: arrows bound by element id, re-routed
-    inside `history.mutate`; frames owning what is dropped in.
-  - **6.6** diagram from code: `render.Result.Layout` carries geometry (read
-    against **D2 v0.9.0**, `d2target.Shape`/`Connection`), converted in
-    `frontend/src/canvas/import/`.
-- **Two traps found by review in 6.6, worth remembering**: a test seam at the
-  transport (`createRenderClient`'s injected `send`) never executes the code
-  that translates a real response, so a dropped field passed every test and
-  did nothing at the window; and D2 writes remote URLs into its SVG for
-  `icon:` and `link:`, so any preview of rendered SVG must strip them
+- **Committed through Milestone 8.1** (HEAD after 231db07, 2026-09-27). The
+  roadmap (`.claude/plan/roadmap.md`) holds the sequence; **8.2, the Document
+  editor, is next**, then 8.3 to 8.6, then Milestone 15 (export, import and
+  search).
+- **Built and gated:** Milestones 0 to 7 (the canvas: shapes, styles,
+  rotation, export, arrows and bindings, frames, Diagram from Code, code
+  blocks, points and elbows, snapping) and 8.1 (Spaces: `.bava/space.json`,
+  the Files tree, Trash, New Space, Space settings, the start screen and
+  switcher), plus the restyle to the Bava Design mockups (dialog frame,
+  status bar per side, dot grid). Each plan under `.claude/work/plans/` has an
+  "As built" section with its deviations and review outcome.
+- **Owed by a human at a running window, in both themes** (tests cannot see
+  these): the 6.x canvas plans' Verification sections; 8.1's keyboard pass
+  (SpaceTree, SpaceSwitcher, StartScreen, the Space dialogs, SectionTabs);
+  the restyle's look; draw, save, quit and reopen; the native menus on each
+  platform; a forced panic and frontend exception found in the log folder in
+  a release build; the icons at 16px and 1024px. Milestone 7 was checked.
+- **Two traps worth remembering:** a test seam at the transport never runs
+  the code that translates a real response, so a dropped field can pass every
+  test and do nothing at the window; and CSS the tests cannot see can break
+  the window outright (closed dialogs showed at launch until `base.scss`
+  forced `[hidden]`). D2 writes remote URLs into its SVG for `icon:` and
+  `link:`, so any preview of rendered SVG strips them
   (`canvas/import/safe-svg.ts`).
-- Milestones 0, 0.5, 1, 2, 3, 4, 5 and 5.5 (wiring) complete. **5.6 (chrome)
-  passes its gates** (2026-09-17) but its exit criterion's hand check at a
-  running window has not been done, so it is not complete. 5.6's brand task
-  moved to **Milestone 5.7**.
-- **5.7 (brand) passes its gates** (2026-09-17); not complete until a human
-  has looked at the icons at 16px and 1024px and at the title bar and About in
-  both themes. The art lives only in the repo (`frontend/src/brand/`,
-  icon masters in `build/`); outside design folders are temporary and nothing
-  may reference them.
-- **Still Wails-branded, deliberately until Milestone 16:** the DMG file icon
-  and background (`build/darwin/dmg-file-icon.*`, `dmg-background.png`). The
-  volume icon already uses `icons.icns`. Nothing ships a DMG before release.
-- Frontend `src/brand/panda.svg` is the vendored mark; `Mark.svelte` renders
-  it. Icon masters live beside their outputs in `build/`.
-- **5.8 (errors and logs) passes its gates** (2026-09-17). Not complete until
-  a human forces a panic and a frontend exception in a release build and finds
-  both in the log folder. Logs: `internal/logs`, one file per session in the
-  platform log folder; `LogService` binding; `app.Go` for goroutines;
-  `app.PanicHandler`; `ErrorDialog`, `PanelBoundary`; Help ▸ Open Logs Folder
-  and Copy Diagnostics. Report Issue… built but hidden until Milestone 16.
-- **Milestone 6 (shapes) passes its gates** (2026-09-17). Not complete until a
-  human draws every shape, labels, recolours, resizes, zooms and pans at a
-  running window in both themes. It also fixed shipped data loss: saving from
-  the app had dropped points, text, children and unknown keys.
-- **Native menu bar** from `internal/app/menu/spec.json`; clicks arrive as
-  `menu:command` and dispatch through `frontend/src/shell/commands.ts`. The
-  title-bar Open/Save buttons are gone. Edit commands, clipboard included,
-  route by focus; punctuation shortcuts are matched by the page. **Not yet
-  confirmed at a window on any platform**, including how a `\t`-separated hint
-  renders in each native menu.
-- **Autosave** settings (`off` default, `afterDelay`, `onFocusChange`) in
-  `internal/config`, behaviour in `frontend/src/files/autosave.svelte.ts`,
-  UI in Settings ▸ Files.
-- **The roadmap was re-planned on 2026-09-16**, from Milestone 2 onward, around
-  a free-placement canvas rather than a compile-to-SVG pipeline. See
-  `.claude/work/specs/canvas-architecture.md`. Milestone 1's work survives in a
-  narrower role: `internal/render` renders `diagram` elements placed on the
-  canvas. The interim two-pane shell and `DiagramCanvas` class it shipped are
-  replaced by Milestones 3 and 4.
-- **The app can draw, open and save.** Milestone 5.5 wired Milestones 4 and 5
-  to the window: pointer tools, keyboard editing, native open/save dialogs,
-  the file tree, and the unsaved-changes and conflict prompts.
-- **Not yet confirmed by a human:** draw → save → quit → reopen. Every test
-  passes, but this round trip has not been performed at a running window.
-- Milestone 6 (diagram elements) is next. It also restores the D2 preview,
-  absent since Milestone 4.
-- **Known regression, deliberate:** typing D2 renders no diagram. Milestone 4
-  replaced the interim `DiagramCanvas` with a Konva stage, and the `diagram`
-  element that puts a rendered diagram back on the canvas arrives in Milestone
-  6. The pipeline, its tests and its goldens are untouched; diagnostics still
-  reach the editor gutter. Do not "fix" this; it is recorded in
-  `docs/decisions.md`.
-- Everything since the scaffold is uncommitted apart from Milestone 0.5; the
-  user commits.
-- `.claude/plan/roadmap.md` holds the sequence.
+- **Still Wails-branded, deliberately until release:** the DMG file icon and
+  background (`build/darwin/dmg-file-icon.*`, `dmg-background.png`).
+- **Help ▸ Report Issue** is built but hidden until release.
+- `.ai/`, `.claude/`, `CLAUDE.md`, `docs/`, `LICENSE` and `NOTICE` are
+  tracked.
 
 ### Toolchain, verified by command
 
 - Go module path `github.com/tenesh/bava`, `go 1.27.0` directive, toolchain
   `go1.27.1 darwin/arm64`. `GOPATH` at `/Users/tenesh/Workspace/tools/go`.
-- D2 `v0.9.0` is a **direct** requirement in `go.mod` (`internal/layout` and
-  `internal/render` import it). The `go mod tidy` trap from Milestone 0.5 is
-  over: tidy keeps it now that real code imports it. TALA ships in-library at
+- D2 `v0.9.0` is a direct requirement in `go.mod`. TALA ships in-library at
   `d2layouts/d2talalayout`, with no external binary plugin.
 - Wails `v3.0.0-beta.20` on both sides. `@wailsio/runtime` is pinned exactly to
-  `3.0.0-beta.20`; it had floated on `latest` and resolved to `beta.21`,
-  mismatching the Go half. Never float it again.
-- Node `v24.21.0`, npm `11.19.0`. `.nvmrc` pins the major (`24`) and is what
-  CI's `setup-node` reads.
-- Frontend tooling: ESLint `10.10.0` (flat config at
-  `frontend/eslint.config.js`), `eslint-plugin-svelte` `3.23.0`,
-  `typescript-eslint` `8.70.0`, Vitest `5.0.1` with `jsdom`, CodeMirror 6
-  (`codemirror` `6.0.2`, `@codemirror/lint` `6.9.7`). `vitest.config.ts` loads
-  the Svelte plugin (runes in `*.svelte.ts`) and sets
+  `3.0.0-beta.20`; never float it (it once resolved to `beta.21`).
+- Node `v24.21.0`, npm `11.19.0`; `.nvmrc` pins the major (`24`) for CI.
+- Frontend: Svelte 5, Ark UI `5.24.2`, Konva `10.5`, Vitest `5.0.1` with
+  `jsdom`, ESLint flat config at `frontend/eslint.config.js`, CodeMirror 6.
+  `vitest.config.ts` loads the Svelte plugin (runes in `*.svelte.ts`) and sets
   `resolve.conditions: ['browser']`, without which `mount` throws
   `lifecycle_function_unavailable` under jsdom.
-- `frontend/package.json` `test` script is plain `vitest run`. The Milestone
-  0.5 `--passWithNoTests` flag is gone: with real tests, a flag that keeps the
-  gate green when every test vanishes is not a gate.
+- Bindings are regenerated with
+  `wails3 generate bindings -f '' -clean=true -ts -i` after any bound Go
+  change, including comments (the generated TypeScript copies them).
 
-### Gate status: last run 2026-09-16, after Milestone 1
+### Gate status: last run 2026-09-27, after the 8.1 restyle
 
 | Gate | Result |
 |---|---|
-| `go vet ./...` | exit 0 |
-| `go build ./...` | exit 0 (linker warns about macOS deployment target; harmless) |
-| `go test ./...` | exit 0; 3 packages: `internal/app`, `internal/layout`, `internal/render` |
-| `go test ./internal/render -run Golden` | exit 0; 4 goldens (light and dark) under `testdata/golden/` |
-| `npm run check` | exit 0; 0 errors, 0 warnings, 173 files |
+| `go vet ./internal/... .` | exit 0 (the linker warns about the macOS deployment target; harmless) |
+| `go test ./internal/... .` | exit 0; 10 packages |
+| `go test ./internal/render -run Golden` | exit 0; goldens under `testdata/golden/` |
+| `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 185 tests across 28 files |
-| `npm run build` | exit 0 |
-| `wails3 build` | exit 0 on macOS; 30MB binary in `bin/`; unverified elsewhere |
+| `npm test` | exit 0; about 1,700 tests across 130 files |
+| `wails3 build` | macOS only, unverified elsewhere |
 
 ### Open problems
 
-- **`go test ./...` compiles a package inside `node_modules`.** There is a Go
-  package at `frontend/node_modules/flatted/golang/pkg/flatted`, so the gate
-  depends on an npm dependency shipping compilable Go. Milestone 1's exit
-  criterion now scopes the suite to `go test ./internal/... .` for that reason.
-- **Milestone 1 wired click-on-node to jump-to-source with no keyboard path.**
-  The design system requires every interactive affordance to be keyboard
-  reachable with a visible `--color-focus-ring`, and that token cannot exist
-  before Milestone 2. Recorded debt for Milestone 3, alongside
-  `CanvasControls`.
-- **The first two user-facing strings are hardcoded** (`aria-label` on the two
-  panes in `App.svelte`). The translation layer arrives in Milestone 3 and must
-  migrate them.
-- **`DEBOUNCE_MS` (250) and `DefaultEngine` ("tala") are compile-time
-  constants.** Named and single-sourced, but with no config behind them. They
-  move behind the settings file in Milestone 5.
-- **Milestone 1's token debts are cleared.** The 13px base, the font wiring and
-  the `1px` divider all resolve from tokens. Still open: the native window
-  background colour removed from `main.go`, which needs a Wails window API call
-  and belongs with the shell in Milestone 3.
-- **Fonts are bundled and wired.** Geist and Geist Mono, variable `woff2`, in
-  `frontend/public/fonts/`, under SIL OFL 1.1 recorded in `NOTICE`. The
-  scaffold's bundled-but-unreferenced `Inter-Medium.ttf` and its licence file
-  are gone. `@font-face` is declared in `public/style.css` until the token
-  layer takes it over.
-- **`LICENSE` (Apache-2.0) and `NOTICE` exist.** `NOTICE` is the source for the
-  About screen's attribution and must gain an entry in the same change as any
-  bundled dependency.
-- **CI has failed twice, both causes fixed, awaiting a third run.**
-  Second failure: ubuntu only, pkg-config could not find `gtk4` /
-  `webkitgtk-6.0` because the workflow installed the GTK3 packages. Wails v3
-  defaults to GTK4 + WebKitGTK 6.0; GTK3 is opt-in behind a build tag. The
-  workflow now installs `libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev
-  libglib2.0-dev` and verifies them with `pkg-config --exists` so a missing
-  package fails legibly instead of inside cgo. Package availability confirmed
-  on Ubuntu 22.04 through 26.04.
-  First failure (all three platforms): First run failed identically on ubuntu, macos and
-  windows at `go vet` with `pattern all:frontend/dist: no matching files
-  found`: the Go steps ran before the frontend was built, and `frontend/dist`
-  is gitignored so a fresh checkout has none. The workflow now builds the
-  frontend first, and both Go gates are scoped to `./internal/... .` because
-  `node_modules` exists by then and ships a Go package. Verified locally from a
-  deleted `dist/`: all eight steps pass in the workflow's order. **Still not a
-  green matrix**; that needs a push and a new run.
-- The question CI exists to answer is still open: whether D2 renders
-  byte-identical SVG on Linux and Windows, which every golden file assumes.
-  Nothing else can answer it.
-- `.ai/`, `.claude/`, `CLAUDE.md`, `docs/`, `LICENSE` and `NOTICE` are
-  untracked at the time of writing.
-- **Konva is not installed yet.** The canvas foundation is Milestone 4; the
-  dependency lands with it, alongside `perfect-freehand`, `perfect-arrows`,
-  `@dagrejs/dagre` and `rbush`. All MIT.
+- **Scope the Go gates to `./internal/... .`**: `frontend/node_modules` ships a
+  Go package (`flatted/golang`), so `./...` depends on an npm dependency.
+- **CI has never gone green on the matrix.** The workflow installs GTK4 and
+  WebKitGTK 6.0 on Linux and builds the frontend before the Go steps; it
+  needs a push and a run. It is also what answers whether D2 renders
+  byte-identical SVG on Linux and Windows, which every golden assumes.
+- **No visual check runs automatically.** Every test runs under jsdom, which
+  has no layout and applies no stylesheet rules that matter; look at a
+  running window after any styling change.
 
 ### Spike findings: Ark UI in the Wails webview, 2026-09-16
 
@@ -641,14 +543,14 @@ deliberately at `5.24.2` or later.
 - Menu ids added: `file.newFolder`, `file.openSpace` (⌘O), `space.trash`,
   `file.spaceSettings`; `file.open` is ⇧⌘O. A menu id ending `.settings`
   is counted as the app's Settings by a spec test: name others differently.
-
-### Plans and roadmap reconciled, 2026-09-27
-
-- The Milestone 6 plans (6 and 6.1 to 6.17) are one file,
-  `.claude/work/plans/06-canvas.md`: an overview, then each part in full.
-  The roadmap has one Milestone 6 entry listing the parts; Milestone 7 is
-  complete (checked at the window by the user); Milestone 8 waits on a
-  discussion with the user before it is planned.
+- Also built and committed with it: New Space (`SpaceService.Create`,
+  `NewSpaceDialog`), the Files Add menu and fold, no trailing ellipsis on any
+  label, a codebase sweep so comments never cite plans or milestones, and the
+  restyle to the mockups: the `Dialog` frame (`subtitle`, `closable`,
+  `actions`, `footer`, named sizes, `flush`, `headless`, `alert`), the status
+  bar per side (`shell/status-context.ts`), and the dot grid
+  (`canvas/grid.ts`). Refusals from Go carry a `code` worded in the frontend
+  (`spaceMessage`).
 
 ### Milestone 7 findings (snapping), 2026-09-27
 

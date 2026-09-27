@@ -92,12 +92,14 @@ const REFUSALS = {
   nameEmpty: 'space.error.nameEmpty',
   nameSlash: 'space.error.nameSlash',
   nameDot: 'space.error.nameDot',
+  nameReserved: 'space.error.nameReserved',
   intoItself: 'space.error.intoItself',
   notFolder: 'space.error.notFolder',
   onlyPage: 'space.error.onlyPage',
   outside: 'space.error.outside',
   throughLink: 'space.error.throughLink',
   notSpace: 'space.error.notSpace',
+  revealUnavailable: 'space.error.revealUnavailable',
 } as const;
 
 /**
@@ -107,4 +109,16 @@ const REFUSALS = {
 export function spaceMessage(result: { error: string; code?: string }): string {
   const key = result.code ? REFUSALS[result.code as keyof typeof REFUSALS] : undefined;
   return key ? t(key) : result.error;
+}
+
+/**
+ * Space settings, saved in order: the width is written into the Space's
+ * folder, so it goes before a rename moves that folder.
+ */
+export async function saveSpaceSettings(
+  changes: { name?: string; width?: string },
+  apply: { setWidth: (width: string) => Promise<void>; rename: (name: string) => Promise<void> },
+): Promise<void> {
+  if (changes.width !== undefined) await apply.setWidth(changes.width);
+  if (changes.name !== undefined) await apply.rename(changes.name);
 }

@@ -7,7 +7,6 @@
  * component, so adding a locale later is a data problem rather than a hunt.
  */
 export const messages = {
-  'pane.source': 'D2 source',
   'pane.canvas': 'Diagram',
   'pane.files': 'Files',
   'tree.renameField': 'Name',
@@ -27,12 +26,14 @@ export const messages = {
   'space.error.nameEmpty': 'A name is needed.',
   'space.error.nameSlash': 'A name cannot hold / or \\.',
   'space.error.nameDot': 'A name cannot start with a dot.',
+  'space.error.nameReserved': 'A name cannot hold : * ? " < > | or end with a dot, and cannot be a name Windows keeps for devices, such as CON.',
   'space.error.intoItself': 'A folder cannot go inside itself.',
   'space.error.notFolder': 'That is not a folder.',
   'space.error.onlyPage': 'Only a page can be duplicated.',
   'space.error.outside': 'That is not a place inside the Space.',
   'space.error.throughLink': 'Bava does not follow links out of a Space.',
   'space.error.notSpace': 'That folder is not a Space.',
+  'space.error.revealUnavailable': 'Bava cannot show folders on this system.',
   'size.bytes': '{n} B',
   'size.kb': '{n} KB',
   'size.mb': '{n} MB',
@@ -77,6 +78,8 @@ export const messages = {
   'trash.noMatch': 'Nothing matches.',
   'trash.restore': 'Restore',
   'trash.delete': 'Delete',
+  'trash.restoreItem': 'Restore {name}',
+  'trash.deleteItem': 'Delete {name}',
   'trash.top': 'Top of the Space',
   'trash.subtitle': 'Deleted items stay here until you delete them',
   'trash.column.name': 'Name',
@@ -239,9 +242,7 @@ export const messages = {
   'file.conflict.body': 'Another program wrote to this file since you opened it.',
   'file.conflict.reload': 'Reload from disk',
   'file.conflict.overwrite': 'Keep mine',
-  'file.error.title': 'Could not open that file',
 
-  'file.openFolder': 'Open folder',
   'file.noFolder': 'No folder open',
   'file.noFolderBody': 'Open a folder to see its files here.',
   'file.unsaved.title': 'Unsaved changes',

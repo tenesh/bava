@@ -26,7 +26,7 @@
     <div class="failed" role="alert">
       <p class="title">{t('panel.failed.title')}</p>
       <p class="body">{t('panel.failed.body').replace('{panel}', name)}</p>
-      <button type="button" class="reload" onclick={reset}>{t('panel.failed.reload')}</button>
+      <button type="button" class="bava-button" onclick={reset}>{t('panel.failed.reload')}</button>
     </div>
   {/snippet}
 </svelte:boundary>
@@ -53,21 +53,5 @@
     max-width: 40ch;
     font-size: var(--text-meta);
     color: var(--color-text-muted);
-  }
-
-  .reload {
-    height: var(--size-row-lg);
-    padding: 0 var(--space-3);
-    border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-raised);
-    font: inherit;
-    font-size: var(--text-control);
-    color: var(--color-text-primary);
-  }
-
-  .reload:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus-ring);
-    outline-offset: var(--focus-halo-width);
   }
 </style>

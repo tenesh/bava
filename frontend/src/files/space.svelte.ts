@@ -11,27 +11,74 @@
  * not in a file"). The order the user arranged lives in the Space's own
  * `.bava/space.json`, in Go.
  */
-import { SpaceService } from '../../bindings/github.com/tenesh/bava/internal/app';
-import type { Operation } from '../../bindings/github.com/tenesh/bava/internal/app/models';
-import { t } from '../i18n/t';
-import { spaceMessage } from './space-helpers';
+import { SpaceService } from "../../bindings/github.com/tenesh/bava/internal/app";
+import type { Operation } from "../../bindings/github.com/tenesh/bava/internal/app/models";
+import { t } from "../i18n/t";
+import { spaceMessage } from "./space-helpers";
 
-export type EntryKind = 'page' | 'folder';
+export type EntryKind = "page" | "folder";
 export type SpaceEntry = { name: string; path: string; kind: EntryKind };
 export type SpaceOp = Partial<Operation> & { kind: string };
-export type OpOutcome = { path: string; id?: string; root?: string; error: string };
-
-export type SpaceIO = {
-  open(dir: string): Promise<{ root: string; name: string; pageWidth: string; error: string; code?: string }>;
-  list(root: string, folder: string): Promise<{ entries: SpaceEntry[] | null; error: string }>;
-  apply(root: string, op: SpaceOp): Promise<{ path: string; id: string; root: string; error: string; code?: string }>;
-  trash(root: string): Promise<{ items: TrashEntry[] | null; size: number; error: string; code?: string }>;
-  chooseFolder(title: string): Promise<{ path: string; error: string }>;
-  create(parent: string, name: string): Promise<{ root: string; name: string; pageWidth: string; error: string; code?: string }>;
-  reveal(root: string, path: string): Promise<string>;
+export type OpOutcome = {
+  path: string;
+  id?: string;
+  root?: string;
+  error: string;
 };
 
-export type TrashEntry = { id: string; path: string; kind: EntryKind; deletedAt: string; size: number };
+export type SpaceIO = {
+  open(
+    dir: string,
+  ): Promise<{
+    root: string;
+    name: string;
+    pageWidth: string;
+    error: string;
+    code?: string;
+  }>;
+  list(
+    root: string,
+    folder: string,
+  ): Promise<{ entries: SpaceEntry[] | null; error: string }>;
+  apply(
+    root: string,
+    op: SpaceOp,
+  ): Promise<{
+    path: string;
+    id: string;
+    root: string;
+    error: string;
+    code?: string;
+  }>;
+  trash(
+    root: string,
+  ): Promise<{
+    items: TrashEntry[] | null;
+    size: number;
+    error: string;
+    code?: string;
+  }>;
+  chooseFolder(title: string): Promise<{ path: string; error: string }>;
+  create(
+    parent: string,
+    name: string,
+  ): Promise<{
+    root: string;
+    name: string;
+    pageWidth: string;
+    error: string;
+    code?: string;
+  }>;
+  reveal(root: string, path: string): Promise<{ error: string; code?: string }>;
+};
+
+export type TrashEntry = {
+  id: string;
+  path: string;
+  kind: EntryKind;
+  deletedAt: string;
+  size: number;
+};
 
 export type SpaceStorage = {
   getItem(key: string): string | null;
@@ -43,23 +90,37 @@ export type TreeRow = { entry: SpaceEntry; depth: number };
 
 const overIPC: SpaceIO = {
   open: (dir) => SpaceService.Open(dir),
-  list: (root, folder) => SpaceService.List(root, folder) as unknown as ReturnType<SpaceIO['list']>,
-  apply: (root, op) => SpaceService.Apply(root, { path: '', folder: '', name: '', index: -1, id: '', width: '', ...op }),
-  trash: (root) => SpaceService.Trash(root) as unknown as ReturnType<SpaceIO['trash']>,
+  list: (root, folder) =>
+    SpaceService.List(root, folder) as unknown as ReturnType<SpaceIO["list"]>,
+  apply: (root, op) =>
+    SpaceService.Apply(root, {
+      path: "",
+      folder: "",
+      name: "",
+      index: -1,
+      id: "",
+      width: "",
+      ...op,
+    }),
+  trash: (root) =>
+    SpaceService.Trash(root) as unknown as ReturnType<SpaceIO["trash"]>,
   chooseFolder: (title) => SpaceService.ChooseFolder(title),
   create: (parent, name) => SpaceService.Create(parent, name),
   reveal: (root, path) => SpaceService.Reveal(root, path),
 };
 
-const EXPANDED_KEY = 'bava.space.expanded:';
-const LAST_PAGE_KEY = 'bava.space.lastPage:';
+const EXPANDED_KEY = "bava.space.expanded:";
+const LAST_PAGE_KEY = "bava.space.lastPage:";
 
-export function createSpace(io: SpaceIO = overIPC, options: { storage?: SpaceStorage } = {}) {
+export function createSpace(
+  io: SpaceIO = overIPC,
+  options: { storage?: SpaceStorage } = {},
+) {
   const storage = options.storage ?? safeLocalStorage();
 
   let root = $state.raw<string | null>(null);
-  let name = $state.raw('');
-  let pageWidth = $state.raw('');
+  let name = $state.raw("");
+  let pageWidth = $state.raw("");
   let error = $state.raw<string | null>(null);
   // Listed folders by path ("" is the top), and which are open.
   let folders = $state.raw<Record<string, SpaceEntry[]>>({});
@@ -120,11 +181,15 @@ export function createSpace(io: SpaceIO = overIPC, options: { storage?: SpaceSto
       next[folder] = result.entries ?? [];
       return true;
     };
-    await read('');
+    await read("");
     const kept: string[] = [];
     // Parents before children, so a folder whose parent went is dropped too.
-    for (const folder of [...snapshot].sort((a, b) => a.split('/').length - b.split('/').length)) {
-      const parentOk = !folder.includes('/') || kept.includes(folder.slice(0, folder.lastIndexOf('/')));
+    for (const folder of [...snapshot].sort(
+      (a, b) => a.split("/").length - b.split("/").length,
+    )) {
+      const parentOk =
+        !folder.includes("/") ||
+        kept.includes(folder.slice(0, folder.lastIndexOf("/")));
       if (parentOk && (await read(folder))) kept.push(folder);
     }
     if (id !== listing || root !== at) return;
@@ -137,7 +202,8 @@ export function createSpace(io: SpaceIO = overIPC, options: { storage?: SpaceSto
   function rowsOf(folder: string, depth: number, out: TreeRow[]) {
     for (const entry of folders[folder] ?? []) {
       out.push({ entry, depth });
-      if (entry.kind === 'folder' && expanded.includes(entry.path)) rowsOf(entry.path, depth + 1, out);
+      if (entry.kind === "folder" && expanded.includes(entry.path))
+        rowsOf(entry.path, depth + 1, out);
     }
   }
 
@@ -170,7 +236,7 @@ export function createSpace(io: SpaceIO = overIPC, options: { storage?: SpaceSto
     /** The tree as shown: each open folder's contents under it. */
     get rows(): TreeRow[] {
       const out: TreeRow[] = [];
-      rowsOf('', 0, out);
+      rowsOf("", 0, out);
       return out;
     },
     isExpanded(folder: string) {
@@ -192,12 +258,12 @@ export function createSpace(io: SpaceIO = overIPC, options: { storage?: SpaceSto
       expanded = load<string[]>(EXPANDED_KEY + info.root, []);
       lastPage = load<string | null>(LAST_PAGE_KEY + info.root, null);
       await refresh();
-      return '';
+      return "";
     },
 
     close() {
       root = null;
-      name = '';
+      name = "";
       folders = {};
       expanded = [];
       pending = null;
@@ -208,7 +274,9 @@ export function createSpace(io: SpaceIO = overIPC, options: { storage?: SpaceSto
 
     async toggle(folder: string) {
       if (expanded.includes(folder)) {
-        setExpanded(expanded.filter((f) => f !== folder && !f.startsWith(folder + '/')));
+        setExpanded(
+          expanded.filter((f) => f !== folder && !f.startsWith(folder + "/")),
+        );
         return;
       }
       setExpanded([...expanded, folder]);
@@ -216,7 +284,7 @@ export function createSpace(io: SpaceIO = overIPC, options: { storage?: SpaceSto
     },
 
     async expand(folder: string) {
-      if (folder === '' || expanded.includes(folder)) return;
+      if (folder === "" || expanded.includes(folder)) return;
       setExpanded([...expanded, folder]);
       await listFolder(folder);
     },
@@ -224,7 +292,7 @@ export function createSpace(io: SpaceIO = overIPC, options: { storage?: SpaceSto
     /** Start naming a new page or folder in a folder. */
     beginNew(kind: EntryKind, folder: string) {
       pending = { kind, folder };
-      if (folder !== '' && !expanded.includes(folder)) {
+      if (folder !== "" && !expanded.includes(folder)) {
         setExpanded([...expanded, folder]);
         void listFolder(folder);
       }
@@ -237,11 +305,20 @@ export function createSpace(io: SpaceIO = overIPC, options: { storage?: SpaceSto
     /** Make the page or folder being named. Resolves with its path, or an error. */
     async commitNew(typed: string): Promise<OpOutcome> {
       const naming = pending;
-      if (!naming) return { path: '', error: t('space.nothingNamed') };
-      const kind = naming.kind === 'page' ? 'createPage' : 'createFolder';
-      const result = await this.apply({ kind, folder: naming.folder, name: typed });
+      if (!naming) return { path: "", error: t("space.nothingNamed") };
+      const kind = naming.kind === "page" ? "createPage" : "createFolder";
+      // Naming stops before the tree is re-read, so the tree never sees the
+      // new listing with the row still there and starts naming it again.
+      const result = await this.apply(
+        { kind, folder: naming.folder, name: typed },
+        {
+          before: () => {
+            pending = null;
+          },
+        },
+      );
       // Refused: a new row object, so the tree starts naming it again.
-      pending = result.error ? { ...naming } : null;
+      if (result.error) pending = { ...naming };
       return { path: result.path, error: result.error };
     },
 
@@ -253,12 +330,20 @@ export function createSpace(io: SpaceIO = overIPC, options: { storage?: SpaceSto
      */
     async apply(
       op: SpaceOp,
-      options: { before?: (outcome: OpOutcome) => void | Promise<void>; refresh?: boolean } = {},
+      options: {
+        before?: (outcome: OpOutcome) => void | Promise<void>;
+        refresh?: boolean;
+      } = {},
     ): Promise<OpOutcome> {
-      if (!root) return { path: '', error: t('space.noneOpen') };
+      if (!root) return { path: "", error: t("space.noneOpen") };
       const result = await io.apply(root, op);
-      if (result.error) return { path: '', error: spaceMessage(result) };
-      const outcome = { path: result.path, id: result.id, root: result.root, error: '' };
+      if (result.error) return { path: "", error: spaceMessage(result) };
+      const outcome = {
+        path: result.path,
+        id: result.id,
+        root: result.root,
+        error: "",
+      };
       await options.before?.(outcome);
       if (options.refresh !== false) await refresh();
       return outcome;
@@ -266,8 +351,14 @@ export function createSpace(io: SpaceIO = overIPC, options: { storage?: SpaceSto
 
     /** A folder moved or was renamed: keep it, and what is open inside it, open. */
     followMove(from: string, to: string) {
-      if (!expanded.some((f) => f === from || f.startsWith(from + '/'))) return;
-      setExpanded(expanded.map((f) => (f === from || f.startsWith(from + '/') ? to + f.slice(from.length) : f)));
+      if (!expanded.some((f) => f === from || f.startsWith(from + "/"))) return;
+      setExpanded(
+        expanded.map((f) =>
+          f === from || f.startsWith(from + "/")
+            ? to + f.slice(from.length)
+            : f,
+        ),
+      );
     },
 
     /** The Space's folder was renamed: keep its open folders and last page under the new root. */
@@ -278,7 +369,7 @@ export function createSpace(io: SpaceIO = overIPC, options: { storage?: SpaceSto
 
     /** Save the Space's default page width; '' clears it. */
     async setPageWidth(width: string): Promise<string> {
-      const result = await this.apply({ kind: 'setPageWidth', width });
+      const result = await this.apply({ kind: "setPageWidth", width });
       if (!result.error) pageWidth = width;
       return result.error;
     },
@@ -291,29 +382,44 @@ export function createSpace(io: SpaceIO = overIPC, options: { storage?: SpaceSto
     /** A page's path relative to the Space, or null when it is outside it. */
     relative(absolute: string): string | null {
       if (!root) return null;
-      const prefix = root.endsWith('/') || root.endsWith('\\') ? root : root + (root.includes('\\') && !root.includes('/') ? '\\' : '/');
+      const prefix =
+        root.endsWith("/") || root.endsWith("\\")
+          ? root
+          : root + (root.includes("\\") && !root.includes("/") ? "\\" : "/");
       if (!absolute.startsWith(prefix)) return null;
-      return absolute.slice(prefix.length).replaceAll('\\', '/');
+      return absolute.slice(prefix.length).replaceAll("\\", "/");
     },
 
     absolute(relative: string): string {
       if (!root) return relative;
-      const sep = root.includes('\\') && !root.includes('/') ? '\\' : '/';
-      return root + sep + (sep === '\\' ? relative.replaceAll('/', '\\') : relative);
+      const sep = root.includes("\\") && !root.includes("/") ? "\\" : "/";
+      return (
+        root + sep + (sep === "\\" ? relative.replaceAll("/", "\\") : relative)
+      );
     },
 
     trash: async () => {
-      if (!root) return { items: [], size: 0, error: t('space.noneOpen') };
+      if (!root) return { items: [], size: 0, error: t("space.noneOpen") };
       const result = await io.trash(root);
       return result.error ? { ...result, error: spaceMessage(result) } : result;
     },
-    reveal: (path = '') => (root ? io.reveal(root, path) : Promise.resolve(t('space.noneOpen'))),
+    /** Show the Space or an item in the file manager: '' when it worked, else why not. */
+    reveal: async (path = ""): Promise<string> => {
+      if (!root) return t("space.noneOpen");
+      const result = await io.reveal(root, path);
+      return result.error ? spaceMessage(result) : "";
+    },
     chooseFolder: (title: string) => io.chooseFolder(title),
 
     /** Make a new folder named `name` in `parent`, ready to open as a Space. */
-    async create(parent: string, folderName: string): Promise<{ root: string; error: string }> {
+    async create(
+      parent: string,
+      folderName: string,
+    ): Promise<{ root: string; error: string }> {
       const info = await io.create(parent, folderName);
-      return info.error ? { root: '', error: spaceMessage(info) } : { root: info.root, error: '' };
+      return info.error
+        ? { root: "", error: spaceMessage(info) }
+        : { root: info.root, error: "" };
     },
   };
 }

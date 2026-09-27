@@ -47,6 +47,15 @@
     color: var(--color-text-secondary);
   }
 
+  .zoom button:hover:not(:disabled) {
+    background: var(--color-control-hover);
+    color: var(--color-text-primary);
+  }
+
+  .zoom button:active:not(:disabled) {
+    background: var(--color-control-active);
+  }
+
   .zoom button:focus-visible {
     outline: var(--focus-ring-width) solid var(--color-focus-ring);
     outline-offset: calc(var(--focus-halo-width) * -1);

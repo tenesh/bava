@@ -191,4 +191,15 @@ describe('settling autosave before a file moves', () => {
     await autosave.focusLost();
     expect(save).not.toHaveBeenCalled();
   });
+
+  // A move still in flight when the document closes must not start a save.
+  it('writes nothing after it is destroyed, even when a hold is released', async () => {
+    const { save, edit, autosave } = setup('afterDelay');
+    const release = await autosave.hold();
+    edit();
+    autosave.destroy();
+    release();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(save).not.toHaveBeenCalled();
+  });
 });

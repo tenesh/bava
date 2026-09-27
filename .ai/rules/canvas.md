@@ -403,3 +403,13 @@ the first move that needs them and keeps them for the drag (`Drag.snap`),
 since gathering is the expensive part; the stage only draws `snapGuides`.
 Targets are kept sorted by x and y (`References.lines`): comparing every
 moving point with every target point took 8 ms a move on 2,000 shapes.
+
+## The dot grid is not the drawing
+A dot every `--size-canvas-grid` of the drawing, on its own Konva layer
+beneath the scene (`canvas/grid.ts`, drawn in `stage.ts`): it pans and zooms
+with the drawing, draws only the dots in view, and thins (doubles its step)
+until dots are `--size-canvas-grid-min` apart on screen. It never listens for
+the pointer, is never in the file, and never reaches an export: `toCanvas()`
+hides it and the PNG stage is built without it. Anything that reads the scene
+or exports it must keep it out.
+

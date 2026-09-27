@@ -24,7 +24,7 @@
   <div class="about">
     <p class="tagline">{t('about.tagline')}</p>
     <p class="licence">{t('about.licence')}</p>
-    <button type="button" class="close" onclick={() => onOpenChange(false)}>{t('about.close')}</button>
+    <button type="button" class="bava-button close" onclick={() => onOpenChange(false)}>{t('about.close')}</button>
   </div>
 </Dialog>
 
@@ -52,18 +52,5 @@
   .close {
     align-self: center;
     margin-top: var(--space-2);
-    height: var(--size-row-lg);
-    padding: 0 var(--space-3);
-    border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-raised);
-    font: inherit;
-    font-size: var(--text-control);
-    color: var(--color-text-primary);
-  }
-
-  .close:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus-ring);
-    outline-offset: var(--focus-halo-width);
   }
 </style>

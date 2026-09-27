@@ -49,7 +49,7 @@
 {/snippet}
 
 {#snippet closeButton()}
-  <button type="button" class="close" aria-label={t('dialog.close')} onclick={close}>
+  <button type="button" class="bava-icon-button" aria-label={t('dialog.close')} onclick={close}>
     <ToolIcon id="close" size="sm" />
   </button>
 {/snippet}
@@ -71,28 +71,6 @@
 <style>
   .bava-settings {
     height: 100%;
-  }
-
-  .close {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--size-row-lg);
-    height: var(--size-row-lg);
-    padding: 0;
-    border: 0;
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--color-text-secondary);
-  }
-
-  .close:hover {
-    background: var(--color-accent-subtle);
-    color: var(--color-text-primary);
-  }
-
-  .close:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus-ring);
   }
 
   .section {

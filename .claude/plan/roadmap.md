@@ -374,7 +374,7 @@ first line. Design: `.claude/work/specs/errors-and-logs.md`.
 - A `PanicHandler` and recover wrappers for our goroutines.
 - An unexpected-exit marker and the next-launch notice.
 - The "Something went wrong" dialog for unexpected errors.
-- Help ▸ Open Logs Folder and Copy Diagnostics. Report Issue… is built but
+- Help ▸ Open Logs Folder and Copy Diagnostics. Report Issue is built but
   hidden until Milestone 16 confirms the public repository.
 - Retention: the last 10 sessions, 50 MB total.
 - A Verbose logging setting, off by default.
@@ -474,9 +474,9 @@ restores the attachment.
 
 ---
 
-## Milestone 8: Documents *(next; decided, built in parts 8.1 to 8.6)*
+## Milestone 8: Documents *(in progress; 8.1 built and committed 2026-09-27, 8.2 next)*
 
-**Discussed and decided (2026-09-27):** 66 decisions in
+**Discussed and decided (2026-09-27):** 71 decisions in
 `.claude/work/specs/08-documents.md`, mockups in Bava Design
 (https://claude.ai/artifact/RMvLeKBkbF4N2Hv89HSude). Built in six parts, each
 planned, gated and committed on its own; each specifies its file-format
@@ -484,7 +484,7 @@ changes in `docs/file-format.md` first:
 
 | Part | Delivers |
 |---|---|
-| 8.1 Spaces and files | `.bava` folder and `space.json`; start screen, Space switcher and settings; the Files tree (order by hand, duplicate, trash); single files; one page open at a time |
+| 8.1 Spaces and files *(built)* | `.bava` folder and `space.json`; start screen, Space switcher and settings; New Space (a name and a place); the Files tree (order by hand, duplicate, trash, an Add menu, folding); single files; one page open at a time. Also built with it: the restyle to the mockups (dialog frame, status bar per side, canvas dot grid) |
 | 8.2 The Document editor | ProseMirror, saving Markdown; text blocks, lists, inline formatting and colours; typing shortcuts, `/` menu, formatting bubble, block handle; find and replace, word count; page menu, lock, width |
 | 8.3 Rich blocks | Callouts, toggles, code, equations, rich tables, contents, footnotes, emoji, date chips, `@` page links and backlinks, links to headings |
 | 8.4 Media and attachments | The attachments folder; images and videos; online media; file and link cards; the Media section and dialog |
@@ -765,7 +765,7 @@ to Linux: deb/rpm install the 1024px `appicon.png` into `hicolor/128x128`.
 
 **Carried from Milestone 5.8:** recovering unsaved work after a crash:
 backups kept outside the project, offered at the next launch.
-Also: confirm the public issue tracker and un-hide Help ▸ Report Issue….
+Also: confirm the public issue tracker and un-hide Help ▸ Report Issue.
 
 **Exit criterion:**
 

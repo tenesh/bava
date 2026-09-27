@@ -193,9 +193,19 @@
   .crumb {
     padding: 0;
     border: 0;
+    border-radius: var(--radius-sm);
     background: transparent;
     font: inherit;
     color: var(--color-text-muted);
+  }
+
+  .crumb:hover:not(:disabled) {
+    background: var(--color-control-hover);
+    color: var(--color-text-primary);
+  }
+
+  .crumb:active:not(:disabled) {
+    background: var(--color-control-active);
   }
 
   .crumb:focus-visible {

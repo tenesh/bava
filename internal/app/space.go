@@ -193,26 +193,37 @@ func (s *SpaceService) ChooseFolder(title string) DialogResult {
 	return DialogResult{Path: path}
 }
 
+// Problem is a failure the user may see: its message for the log, and a code
+// the frontend words (space.Code), empty for any other failure.
+type Problem struct {
+	Error string `json:"error"`
+	Code  string `json:"code"`
+}
+
 // Reveal shows the Space's folder, or with a path, that item selected in its
-// folder, in the platform's file manager. Returns an error message, or "".
-func (s *SpaceService) Reveal(root, path string) string {
+// folder, in the platform's file manager. A zero Problem means it worked.
+func (s *SpaceService) Reveal(root, path string) Problem {
 	if s.options.Reveal == nil {
-		return "showing folders is unavailable"
+		return Problem{Error: "showing folders is unavailable", Code: "revealUnavailable"}
 	}
 	sp, err := space.Load(root)
 	if err != nil {
-		return err.Error()
+		return problem(err)
 	}
 	target, selectFile := sp.Root, false
 	if path != "" {
 		abs, err := sp.Abs(path)
 		if err != nil {
-			return err.Error()
+			return problem(err)
 		}
 		target, selectFile = abs, true
 	}
 	if err := s.options.Reveal(target, selectFile); err != nil {
-		return err.Error()
+		return problem(err)
 	}
-	return ""
+	return Problem{}
+}
+
+func problem(err error) Problem {
+	return Problem{Error: err.Error(), Code: space.Code(err)}
 }

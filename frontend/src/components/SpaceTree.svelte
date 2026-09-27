@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   /**
    * The Files tree of a Space: folders and pages, wrapping Ark's TreeView
    * (expand and collapse, arrow keys, typeahead, F2 to rename), with drag to
@@ -97,24 +98,41 @@
   }));
 
   // A new row starts in its name field; leaving it with Escape cancels it.
+  // Each `pending` object is one naming session: a refused name comes back
+  // as a new object, and naming starts again.
   let namingNew = false;
+  let session: object | null = null;
   $effect(() => {
     const indexPath = pending ? collection.getIndexPath(PENDING) : undefined;
     if (!pending || !indexPath) {
+      // The row went (made, or cancelled by the app): leave nothing renaming.
+      if (namingNew) untrack(() => tree().cancelRenaming());
       namingNew = false;
+      session = null;
       return;
     }
     const node = collection.at(indexPath);
     const renaming = node ? tree().getNodeState({ node, indexPath }).renaming : false;
-    if (!namingNew && !renaming) {
+    if (pending !== session) {
+      session = pending;
       committed = false;
+      namingNew = false;
+      queueMicrotask(() => {
+        if (renaming) tree().cancelRenaming();
+        tree().startRenaming(PENDING);
+      });
+      return;
+    }
+    // Submitted: wait for the app to make it or refuse it.
+    if (committed) return;
+    // Naming counts from the moment the field is open, not before.
+    if (!namingNew && renaming) {
       namingNew = true;
-      queueMicrotask(() => tree().startRenaming(PENDING));
       return;
     }
     if (namingNew && !renaming) {
       namingNew = false;
-      if (!committed) onCancelNew();
+      onCancelNew();
     }
   });
 
@@ -190,7 +208,7 @@
     <span class="chevron-space" aria-hidden="true"></span>
     <ToolIcon id="page" size="sm" />
     <TreeView.ItemText class="name">{label(node)}</TreeView.ItemText>
-    {#if node.value === unsavedPath}<span class="dot" title={t('file.dirty')}></span>{/if}
+    {#if node.value === unsavedPath}<span class="dot" role="img" aria-label={t('file.dirty')} title={t('file.dirty')}></span>{/if}
   {/if}
   <TreeView.NodeRenameInput class="rename" aria-label={t('tree.renameField')} />
 {/snippet}

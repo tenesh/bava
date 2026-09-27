@@ -23,6 +23,7 @@ export type {
     OpResult,
     OpenResult,
     Operation,
+    Problem,
     SaveResult,
     SpaceInfo,
     SpaceList,

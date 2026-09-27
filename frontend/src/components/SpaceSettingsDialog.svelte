@@ -20,13 +20,13 @@
     name: string;
     root: string;
     pageWidth: Width;
-    onRename: (name: string) => void;
-    onPageWidth: (width: Width) => void;
+    /** What changed, in one call, so the caller can apply it in order. */
+    onSave: (changes: { name?: string; width?: Width }) => void;
     onReveal: () => void;
     onOpenChange: (open: boolean) => void;
   };
 
-  let { open = $bindable(), name, root, pageWidth, onRename, onPageWidth, onReveal, onOpenChange }: Props = $props();
+  let { open = $bindable(), name, root, pageWidth, onSave, onReveal, onOpenChange }: Props = $props();
 
   let typed = $state('');
   let width = $state<Width>('');
@@ -51,8 +51,10 @@
   function save(event: SubmitEvent) {
     event.preventDefault();
     const next = typed.trim();
-    if (next && next !== name) onRename(next);
-    if (width !== pageWidth) onPageWidth(width);
+    const changes: { name?: string; width?: Width } = {};
+    if (next && next !== name) changes.name = next;
+    if (width !== pageWidth) changes.width = width;
+    if (changes.name !== undefined || changes.width !== undefined) onSave(changes);
     onOpenChange(false);
   }
 </script>
@@ -80,13 +82,13 @@
       <span class="heading">{t('space.settings.folder')}</span>
       <div class="row">
         <span class="path">{root}</span>
-        <button type="button" class="button" onclick={onReveal}>{t('space.reveal')}</button>
+        <button type="button" class="bava-button" onclick={onReveal}>{t('space.reveal')}</button>
       </div>
     </div>
   </form>
   {#snippet footer()}
-    <button type="button" class="button" onclick={() => onOpenChange(false)}>{t('file.cancel')}</button>
-    <button type="submit" form="space-settings-form" class="button primary" disabled={!typed.trim()}>
+    <button type="button" class="bava-button" onclick={() => onOpenChange(false)}>{t('file.cancel')}</button>
+    <button type="submit" form="space-settings-form" class="bava-button primary" disabled={!typed.trim()}>
       {t('space.settings.save')}
     </button>
   {/snippet}
@@ -133,8 +135,8 @@
 
   .field:focus {
     outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 var(--focus-halo-width) var(--color-accent-subtle);
+    border-color: var(--color-focus-ring);
+    box-shadow: 0 0 0 var(--focus-halo-width) var(--color-focus-halo);
   }
 
   .path {
@@ -146,32 +148,6 @@
     font-family: var(--font-mono);
     font-size: var(--text-meta);
     color: var(--color-text-secondary);
-  }
-
-  .button {
-    height: var(--size-row-lg);
-    padding: 0 var(--space-3);
-    border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-raised);
-    color: var(--color-text-primary);
-    font: inherit;
-    font-size: var(--text-control);
-  }
-
-  .button.primary {
-    background: var(--color-accent);
-    border-color: var(--color-accent);
-    color: var(--color-accent-contrast);
-  }
-
-  .button:disabled {
-    opacity: var(--opacity-disabled);
-  }
-
-  .button:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus-ring);
-    outline-offset: var(--focus-halo-width);
   }
 
   .hint {

@@ -77,7 +77,7 @@
     box-sizing: border-box;
     border-radius: var(--radius-full);
     background: var(--color-border-strong);
-    transition: background var(--motion-fast) var(--easing-standard);
+    transition: background var(--duration-fast) var(--ease-out);
   }
 
   :global(.bava-toggle-track[data-state='checked']) {
@@ -94,7 +94,7 @@
     height: var(--size-toggle-dot);
     border-radius: var(--radius-full);
     background: var(--color-surface);
-    transition: translate var(--motion-fast) var(--easing-standard);
+    transition: translate var(--duration-fast) var(--ease-out);
   }
 
   :global(.bava-toggle-thumb[data-state='checked']) {
