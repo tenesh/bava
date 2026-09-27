@@ -19,7 +19,7 @@
   import { SWATCHES } from '../canvas/palette';
   import { t } from '../i18n/t';
   import type { MessageKey } from '../i18n/messages';
-  import { commands, type BlockKind } from './commands';
+  import { commands, turnIntoChoices, type BlockKind } from './commands';
   import { DocEditor } from './editor';
   import type { PageSettings } from './markdown';
   import type { SlashInfo } from './slash';
@@ -59,6 +59,7 @@
   // Alt+F10 moved focus into the bubble: it stays while focus is there.
   let bubbleHeld = false;
   let bubbleFocus = $state.raw(0);
+  let turnable = $state.raw(true);
   let marks = $state.raw<ReturnType<DocEditor['activeMarks']>>(editor.activeMarks());
   let hovered = $state.raw<{ pos: number; left: number; top: number } | null>(null);
   let menu = $state.raw<{ items: MenuNode[]; anchor: { x: number; y: number }; run: (id: string) => void } | null>(null);
@@ -78,6 +79,7 @@
   function refreshSelection() {
     onCounts(editor.counts());
     marks = editor.activeMarks();
+    turnable = turnIntoChoices(editor.currentKind()).length > 0;
     bubble = editor.locked ? null : (editor.selectionRect() ?? (bubbleHeld ? bubble : null));
   }
 
@@ -161,20 +163,28 @@
     ...SWATCHES.map((name) => item(`${prefix}:${name}`, t(`swatch.${name}` as MessageKey))),
   ];
 
-  const turnInto: MenuNode[] = [
-    item('turn:paragraph', t('slash.paragraph')),
-    item('turn:heading:1', t('slash.heading1')),
-    item('turn:heading:2', t('slash.heading2')),
-    item('turn:heading:3', t('slash.heading3')),
-    item('turn:bullet_list', t('slash.bullet')),
-    item('turn:ordered_list', t('slash.numbered')),
-    item('turn:todo', t('slash.todo')),
-    item('turn:blockquote', t('slash.quote')),
-  ];
+  const TURN_LABELS: Record<string, MessageKey> = {
+    paragraph: 'slash.paragraph',
+    'heading:1': 'slash.heading1',
+    'heading:2': 'slash.heading2',
+    'heading:3': 'slash.heading3',
+    'heading:4': 'slash.heading4',
+    'heading:5': 'slash.heading5',
+    'heading:6': 'slash.heading6',
+    bullet_list: 'slash.bullet',
+    ordered_list: 'slash.numbered',
+    todo: 'slash.todo',
+  };
+
+  /** What the caret's block can turn into: text and headings, or lists; empty for any other block. */
+  function turnIntoItems(): MenuNode[] {
+    return turnIntoChoices(editor.currentKind()).map((kind) => item(`turn:${kind}`, t(TURN_LABELS[kind])));
+  }
 
   function runTurn(id: string) {
     const [, kind, level] = id.split(':');
-    editor.run(commands.turnInto(kind as BlockKind, Number(level) || 1));
+    if (kind === 'bullet_list' || kind === 'ordered_list' || kind === 'todo') editor.run(commands.switchList(kind));
+    else editor.run(commands.turnInto(kind as BlockKind, Number(level) || 1));
   }
 
   /** Opens the emoji picker at `at`; the names load the first time. */
@@ -188,6 +198,7 @@
     if (pos === undefined || editor.locked) return;
     const block = editor.blockInfo(pos);
     editor.selectBlock(pos);
+    const turnOptions = turnIntoItems();
     // A callout's colour is its panel's; a text colour on it would be a second one.
     const styling: MenuNode[] =
       block?.type === 'callout'
@@ -212,17 +223,26 @@
                 ]
               : []),
             ...(block.attrs.color ? [item('icon', t('callout.icon'))] : []),
-            item('quote', t('callout.toQuote')),
           ]
         : [
             ...(block?.type === 'heading' ? [item('toggleheading', t('block.toggleHeading'))] : []),
+            ...(block?.type === 'ordered_list'
+              ? [
+                  {
+                    kind: 'submenu',
+                    id: 'numbering',
+                    label: t('block.numbering'),
+                    items: (['1', 'a', 'i'] as const).map((style) => item(`numbering:${style}`, t(`numbering.${style}`))),
+                  } satisfies MenuNode,
+                ]
+              : []),
             { kind: 'submenu', id: 'color', label: t('block.color'), items: colours('color', 'swatch.default') },
             { kind: 'submenu', id: 'background', label: t('block.background'), items: colours('background', 'bubble.none') },
           ];
     menu = {
       anchor,
       items: [
-        { kind: 'submenu', id: 'turn', label: t('block.turnInto'), items: turnInto },
+        ...(turnOptions.length > 0 ? [{ kind: 'submenu', id: 'turn', label: t('block.turnInto'), items: turnOptions } satisfies MenuNode] : []),
         item('duplicate', t('block.duplicate')),
         item('delete', t('block.delete')),
         { kind: 'separator' },
@@ -232,9 +252,9 @@
         if (id === 'kind:custom') editor.run(callouts.setColor(pos, (block?.attrs.color as string | null) ?? CUSTOM_DEFAULT.color));
         else if (id.startsWith('kind:')) editor.run(callouts.setKind(pos, id.slice(5)));
         else if (id.startsWith('panel:')) editor.run(callouts.setColor(pos, id.slice(6)));
-        else if (id === 'quote') editor.run(callouts.toQuote(pos));
         else if (id === 'icon') openPicker({ left: anchor.x, top: anchor.y, bottom: anchor.y }, (emoji) => editor.run(callouts.setIcon(pos, emoji)));
         else if (id === 'toggleheading') editor.run(folds.toggleHeading(pos));
+        else if (id.startsWith('numbering:')) editor.run(commands.listStyle(id.slice(10) as '1' | 'a' | 'i'));
         else if (id.startsWith('turn:')) runTurn(id);
         else if (id === 'duplicate') editor.run(commands.duplicateBlock);
         else if (id === 'delete') editor.run(commands.deleteBlock);
@@ -272,7 +292,7 @@
 
   function bubbleCommand(command: string, anchor: { x: number; y: number }) {
     bubbleHeld = false;
-    if (command === 'turnInto') menu = { anchor, items: turnInto, run: runTurn };
+    if (command === 'turnInto') menu = { anchor, items: turnIntoItems(), run: runTurn };
     else if (command === 'textColor') menu = { anchor, items: colours('text', 'swatch.default'), run: (id) => editor.run(commands.textColor(id.slice(5) || null)) };
     else if (command === 'highlight') menu = { anchor, items: colours('mark', 'bubble.none'), run: (id) => editor.run(commands.highlight(id.slice(5) || null)) };
     else if (command === 'link') openLink();
@@ -359,7 +379,7 @@
 
 {#if slash}
   <SlashMenu
-    items={slash.items.map((i) => ({ id: i.id, label: t(i.label) }))}
+    items={slash.items.map((i) => ({ id: i.id, label: t(i.label), group: t(`slash.group.${i.group}`) }))}
     active={slash.active}
     at={slash.at}
     onChoose={(id) => editor.chooseSlash(id)}
@@ -370,6 +390,7 @@
   <FormatBubble
     at={bubble}
     active={marks}
+    {turnable}
     focus={bubbleFocus}
     onCommand={bubbleCommand}
     onLeave={() => {

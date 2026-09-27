@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
-import { commands } from './commands';
+import { commands, turnIntoChoices } from './commands';
 
 let editor: DocEditor | null = null;
 
@@ -392,5 +392,79 @@ describe('the selection', () => {
     const view = editor!.view!;
     view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 5)));
     expect(editor!.activeMarks()).toEqual(expect.objectContaining({ bold: true, italic: false }));
+  });
+});
+
+describe('what the caret is in, for Turn into', () => {
+  const at = (markdown: string, text: string) => {
+    open(markdown);
+    const view = editor!.view!;
+    let pos = -1;
+    view.state.doc.descendants((node, p) => {
+      if (pos < 0 && node.isText && node.text!.includes(text)) pos = p + 1;
+    });
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+    return editor!.currentKind();
+  };
+
+  it('names each kind Turn into offers', () => {
+    expect(at('Plain.\n', 'Plain')).toBe('paragraph');
+    expect(at('## Two\n', 'Two')).toBe('heading:2');
+    expect(at('###### Six\n', 'Six')).toBe('heading:6');
+    expect(at('- Bullet\n', 'Bullet')).toBe('bullet_list');
+    expect(at('1. Number\n', 'Number')).toBe('ordered_list');
+    expect(at('- [ ] Task\n', 'Task')).toBe('todo');
+    expect(at('> Quoted\n', 'Quoted')).toBe('blockquote');
+  });
+
+  it('names nothing for a block Turn into does not offer', () => {
+    expect(at('<details>\n<summary>Folded</summary>\n\nInside\n\n</details>\n', 'Inside')).toBeNull();
+    expect(at('> [!info]\n> Callout\n', 'Callout')).toBeNull();
+  });
+});
+
+describe('the placeholder', () => {
+  it('is not shown in an empty code block', () => {
+    open('```\n```\n');
+    const view = editor!.view!;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1)));
+    expect(document.querySelector('.is-empty')).toBeNull();
+  });
+});
+
+describe("the handle's + beside the notes", () => {
+  it('adds the line before the notes, never after them', () => {
+    open('Text.[^1]\n\n[^1]: Note.\n');
+    const view = editor!.view!;
+    const notes = view.state.doc.content.size - view.state.doc.lastChild!.nodeSize;
+    expect(() => editor!.addBlockAfter(notes)).not.toThrow();
+    expect(view.state.doc.lastChild!.type.name).toBe('footnotes');
+    expect(view.state.doc.child(view.state.doc.childCount - 2).textContent).toBe('/');
+  });
+});
+
+describe('what a block can turn into', () => {
+  it('turns text and headings into one another, and lists into lists', () => {
+    expect(turnIntoChoices('paragraph')).toEqual(['heading:1', 'heading:2', 'heading:3', 'heading:4', 'heading:5', 'heading:6']);
+    expect(turnIntoChoices('heading:2')).toEqual(['paragraph', 'heading:1', 'heading:3', 'heading:4', 'heading:5', 'heading:6']);
+    expect(turnIntoChoices('bullet_list')).toEqual(['ordered_list', 'todo']);
+    expect(turnIntoChoices('todo')).toEqual(['bullet_list', 'ordered_list']);
+  });
+
+  it('offers nothing for any other block', () => {
+    expect(turnIntoChoices('blockquote')).toEqual([]);
+    expect(turnIntoChoices(null)).toEqual([]);
+  });
+
+  it('switches a whole list at once, keeping its items', () => {
+    open('- [x] One\n- [ ] Two\n- [ ] Three\n');
+    const view = editor!.view!;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 3)));
+    editor!.run(commands.switchList('ordered_list'));
+    expect(editor!.markdown()).toBe('1. One\n2. Two\n3. Three\n');
+    editor!.run(commands.switchList('todo'));
+    expect(editor!.markdown()).toBe('- [ ] One\n- [ ] Two\n- [ ] Three\n');
+    editor!.run(commands.switchList('bullet_list'));
+    expect(editor!.markdown()).toBe('- One\n- Two\n- Three\n');
   });
 });

@@ -5,56 +5,37 @@ import { DocEditor } from './editor';
 import { filterItems, SLASH_ITEMS, slashKey } from './slash';
 
 describe('the / menu\'s items', () => {
-  it('offers the blocks of this part, in order', () => {
-    expect(SLASH_ITEMS.map((item) => item.id)).toEqual([
-      'paragraph',
-      'heading1',
-      'heading2',
-      'heading3',
-      'heading4',
-      'heading5',
-      'heading6',
-      'bullet',
-      'numbered',
-      'lettered',
-      'roman',
-      'todo',
-      'quote',
-      'divider',
-      'code',
-      'toggle',
-      'toggleHeading1',
-      'toggleHeading2',
-      'toggleHeading3',
-      'equation',
-      'inlineEquation',
-      'emoji',
-      'contents',
-      'footnote',
-      'info',
-      'note',
-      'success',
-      'warning',
-      'error',
-      'callout',
+  it('offers each kind of block once, in three groups', () => {
+    expect(SLASH_ITEMS.map((item) => `${item.group}:${item.id}`)).toEqual([
+      'basic:paragraph',
+      'basic:heading1',
+      'basic:heading2',
+      'basic:heading3',
+      'basic:heading4',
+      'basic:heading5',
+      'basic:heading6',
+      'basic:bullet',
+      'basic:numbered',
+      'basic:todo',
+      'basic:toggle',
+      'basic:quote',
+      'basic:divider',
+      'advanced:callout',
+      'advanced:code',
+      'advanced:equation',
+      'advanced:contents',
+      'inline:inlineEquation',
+      'inline:footnote',
+      'inline:emoji',
     ]);
   });
 
   it('filters by name and by other words for it, ignoring case', () => {
-    expect(filterItems('head').map((i) => i.id)).toEqual([
-      'heading1',
-      'heading2',
-      'heading3',
-      'heading4',
-      'heading5',
-      'heading6',
-      'toggleHeading1',
-      'toggleHeading2',
-      'toggleHeading3',
-    ]);
-    expect(filterItems('h2').map((i) => i.id)).toEqual(['heading2', 'toggleHeading2']);
+    expect(filterItems('head').map((i) => i.id)).toEqual(['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6']);
+    expect(filterItems('h2').map((i) => i.id)).toEqual(['heading2']);
     expect(filterItems('CHECK').map((i) => i.id)).toEqual(['todo']);
     expect(filterItems('line').map((i) => i.id)).toContain('divider');
+    expect(filterItems('warning').map((i) => i.id)).toEqual(['callout']);
     expect(filterItems('zzz')).toEqual([]);
     expect(filterItems('')).toHaveLength(SLASH_ITEMS.length);
   });

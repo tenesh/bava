@@ -120,6 +120,15 @@ describe('footnotes in the page', () => {
     expect(editor!.markdown()).toBe('More Text.\n\n[^unused]: Kept.\n');
   });
 
+  it('shows the way back only after a note has text, clear of the caret', () => {
+    const { host, view } = open('Claim\n');
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 6)));
+    runItem(view, SLASH_ITEMS.find((i) => i.id === 'footnote')!);
+    expect(host.querySelector('.footnote-back')).toBeNull();
+    type('Source.');
+    expect(host.querySelector('.footnote-back')).not.toBeNull();
+  });
+
   it('goes to the note when its reference is clicked', () => {
     const { host, view } = open('Claim[^1].\n\n[^1]: The note.\n');
     const ref = host.querySelector('.footnote-ref')!;

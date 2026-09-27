@@ -37,20 +37,11 @@ function type(text: string) {
 const item = (id: string) => SLASH_ITEMS.find((i) => i.id === id)!;
 
 describe('callouts', () => {
-  it('are inserted from the / menu, one kind each', () => {
-    for (const kind of ['info', 'note', 'success', 'warning', 'error']) {
-      open('');
-      runItem(editor!.view!, item(kind));
-      type('Careful.');
-      expect(editor!.markdown()).toBe(`> [!${kind}]\n> Careful.\n`);
-    }
-  });
-
-  it('is inserted as a custom callout, with a colour and an icon to change', () => {
+  it('is inserted from the / menu as an Info callout', () => {
     open('');
     runItem(editor!.view!, item('callout'));
-    type('Mine.');
-    expect(editor!.markdown()).toBe('<!-- bava: color=gray icon=💡 -->\n> [!note]\n> Mine.\n');
+    type('Careful.');
+    expect(editor!.markdown()).toBe('> [!info]\n> Careful.\n');
   });
 
   it('is made by typing a marker at the start of a quote', () => {
@@ -72,12 +63,6 @@ describe('callouts', () => {
     callouts.setColor(0, 'green')(view.state, view.dispatch);
     callouts.setIcon(0, '🌱')(editor!.view!.state, editor!.view!.dispatch);
     expect(editor!.markdown()).toBe('<!-- bava: color=green icon=🌱 -->\n> [!note]\n> Go.\n');
-  });
-
-  it('turns back into a quote, keeping its text', () => {
-    const { view } = open('> [!info]\n> Go.\n\n> More.\n');
-    callouts.toQuote(0)(view.state, view.dispatch);
-    expect(editor!.markdown()).toBe('> Go.\n\n> More.\n');
   });
 
   it('shows its icon and title, which cannot be typed into', () => {

@@ -8,14 +8,17 @@ import type { EditorView } from 'prosemirror-view';
 import type { MessageKey } from '../i18n/messages';
 import { commands, topBlock } from './commands';
 import { schema } from './schema';
-import { CUSTOM_DEFAULT, callouts } from './callout';
+import { callouts } from './callout';
 import { folds } from './fold';
 import { math } from './math';
 import { insertFootnote } from './footnotes';
 import { insertContents } from './contents';
 import { PICKER } from './emoji';
 
-export type SlashItem = { id: string; label: MessageKey; words: string; run: Command };
+/** The `/` menu's groups, shown as labels in its one list. */
+export type SlashGroup = 'basic' | 'advanced' | 'inline';
+
+export type SlashItem = { id: string; group: SlashGroup; label: MessageKey; words: string; run: Command };
 
 const divider: Command = (state, dispatch) => {
   const block = topBlock(state);
@@ -34,25 +37,10 @@ const divider: Command = (state, dispatch) => {
 
 const heading = (level: number): SlashItem => ({
   id: `heading${level}`,
+  group: 'basic',
   label: `slash.heading${level}` as MessageKey,
   words: `heading h${level} title`,
   run: commands.turnInto('heading', level),
-});
-
-const toggleHeading = (level: number): SlashItem => ({
-  id: `toggleHeading${level}`,
-  label: `slash.toggleHeading${level}` as MessageKey,
-  words: `toggle heading h${level} fold collapse section`,
-  run: (state, dispatch, view) => {
-    if (!dispatch) return true;
-    let current = state;
-    commands.turnInto('heading', level)(current, (tr) => {
-      current = current.apply(tr);
-      dispatch(tr);
-    }, view);
-    const block = topBlock(current);
-    return block ? folds.toggleHeading(block.pos)(current, dispatch, view) : false;
-  },
 });
 
 const listOf = (style: '1' | 'a' | 'i'): Command => (state, dispatch, view) => {
@@ -67,44 +55,44 @@ const listOf = (style: '1' | 'a' | 'i'): Command => (state, dispatch, view) => {
 };
 
 export const SLASH_ITEMS: SlashItem[] = [
-  { id: 'paragraph', label: 'slash.paragraph', words: 'text paragraph plain', run: commands.turnInto('paragraph') },
+  // Basic: text and its structure.
+  { id: 'paragraph', group: 'basic', label: 'slash.paragraph', words: 'text paragraph plain', run: commands.turnInto('paragraph') },
   heading(1),
   heading(2),
   heading(3),
   heading(4),
   heading(5),
   heading(6),
-  { id: 'bullet', label: 'slash.bullet', words: 'bulleted list bullet unordered', run: commands.turnInto('bullet_list') },
-  { id: 'numbered', label: 'slash.numbered', words: 'numbered list ordered number', run: listOf('1') },
-  { id: 'lettered', label: 'slash.lettered', words: 'lettered list letters alphabet', run: listOf('a') },
-  { id: 'roman', label: 'slash.roman', words: 'roman numerals list', run: listOf('i') },
-  { id: 'todo', label: 'slash.todo', words: 'to-do todo checkbox check task', run: commands.turnInto('todo') },
-  { id: 'quote', label: 'slash.quote', words: 'quote blockquote citation', run: commands.turnInto('blockquote') },
-  { id: 'divider', label: 'slash.divider', words: 'divider line rule separator', run: divider },
-  { id: 'code', label: 'slash.code', words: 'code block snippet programming fence', run: commands.turnInto('code_block') },
-  { id: 'toggle', label: 'slash.toggle', words: 'toggle list fold collapse details', run: folds.insertToggle },
-  toggleHeading(1),
-  toggleHeading(2),
-  toggleHeading(3),
-  { id: 'equation', label: 'slash.equation', words: 'equation math formula tex latex block', run: math.insertBlock },
-  { id: 'inlineEquation', label: 'slash.inlineEquation', words: 'inline equation math formula tex latex', run: math.insertInline },
+  { id: 'bullet', group: 'basic', label: 'slash.bullet', words: 'bulleted list bullet unordered', run: commands.turnInto('bullet_list') },
+  { id: 'numbered', group: 'basic', label: 'slash.numbered', words: 'numbered list ordered number lettered roman', run: listOf('1') },
+  { id: 'todo', group: 'basic', label: 'slash.todo', words: 'to-do todo checkbox check task', run: commands.turnInto('todo') },
+  { id: 'toggle', group: 'basic', label: 'slash.toggle', words: 'toggle list fold collapse details', run: folds.insertToggle },
+  { id: 'quote', group: 'basic', label: 'slash.quote', words: 'quote blockquote citation', run: commands.turnInto('blockquote') },
+  { id: 'divider', group: 'basic', label: 'slash.divider', words: 'divider line rule separator', run: divider },
+  // Advanced: blocks with their own look or behaviour; a callout's kind is switched afterwards.
+  {
+    id: 'callout',
+    group: 'advanced',
+    label: 'slash.callout',
+    words: 'callout panel box info note success warning error custom',
+    run: callouts.insert('info'),
+  },
+  { id: 'code', group: 'advanced', label: 'slash.code', words: 'code block snippet programming fence', run: commands.turnInto('code_block') },
+  { id: 'equation', group: 'advanced', label: 'slash.equation', words: 'equation math formula tex latex block', run: math.insertBlock },
+  { id: 'contents', group: 'advanced', label: 'slash.contents', words: 'contents table toc outline index', run: insertContents },
+  // Inline: put in the line itself.
+  { id: 'inlineEquation', group: 'inline', label: 'slash.inlineEquation', words: 'inline equation math formula tex latex', run: math.insertInline },
+  { id: 'footnote', group: 'inline', label: 'slash.footnote', words: 'footnote reference citation source', run: insertFootnote },
   {
     id: 'emoji',
+    group: 'inline',
     label: 'slash.emoji',
-    words: 'emoji smiley icon picker',
+    words: 'emoji smiley picker',
     run: (state, dispatch) => {
       dispatch?.(state.tr.setMeta(PICKER, true));
       return true;
     },
   },
-  { id: 'contents', label: 'slash.contents', words: 'contents table toc outline index', run: insertContents },
-  { id: 'footnote', label: 'slash.footnote', words: 'footnote note reference citation source', run: insertFootnote },
-  { id: 'info', label: 'slash.info', words: 'callout panel info information', run: callouts.insert('info') },
-  { id: 'note', label: 'slash.note', words: 'callout panel note', run: callouts.insert('note') },
-  { id: 'success', label: 'slash.success', words: 'callout panel success tip done', run: callouts.insert('success') },
-  { id: 'warning', label: 'slash.warning', words: 'callout panel warning caution', run: callouts.insert('warning') },
-  { id: 'error', label: 'slash.error', words: 'callout panel error danger', run: callouts.insert('error') },
-  { id: 'callout', label: 'slash.callout', words: 'callout panel custom colour color icon emoji', run: callouts.insert('note', CUSTOM_DEFAULT) },
 ];
 
 /** The items whose name or other words contain what was typed. */

@@ -117,10 +117,12 @@ export function footnotesPlugin(): Plugin {
           } else if (node.type === schema.nodes.footnote) {
             const n = numbers.get(node.attrs.label);
             shown.push(Decoration.node(pos, pos + node.nodeSize, { 'data-number': n ? String(n) : node.attrs.label }));
-            // At the end of the note's last line of text, or after the note when it ends in another block.
+            // At the end of the note's last line of text, or after the note when
+            // it ends in another block; not on an empty line, where the caret is.
             const last = node.lastChild;
             const end = last?.isTextblock ? pos + node.nodeSize - 2 : pos + node.nodeSize - 1;
-            if (n) shown.push(Decoration.widget(end, backLink(node.attrs.label), { side: 1, key: `back-${node.attrs.label}` }));
+            const blank = last?.isTextblock === true && last.content.size === 0;
+            if (n && !blank) shown.push(Decoration.widget(end, backLink(node.attrs.label), { side: 1, key: `back-${node.attrs.label}` }));
           }
           return true;
         });

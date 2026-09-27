@@ -69,6 +69,16 @@ describe('FormatBubble from the keyboard', () => {
     expect(props.onBlur).toHaveBeenCalledTimes(1);
   });
 
+  it('leaves out Turn into for a block that cannot turn into another', async () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    mounted = flushSync(() =>
+      mount(FormatBubble, { target, props: { at: { left: 0, top: 0 }, active: {}, turnable: false, onCommand: vi.fn() } }),
+    );
+    await vi.waitFor(() => expect(document.querySelector('[role="toolbar"] button')).not.toBeNull());
+    expect(document.querySelector('[aria-label="Turn into"]')).toBeNull();
+  });
+
   it('gives focus back on Escape', async () => {
     const { props, buttons } = render();
     await placed(buttons);

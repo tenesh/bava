@@ -779,6 +779,34 @@ rewritten on every save, so GitHub, Obsidian and exports show a working
 contents list. Links use the standard heading anchors (`#goals`), which
 GitHub also follows.
 
+### 83. The `/` menu: one list, three groups (2026-09-28)
+
+The user's choice after testing. One flat list with a label and a divider
+between its groups, never a submenu; typing filters the whole list and a
+group with nothing left hides its label.
+
+- **Basic:** Text, Heading 1 to 6, Bulleted list, Numbered list, To-do
+  list, Toggle list, Quote, Divider.
+- **Advanced:** Callout, Code, Equation, Contents.
+- **Inline:** Inline equation, Footnote, Emoji.
+
+One Callout item inserts an Info callout; its kind (Info, Note, Success,
+Warning, Error, Custom) is switched from the block menu. Lettered and roman
+lists are a Numbered list's style, switched from the block menu. A toggle
+heading is any heading switched to one from its block menu. Turn into never
+lists the kind the block already is.
+
+### 84. Turn into only within a family (2026-09-28)
+
+The user's choice. Text and Heading 1 to 6 turn into one another; a
+Bulleted, Numbered or To-do list turns into another of those three, the
+whole list at once. Every other block has no Turn into: Quote, Toggle list,
+Callout, Code, Equation, Divider, Contents, footnotes and kept blocks. They
+keep their own switches (a callout's Kind, a code block's language, a
+heading's toggle, a numbered list's Numbering); the callout's "Turn into
+quote" goes. Enter in a footnote stays a new line in that note, as Google
+Docs and Word do.
+
 ## Features
 
 Chosen from Notion's editor, one question at a time (decisions 12 to 50),

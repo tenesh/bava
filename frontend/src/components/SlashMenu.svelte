@@ -12,7 +12,8 @@
   import { t } from '../i18n/t';
 
   type Props = {
-    items: { id: string; label: string }[];
+    /** Items in order; one with a `group` is listed under that group's label. */
+    items: { id: string; label: string; group?: string }[];
     active: number;
     at: { left: number; bottom: number };
     onChoose: (id: string) => void;
@@ -21,10 +22,19 @@
   };
 
   let { items, active, at, onChoose, label = t('doc.placeholder') }: Props = $props();
+
+  let list: HTMLDivElement | undefined = $state();
+
+  // The item chosen with the arrows stays in view as the list scrolls.
+  $effect(() => {
+    void active;
+    list?.querySelector<HTMLElement>('[data-highlighted]')?.scrollIntoView?.({ block: 'nearest' });
+  });
 </script>
 
 <Portal container={portalRoot()}>
   <div
+    bind:this={list}
     class="bava-menu slash-menu"
     role="listbox"
     aria-label={label}
@@ -32,6 +42,12 @@
     style:top={`calc(${at.bottom}px + var(--space-1))`}
   >
     {#each items as item, index (item.id)}
+      {#if item.group && item.group !== items[index - 1]?.group}
+        {#if index > 0}
+          <div class="bava-menu-separator" role="separator"></div>
+        {/if}
+        <div class="slash-group">{item.group}</div>
+      {/if}
       <div
         class="bava-menu-item"
         role="option"
@@ -56,6 +72,21 @@
     position: fixed;
     max-height: var(--size-dialog-body-max);
     overflow-y: auto;
+  }
+
+  /* A long list scrolls; its rows keep their height. */
+  .slash-menu > :global(*) {
+    flex-shrink: 0;
+  }
+
+  .slash-group {
+    padding: var(--space-1) var(--space-2) 0;
+    font-size: var(--text-meta);
+    font-weight: var(--weight-semibold);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+    user-select: none;
   }
 
   .empty {
