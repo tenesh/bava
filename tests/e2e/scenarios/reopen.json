@@ -12,6 +12,8 @@
     { "do": "wait", "target": ".bava-doc .math-inline .katex" },
     { "do": "wait", "target": ".bava-doc .code-block", "text": "x := 1" },
     { "do": "wait", "target": ".bava-doc figure.media[data-kind='image'][data-state='ready'] img[src*='attachments']" },
+    { "do": "wait", "target": ".bava-doc .card[data-kind='file'][data-state='ready']", "text": "notes.pdf" },
+    { "do": "wait", "target": ".bava-doc figure.media[data-kind='online'] button.media-play" },
     { "do": "wait", "target": ".bava-doc table", "text": "Cell one" },
     { "do": "wait", "target": ".bava-doc a[href='Target.md']", "text": "Target" },
     { "do": "click", "target": "[data-path='Target.md']" },

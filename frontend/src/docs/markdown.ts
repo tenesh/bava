@@ -15,6 +15,7 @@ import { dateTag, isDay } from './dates';
 import { headingEntries, type HeadingEntry } from './contents';
 import { anchorPlaces, cellHtml, closingDollar, readHtmlTable, rowCells, type Piece } from './table-format';
 import { EditorState } from 'prosemirror-state';
+import { onlineVideo } from './online-video';
 import { fixTables, TableMap } from 'prosemirror-tables';
 
 // ---- front matter -----------------------------------------------------------
@@ -145,6 +146,7 @@ const APPLIES: Record<string, string[]> = {
   code_block: ['wrap', 'caption'],
   media_image: ['width', 'ratio', 'align', 'caption'],
   media_video: ['width', 'ratio', 'align', 'caption', 'poster', 'loop', 'muted'],
+  card_block: ['card', 'description', 'icon', 'image'],
 };
 
 const VALID: Record<string, (value: string | true) => boolean> = {
@@ -161,6 +163,11 @@ const VALID: Record<string, (value: string | true) => boolean> = {
   poster: (v) => typeof v === 'string' && v !== '' && !/[/\\]/.test(v) && !v.startsWith('.'),
   loop: (v) => v === true,
   muted: (v) => v === true,
+  card: (v) => v === true || v === 'extended',
+  description: (v) => typeof v === 'string',
+  image: (v) => typeof v === 'string' && v !== '' && !/[/\\]/.test(v) && !v.startsWith('.'),
+  // On a card, an icon is a picture's name in the attachments, not an emoji.
+  'card_block:icon': (v) => typeof v === 'string' && v !== '' && !/[/\\]/.test(v) && !v.startsWith('.'),
 };
 
 /** A mark read onto the block that carries it: the keys it takes, and the rest as `extra`. */
@@ -168,7 +175,8 @@ function markAttrs(tokenType: string, pairs: MarkPair[] | undefined): Record<str
   const out: Record<string, unknown> = {};
   const extra: string[] = [];
   for (const pair of pairs ?? []) {
-    if (APPLIES[tokenType]?.includes(pair.key) && VALID[pair.key](pair.value) && !(pair.key in out)) out[pair.key] = pair.value;
+    const valid = VALID[`${tokenType}:${pair.key}`] ?? VALID[pair.key];
+    if (APPLIES[tokenType]?.includes(pair.key) && valid(pair.value) && !(pair.key in out)) out[pair.key] = pair.value;
     else extra.push(pair.raw);
   }
   if (extra.length > 0) out.extra = extra.join(' ');
@@ -413,9 +421,14 @@ type ImageRead = { src: string; alt: string; title: string | null };
     const before = state.tokens.length;
     if (!link(state, silent)) return false;
     const reading = (state.env as LinkEnv).bavaLinks;
-    if (!silent && reading) {
-      const open = state.tokens.slice(before).find((t) => t.type === 'link_open');
-      if (open) open.meta = { ...open.meta, bavaAt: linkPlace(state, start, reading) };
+    const open = silent ? undefined : state.tokens.slice(before).find((t) => t.type === 'link_open');
+    if (open) {
+      // By reference (`[x][r]`), its address is a definition's elsewhere on the page.
+      const end = state.pos;
+      const labelEnd = state.md.helpers.parseLinkLabel(state, start, false);
+      state.pos = end;
+      open.meta = { ...open.meta, byReference: labelEnd < 0 || state.src[labelEnd + 1] !== '(' };
+      if (reading) open.meta.bavaAt = linkPlace(state, start, reading);
     }
     return true;
   });
@@ -733,7 +746,7 @@ function readMedia(state: CoreState): void {
     // other scheme is kept as written.
     const local = read !== undefined && !/^([A-Za-z][A-Za-z0-9+.-]*:|[/\\])/.test(read.src);
     const web = read !== undefined && /^https?:\/\//i.test(read.src);
-    const kind = local || web ? mediaKind(read.src!) : null;
+    const kind = local ? mediaKind(read.src!) : web ? (mediaKind(read.src!) ?? (onlineVideo(read.src!) ? 'video' : null)) : null;
     if (!read || !kind) {
       out.push(token);
       continue;
@@ -815,6 +828,54 @@ function readMarksAndKept(state: CoreState & { src: string }): void {
   state.tokens = out;
 }
 
+/**
+ * A link alone on its line, written inline with plain words, whose mark has
+ * `card`, is a card. Anything else keeps the key on its paragraph, as written.
+ */
+function readCards(state: CoreState): void {
+  const tokens = state.tokens;
+  const out: Token[] = [];
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = tokens[i];
+    const inline = tokens[i + 1];
+    const pairs = token.meta?.mark as MarkPair[] | undefined;
+    const card = pairs?.find((p) => p.key === 'card');
+    const children = inline?.children ?? [];
+    const open = children[0];
+    const words = children.slice(1, -1);
+    const isCard =
+      token.type === 'paragraph_open' &&
+      tokens[i - 1]?.type !== 'list_item_open' &&
+      card !== undefined &&
+      VALID.card(card.value) &&
+      open?.type === 'link_open' &&
+      open.markup !== 'autolink' &&
+      !open.meta?.byReference &&
+      children.at(-1)?.type === 'link_close' &&
+      words.length > 0 &&
+      words.every((t) => t.type === 'text' || t.type === 'text_special');
+    if (!isCard) {
+      out.push(token);
+      continue;
+    }
+    const block = new state.Token('card_block', '', 0);
+    block.map = token.map;
+    block.level = token.level;
+    block.meta = {
+      mark: pairs,
+      markLine: token.meta.markLine,
+      href: open.attrGet('href') ?? '',
+      title: open.attrGet('title') || null,
+      text: words.map((t) => t.content).join(''),
+      written: inline.content,
+      bavaAt: open.meta?.bavaAt,
+    };
+    out.push(block);
+    i += 2;
+  }
+  state.tokens = out;
+}
+
 /** Footnotes' notes move to the foot, in the order first referred to; a note nothing cites follows. */
 function readFootnotes(state: CoreState): void {
   const tokens = state.tokens;
@@ -862,6 +923,7 @@ md.core.ruler.push('bava', (state) => {
   readTables(state);
   readMedia(state);
   readMarksAndKept(state);
+  readCards(state);
   readFootnotes(state);
 });
 
@@ -916,6 +978,14 @@ const parser = new MarkdownParser(schema, md, {
   table_row: { block: 'table_row' },
   table_header: { block: 'table_header', getAttrs: (tok) => tok.meta.cell },
   table_cell: { block: 'table_cell', getAttrs: (tok) => tok.meta.cell },
+  card_block: {
+    node: 'card',
+    getAttrs: (tok) => {
+      const { card, ...rest } = markAttrs('card_block', tok.meta.mark as MarkPair[]);
+      const { href, title, text, written } = tok.meta;
+      return { href, title, text, written, look: card === 'extended' ? 'extended' : 'card', ...rest };
+    },
+  },
   media_image: { node: 'image', getAttrs: mediaAttrs },
   media_video: { node: 'video', getAttrs: mediaAttrs },
   hr: { node: 'horizontal_rule' },
@@ -939,6 +1009,7 @@ const parser = new MarkdownParser(schema, md, {
 function writeMark(state: MarkdownSerializerState, node: Node) {
   const a = node.attrs;
   const keys = [
+    node.type.name === 'card' ? (a.look === 'extended' ? 'card=extended' : 'card') : '',
     a.width ? `width=${a.width}` : '',
     a.ratio ? `ratio=${a.ratio}` : '',
     a.align ? `align=${a.align}` : '',
@@ -946,11 +1017,14 @@ function writeMark(state: MarkdownSerializerState, node: Node) {
     a.wrap ? 'wrap' : '',
     a.caption !== null && a.caption !== undefined ? `caption="${encodeValue(a.caption)}"` : '',
     a.poster ? `poster="${encodeValue(a.poster)}"` : '',
+    a.description !== null && a.description !== undefined ? `description="${encodeValue(a.description)}"` : '',
+    node.type.name === 'card' && a.icon ? `icon="${encodeValue(a.icon)}"` : '',
+    a.image ? `image="${encodeValue(a.image)}"` : '',
     a.loop ? 'loop' : '',
     a.muted ? 'muted' : '',
     a.color ? `color=${a.color}` : '',
     a.background ? `background=${a.background}` : '',
-    a.icon ? `icon=${/[\s"=>]|--/.test(a.icon) ? `"${encodeValue(a.icon)}"` : a.icon}` : '',
+    a.icon && node.type.name !== 'card' ? `icon=${/[\s"=>]|--/.test(a.icon) ? `"${encodeValue(a.icon)}"` : a.icon}` : '',
     a.extra ?? '',
   ].filter(Boolean);
   if (keys.length === 0) return;
@@ -1113,6 +1187,29 @@ export function mediaLine(node: Node): string {
   return `![${escapeAlt(alt)}](<${src.replace(/[<>\\]/g, '\\$&')}>${titled})`;
 }
 
+type LinkRead = { href: string; title: string | null; text: string };
+
+/** What a link written as `text` reads as; null when it is not one link alone, written inline with plain words. */
+function linkRead(text: string): LinkRead | null {
+  const children = md.parseInline(text, {})[0]?.children ?? [];
+  const open = children[0];
+  const words = children.slice(1, -1);
+  if (open?.type !== 'link_open' || open.markup === 'autolink' || open.meta?.byReference || children.at(-1)?.type !== 'link_close') return null;
+  if (words.length === 0 || !words.every((t) => t.type === 'text' || t.type === 'text_special')) return null;
+  return { href: open.attrGet('href') ?? '', title: open.attrGet('title') || null, text: words.map((t) => t.content).join('') };
+}
+
+/** A card's line: as the file wrote it while that still reads as the card does, else written from its address, words and title. */
+export function cardLine(node: Node): string {
+  const { href, title, text, written } = node.attrs as LinkRead & { written: string | null };
+  const same = (read: LinkRead | null) => read !== null && read.href === href && read.title === title && read.text === text;
+  if (written !== null && same(linkRead(written))) return written;
+  const titled = title === null ? '' : ` "${title.replace(/["\\]/g, '\\$&')}"`;
+  const plain = `[${escapeAlt(text)}](${href}${titled})`;
+  if (same(linkRead(plain))) return plain;
+  return `[${escapeAlt(text)}](<${href.replace(/[<>\\]/g, '\\$&')}>${titled})`;
+}
+
 function writeMedia(state: MarkdownSerializerState, node: Node) {
   writeMark(state, node);
   writeRaw(state, mediaLine(node));
@@ -1224,6 +1321,11 @@ const serializer = new MarkdownSerializer(
     table_cell() {},
     image: writeMedia,
     video: writeMedia,
+    card(state, node) {
+      writeMark(state, node);
+      writeRaw(state, cardLine(node));
+      state.closeBlock(node);
+    },
     horizontal_rule(state, node) {
       state.write('---');
       state.closeBlock(node);
@@ -1525,12 +1627,18 @@ export type PageLink = {
   /** In a pipe table's cell, where `|` is written `\\|`. */
   cell: boolean;
   /**
-   * A link; a media block's address; or a video's poster, whose `href` is
+   * A link (a card's too); a media block's address; or a picture named in a
+   * mark (a video's poster, a web card's icon or picture), whose `href` is
    * its file's name in the attachments folder and whose `dest` is its whole
-   * `poster=` key in the mark.
+   * key in the mark (`key`).
    */
   kind: 'link' | 'media' | 'poster';
+  /** For a picture named in a mark: its key, `poster`, `icon` or `image`. */
+  key?: MarkFileKey;
 };
+
+/** The keys of a mark that name a file in the attachments folder. */
+export type MarkFileKey = 'poster' | 'icon' | 'image';
 
 /**
  * Every link the Document reads in a page, with where its address and words
@@ -1585,26 +1693,38 @@ export function pageLinks(markdown: string): PageLink[] {
     const place = token.meta.bavaAt as LinkPlace | undefined;
     const read = token.meta.image as ImageRead;
     out.push({ href: read.src, text: null, dest: back(place?.dest ?? null), label: null, html: false, cell: false, kind: 'media' });
-    const poster = markAttrs(token.type, token.meta.mark as MarkPair[] | undefined).poster as string | undefined;
-    if (poster === undefined) return;
-    out.push({ href: poster, text: null, dest: back(posterPlace(reading, token.meta.markLine as number | null, poster)), label: null, html: false, cell: false, kind: 'poster' });
+    markFiles(token, ['poster']);
+  };
+  const markFiles = (token: Token, keys: MarkFileKey[]) => {
+    const attrs = markAttrs(token.type, token.meta.mark as MarkPair[] | undefined);
+    for (const key of keys) {
+      const name = attrs[key] as string | undefined;
+      if (name === undefined) continue;
+      out.push({ href: name, text: null, dest: back(markFilePlace(reading, token.meta.markLine as number | null, key, name)), label: null, html: false, cell: false, kind: 'poster', key });
+    }
+  };
+  const card = (token: Token) => {
+    const place = token.meta.bavaAt as LinkPlace | undefined;
+    out.push({ href: token.meta.href, text: token.meta.text, dest: back(place?.dest ?? null), label: back(place?.label ?? null), html: false, cell: false, kind: 'link' });
+    markFiles(token, ['icon', 'image']);
   };
   for (const token of tokens) {
     if (token.type === 'media_image' || token.type === 'media_video') media(token);
+    else if (token.type === 'card_block') card(token);
     else walk([token]);
   }
   return out;
 }
 
-/** Where a mark's `poster=` key naming `name` is in the page, from the mark's line; null when it cannot be placed. */
-function posterPlace(reading: LinkReading, line: number | null, name: string): Span | null {
+/** Where a mark's `key=` naming `name` is in the page, from the mark's line; null when it cannot be placed. */
+function markFilePlace(reading: LinkReading, line: number | null, key: MarkFileKey, name: string): Span | null {
   if (line === null || line >= reading.lines.length) return null;
   const text = lineText(reading, line);
   const open = /<!--\s*bava:\s*/.exec(text);
   const close = text.lastIndexOf('-->');
   if (!open || close < 0) return null;
   const from = open.index + open[0].length;
-  const pair = readMark(text.slice(from, close)).find((p) => p.key === 'poster' && p.value === name);
+  const pair = readMark(text.slice(from, close)).find((p) => p.key === key && p.value === name);
   if (!pair) return null;
   // The pairs are read in order, so the first with this text is this one.
   let at = from;
@@ -1617,14 +1737,21 @@ function posterPlace(reading: LinkReading, line: number | null, name: string): S
   return null;
 }
 
-/** The file a mark's written `poster=` key names; null when it is not one. */
-export function posterOf(written: string): string | null {
+/** The file a mark's written `key=` names; null when it is not one. */
+export function markFileOf(written: string, key: MarkFileKey): string | null {
   const pairs = readMark(written);
-  return pairs.length === 1 && pairs[0].key === 'poster' && VALID.poster(pairs[0].value) ? (pairs[0].value as string) : null;
+  return pairs.length === 1 && pairs[0].key === key && VALID.poster(pairs[0].value) ? (pairs[0].value as string) : null;
 }
 
-/** A mark's `poster=` key naming a file: in quotes, unless it was written without and the name needs none. */
-export const posterKey = (name: string, quoted = true) => (quoted || /[\s"]|--/.test(name) ? `poster="${encodeValue(name)}"` : `poster=${name}`);
+/** A block's colours and unknown keys, as its mark reads them: what a card keeps of a line's mark, and gives back. */
+export function lineMark(extra: string | null): { color: string | null; background: string | null; extra: string | null } {
+  const { color, background, extra: rest } = markAttrs('paragraph_open', extra ? readMark(extra) : []);
+  return { color: (color as string | undefined) ?? null, background: (background as string | undefined) ?? null, extra: (rest as string | undefined) ?? null };
+}
+
+/** A mark's `key=` naming a file: in quotes, unless it was written without and the name needs none. */
+export const markFileKey = (key: MarkFileKey, name: string, quoted = true) =>
+  quoted || /[\s"]|--/.test(name) ? `${key}="${encodeValue(name)}"` : `${key}=${name}`;
 
 /**
  * The address a link's written address reads as, as the Document reads it:

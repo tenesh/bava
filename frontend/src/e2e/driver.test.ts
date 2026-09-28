@@ -114,6 +114,12 @@ describe('the smoke driver', () => {
     expect(clicked).toBe('start');
   });
 
+  it('pauses for as long as a pause step says, as a page loads', async () => {
+    const started = Date.now();
+    expect(await runScenario([{ do: 'pause', timeoutMs: 60 }], env())).toBe('');
+    expect(Date.now() - started).toBeGreaterThanOrEqual(55);
+  });
+
   it('sends menu commands and takes shots in order', async () => {
     const e = env();
     await runScenario([{ do: 'menu', target: 'file.save' }, { do: 'shot', name: 'saved' }], e);

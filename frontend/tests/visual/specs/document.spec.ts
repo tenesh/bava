@@ -327,6 +327,27 @@ for (const theme of THEMES) {
       await expect(page).toHaveScreenshot(shot('document', 'media-menu', 'video', theme));
     });
 
+    test('cards and an online video', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Media.md');
+      const cards = editor(page).locator('.card');
+      await expect(cards).toHaveCount(5);
+      await expect(cards.nth(0)).toHaveAttribute('data-state', 'ready');
+      await expect(cards.nth(0).locator('.card-meta')).toHaveText('242.2 KB');
+      await expect(cards.nth(4)).toHaveAttribute('data-state', 'missing');
+      // The online video is a placeholder: nothing of it is loaded.
+      const online = editor(page).locator('figure.media[data-kind="online"]');
+      await expect(online.locator('iframe')).toHaveCount(0);
+      await editor(page).getByRole('heading', { name: 'Cards' }).scrollIntoViewIfNeeded();
+      await expect(pane(page)).toHaveScreenshot(shot('document', 'cards', 'top', theme));
+      await online.scrollIntoViewIfNeeded();
+      await expect(pane(page)).toHaveScreenshot(shot('document', 'cards', 'online-video', theme));
+      await cards.nth(3).hover();
+      await page.getByRole('button', { name: 'Drag, or open the block menu' }).click();
+      await page.getByRole('menuitem', { name: 'Show as' }).click();
+      await expect(page.getByRole('menuitem', { name: 'Extended card' })).toBeVisible();
+      await expect(page).toHaveScreenshot(shot('document', 'card-menu', 'web', theme));
+    });
+
     test('a video keeps its player while the page is typed in elsewhere', async ({ page }) => {
       await openDocument(page, theme, 'Engineering', 'Engineering/Media.md');
       const video = editor(page).locator('figure.media[data-kind="video"] video');

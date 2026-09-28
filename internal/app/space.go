@@ -1,14 +1,18 @@
 package app
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
+	"net/url"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/tenesh/bava/internal/space"
+	"github.com/tenesh/bava/internal/web"
 )
 
 // SpaceService is a Space's file surface (docs/ipc.md, "SpaceService"): open
@@ -30,6 +34,8 @@ type SpaceServiceOptions struct {
 	// Folders learns each Space opened, so the page may be shown its images
 	// and videos. Nil allows nothing.
 	Folders *OpenedFolders
+	// Fetch reads a web page's details for a card; nil is web.Fetch.
+	Fetch func(ctx context.Context, address string, pictures bool) (web.Details, error)
 }
 
 // NewSpaceService constructs the service registered with the application.
@@ -325,4 +331,62 @@ func (s *SpaceService) Reveal(root, path string) Problem {
 
 func problem(err error) Problem {
 	return Problem{Error: err.Error(), Code: space.Code(err)}
+}
+
+// CardDetails are a web card's saved details: the page's title and
+// description, and its icon and picture as attachment names ("" when none).
+type CardDetails struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Icon        string `json:"icon"`
+	Image       string `json:"image"`
+	Error       string `json:"error"`
+}
+
+// FetchCard reads a web page's details for a card, when the user pastes its
+// link or asks for its details again. The icon and picture are saved in the
+// Space's attachments, named by the site; outside a Space (root "") they are
+// not kept.
+func (s *SpaceService) FetchCard(root, address string) CardDetails {
+	fetch := s.options.Fetch
+	if fetch == nil {
+		fetch = web.Fetch
+	}
+	// Outside a Space the pictures would not be kept: they are not asked for.
+	details, err := fetch(context.Background(), address, root != "")
+	if err != nil {
+		return CardDetails{Error: err.Error()}
+	}
+	out := CardDetails{Title: details.Title, Description: details.Description}
+	if root == "" {
+		return out
+	}
+	sp, err := space.Load(root)
+	if err != nil {
+		return CardDetails{Error: err.Error(), Title: out.Title, Description: out.Description}
+	}
+	site := siteName(address)
+	save := func(p *web.Picture, what string) string {
+		if p == nil {
+			return ""
+		}
+		name, err := sp.AttachData(site+" "+what+p.Ext, p.Data)
+		if err != nil {
+			return ""
+		}
+		return name
+	}
+	out.Icon = save(details.Icon, "icon")
+	out.Image = save(details.Image, "picture")
+	return out
+}
+
+// siteName is a site's name for its pictures' file names: its host, without
+// "www." or a port.
+func siteName(address string) string {
+	u, err := url.Parse(address)
+	if err != nil || u.Hostname() == "" {
+		return "site"
+	}
+	return strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.")
 }

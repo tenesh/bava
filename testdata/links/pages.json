@@ -428,5 +428,13 @@
     "name": "an image in a line of text is not read",
     "src": "See ![a](pic.png) here.\n\n![a](file.pdf)\n",
     "links": []
+  },
+  {
+    "name": "a card",
+    "src": "<!-- bava: card -->\n[Plan](Plan.md)\n\n> <!-- bava: card=extended -->\n> [Notes](<My notes.md>)\n",
+    "links": [
+      "Plan.md",
+      "<My notes.md>"
+    ]
   }
 ]

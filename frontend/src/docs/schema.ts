@@ -234,6 +234,30 @@ export const schema = new Schema({
     ...tables,
     image: media('image'),
     video: media('video'),
+    /**
+     * A link alone on its line shown as a card: its address, title and words,
+     * the line as the file wrote it (kept while it still reads the same), its
+     * look (`card` or `extended`), and a web card's saved details.
+     */
+    card: {
+      group: 'block',
+      atom: true,
+      selectable: true,
+      draggable: true,
+      attrs: {
+        href: { default: '' },
+        title: { default: null as string | null },
+        text: { default: '' },
+        written: { default: null as string | null },
+        look: { default: 'card' },
+        description: { default: null as string | null },
+        icon: { default: null as string | null },
+        image: { default: null as string | null },
+        extra: { default: null as string | null },
+      },
+      toDOM: (): DOMOutputSpec => ['div', { class: 'card' }],
+      leafText: (node) => node.attrs.text as string,
+    },
     /** A block Bava cannot edit yet, kept byte for byte. */
     kept: {
       group: 'block',

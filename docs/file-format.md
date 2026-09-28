@@ -168,7 +168,9 @@ A paragraph in red on yellow.
   longer folds headings, so it is kept as written, as any unknown key.
 - `wrap` and `caption="…"`: a code block's settings (below).
 - `width`, `ratio`, `align` and `caption="…"`: an image's or a video's
-  settings; `poster`, `loop` and `muted`: a video's (below).
+  settings; `poster`, `loop` and `muted`: a video file's (below).
+- `card` or `card=extended`, and a web card's `description="…"`,
+  `icon="<file>"` and `image="<file>"`: a link shown as a card (below).
 - `color=<swatch>` and `icon=<emoji>` on a note callout: a custom callout
   (below).
 - A value with spaces is quoted (`caption="Start the server"`). Inside the
@@ -453,6 +455,53 @@ image, its settings in the mark above.
 - Other apps show the image (and Obsidian plays the video; GitHub shows a
   video as a broken image); the settings show in Bava only. A video never
   plays by itself.
+
+**An online video** is the same form, at the video's page on YouTube
+(`youtube.com/watch?v=…`, `youtu.be/…`, `youtube.com/shorts/…`), Vimeo
+(`vimeo.com/<number>`) or Loom (`loom.com/share/<id>`):
+
+```markdown
+<!-- bava: width=large caption="The launch demo" -->
+![Launch demo](https://www.youtube.com/watch?v=abc123)
+```
+
+- It takes `width`, `ratio`, `align` and `caption`; without a `ratio` it is
+  drawn 16:9. `poster`, `loop` and `muted` are a video file's only, and kept
+  as written on an online one.
+- Until play is pressed Bava shows a placeholder and contacts no one; then
+  it loads the site's player: YouTube's from `youtube-nocookie.com`,
+  Vimeo's asked to keep no record of the viewer (`dnt=1`), and Loom's as
+  Loom serves it (it has no such setting).
+  Obsidian embeds the player; GitHub shows a broken image.
+- The page of any other site stays a kept image, as written.
+
+### Cards
+A link alone on its line, with `card` in the mark above, is a card: a file
+of the Space, or a page on the web, shown as a box that opens it.
+
+```markdown
+<!-- bava: card -->
+[Q3 report.pdf](.bava/attachments/Q3%20report.pdf)
+
+<!-- bava: card=extended description="How we ship each week." icon="example.com icon.png" image="example.com picture.png" -->
+[Release notes](https://example.com/notes)
+```
+
+- **`card`** is the simple card: an icon, the link's text, and the file's
+  size or the site's domain. **`card=extended`** adds the file's type and
+  date modified, or the web page's description and picture.
+- **A plain link** is the same line with no mark: switching a card to a link
+  removes it, and back adds it.
+- **The link's text** is the file's name, or the web page's title when the
+  card was made. The address is a link's (above), and follows moves and
+  renames as one does.
+- **A web card's details** are saved in the mark when the card is made (or
+  refreshed), so opening the page fetches nothing: `description="…"`, and
+  `icon` and `image`, each a picture's name in the attachments folder (as a
+  poster's). A file's size, type and date are read from the file, never
+  written.
+- A `card` key on anything but a link alone on its line is kept as written.
+- Other apps show a working link; the card shows in Bava only.
 
 ### Blocks kept as they are
 A block this version cannot edit is shown in the page, read-only, and written

@@ -58,6 +58,11 @@ Pasted images
   purego (github.com/ebitengine/purego): Apache-2.0
     https://github.com/ebitengine/purego
 
+Web card details
+  golang.org/x/net (html): BSD-3-Clause
+    Copyright 2009 The Go Authors
+    https://cs.opensource.google/go/x/net
+
 Icons
   Lucide (@lucide/svelte): ISC
     Copyright (c) 2026 Lucide Icons and Contributors

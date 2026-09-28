@@ -1,14 +1,17 @@
 package app_test
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
 
 	"github.com/tenesh/bava/internal/app"
+	"github.com/tenesh/bava/internal/web"
 )
 
 func spaceService(revealed *[2]string) *app.SpaceService {
@@ -266,5 +269,46 @@ func TestAttachDataWithNoNameIsAPastedImage(t *testing.T) {
 	got := s.Apply(root, app.Operation{Kind: "attachData", Data: base64.StdEncoding.EncodeToString([]byte("png"))})
 	if got.Error != "" || !regexp.MustCompile(`^Pasted image \d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.\d{2}\.png$`).MatchString(got.Name) {
 		t.Errorf("attachData = %+v", got)
+	}
+}
+
+func fetching(details web.Details, err error) *app.SpaceService {
+	return app.NewSpaceService(app.SpaceServiceOptions{Fetch: func(_ context.Context, address string, pictures bool) (web.Details, error) {
+		if !pictures {
+			details.Icon, details.Image = nil, nil
+		}
+		if address != "https://www.example.com/notes" {
+			return web.Details{}, errors.New("asked for " + address)
+		}
+		return details, err
+	}})
+}
+
+func TestFetchCardSavesTheSitesPicturesAsAttachments(t *testing.T) {
+	root := t.TempDir()
+	s := fetching(web.Details{Title: "Notes", Description: "Weekly.", Icon: &web.Picture{Data: []byte("i"), Ext: ".png"}, Image: &web.Picture{Data: []byte("p"), Ext: ".jpg"}}, nil)
+	s.Open(root)
+	got := s.FetchCard(root, "https://www.example.com/notes")
+	if got.Error != "" || got.Title != "Notes" || got.Description != "Weekly." || got.Icon != "example.com icon.png" || got.Image != "example.com picture.jpg" {
+		t.Fatalf("FetchCard = %+v", got)
+	}
+	for name, want := range map[string]string{got.Icon: "i", got.Image: "p"} {
+		if b, err := os.ReadFile(filepath.Join(root, ".bava", "attachments", name)); err != nil || string(b) != want {
+			t.Errorf("%s: %q, %v", name, b, err)
+		}
+	}
+}
+
+func TestFetchCardOutsideASpaceKeepsNoPictures(t *testing.T) {
+	s := fetching(web.Details{Title: "Notes", Icon: &web.Picture{Data: []byte("i"), Ext: ".png"}}, nil)
+	if got := s.FetchCard("", "https://www.example.com/notes"); got.Error != "" || got.Title != "Notes" || got.Icon != "" {
+		t.Errorf("FetchCard = %+v", got)
+	}
+}
+
+func TestFetchCardThatFailsSaysWhy(t *testing.T) {
+	s := fetching(web.Details{}, errors.New("offline"))
+	if got := s.FetchCard(t.TempDir(), "https://www.example.com/notes"); got.Error == "" {
+		t.Errorf("FetchCard = %+v", got)
 	}
 }

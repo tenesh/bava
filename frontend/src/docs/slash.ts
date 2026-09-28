@@ -15,7 +15,7 @@ import { tables } from './table';
 import { insertFootnote } from './footnotes';
 import { insertContents } from './contents';
 import { PICKER } from './emoji';
-import { MEDIA_PICKER } from './media';
+import { ADDRESS_ASK, MEDIA_PICKER } from './media';
 
 /** The `/` menu's groups, shown as labels in its one list. */
 export type SlashGroup = 'basic' | 'advanced' | 'inline';
@@ -47,9 +47,17 @@ const heading = (level: number): SlashItem => ({
 
 /** Asks the app for images or videos, which it adds at the caret. */
 const chooseMedia =
-  (kind: 'image' | 'video'): Command =>
+  (kind: 'image' | 'video' | 'file'): Command =>
   (state, dispatch) => {
     dispatch?.(state.tr.setMeta(MEDIA_PICKER, kind));
+    return true;
+  };
+
+/** Asks the app for a web address, which it puts in at the caret. */
+const askAddress =
+  (kind: 'weblink' | 'onlinevideo'): Command =>
+  (state, dispatch) => {
+    dispatch?.(state.tr.setMeta(ADDRESS_ASK, kind));
     return true;
   };
 
@@ -93,6 +101,9 @@ export const SLASH_ITEMS: SlashItem[] = [
   { id: 'contents', group: 'advanced', label: 'slash.contents', words: 'contents table toc outline index', run: insertContents },
   { id: 'image', group: 'advanced', label: 'slash.image', words: 'image picture photo screenshot media', run: chooseMedia('image') },
   { id: 'video', group: 'advanced', label: 'slash.video', words: 'video movie clip recording media', run: chooseMedia('video') },
+  { id: 'onlinevideo', group: 'advanced', label: 'slash.onlineVideo', words: 'online video youtube vimeo loom embed', run: askAddress('onlinevideo') },
+  { id: 'file', group: 'advanced', label: 'slash.file', words: 'file attachment pdf document upload card', run: chooseMedia('file') },
+  { id: 'weblink', group: 'advanced', label: 'slash.webLink', words: 'web link bookmark card url website', run: askAddress('weblink') },
   // Inline: put in the line itself.
   { id: 'inlineEquation', group: 'inline', label: 'slash.inlineEquation', words: 'inline equation math formula tex latex', run: math.insertInline },
   { id: 'footnote', group: 'inline', label: 'slash.footnote', words: 'footnote reference citation source', run: insertFootnote },

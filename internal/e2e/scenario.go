@@ -106,6 +106,10 @@ func check(step Step) error {
 		if step.Text == "" {
 			return fmt.Errorf("%q needs text", step.Do)
 		}
+	case "pause":
+		if step.TimeoutMs <= 0 {
+			return errors.New(`"pause" needs timeoutMs`)
+		}
 	case "shot":
 		if step.Name == "" {
 			return errors.New(`"shot" needs a name`)

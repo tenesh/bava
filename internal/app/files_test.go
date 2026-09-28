@@ -157,8 +157,12 @@ func TestChooseMediaAsksForImagesOrVideosAndReturnsEveryOneChosen(t *testing.T) 
 		t.Errorf("ChooseMedia = %+v", got)
 	}
 	s.ChooseMedia("video")
-	if len(asked) != 2 || asked[0] != "image" || asked[1] != "video" {
+	s.ChooseMedia("file")
+	if len(asked) != 3 || asked[0] != "image" || asked[1] != "video" || asked[2] != "file" {
 		t.Errorf("asked for %v", asked)
+	}
+	if any := s.ChooseMedia("file"); any.Error != "" || len(any.Paths) != 2 {
+		t.Errorf("any file: %+v", any)
 	}
 	if bad := s.ChooseMedia("pdf"); bad.Error == "" {
 		t.Error("a kind that is not image or video was asked for")
@@ -181,5 +185,91 @@ func TestFileRouteServesFilesThatCannotRunAsAPage(t *testing.T) {
 	rec := served(t, folders, root, "a.svg", nil)
 	if rec.Code != http.StatusOK || rec.Header().Get("X-Content-Type-Options") != "nosniff" || !strings.Contains(rec.Header().Get("Content-Security-Policy"), "sandbox") {
 		t.Errorf("served %d with %v", rec.Code, rec.Header())
+	}
+}
+
+func TestFileDetailsAreReadFromTheFile(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, ".bava/attachments/Q3 report.pdf", "12345")
+	folders := app.NewOpenedFolders()
+	folders.Allow(root)
+	s := app.NewFileService(app.FileServiceOptions{Folders: folders})
+	got := s.FileDetails(root, ".bava/attachments/Q3 report.pdf")
+	if got.Error != "" || !got.Exists || got.Size != 5 || got.Modified == "" {
+		t.Errorf("FileDetails = %+v", got)
+	}
+	if gone := s.FileDetails(root, "gone.pdf"); gone.Error != "" || gone.Exists {
+		t.Errorf("a missing file = %+v", gone)
+	}
+	for _, rel := range []string{"../x.pdf", `a\..\..\x.pdf`, "/etc/passwd"} {
+		if bad := s.FileDetails(root, rel); bad.Error == "" {
+			t.Errorf("%s: %+v", rel, bad)
+		}
+	}
+	if other := s.FileDetails(t.TempDir(), "x.pdf"); other.Error == "" {
+		t.Error("a folder never opened was read")
+	}
+}
+
+func TestOpenFileOpensADocumentButOnlyShowsAProgram(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"notes.pdf", "setup.exe", "run.sh", "Tool.app/x", "folder/y", "run", "page.hta", "script.js", "setup.exe.", "flow.workflow", "Tool.app/Contents/MacOS/Tool"} {
+		writeFile(t, root, name, "x")
+	}
+	folders := app.NewOpenedFolders()
+	folders.Allow(root)
+	var opened, revealed []string
+	s := app.NewFileService(app.FileServiceOptions{
+		Folders: folders,
+		Open:    func(path string) error { opened = append(opened, path); return nil },
+		Reveal:  func(path string) error { revealed = append(revealed, path); return nil },
+	})
+	programs := []string{"setup.exe", "run.sh", "Tool.app", "folder", "run", "page.hta", "script.js", "setup.exe.", "flow.workflow", "Tool.app/Contents/MacOS/Tool"}
+	for _, rel := range append([]string{"notes.pdf"}, programs...) {
+		if err := s.OpenFile(root, rel); err != "" {
+			t.Errorf("%s: %s", rel, err)
+		}
+	}
+	if len(opened) != 1 || opened[0] != filepath.Join(root, "notes.pdf") {
+		t.Errorf("opened %v", opened)
+	}
+	if len(revealed) != len(programs) {
+		t.Errorf("revealed %v", revealed)
+	}
+	if err := s.OpenFile(t.TempDir(), "notes.pdf"); err == "" {
+		t.Error("a file outside the opened folders was opened")
+	}
+}
+
+// A folder linked from inside the opened one leads out of it: nothing
+// through it is opened or read.
+func TestOpenFileAndFileDetailsNeverGoThroughALink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("links need privileges on Windows")
+	}
+	root, elsewhere := t.TempDir(), t.TempDir()
+	writeFile(t, elsewhere, "doc.pdf", "outside")
+	if err := os.Symlink(elsewhere, filepath.Join(root, "linked")); err != nil {
+		t.Fatal(err)
+	}
+	folders := app.NewOpenedFolders()
+	folders.Allow(root)
+	var opened []string
+	s := app.NewFileService(app.FileServiceOptions{Folders: folders, Open: func(p string) error { opened = append(opened, p); return nil }, Reveal: func(string) error { return nil }})
+	if err := s.OpenFile(root, "linked/doc.pdf"); err == "" || len(opened) != 0 {
+		t.Errorf("opened through a link: %q %v", err, opened)
+	}
+	if got := s.FileDetails(root, "linked/doc.pdf"); got.Exists || got.Error == "" {
+		t.Errorf("read through a link: %+v", got)
+	}
+}
+
+func TestFileRouteServesASitesIcon(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, ".bava/attachments/example.com icon.ico", "ico")
+	folders := app.NewOpenedFolders()
+	folders.Allow(root)
+	if rec := served(t, folders, root, ".bava/attachments/example.com icon.ico", nil); rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "image/x-icon" {
+		t.Errorf("served %d %q", rec.Code, rec.Header().Get("Content-Type"))
 	}
 }

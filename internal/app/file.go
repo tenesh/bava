@@ -33,6 +33,10 @@ type FileServiceOptions struct {
 	// one: the smoke test build takes its answers from the scenario. Nil
 	// shows the native picker.
 	ChooseFiles func(kind string) ([]string, error)
+	// Open opens a file in its own app; nil uses the platform's.
+	Open func(path string) error
+	// Reveal shows a file in its folder; nil uses the platform's file manager.
+	Reveal func(path string) error
 }
 
 // NewFileService constructs the service registered with the application.
@@ -205,10 +209,13 @@ func (s *FileService) ChooseFileToSave(suggestedName string) DialogResult {
 var mediaFilters = map[string]struct{ name, pattern string }{
 	"image": {"Images", "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.svg"},
 	"video": {"Videos", "*.mp4;*.webm;*.mov"},
+	// Any file, shown in the page as a card.
+	"file": {"Files", ""},
 }
 
-// ChooseMedia shows the native open dialog for images or videos ("image" or
-// "video"), several at once. Cancelling returns no paths and no error.
+// ChooseMedia shows the native open dialog for images, videos or any file
+// ("image", "video" or "file"), several at once. Cancelling returns no paths
+// and no error.
 func (s *FileService) ChooseMedia(kind string) PathsResult {
 	filter, ok := mediaFilters[kind]
 	if !ok {
@@ -223,7 +230,9 @@ func (s *FileService) ChooseMedia(kind string) PathsResult {
 		dialog.SetTitle(filter.name)
 		dialog.CanChooseFiles(true)
 		dialog.CanChooseDirectories(false)
-		dialog.AddFilter(filter.name, filter.pattern)
+		if filter.pattern != "" {
+			dialog.AddFilter(filter.name, filter.pattern)
+		}
 		paths, err = dialog.PromptForMultipleSelection()
 	}
 	if err != nil {

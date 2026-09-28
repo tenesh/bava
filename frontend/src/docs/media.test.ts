@@ -200,3 +200,56 @@ describe('a video in the page', () => {
     expect(figure.textContent).toContain("This video can't play here");
   });
 });
+
+describe('an online video in the page', () => {
+  const page = '<!-- bava: caption="Demo" -->\n![Launch demo](https://www.youtube.com/watch?v=abc123)\n';
+
+  it('is a placeholder that contacts no one until play is pressed', async () => {
+    const { host, probeFile } = open(page);
+    const figure = host.querySelector('figure.media')!;
+    expect(figure.getAttribute('data-kind')).toBe('online');
+    expect(figure.getAttribute('data-ratio')).toBe('16:9');
+    expect(figure.textContent).toContain('YouTube');
+    expect(figure.querySelector('iframe, video, img')).toBeNull();
+    for (const element of figure.querySelectorAll('[src]')) expect(element.getAttribute('src')).toBe('');
+    await settle();
+    expect(probeFile).not.toHaveBeenCalled();
+  });
+
+  it("puts the site's player in its place when play is pressed, playing at once", () => {
+    const { host } = open(page);
+    const figure = host.querySelector('figure.media')!;
+    figure.querySelector<HTMLButtonElement>('button.media-play')!.click();
+    const frame = figure.querySelector('iframe')!;
+    expect(frame.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/abc123?autoplay=1');
+    expect(frame.getAttribute('allow')).toContain('autoplay');
+    expect(frame.getAttribute('sandbox')).toBe('allow-scripts allow-same-origin allow-presentation allow-popups');
+    expect(frame.getAttribute('referrerpolicy')).toBe('strict-origin-when-cross-origin');
+    expect(frame.getAttribute('title')).toBe('Launch demo');
+  });
+
+  it('keeps its player while the page is edited and its settings change', () => {
+    const { host, view } = open(`Before\n\n${page}`);
+    host.querySelector<HTMLButtonElement>('button.media-play')!.click();
+    const frame = host.querySelector('iframe');
+    view.dispatch(view.state.tr.insertText('typed ', 1));
+    let at = -1;
+    view.state.doc.forEach((node, offset) => {
+      if (node.type.name === 'video') at = offset;
+    });
+    view.dispatch(view.state.tr.setNodeMarkup(at, null, { ...view.state.doc.nodeAt(at)!.attrs, width: 'small' }));
+    expect(host.querySelector('iframe')).toBe(frame);
+  });
+
+  it('opens in the browser instead, from a site that will not play inside Bava', () => {
+    const onOpenFile = vi.fn();
+    const host = document.createElement('div');
+    document.body.append(host);
+    editor = new DocEditor();
+    editor.mount(host, { onChange: vi.fn(), onOpenFile, playsInPage: () => false });
+    editor.setPage(page);
+    host.querySelector<HTMLButtonElement>('button.media-play')!.click();
+    expect(host.querySelector('iframe')).toBeNull();
+    expect(onOpenFile).toHaveBeenCalledWith('https://www.youtube.com/watch?v=abc123');
+  });
+});

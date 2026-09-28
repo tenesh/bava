@@ -107,6 +107,17 @@ component per block.
 - **Its address follows moves like a link's** (`pageLinks` reports it with
   `kind: 'media'`, a poster with `kind: 'poster'`), and its words never
   change with it.
+- **An online video contacts no one until play is pressed** (`onlineView`):
+  its placeholder loads nothing, and play puts the site's player in a
+  sandboxed frame. Its ids are checked to letters, digits, `-` and `_` before
+  they reach the player's address (`online-video.ts`).
+- **A web card's details are fetched once**, on the paste of its link or
+  Refresh details, in Go (`internal/web`, bounded, no cookies), and saved:
+  drawing a card asks the web for nothing. A file card reads its size and
+  date from the file each time, and never writes them.
+- **A card's click opens; a program never runs.** `FileService.OpenFile`
+  opens only a document type on its list and shows anything else in its
+  folder: a list of what may open, never of what may not.
 - **Tests do not trust jsdom for events on a node view.** jsdom lays nothing
   out, so ProseMirror never reaches `stopEvent` or `ignoreMutation` from a
   dispatched event: call them on the node view itself.

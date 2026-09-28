@@ -10,6 +10,7 @@ function shown(markdown: string): string[] {
   parsePage(markdown).doc.descendants((node) => {
     for (const mark of node.marks) if (mark.type.name === 'link') out.push(mark.attrs.href as string);
     if (node.type.name === 'image' || node.type.name === 'video') out.push(node.attrs.src as string);
+    if (node.type.name === 'card') out.push(node.attrs.href as string);
   });
   return out;
 }
@@ -249,5 +250,21 @@ describe('images and videos after a rename', () => {
     expect(onlyLinksChanged('Page.md', before, '<!-- bava: width=small -->\n![A](.bava/attachments/b.png)\n', moves)).toBe(true);
     expect(onlyLinksChanged('Page.md', before, '<!-- bava: width=large -->\n![A](.bava/attachments/b.png)\n', moves)).toBe(false);
     expect(onlyLinksChanged('Page.md', before, '<!-- bava: width=small -->\n![B](.bava/attachments/b.png)\n', moves)).toBe(false);
+  });
+});
+
+describe('cards after a rename', () => {
+  it('follow a page or file that moved, and their words where they are its old name', () => {
+    const text = '<!-- bava: card -->\n[Launch plan](Marketing/Launch%20plan.md)\n';
+    expect(rewritePageLinks('Roadmap.md', text, [{ from: 'Marketing/Launch plan.md', to: 'Marketing/Q4 launch.md' }])?.text).toBe(
+      '<!-- bava: card -->\n[Q4 launch](Marketing/Q4%20launch.md)\n',
+    );
+  });
+
+  it('follow an attachment renamed, in their icon and picture', () => {
+    const text = '<!-- bava: card=extended icon="a.png" image=a.png -->\n[Site](https://example.com)\n';
+    expect(rewritePageLinks('Page.md', text, [{ from: '.bava/attachments/a.png', to: '.bava/attachments/b.png' }])?.text).toBe(
+      '<!-- bava: card=extended icon="b.png" image=b.png -->\n[Site](https://example.com)\n',
+    );
   });
 });

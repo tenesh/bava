@@ -253,6 +253,16 @@ describe("the open page's images and videos after a rename or move", () => {
     expect(editor!.markdown()).toBe(page);
   });
 
+  it('carry cards along: address, words that were the old name, icon and picture', () => {
+    const page = '<!-- bava: card=extended icon="a.png" -->\n[Launch plan](Launch%20plan.md)\n';
+    open(page, 'Page.md');
+    editor!.followMoves('Page.md', [
+      { from: 'Launch plan.md', to: 'Q4 launch.md' },
+      { from: '.bava/attachments/a.png', to: '.bava/attachments/b.png' },
+    ]);
+    expect(editor!.markdown()).toBe('<!-- bava: card=extended icon="b.png" -->\n[Q4 launch](Q4%20launch.md)\n');
+  });
+
   it('keep reaching their files when the page moved', () => {
     open('![Logo](.bava/attachments/logo.png)\n', 'Page.md');
     editor!.followMoves('Page.md', [{ from: 'Page.md', to: 'Notes/Page.md' }]);

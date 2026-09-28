@@ -51,8 +51,9 @@ export function ChooseFileToSave(suggestedName: string): $CancellablePromise<$mo
 }
 
 /**
- * ChooseMedia shows the native open dialog for images or videos ("image" or
- * "video"), several at once. Cancelling returns no paths and no error.
+ * ChooseMedia shows the native open dialog for images, videos or any file
+ * ("image", "video" or "file"), several at once. Cancelling returns no paths
+ * and no error.
  */
 export function ChooseMedia(kind: string): $CancellablePromise<$models.PathsResult> {
     return $Call.ByID(702476426, kind);
@@ -68,10 +69,27 @@ export function ClipboardImage(): $CancellablePromise<string> {
 }
 
 /**
+ * FileDetails reads a file card's details from the file, inside a folder the
+ * user opened. A file that is not there is no error: its card says so.
+ */
+export function FileDetails(root: string, rel: string): $CancellablePromise<$models.FileDetailsResult> {
+    return $Call.ByID(2439111753, root, rel);
+}
+
+/**
  * Open reads and parses a file.
  */
 export function Open(path: string): $CancellablePromise<$models.OpenResult> {
     return $Call.ByID(1348112483, path);
+}
+
+/**
+ * OpenFile opens a document of a folder the user opened in its own app, as
+ * a file card's click does; anything else is shown in its folder (see
+ * documents). A link on the way to it is refused. An error is its message.
+ */
+export function OpenFile(root: string, rel: string): $CancellablePromise<string> {
+    return $Call.ByID(2294496701, root, rel);
 }
 
 /**

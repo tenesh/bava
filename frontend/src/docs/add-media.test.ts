@@ -33,13 +33,16 @@ describe('adding images and videos to a page', () => {
     expect(d.insert).toHaveBeenCalledWith(['logo.png', 'demo.mp4']);
   });
 
-  it('leaves out files that are not images or videos, and does nothing when none is', async () => {
+  it('adds any other file too, which the page shows as a card', async () => {
     const d = deps();
     await addMedia([{ path: '/Desktop/notes.pdf' }, { path: '/Desktop/logo.PNG' }], d);
-    expect(d.attach).toHaveBeenCalledTimes(1);
-    expect(d.insert).toHaveBeenCalledWith(['logo.PNG']);
+    expect(d.attach).toHaveBeenCalledTimes(2);
+    expect(d.insert).toHaveBeenCalledWith(['notes.pdf', 'logo.PNG']);
+  });
+
+  it('adds nothing when given nothing', async () => {
     const none = deps({ inSpace: () => false });
-    await addMedia([{ path: '/Desktop/notes.pdf' }], none);
+    await addMedia([], none);
     expect(none.offerSpace).not.toHaveBeenCalled();
     expect(none.insert).not.toHaveBeenCalled();
   });
@@ -77,7 +80,7 @@ describe('the / menu', () => {
     editor.mount(host, { onChange: vi.fn(), onChooseMedia });
     editor.setPage('Text\n');
     const view = editor.view!;
-    for (const kind of ['image', 'video']) {
+    for (const kind of ['image', 'video', 'file']) {
       view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)).insertText(' /'));
       editor.chooseSlash(kind);
       expect(onChooseMedia).toHaveBeenLastCalledWith(kind);
@@ -159,6 +162,13 @@ describe('media blocks going into the page', () => {
     caretAfter('Text');
     editor!.insertMedia(['a.png']);
     expect(editor!.markdown()).toBe('Text\n\n![a](../.bava/attachments/a.png)\n');
+  });
+
+  it('are cards for files that are not images or videos', () => {
+    open('Text\n');
+    caretAfter('Text');
+    editor!.insertMedia(['Q3 report.pdf']);
+    expect(editor!.markdown()).toBe('Text\n\n<!-- bava: card -->\n[Q3 report.pdf](.bava/attachments/Q3%20report.pdf)\n');
   });
 
   it('go where they were dropped: between blocks, never inside a line', () => {

@@ -61,6 +61,11 @@
           event.preventDefault();
           onCancel();
         }
+        // Applied here as well as by the form: a key sent by a script submits nothing.
+        if (event.key === 'Enter' && !event.isComposing) {
+          event.preventDefault();
+          onApply(href);
+        }
       }}
     />
     {#if removeLabel}

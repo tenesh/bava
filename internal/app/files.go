@@ -54,7 +54,7 @@ const FileRoutePrefix = "/bava-file/"
 // mediaTypes are the files the route serves, by extension: images and videos.
 var mediaTypes = map[string]string{
 	".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
-	".webp": "image/webp", ".svg": "image/svg+xml",
+	".webp": "image/webp", ".svg": "image/svg+xml", ".ico": "image/x-icon",
 	".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime",
 }
 
@@ -128,16 +128,28 @@ func servable(folders *OpenedFolders, root, rel string) (string, string, error) 
 	if !ok {
 		return "", "", errors.New("not served")
 	}
-	// No part of the way may be a link: one could lead out of the folder.
-	at := filepath.Clean(root)
-	for _, part := range parts {
-		at = filepath.Join(at, part)
-		info, err := os.Lstat(at)
-		if err != nil || info.Mode()&os.ModeSymlink != 0 {
-			return "", "", errors.New("not served")
-		}
+	if _, err := noLinks(root, clean); err != nil {
+		return "", "", errors.New("not served")
 	}
 	return filepath.FromSlash(clean), kind, nil
+}
+
+// noLinks is the file at clean (a cleaned, relative, slash-separated path)
+// inside root, when no part of the way to it is a link: one could lead out
+// of the folder.
+func noLinks(root, clean string) (string, error) {
+	at := filepath.Clean(root)
+	for _, part := range strings.Split(clean, "/") {
+		at = filepath.Join(at, part)
+		info, err := os.Lstat(at)
+		if err != nil {
+			return "", err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return "", errors.New("the way to it is a link")
+		}
+	}
+	return at, nil
 }
 
 // ReadClipboardImage is the clipboard's image as PNG, whatever the copying
@@ -154,4 +166,98 @@ func ReadClipboardImage() []byte {
 		return nil
 	}
 	return data
+}
+
+// inOpened is the file at rel inside root, a folder the user opened; an
+// error for anywhere else. As the file route, it refuses \ and : in rel.
+func inOpened(folders *OpenedFolders, root, rel string) (string, error) {
+	if !folders.Allowed(root) || rel == "" || path.IsAbs(rel) || filepath.IsAbs(rel) || strings.ContainsAny(rel, `\:`) {
+		return "", errors.New("not a file in a folder you opened")
+	}
+	clean := path.Clean(rel)
+	if clean == ".." || strings.HasPrefix(clean, "../") {
+		return "", errors.New("not a file in a folder you opened")
+	}
+	return clean, nil
+}
+
+// FileDetailsResult is what a file card shows of a file: whether it is
+// there, its size in bytes, and when it was last changed (RFC 3339).
+type FileDetailsResult struct {
+	Exists   bool   `json:"exists"`
+	Size     int64  `json:"size"`
+	Modified string `json:"modified"`
+	Error    string `json:"error"`
+}
+
+// FileDetails reads a file card's details from the file, inside a folder the
+// user opened. A file that is not there is no error: its card says so.
+func (s *FileService) FileDetails(root, rel string) FileDetailsResult {
+	clean, err := inOpened(s.options.Folders, root, rel)
+	if err != nil {
+		return FileDetailsResult{Error: err.Error()}
+	}
+	full, err := noLinks(root, clean)
+	if errors.Is(err, os.ErrNotExist) {
+		return FileDetailsResult{}
+	}
+	if err != nil {
+		return FileDetailsResult{Error: err.Error()}
+	}
+	info, err := os.Lstat(full)
+	if err != nil {
+		return FileDetailsResult{Error: err.Error()}
+	}
+	return FileDetailsResult{Exists: true, Size: info.Size(), Modified: info.ModTime().UTC().Format(time.RFC3339)}
+}
+
+// documents are the files a click opens in their own app, by type: things
+// to read, look at or listen to. Anything else (a program, a script, a file
+// with no type, one whose name ends in a dot or a space) is shown in its
+// folder instead, so one click never runs code. A list of what may open,
+// never of what may not: a missed program type is shown, not run.
+var documents = map[string]bool{
+	".pdf": true, ".txt": true, ".md": true, ".rtf": true, ".doc": true, ".docx": true, ".odt": true, ".pages": true,
+	".csv": true, ".tsv": true, ".xls": true, ".xlsx": true, ".ods": true, ".numbers": true,
+	".ppt": true, ".pptx": true, ".odp": true, ".key": true,
+	".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".webp": true, ".heic": true, ".tif": true, ".tiff": true, ".bmp": true,
+	".mp3": true, ".wav": true, ".m4a": true, ".aac": true, ".flac": true, ".ogg": true,
+	".mp4": true, ".mov": true, ".webm": true, ".mkv": true, ".avi": true,
+	".zip": true,
+}
+
+// OpenFile opens a document of a folder the user opened in its own app, as
+// a file card's click does; anything else is shown in its folder (see
+// documents). A link on the way to it is refused. An error is its message.
+func (s *FileService) OpenFile(root, rel string) string {
+	clean, err := inOpened(s.options.Folders, root, rel)
+	if err != nil {
+		return err.Error()
+	}
+	full, err := noLinks(root, clean)
+	if err != nil {
+		return err.Error()
+	}
+	info, err := os.Lstat(full)
+	if err != nil {
+		return err.Error()
+	}
+	open, reveal := s.options.Open, s.options.Reveal
+	if open == nil {
+		open = func(path string) error { return application.Get().Browser.OpenFile(path) }
+	}
+	if reveal == nil {
+		reveal = func(path string) error { return application.Get().Env.OpenFileManager(path, true) }
+	}
+	name := filepath.Base(full)
+	plain := strings.TrimRight(name, ". ") == name
+	if !info.Mode().IsRegular() || !plain || !documents[strings.ToLower(filepath.Ext(name))] {
+		err = reveal(full)
+	} else {
+		err = open(full)
+	}
+	if err != nil {
+		return err.Error()
+	}
+	return ""
 }

@@ -17,7 +17,9 @@ export {
 };
 
 export type {
+    CardDetails,
     DialogResult,
+    FileDetailsResult,
     IndexPage,
     LogEntry,
     Notice,

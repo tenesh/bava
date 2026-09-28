@@ -1,10 +1,9 @@
 /**
- * Adding images and videos to a page, however they come: pasted, dropped or
- * picked. Each is copied into the Space's attachments, then all go into the
- * page together. A page opened on its own first offers to open its folder as
- * a Space; declined, nothing is added.
+ * Adding files to a page, however they come: pasted, dropped or picked. Each
+ * is copied into the Space's attachments, then all go into the page together
+ * (an image or a video shown, any other file as a card). A page opened on its
+ * own first offers to open its folder as a Space; declined, nothing is added.
  */
-import { mediaKind } from './markdown';
 
 /** A file on disk, or bytes with no name (a pasted image, in base64). */
 export type MediaFile = { path: string } | { data: string };
@@ -21,13 +20,12 @@ export type AddMediaDeps = {
   notify: (message: string) => void;
 };
 
-/** Adds the images and videos among `files`; anything else is left out. */
+/** Adds `files` to the page. */
 export async function addMedia(files: MediaFile[], deps: AddMediaDeps): Promise<void> {
-  const media = files.filter((file) => !('path' in file) || mediaKind(file.path.replace(/\\/g, '/')) !== null);
-  if (media.length === 0) return;
+  if (files.length === 0) return;
   if (!deps.inSpace() && !(await deps.offerSpace())) return;
   const names: string[] = [];
-  for (const file of media) {
+  for (const file of files) {
     const result = await deps.attach(file);
     if ('error' in result) deps.notify(result.error);
     else names.push(result.name);

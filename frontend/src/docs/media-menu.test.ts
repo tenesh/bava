@@ -4,7 +4,7 @@ import { NodeSelection } from 'prosemirror-state';
 import type { MenuNode } from '../canvas/context-menu';
 import { DocEditor } from './editor';
 import { commands } from './commands';
-import { mediaMenuItems, mediaSetting, posterName } from './media-menu';
+import { cardMenuItems, mediaMenuItems, mediaSetting, posterName } from './media-menu';
 
 /** Every item's id, submenus opened. */
 const ids = (items: MenuNode[]): string[] => items.flatMap((item) => (item.kind === 'item' ? [item.id] : item.kind === 'submenu' ? [item.id, ...ids(item.items)] : []));
@@ -37,6 +37,24 @@ describe("the media's menu", () => {
     const got = ids(mediaMenuItems('video', { loop: false, muted: false, poster: null }, false, false));
     for (const id of ['m:replace', 'm:rename', 'm:reveal', 'm:poster']) expect(got, id).not.toContain(id);
     expect(got).toContain('m:set:loop');
+  });
+
+  it('offers an online video its shape, a caption and the browser, and nothing of a file', () => {
+    const got = ids(mediaMenuItems('video', { loop: false, muted: false, poster: null }, false, true, true, true));
+    for (const id of ['m:width', 'm:ratio', 'm:align', 'm:caption', 'm:open']) expect(got, id).toContain(id);
+    for (const id of ['m:set:loop', 'm:set:muted', 'm:poster', 'm:replace', 'm:rename', 'm:reveal']) expect(got, id).not.toContain(id);
+  });
+
+  it("offers a file card's looks, and its file's replace, rename and show", () => {
+    const got = ids(cardMenuItems({ web: false, attachment: true, inSpace: true }));
+    for (const id of ['c:look', 'c:look:link', 'c:look:card', 'c:look:extended', 'c:replace', 'c:rename', 'c:reveal']) expect(got, id).toContain(id);
+    expect(got).not.toContain('c:refresh');
+  });
+
+  it("offers a web card's looks and a refresh of its details, and nothing of a file", () => {
+    const got = ids(cardMenuItems({ web: true, attachment: false, inSpace: true }));
+    for (const id of ['c:look:link', 'c:look:card', 'c:refresh']) expect(got, id).toContain(id);
+    for (const id of ['c:replace', 'c:rename', 'c:reveal']) expect(got, id).not.toContain(id);
   });
 
   it('names a video frame kept as its poster after the video', () => {

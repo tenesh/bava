@@ -12,7 +12,7 @@ import 'prosemirror-view/style/prosemirror.css';
 import 'prosemirror-gapcursor/style/gapcursor.css';
 import { dropCursor } from 'prosemirror-dropcursor';
 import { gapCursor } from 'prosemirror-gapcursor';
-import { history, redo, undo } from 'prosemirror-history';
+import { closeHistory, history, redo, undo } from 'prosemirror-history';
 import { selectAll, deleteSelection } from 'prosemirror-commands';
 import { Fragment, Slice, type Mark } from 'prosemirror-model';
 import type { Node } from 'prosemirror-model';
@@ -21,7 +21,7 @@ import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
 import { t } from '../i18n/t';
 import { countText } from '../shell/status-context';
 import { keys } from './keymap';
-import { parseBody, parsePage, writePage, type FrontMatter, type PageSettings } from './markdown';
+import { lineMark, mediaKind, parseBody, parsePage, writePage, type FrontMatter, type PageSettings } from './markdown';
 import { shortcuts } from './rules';
 import { dropPosition } from './handle';
 import { commands, currentKind, topBlock } from './commands';
@@ -40,7 +40,9 @@ import { chooseMention, mentionKey, mentionPlugin, type MentionInfo, type PageRe
 import { linkAt, missingLinksPlugin } from './link-view';
 import { addBlock, endLinePlugin, endsWithALine, textWithoutEndLine } from './lines';
 import { posterAfter } from './page-links';
-import { attachmentBlock, MEDIA_PICKER, mediaView, probeFile, type MediaPlace } from './media';
+import { ADDRESS_ASK, attachmentBlock, MEDIA_PICKER, mediaView, probeFile, type MediaPlace } from './media';
+import { cardView, type FileDetails } from './card';
+import { onlineVideo } from './online-video';
 import { dropPoint } from 'prosemirror-transform';
 import { copyHeadingLink, linkLabel, linkTo, missingTarget, pastedHeadingLink, relinkCandidate, resolveLink, retarget, type Move } from './links';
 import { dateAttrs } from './dates';
@@ -50,9 +52,19 @@ export type DocEditorOptions = {
   /** Called after every change the user makes; never for loading a page. */
   onChange: () => void;
   /** `/` Image or Video: the app asks for files of that kind, and adds them at the caret. */
-  onChooseMedia?: (kind: 'image' | 'video') => void;
+  onChooseMedia?: (kind: 'image' | 'video' | 'file') => void;
   /** A paste with no text: the app looks for an image on the clipboard. */
   onPasteImage?: () => void;
+  /** A web card's details, fetched when its link is pasted; null when they could not be. */
+  fetchCard?: (address: string) => Promise<{ title: string; description: string; icon: string; image: string } | null>;
+  /** `/` Web link or Online video: the app asks for an address, then puts it in (`insertAddress`). */
+  onAskAddress?: (kind: 'weblink' | 'onlinevideo', at: { left: number; top: number; bottom: number }) => void;
+  /** Whether a site's videos play inside Bava's window; by default they all do. */
+  playsInPage?: (provider: 'YouTube' | 'Vimeo' | 'Loom') => boolean;
+  /** A card clicked, or an online video that plays in the browser: the app opens what it reaches (its address as written in the page). */
+  onOpenFile?: (href: string) => void;
+  /** A file's size and date, for its card, by the folder the user opened and its path there. */
+  fileDetails?: (root: string, path: string) => Promise<FileDetails>;
   /** Whether the file route has a file; asked for media that did not load. Defaults to asking the route. */
   probeFile?: (url: string) => Promise<boolean>;
   /** ⌘K: the app asks for a link. */
@@ -112,6 +124,12 @@ function cellAt(view: EditorView, target: EventTarget | null): number | null {
     if (type === schema.nodes.table_cell || type === schema.nodes.table_header) return $inside.before(d);
   }
   return null;
+}
+
+/** Whether the caret is in a table cell, which holds one line of text and no blocks. */
+function isInTableCell(state: EditorState): boolean {
+  const { $from } = state.selection;
+  return $from.depth > 1 && ($from.node(-1).type === schema.nodes.table_cell || $from.node(-1).type === schema.nodes.table_header);
 }
 
 /** Whether the caret is in code, where pasted tabs are code and never table cells. */
@@ -223,6 +241,13 @@ export class DocEditor {
         math_inline: (node, view, getPos) => mathView(node, view, getPos, (pos, at) => this.#options?.onEquation?.(pos, at)),
         image: (node, view, getPos) => mediaView(node, view, getPos, this.#mediaContext()),
         video: (node, view, getPos) => mediaView(node, view, getPos, this.#mediaContext()),
+        card: (node, view, getPos) =>
+          cardView(node, view, getPos, {
+            ...this.#mediaContext(),
+            details: (root, path) => this.#options?.fileDetails?.(root, path) ?? Promise.resolve({ exists: true, size: 0, modified: '', error: '' }),
+            open: (href) => this.#options?.onOpenFile?.(href),
+            relink: (pos, href) => this.setMediaAttrs(pos, { href }),
+          }),
         code_block: (node, view, getPos) =>
           codeBlockView(node, view, getPos, {
             onCopy: (text) => this.#options?.onCopy?.(text),
@@ -239,6 +264,7 @@ export class DocEditor {
           return true;
         }
         if (!this.locked && this.#pasteHeadingLink(event.clipboardData?.getData('text/plain') ?? '')) return true;
+        if (!this.locked && this.#pasteAddress(event.clipboardData?.getData('text/plain') ?? '')) return true;
         const cells = inCodeAt(view.state) ? null : readCells(event.clipboardData?.getData('text/plain') ?? '');
         if (!cells || this.locked) return false;
         pasteCells(cells)(view.state, view.dispatch);
@@ -249,6 +275,11 @@ export class DocEditor {
       handleKeyDown: (view, event) => {
         const { selection } = view.state;
         if (event.key !== 'Enter' || event.shiftKey || event.metaKey || event.ctrlKey) return false;
+        // Enter on a selected card opens it, as a click does.
+        if (!event.altKey && selection instanceof NodeSelection && selection.node.type === schema.nodes.card) {
+          this.#options?.onOpenFile?.(selection.node.attrs.href as string);
+          return true;
+        }
         if (!event.altKey && selection instanceof NodeSelection && selection.node.type === schema.nodes.date) {
           this.#openDate(selection.from);
           return true;
@@ -371,6 +402,7 @@ export class DocEditor {
     if (tr.docChanged) this.#options?.onChange();
     if (tr.getMeta(PICKER)) this.#options?.onEmojiPicker?.(this.#caretAt());
     if (tr.getMeta(MEDIA_PICKER)) this.#options?.onChooseMedia?.(tr.getMeta(MEDIA_PICKER));
+    if (tr.getMeta(ADDRESS_ASK)) this.#options?.onAskAddress?.(tr.getMeta(ADDRESS_ASK), this.#caretAt());
     if (tr.selectionSet || tr.docChanged) this.#options?.onSelection?.();
     const card = this.#card;
     const { from, to } = view.state.selection;
@@ -439,8 +471,16 @@ export class DocEditor {
       return false;
     });
     const tr = view.state.tr;
-    // Media blocks keep their words; their address and poster follow.
+    // Media blocks keep their words; their address and poster follow. A card
+    // follows as a link does, its pictures as a poster.
     view.state.doc.descendants((node, pos) => {
+      if (node.type === schema.nodes.card) {
+        const next = retarget(page, node.attrs.href as string, node.attrs.text as string, moves);
+        const picture = (key: 'icon' | 'image') => (node.attrs[key] ? (posterAfter(node.attrs[key] as string, moves) ?? node.attrs[key]) : null);
+        const attrs = { ...node.attrs, href: next?.href ?? node.attrs.href, text: next?.text ?? node.attrs.text, icon: picture('icon'), image: picture('image') };
+        if (Object.keys(attrs).some((key) => attrs[key as keyof typeof attrs] !== node.attrs[key])) tr.setNodeMarkup(pos, null, attrs);
+        return false;
+      }
       if (node.type !== schema.nodes.image && node.type !== schema.nodes.video) return true;
       const src = retarget(page, node.attrs.src as string, '￼', moves)?.href ?? node.attrs.src;
       const poster = node.attrs.poster ? (posterAfter(node.attrs.poster as string, moves) ?? node.attrs.poster) : null;
@@ -492,6 +532,18 @@ export class DocEditor {
     const here = this.#space.here;
     const text = here === null ? `[${linkLabel(entry.text)}](#${entry.slug})` : copyHeadingLink(here, `#${entry.slug}`, entry.text);
     this.#options?.onCopy?.(text);
+  }
+
+  /** A web address pasted alone on an empty line: an online video, an image, or a card (`insertAddress`). */
+  #pasteAddress(text: string): boolean {
+    const view = this.view;
+    const address = text.trim();
+    if (!view || !/^https?:\/\/\S+$/i.test(address)) return false;
+    const { selection } = view.state;
+    const line = selection.$from.parent;
+    if (!selection.empty || line.type !== schema.nodes.paragraph || line.content.size > 0 || inCodeAt(view.state) || isInTableCell(view.state)) return false;
+    this.insertAddress(address);
+    return true;
   }
 
   /** A pasted link to a heading copied in this Space, made relative to this page; false for any other text. */
@@ -774,6 +826,8 @@ export class DocEditor {
         return () => this.#mediaWatchers.delete(redraw);
       },
       relink: (pos: number, src: string) => this.setMediaAttrs(pos, { src }),
+      playsInPage: (provider: 'YouTube' | 'Vimeo' | 'Loom') => this.#options?.playsInPage?.(provider) ?? true,
+      openExternal: (href: string) => this.#options?.onOpenFile?.(href),
     };
   }
 
@@ -784,11 +838,14 @@ export class DocEditor {
    * caret then waits on the line after them.
    */
   insertMedia(names: string[], pos?: number): void {
-    const view = this.view;
-    if (!view || this.locked) return;
     const here = this.#space.here ?? '';
-    const nodes = names.map((name) => attachmentBlock(here, name)).filter((node): node is Node => node !== null);
-    if (nodes.length === 0) return;
+    this.#insertBlocks(names.map((name) => attachmentBlock(here, name)), pos);
+  }
+
+  /** Blocks put in at the caret or at `pos`, as `insertMedia` puts them; the caret after them, or (`caretIn`) at the end of the last. */
+  #insertBlocks(nodes: Node[], pos?: number, caretIn = false): boolean {
+    const view = this.view;
+    if (!view || this.locked || nodes.length === 0) return false;
     const slice = new Slice(Fragment.from(nodes), 0, 0);
     const tr = view.state.tr;
     const { selection } = view.state;
@@ -807,7 +864,7 @@ export class DocEditor {
     if (at === null) tr.replaceSelection(slice);
     else if (at >= 0) {
       const target = dropPoint(tr.doc, at, slice);
-      if (target === null) return;
+      if (target === null) return false;
       tr.insert(target, nodes);
     }
     // The caret waits on the line after them, to type on: the next line, or
@@ -817,7 +874,8 @@ export class DocEditor {
       if (after < 0 && node === nodes[nodes.length - 1]) after = pos + node.nodeSize;
       return after < 0;
     });
-    if (after >= 0) {
+    if (after >= 0 && caretIn) tr.setSelection(TextSelection.create(tr.doc, after - 1));
+    else if (after >= 0) {
       const $after = tr.doc.resolve(after);
       if ($after.nodeAfter?.isTextblock) tr.setSelection(TextSelection.create(tr.doc, after + 1));
       else {
@@ -827,6 +885,95 @@ export class DocEditor {
     }
     view.dispatch(tr.scrollIntoView());
     view.focus();
+    return true;
+  }
+
+  /**
+   * A web address put in at the caret, as a paste of one alone on an empty
+   * line: an online video, an image or a video file, or a link that becomes a
+   * card once the page's details arrive (a separate edit: undone, it is the
+   * link again). Left a link when they do not, or it was changed meanwhile.
+   */
+  insertAddress(address: string): void {
+    const kind = onlineVideo(address) ? 'video' : mediaKind(address);
+    if (kind) {
+      this.#insertBlocks([schema.nodes[kind].create({ src: address, alt: '' })]);
+      return;
+    }
+    const link = schema.nodes.paragraph.create(null, schema.text(address, [schema.marks.link.create({ href: address })]));
+    if (!this.#insertBlocks([link], undefined, true)) return;
+    void this.#options?.fetchCard?.(address).then((details) => {
+      const view = this.view;
+      if (!view || !details) return;
+      let at = -1;
+      view.state.doc.descendants((node, pos) => {
+        if (at < 0 && node === link) at = pos;
+        return at < 0;
+      });
+      if (at < 0) return;
+      const card = schema.nodes.card.create({
+        href: address,
+        text: details.title || address,
+        description: details.description || null,
+        icon: details.icon || null,
+        image: details.image || null,
+      });
+      view.dispatch(closeHistory(view.state.tr).replaceWith(at, at + link.nodeSize, card));
+    });
+  }
+
+  /**
+   * Finds the block at `pos` again later, after a wait (a dialog, a fetch):
+   * where it is then, or null once it changed or went.
+   */
+  follow(pos: number): () => number | null {
+    const node = this.view?.state.doc.nodeAt(pos);
+    return () => {
+      const view = this.view;
+      if (!view || !node) return null;
+      let at: number | null = null;
+      view.state.doc.descendants((child, childPos) => {
+        if (at === null && child === node) at = childPos;
+        return at === null;
+      });
+      return at;
+    };
+  }
+
+  /** Whether the block at `pos` is a line holding one plain link and nothing else, which can be a card. */
+  loneLinkAt(pos: number): boolean {
+    return this.#loneLink(pos) !== null;
+  }
+
+  #loneLink(pos: number): { href: string; title: string | null; text: string } | null {
+    const node = this.view?.state.doc.nodeAt(pos);
+    if (node?.type !== schema.nodes.paragraph || node.childCount !== 1) return null;
+    const only = node.firstChild!;
+    const link = only.marks.length === 1 && only.marks[0].type === schema.marks.link ? only.marks[0] : null;
+    return only.isText && link ? { href: link.attrs.href as string, title: (link.attrs.title as string | null) ?? null, text: only.text! } : null;
+  }
+
+  /** Shows the lone link at `pos` as a card, as one edit. */
+  linkToCard(pos: number): void {
+    const view = this.view;
+    const link = this.#loneLink(pos);
+    if (!view || this.locked || !link) return;
+    const node = view.state.doc.nodeAt(pos)!;
+    // The line's colours and unknown keys go on with the card, as written.
+    const a = node.attrs;
+    const keys = [a.color ? `color=${a.color}` : '', a.background ? `background=${a.background}` : '', a.extra ?? ''].filter(Boolean).join(' ');
+    view.dispatch(view.state.tr.replaceWith(pos, pos + node.nodeSize, schema.nodes.card.create({ ...link, extra: keys || null })));
+  }
+
+  /** Shows the card at `pos` as a plain link, as one edit; its saved details go with its mark. */
+  cardToLink(pos: number): void {
+    const view = this.view;
+    const node = view?.state.doc.nodeAt(pos);
+    if (!view || this.locked || node?.type !== schema.nodes.card) return;
+    const mark = schema.marks.link.create({ href: node.attrs.href, title: node.attrs.title });
+    // Its unknown keys stay, as a line's; its saved details go with its look.
+    const line = schema.nodes.paragraph.create(lineMark(node.attrs.extra as string | null), schema.text(node.attrs.text as string, [mark]));
+    view.dispatch(view.state.tr.replaceWith(pos, pos + node.nodeSize, line));
   }
 
   /** The video drawn for the block at `pos`, to take its frame; null for any other block. */
@@ -840,11 +987,11 @@ export class DocEditor {
     return this.view?.posAtCoords({ left: x, top: y })?.pos ?? null;
   }
 
-  /** Changes the settings or address of the image or video at `pos`, as one edit. */
+  /** Changes the settings or address of the image, video or card at `pos`, as one edit. */
   setMediaAttrs(pos: number, attrs: Record<string, unknown>): void {
     const view = this.view;
     const node = view?.state.doc.nodeAt(pos);
-    if (!view || this.locked || !node || (node.type !== schema.nodes.image && node.type !== schema.nodes.video)) return;
+    if (!view || this.locked || !node || ![schema.nodes.image, schema.nodes.video, schema.nodes.card].includes(node.type)) return;
     view.dispatch(view.state.tr.setNodeMarkup(pos, null, { ...node.attrs, ...attrs }));
   }
 
@@ -896,6 +1043,11 @@ export class DocEditor {
     const view = this.view;
     const node = view?.state.doc.nodeAt(pos);
     if (!view || !node) return;
+    // A block with nothing to put a caret in (an image, a card) is selected whole.
+    if (node.isAtom && NodeSelection.isSelectable(node)) {
+      view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
+      return;
+    }
     const inside = node.isTextblock ? pos + 1 : pos + 2;
     view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(Math.min(inside, view.state.doc.content.size)))));
   }
@@ -966,6 +1118,7 @@ export class DocEditor {
     const view = this.view;
     if (!view || this.locked) return;
     if (this.#pasteHeadingLink(text)) return;
+    if (this.#pasteAddress(text)) return;
     // Cells copied from a spreadsheet arrive as tab-separated rows; in code, a tab is code.
     const cells = inCodeAt(view.state) ? null : readCells(text);
     if (cells) {

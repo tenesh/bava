@@ -53,6 +53,11 @@
   --size-media-medium: 50%;
   --size-media-large: 75%;
   --size-media-notice: 120px;
+  // A card: its icon, and a web card's picture beside its words.
+  --size-card-icon: 20px;
+  --size-card-picture: 120px;
+  // An online video's play button, on its placeholder.
+  --size-media-play: 48px;
   // An image full screen: the window, less a margin to show it is over the app.
   --size-media-viewer-width: 92vw;
   --size-media-viewer-height: 92vh;
