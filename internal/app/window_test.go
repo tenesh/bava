@@ -78,3 +78,21 @@ func TestMacTitleBarIsStandardAndMatchesTheBar(t *testing.T) {
 		t.Errorf("TitleBarHeight = %d, want --size-titlebar's %d", app.TitleBarHeight, want)
 	}
 }
+
+// Files dragged from the desktop onto the page are dropped, not opened by the
+// webview as a page of their own.
+func TestTheWindowTakesDroppedFiles(t *testing.T) {
+	if !app.MainWindowOptions().EnableFileDrop {
+		t.Error("EnableFileDrop is off")
+	}
+}
+
+func TestDroppedFilesCarryWhereTheyLanded(t *testing.T) {
+	got := app.DroppedFiles([]string{"/a.png", "/b.mp4"}, &application.DropTargetDetails{X: 120, Y: 340})
+	if len(got.Paths) != 2 || got.X != 120 || got.Y != 340 {
+		t.Errorf("DroppedFiles = %+v", got)
+	}
+	if none := app.DroppedFiles(nil, nil); none.Paths == nil || len(none.Paths) != 0 {
+		t.Errorf("no files: %+v", none)
+	}
+}

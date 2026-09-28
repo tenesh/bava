@@ -33,10 +33,13 @@
   import type { Command } from 'prosemirror-state';
   import { loadEmoji, type Emoji, type EmojiInfo } from './emoji';
   import type { MentionInfo, MentionItem, PageRef } from './mention';
-  import type { Move } from './links';
+  import { linkTo, resolveLink, type Move } from './links';
   import { latestReads } from './reads';
   import { backlinks as findBacklinks, type PageText } from './page-links';
   import { formatDay } from './dates';
+  import { isWeb, mediaUrl, videoFrame, type MediaPlace } from './media';
+  import { mediaMenuItems, mediaSetting, posterName } from './media-menu';
+  import MediaViewer from '../components/MediaViewer.svelte';
   import { LANGUAGES } from '../canvas/code/languages';
 
   type Props = {
@@ -56,15 +59,31 @@
     onCopyText: (text: string) => void;
     /** This page's path in its Space; null outside a Space. */
     here: string | null;
+    /** The folder the user opened that holds this page, where its images and videos load from; null with no page. */
+    mediaPlace: MediaPlace | null;
     /** The Space's pages, with their text when `withText` is set; null when they could not be read. */
     readIndex: (withText: boolean) => Promise<PageText[] | null>;
     /** A link followed: the app opens it. */
     onFollow: (href: string) => void;
     /** A page of the Space to open, by its path. */
     onOpenPage: (path: string) => void;
+    /** `/` Image or Video: the app asks for files, then adds them (`insertMedia`). */
+    onChooseMedia: (kind: 'image' | 'video') => void;
+    /** A paste with no text: the app looks for an image on the clipboard. */
+    onPasteImage: () => void;
+    /** A medium's file replaced: the app asks for one and attaches it; its name, or null. */
+    onReplaceMedia: (kind: 'image' | 'video') => Promise<string | null>;
+    /** An attachment renamed; the app follows it in every page. */
+    onRenameAttachment: (name: string, next: string) => void;
+    /** A file of the Space shown in its folder, by its path in the Space. */
+    onRevealFile: (path: string) => void;
+    /** A video's frame kept as its poster: bytes in base64 and a name; the name it was saved under, or null. */
+    onAttachPoster: (data: string, name: string) => Promise<string | null>;
+    /** Something could not be done. */
+    onNotify: (message: string) => void;
   };
 
-  let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage, onCopyText, here, readIndex, onFollow, onOpenPage }: Props = $props();
+  let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage, onCopyText, here, mediaPlace, readIndex, onFollow, onOpenPage, onChooseMedia, onPasteImage, onReplaceMedia, onRenameAttachment, onRevealFile, onAttachPoster, onNotify }: Props = $props();
 
   const editor = new DocEditor();
   let host: HTMLDivElement;
@@ -92,6 +111,9 @@
   let emojiList = $state.raw<Emoji[]>([]);
   let equation = $state.raw<{ pos: number; at: EquationAt; value: string; display: boolean } | null>(null);
   let link = $state.raw<{ left: number; top: number; value: string } | null>(null);
+  // A medium's caption or its file's new name, asked for beside it.
+  let mediaField = $state.raw<{ kind: 'caption' | 'rename'; pos: number; left: number; top: number; value: string } | null>(null);
+  let viewer = $state.raw<{ src: string; alt: string } | null>(null);
   let dragging: number | null = null;
 
   // The `@` menu links from wherever this page now is, and the page's links
@@ -99,6 +121,11 @@
   $effect(() => {
     void here;
     untrack(() => void refreshLinks());
+  });
+
+  // Images and videos load from the folder the page sits in, followed as it moves.
+  $effect(() => {
+    editor.setMediaPlace(mediaPlace);
   });
 
   const reads = latestReads();
@@ -120,6 +147,11 @@
     if (here !== asked || !pages) return;
     if (read.pagesCurrent()) editor.setSpacePages(asked, pages);
     if (read.backlinksCurrent()) backlinks = findBacklinks(pages, asked);
+  }
+
+  /** Adds attachments as media blocks: where files were dropped (`at`, a point on screen), else at the caret. */
+  export function insertMedia(names: string[], at?: { x: number; y: number }) {
+    editor.insertMedia(names, at ? (editor.posAtPoint(at.x, at.y) ?? undefined) : undefined);
   }
 
   /** Rewrites this page's links after pages moved; `page` is where it was. */
@@ -174,6 +206,8 @@
       onMentionPages: () => void refreshLinks(false),
       onLinkCard: (card) => (linkCard = card),
       onFollow: (href) => onFollow(href),
+      onChooseMedia: (kind) => onChooseMedia(kind),
+      onPasteImage: () => onPasteImage(),
       onDateChip: (pos, at, date) => {
         if (!editor.locked) dateChip = { pos, at, date };
       },
@@ -352,11 +386,15 @@
     if (pos === undefined || editor.locked) return;
     const block = editor.blockInfo(pos);
     editor.selectBlock(pos);
-    const turnOptions = turnIntoItems();
+    // An image or a video turns into nothing.
+    const turnOptions = block?.type === 'image' || block?.type === 'video' ? [] : turnIntoItems();
     // A callout's colour is its panel's; a text colour on it would be a second one.
     // A table's menu is the table's own.
+    const media = block?.type === 'image' || block?.type === 'video' ? mediaFile(block.attrs.src as string) : null;
     const styling: MenuNode[] =
-      block?.type === 'table'
+      block && media
+        ? mediaMenuItems(block.type as 'image' | 'video', block.attrs as { loop: boolean; muted: boolean; poster: string | null }, media.attachment !== null, here !== null, isWeb(block.attrs.src as string))
+        : block?.type === 'table'
         ? tableItems()
         : block?.type === 'callout'
         ? [
@@ -408,7 +446,8 @@
         ...styling,
       ],
       run: (id) => {
-        if (id.startsWith('t:')) runTable(id);
+        if (id.startsWith('m:')) void runMedia(pos, id, anchor);
+        else if (id.startsWith('t:')) runTable(id);
         else if (id === 'kind:custom') editor.run(callouts.setColor(pos, (block?.attrs.color as string | null) ?? CUSTOM_DEFAULT.color));
         else if (id.startsWith('kind:')) editor.run(callouts.setKind(pos, id.slice(5)));
         else if (id.startsWith('panel:')) editor.run(callouts.setColor(pos, id.slice(6)));
@@ -423,6 +462,59 @@
         else if (id.startsWith('background:')) editor.run(commands.blockColor({ background: id.slice(11) || null }));
       },
     };
+  }
+
+  const ATTACHMENTS = '.bava/attachments/';
+
+  /** The file a medium's address reaches in the Space, and its name when it is an attachment. */
+  function mediaFile(src: string): { target: string | null; attachment: string | null } {
+    const target = mediaPlace ? (resolveLink(mediaPlace.here, src)?.target ?? null) : null;
+    const attachment = here !== null && target?.startsWith(ATTACHMENTS) && !target.slice(ATTACHMENTS.length).includes('/') ? target.slice(ATTACHMENTS.length) : null;
+    return { target, attachment };
+  }
+
+  async function runMedia(pos: number, id: string, anchor: { x: number; y: number }) {
+    const block = editor.blockInfo(pos);
+    if (!block || (block.type !== 'image' && block.type !== 'video')) return;
+    const attrs = block.attrs;
+    const setting = mediaSetting(id, attrs);
+    const file = mediaFile(attrs.src as string);
+    // Ark's menu may still focus itself in the frame an item is chosen: what
+    // takes focus opens after that frame.
+    if (id === 'm:caption' || id === 'm:rename' || id === 'm:fullscreen') await new Promise((next) => requestAnimationFrame(next));
+    if (setting) editor.setMediaAttrs(pos, setting);
+    else if (id === 'm:caption') mediaField = { kind: 'caption', pos, left: anchor.x, top: anchor.y, value: (attrs.caption as string | null) ?? '' };
+    else if (id === 'm:rename' && file.attachment) mediaField = { kind: 'rename', pos, left: anchor.x, top: anchor.y, value: file.attachment.replace(/\.[^.]*$/, '') };
+    else if (id === 'm:reveal' && file.target) onRevealFile(file.target);
+    else if (id === 'm:fullscreen') {
+      const src = mediaUrl(mediaPlace, attrs.src as string);
+      if (src) viewer = { src, alt: attrs.alt as string };
+    } else if (id === 'm:replace') {
+      const name = await onReplaceMedia(block.type);
+      if (name) editor.setMediaAttrs(pos, { src: linkTo(here ?? '', ATTACHMENTS + name, '') });
+    } else if (id === 'm:poster') {
+      const video = editor.videoAt(pos);
+      const frame = video ? videoFrame(video) : null;
+      if (!frame) {
+        onNotify(t('media.posterFailed'));
+        return;
+      }
+      // A name that could not be saved was said already.
+      const name = await onAttachPoster(frame, posterName(attrs.src as string));
+      if (name) editor.setMediaAttrs(pos, { poster: name });
+    }
+  }
+
+  function applyMediaField(value: string) {
+    const field = mediaField;
+    mediaField = null;
+    if (!field) return;
+    if (field.kind === 'caption') editor.setMediaAttrs(field.pos, { caption: value.trim() === '' ? null : value });
+    else {
+      const attachment = mediaFile(editor.blockInfo(field.pos)?.attrs.src as string).attachment;
+      if (attachment && value.trim() !== '' && value.trim() !== attachment.replace(/\.[^.]*$/, '')) onRenameAttachment(attachment, value.trim());
+    }
+    editor.focus();
   }
 
   function openPageMenu(anchor: { x: number; y: number }) {
@@ -536,7 +628,8 @@
       dragging = null;
     }}
   >
-    <div class="host" bind:this={host}></div>
+    <!-- Files from the desktop are taken here, and added where they land. -->
+    <div class="host" bind:this={host} data-file-drop-target></div>
     {#if backlinks.length > 0}
       <nav class="backlinks" aria-label={t('backlinks.label')}>
         <h2>{t('backlinks.label')}</h2>
@@ -708,6 +801,35 @@
   />
 {/if}
 
+{#if mediaField}
+  <LinkField
+    at={mediaField}
+    value={mediaField.value}
+    placeholder={t(mediaField.kind === 'caption' ? 'media.captionPlaceholder' : 'media.renamePlaceholder')}
+    removeLabel={mediaField.kind === 'caption' && mediaField.value ? t('media.captionRemove') : null}
+    onApply={applyMediaField}
+    onRemove={() => applyMediaField('')}
+    onCancel={() => {
+      mediaField = null;
+      editor.focus();
+    }}
+  />
+{/if}
+
+{#if viewer}
+  <MediaViewer
+    open
+    src={viewer.src}
+    alt={viewer.alt}
+    onOpenChange={(open) => {
+      if (!open) {
+        viewer = null;
+        editor.focus();
+      }
+    }}
+  />
+{/if}
+
 <ContextMenu
   items={menu?.items ?? []}
   open={menu !== null}
@@ -720,6 +842,8 @@
   onOpenChange={(open) => {
     if (open) return;
     menu = null;
+    // A field or the viewer the chosen item opened takes focus itself.
+    if (mediaField || viewer) return;
     // Closed with nothing to give focus back to (a menu opened at a point has
     // no button), the page takes it from the closing menu.
     const active = document.activeElement;

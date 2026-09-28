@@ -1,9 +1,11 @@
 package app_test
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/tenesh/bava/internal/app"
@@ -128,12 +130,12 @@ func TestSpaceJSONFieldNames(t *testing.T) {
 	}{
 		{"SpaceInfo", app.SpaceInfo{}, []string{"code", "error", "name", "pageWidth", "root"}},
 		{"SpaceList", app.SpaceList{}, []string{"code", "entries", "error"}},
-		{"OpResult", app.OpResult{}, []string{"code", "error", "id", "missed", "path", "root"}},
+		{"OpResult", app.OpResult{}, []string{"code", "error", "id", "missed", "name", "path", "root"}},
 		{"SpaceIndex", app.SpaceIndex{}, []string{"code", "error", "pages"}},
 		{"IndexPage", app.IndexPage{}, []string{"name", "path", "text"}},
 		{"PageEdit", app.PageEdit{}, []string{"after", "before", "path"}},
 		{"TrashList", app.TrashList{}, []string{"code", "error", "items", "size"}},
-		{"Operation", app.Operation{}, []string{"edits", "folder", "id", "index", "kind", "name", "path", "width"}},
+		{"Operation", app.Operation{}, []string{"attachment", "data", "edits", "folder", "id", "index", "kind", "name", "path", "source", "width"}},
 	}
 	for _, c := range cases {
 		b, err := json.Marshal(c.v)
@@ -228,5 +230,41 @@ func TestSpaceIndexListsPagesAndRelinkWritesUnchangedOnes(t *testing.T) {
 	}
 	if got, _ := os.ReadFile(filepath.Join(root, "Roadmap.md")); string(got) != "[Q4](Q4.md)\n" {
 		t.Errorf("Roadmap.md = %q", got)
+	}
+}
+
+func TestSpaceAttachesFilesAndRenamesThem(t *testing.T) {
+	root := t.TempDir()
+	s := spaceService(nil)
+	s.Open(root)
+	source := filepath.Join(t.TempDir(), "logo.png")
+	if err := os.WriteFile(source, []byte("one"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	attached := s.Apply(root, app.Operation{Kind: "attach", Source: source})
+	if attached.Error != "" || attached.Name != "logo.png" {
+		t.Fatalf("attach = %+v", attached)
+	}
+	pasted := s.Apply(root, app.Operation{Kind: "attachData", Name: "Pasted image.png", Data: base64.StdEncoding.EncodeToString([]byte("png"))})
+	if pasted.Error != "" || pasted.Name != "Pasted image.png" {
+		t.Fatalf("attachData = %+v", pasted)
+	}
+	if bad := s.Apply(root, app.Operation{Kind: "attachData", Name: "x.png", Data: "not base64!"}); bad.Error == "" {
+		t.Error("data that is not base64 was attached")
+	}
+	renamed := s.Apply(root, app.Operation{Kind: "renameAttachment", Attachment: "logo.png", Name: "brand"})
+	if renamed.Error != "" || renamed.Name != "brand.png" {
+		t.Fatalf("renameAttachment = %+v", renamed)
+	}
+}
+
+// Bytes with no name, as a pasted screenshot has, are named by when they came.
+func TestAttachDataWithNoNameIsAPastedImage(t *testing.T) {
+	root := t.TempDir()
+	s := spaceService(nil)
+	s.Open(root)
+	got := s.Apply(root, app.Operation{Kind: "attachData", Data: base64.StdEncoding.EncodeToString([]byte("png"))})
+	if got.Error != "" || !regexp.MustCompile(`^Pasted image \d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.\d{2}\.png$`).MatchString(got.Name) {
+		t.Errorf("attachData = %+v", got)
 	}
 }

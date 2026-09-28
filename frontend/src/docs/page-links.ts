@@ -5,8 +5,17 @@
  * only an address, and its words where they are still the old name, change.
  */
 import type { Node } from 'prosemirror-model';
-import { addressOf, pageLinks, parsePage, wordsOf, type PageLink } from './markdown';
-import { movedFrom, resolveLink, retarget, type Move } from './links';
+import { addressOf, pageLinks, parsePage, posterKey, posterOf, wordsOf, type PageLink } from './markdown';
+import { movedFrom, movedTo, resolveLink, retarget, type Move } from './links';
+
+const ATTACHMENTS = '.bava/attachments/';
+
+/** A poster's file name after the moves; null when it did not move, or left the attachments folder. */
+export function posterAfter(name: string, moves: Move[]): string | null {
+  const next = movedTo(ATTACHMENTS + name, moves);
+  if (next === ATTACHMENTS + name || !next.startsWith(ATTACHMENTS) || next.slice(ATTACHMENTS.length).includes('/')) return null;
+  return next.slice(ATTACHMENTS.length);
+}
 
 /** A page's text after a rename, and how many of its links to what moved could not be placed (left as they were). */
 export type Rewritten = { text: string; unplaced: number };
@@ -39,6 +48,14 @@ export function rewritePageLinks(page: string, text: string, moves: Move[]): Rew
   let unplaced = 0;
   let any = false;
   for (const link of pageLinks(text)) {
+    if (link.kind === 'poster') {
+      const name = posterAfter(link.href, moves);
+      if (name === null) continue;
+      any = true;
+      if (!link.dest || posterOf(text.slice(link.dest[0], link.dest[1])) !== link.href) unplaced += 1;
+      else edits.set(link.dest[0], { end: link.dest[1], with: posterKey(name, text.startsWith('poster="', link.dest[0])) });
+      continue;
+    }
     const next = retarget(page, link.href, link.text ?? '￼', moves);
     if (!next) continue;
     any = true;
@@ -67,7 +84,7 @@ export function rewritePageLinks(page: string, text: string, moves: Move[]): Rew
   return { text: out, unplaced };
 }
 
-type Run = { href: string; text: string };
+type Run = { kind: 'link' | 'media' | 'poster'; href: string; text: string };
 
 /** A page as the Document reads it, with every link's address and words left out, and its links in order. */
 function reading(markdown: string): { rest: string; links: Run[] } {
@@ -77,8 +94,14 @@ function reading(markdown: string): { rest: string; links: Run[] } {
     const json = node.toJSON() as { text?: string; marks?: { type: string; attrs?: Record<string, unknown> }[]; content?: unknown[] };
     const link = node.marks.find((m) => m.type.name === 'link');
     if (node.isText && link) {
-      links.push({ href: link.attrs.href as string, text: node.text! });
+      links.push({ kind: 'link', href: link.attrs.href as string, text: node.text! });
       return { ...json, text: '', marks: json.marks?.map((m) => (m.type === 'link' ? { type: 'link' } : m)) };
+    }
+    // A media block's address, and a video's poster, may change; its words may not.
+    if (node.type.name === 'image' || node.type.name === 'video') {
+      links.push({ kind: 'media', href: node.attrs.src as string, text: node.attrs.alt as string });
+      if (node.attrs.poster) links.push({ kind: 'poster', href: node.attrs.poster as string, text: '' });
+      return { ...json, attrs: { ...node.attrs, src: '', written: null, poster: node.attrs.poster ? '' : null } };
     }
     // A reference definition is kept as written; its address is a link's.
     if (node.type.name === 'kept') {
@@ -104,15 +127,18 @@ export function onlyLinksChanged(page: string, before: string, after: string, mo
   const now = reading(after);
   if (was.rest !== now.rest || was.links.length !== now.links.length) return false;
   return was.links.every((link, i) => {
-    const next = retarget(page, link.href, link.text, moves);
     const got = now.links[i];
+    if (got.kind !== link.kind) return false;
+    if (link.kind === 'poster') return got.href === (posterAfter(link.href, moves) ?? link.href);
+    if (link.kind === 'media') return got.text === link.text && got.href === (retarget(page, link.href, link.text, moves)?.href ?? link.href);
+    const next = retarget(page, link.href, link.text, moves);
     return got.href === (next?.href ?? link.href) && (got.text === link.text || got.text === next?.text);
   });
 }
 
 /** Whether any link the Document reads in a page reaches `target`. */
 export function linksTo(page: string, text: string, target: string): boolean {
-  return pageLinks(text).some((link: PageLink) => resolveLink(page, link.href)?.target === target);
+  return pageLinks(text).some((link: PageLink) => link.kind !== 'poster' && resolveLink(page, link.href)?.target === target);
 }
 
 /** A page of the Space with its text, as the file side lists it. */

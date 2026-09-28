@@ -40,7 +40,31 @@ func MainWindowOptions() application.WebviewWindowOptions {
 		// Without this Windows has no menu bar, and so no Open, Save or Undo:
 		// those live in the menu, not the title bar.
 		UseApplicationMenu: true,
+		// Images and videos dragged from the desktop onto the Document are
+		// added where they land; the page marks where it takes them.
+		EnableFileDrop: true,
 	}
+}
+
+// FilesDroppedEvent carries files dropped onto the page, and where, to the
+// frontend (Go → frontend).
+const FilesDroppedEvent = "files:dropped"
+
+// FilesDropped is files dropped onto the page, at a point in CSS pixels
+// from the page's top left.
+type FilesDropped struct {
+	Paths []string `json:"paths"`
+	X     int      `json:"x"`
+	Y     int      `json:"y"`
+}
+
+// DroppedFiles is what the page is told of a drop.
+func DroppedFiles(paths []string, target *application.DropTargetDetails) FilesDropped {
+	out := FilesDropped{Paths: append([]string{}, paths...)}
+	if target != nil {
+		out.X, out.Y = target.X, target.Y
+	}
+	return out
 }
 
 // ContentProcessDied handles the webview's content process terminating. On

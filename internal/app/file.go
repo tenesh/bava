@@ -1,8 +1,10 @@
 package app
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -15,10 +17,42 @@ import (
 // FileService is the file surface. It stays thin: read, write, and tell the
 // caller whether the file moved underneath them. Everything about *what* a
 // file contains lives in internal/format.
-type FileService struct{}
+type FileService struct {
+	options FileServiceOptions
+}
+
+// FileServiceOptions are the hooks the service needs.
+type FileServiceOptions struct {
+	// Folders learns the folder of each page opened, so the page may be
+	// shown its images and videos. Nil allows nothing.
+	Folders *OpenedFolders
+	// ClipboardImage reads the clipboard's image as PNG, or nil when it holds
+	// none. Nil means no image is ever read.
+	ClipboardImage func() []byte
+	// ChooseFiles answers the media picker instead of showing the native
+	// one: the smoke test build takes its answers from the scenario. Nil
+	// shows the native picker.
+	ChooseFiles func(kind string) ([]string, error)
+}
 
 // NewFileService constructs the service registered with the application.
-func NewFileService() *FileService { return &FileService{} }
+func NewFileService(options FileServiceOptions) *FileService {
+	return &FileService{options: options}
+}
+
+// ClipboardImage is the clipboard's image as PNG in base64, for a paste into
+// the Document; empty when the clipboard holds no image. Wails reads text
+// only, so the image comes through here.
+func (s *FileService) ClipboardImage() string {
+	if s.options.ClipboardImage == nil {
+		return ""
+	}
+	data := s.options.ClipboardImage()
+	if len(data) == 0 {
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(data)
+}
 
 // OpenResult is a file, parsed.
 //
@@ -52,6 +86,8 @@ func (s *FileService) Open(path string) OpenResult {
 		slog.Debug("file open failed", "duration", time.Since(started))
 		return OpenResult{Path: path, Error: err.Error()}
 	}
+	// The page may now show images and videos from its folder.
+	s.options.Folders.Allow(filepath.Dir(path))
 
 	parsed, err := format.Read(file.Content)
 	// A malformed canvas block still yields the prose, so the user sees their
@@ -163,6 +199,46 @@ func (s *FileService) ChooseFileToSave(suggestedName string) DialogResult {
 		return DialogResult{Error: err.Error()}
 	}
 	return DialogResult{Path: path}
+}
+
+// mediaFilters are the file types the media picker offers, by kind.
+var mediaFilters = map[string]struct{ name, pattern string }{
+	"image": {"Images", "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.svg"},
+	"video": {"Videos", "*.mp4;*.webm;*.mov"},
+}
+
+// ChooseMedia shows the native open dialog for images or videos ("image" or
+// "video"), several at once. Cancelling returns no paths and no error.
+func (s *FileService) ChooseMedia(kind string) PathsResult {
+	filter, ok := mediaFilters[kind]
+	if !ok {
+		return PathsResult{Paths: []string{}, Error: fmt.Sprintf("no media of kind %q", kind)}
+	}
+	var paths []string
+	var err error
+	if s.options.ChooseFiles != nil {
+		paths, err = s.options.ChooseFiles(kind)
+	} else {
+		dialog := application.Get().Dialog.OpenFile()
+		dialog.SetTitle(filter.name)
+		dialog.CanChooseFiles(true)
+		dialog.CanChooseDirectories(false)
+		dialog.AddFilter(filter.name, filter.pattern)
+		paths, err = dialog.PromptForMultipleSelection()
+	}
+	if err != nil {
+		return PathsResult{Paths: []string{}, Error: err.Error()}
+	}
+	if paths == nil {
+		paths = []string{}
+	}
+	return PathsResult{Paths: paths}
+}
+
+// PathsResult is the paths chosen, none when the user cancelled.
+type PathsResult struct {
+	Paths []string `json:"paths"`
+	Error string   `json:"error"`
 }
 
 // DialogResult is a chosen path, or an empty one when the user cancelled.

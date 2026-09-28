@@ -143,6 +143,8 @@ const APPLIES: Record<string, string[]> = {
   ordered_list_open: ['color', 'background', 'list'],
   fence: ['wrap', 'caption'],
   code_block: ['wrap', 'caption'],
+  media_image: ['width', 'ratio', 'align', 'caption'],
+  media_video: ['width', 'ratio', 'align', 'caption', 'poster', 'loop', 'muted'],
 };
 
 const VALID: Record<string, (value: string | true) => boolean> = {
@@ -152,6 +154,13 @@ const VALID: Record<string, (value: string | true) => boolean> = {
   list: (v) => v === 'a' || v === 'i',
   wrap: (v) => v === true,
   caption: (v) => typeof v === 'string',
+  width: (v) => v === 'small' || v === 'medium' || v === 'large' || v === 'full',
+  ratio: (v) => v === '16:9' || v === '4:3' || v === '1:1',
+  align: (v) => v === 'left' || v === 'right',
+  // A file in the attachments folder, by its name alone.
+  poster: (v) => typeof v === 'string' && v !== '' && !/[/\\]/.test(v) && !v.startsWith('.'),
+  loop: (v) => v === true,
+  muted: (v) => v === true,
 };
 
 /** A mark read onto the block that carries it: the keys it takes, and the rest as `extra`. */
@@ -344,7 +353,26 @@ type RulerInternals = { __rules__: { name: string; fn: BlockRule }[] };
 type InlineRule = (state: StateInline, silent: boolean) => boolean;
 type InlineRulerInternals = { __rules__: { name: string; fn: InlineRule }[] };
 
-// An image is kept exactly as written until the Document shows media.
+/**
+ * An image's words as plain text, as a viewer shows them: escaped characters
+ * and code as they read (markdown-it's own flattening drops escapes).
+ */
+function plainText(tokens: Token[]): string {
+  return tokens
+    .map((t) => {
+      if (t.type === 'text' || t.type === 'text_special' || t.type === 'code_inline' || t.type === 'html_inline') return t.content;
+      if (t.type === 'softbreak' || t.type === 'hardbreak') return '\n';
+      if (t.type === 'image') return plainText(t.children ?? []);
+      return '';
+    })
+    .join('');
+}
+
+/** What an image reads as: its address as the Document reads it, its words as plain text, its title. */
+type ImageRead = { src: string; alt: string; title: string | null };
+
+// An image is kept exactly as written, with what it reads as noted: one alone
+// on its line becomes a media block (`readMedia`).
 {
   const image = (md.inline.ruler as unknown as InlineRulerInternals).__rules__.find((r) => r.name === 'image')!.fn;
   md.inline.ruler.at('image', (state, silent) => {
@@ -354,8 +382,22 @@ type InlineRulerInternals = { __rules__: { name: string; fn: InlineRule }[] };
     const before = state.tokens.length;
     if (!image(state, silent)) return false;
     if (!silent) {
+      const token = state.tokens[before];
+      // By reference (`![x][r]`), its address is a definition's elsewhere on the page.
+      const end = state.pos;
+      const labelEnd = state.md.helpers.parseLinkLabel(state, start + 1, false);
+      state.pos = end;
+      const byReference = labelEnd < 0 || state.src[labelEnd + 1] !== '(';
+      const read: ImageRead = {
+        src: token.attrGet('src') ?? '',
+        alt: plainText(token.children ?? []),
+        title: token.attrGet('title') || null,
+      };
       state.tokens.length = before;
-      state.push('keptInline', '', 0).content = state.src.slice(start, state.pos);
+      const kept = state.push('keptInline', '', 0);
+      kept.content = state.src.slice(start, state.pos);
+      const reading = (state.env as LinkEnv).bavaLinks;
+      kept.meta = { image: read, byReference, ...(reading ? { bavaAt: linkPlace(state, start + 1, reading) } : {}) };
     }
     return true;
   });
@@ -661,6 +703,51 @@ function readCallouts(state: CoreState): void {
   state.tokens = tokens.filter((_, i) => !drop.has(i));
 }
 
+const MEDIA: Record<string, 'image' | 'video'> = {
+  png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image', svg: 'image',
+  mp4: 'video', webm: 'video', mov: 'video',
+};
+
+/** Whether an address is an image or a video file, by its type; null for any other. */
+export function mediaKind(src: string): 'image' | 'video' | null {
+  const path = src.replace(/[?#].*$/, '');
+  const dot = path.lastIndexOf('.');
+  if (dot < 0 || dot < path.lastIndexOf('/')) return null;
+  return MEDIA[path.slice(dot + 1).toLowerCase()] ?? null;
+}
+
+/**
+ * A paragraph holding one image of an image or video type, at a relative
+ * address or on the web, and nothing else, is a media block. The line opening a list item stays text: the item needs it.
+ */
+function readMedia(state: CoreState): void {
+  const tokens = state.tokens;
+  const out: Token[] = [];
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = tokens[i];
+    const children = tokens[i + 1]?.children;
+    const only = token.type === 'paragraph_open' && tokens[i - 1]?.type !== 'list_item_open' && children?.length === 1 ? children[0] : null;
+    // An image by reference stays as written: its line alone does not say where it is.
+    const read = only?.type === 'keptInline' && !only.meta?.byReference ? (only.meta?.image as ImageRead | undefined) : undefined;
+    // Relative to the page, or on the web; one from the disk's root or by any
+    // other scheme is kept as written.
+    const local = read !== undefined && !/^([A-Za-z][A-Za-z0-9+.-]*:|[/\\])/.test(read.src);
+    const web = read !== undefined && /^https?:\/\//i.test(read.src);
+    const kind = local || web ? mediaKind(read.src!) : null;
+    if (!read || !kind) {
+      out.push(token);
+      continue;
+    }
+    const block = new state.Token(`media_${kind}`, '', 0);
+    block.map = token.map;
+    block.level = token.level;
+    block.meta = { image: read, written: only!.content, bavaAt: only!.meta?.bavaAt };
+    out.push(block);
+    i += 2;
+  }
+  state.tokens = out;
+}
+
 /**
  * Invisible marks onto the blocks after them; what the editor cannot edit
  * into `kept` tokens; to-dos; inline HTML into marks.
@@ -693,7 +780,7 @@ function readMarksAndKept(state: CoreState & { src: string }): void {
       pending = { pairs: readMark(mark[1]), token };
       continue;
     }
-    const carries = token.type in APPLIES && (token.nesting === 1 || token.type === 'fence' || token.type === 'code_block');
+    const carries = token.type in APPLIES && (token.nesting === 1 || token.nesting === 0);
     if (pending && !carries) keepPending();
     const whole =
       token.type === 'html_block' || token.type === 'kept'
@@ -710,7 +797,7 @@ function readMarksAndKept(state: CoreState & { src: string }): void {
       continue;
     }
     if (pending && carries) {
-      token.meta = { ...token.meta, mark: pending.pairs };
+      token.meta = { ...token.meta, mark: pending.pairs, markLine: pending.token.map?.[0] ?? null };
       pending = null;
     }
     if (token.type === 'list_item_open' && tokens[i + 2]?.type === 'inline') {
@@ -773,6 +860,7 @@ md.core.ruler.push('bava', (state) => {
   readContents(state);
   readCallouts(state);
   readTables(state);
+  readMedia(state);
   readMarksAndKept(state);
   readFootnotes(state);
 });
@@ -793,6 +881,11 @@ function codeAttrs(tok: Token) {
     meta: space < 0 ? '' : info.slice(space),
     ...style(tok),
   };
+}
+
+function mediaAttrs(tok: Token) {
+  const read = tok.meta.image as ImageRead;
+  return { src: read.src, alt: read.alt, title: read.title, written: tok.meta.written, ...style(tok) };
 }
 
 const parser = new MarkdownParser(schema, md, {
@@ -823,6 +916,8 @@ const parser = new MarkdownParser(schema, md, {
   table_row: { block: 'table_row' },
   table_header: { block: 'table_header', getAttrs: (tok) => tok.meta.cell },
   table_cell: { block: 'table_cell', getAttrs: (tok) => tok.meta.cell },
+  media_image: { node: 'image', getAttrs: mediaAttrs },
+  media_video: { node: 'video', getAttrs: mediaAttrs },
   hr: { node: 'horizontal_rule' },
   hardbreak: { node: 'hard_break' },
   kept: { node: 'kept', getAttrs: (tok) => ({ text: tok.content }) },
@@ -844,9 +939,15 @@ const parser = new MarkdownParser(schema, md, {
 function writeMark(state: MarkdownSerializerState, node: Node) {
   const a = node.attrs;
   const keys = [
+    a.width ? `width=${a.width}` : '',
+    a.ratio ? `ratio=${a.ratio}` : '',
+    a.align ? `align=${a.align}` : '',
     a.style && a.style !== '1' ? `list=${a.style}` : '',
     a.wrap ? 'wrap' : '',
     a.caption !== null && a.caption !== undefined ? `caption="${encodeValue(a.caption)}"` : '',
+    a.poster ? `poster="${encodeValue(a.poster)}"` : '',
+    a.loop ? 'loop' : '',
+    a.muted ? 'muted' : '',
     a.color ? `color=${a.color}` : '',
     a.background ? `background=${a.background}` : '',
     a.icon ? `icon=${/[\s"=>]|--/.test(a.icon) ? `"${encodeValue(a.icon)}"` : a.icon}` : '',
@@ -989,6 +1090,35 @@ function htmlTable(table: Node): string {
   return lines.join('\n');
 }
 
+/** What an image written as `text` reads as; null when it is not one image alone. */
+function imageRead(text: string): ImageRead | null {
+  const children = md.parseInline(text, {})[0]?.children ?? [];
+  return children.length === 1 && children[0].type === 'keptInline' ? ((children[0].meta?.image as ImageRead | undefined) ?? null) : null;
+}
+
+/** Words as an image's words: what would read as Markdown escaped. */
+const escapeAlt = (text: string) => text.replace(/[\\`*_[\]~$<&!]/g, '\\$&');
+
+/**
+ * A media block's line: as the file wrote it while that still reads as the
+ * block does, else written from its address, words and title.
+ */
+export function mediaLine(node: Node): string {
+  const { src, alt, title, written } = node.attrs as { src: string; alt: string; title: string | null; written: string | null };
+  const same = (read: ImageRead | null) => read !== null && read.src === src && read.alt === alt && read.title === title;
+  if (written !== null && same(imageRead(written))) return written;
+  const titled = title === null ? '' : ` "${title.replace(/["\\]/g, '\\$&')}"`;
+  const plain = `![${escapeAlt(alt)}](${src}${titled})`;
+  if (same(imageRead(plain))) return plain;
+  return `![${escapeAlt(alt)}](<${src.replace(/[<>\\]/g, '\\$&')}>${titled})`;
+}
+
+function writeMedia(state: MarkdownSerializerState, node: Node) {
+  writeMark(state, node);
+  writeRaw(state, mediaLine(node));
+  state.closeBlock(node);
+}
+
 const base = defaultMarkdownSerializer;
 
 const serializer = new MarkdownSerializer(
@@ -1092,6 +1222,8 @@ const serializer = new MarkdownSerializer(
     table_row() {},
     table_header() {},
     table_cell() {},
+    image: writeMedia,
+    video: writeMedia,
     horizontal_rule(state, node) {
       state.write('---');
       state.closeBlock(node);
@@ -1392,6 +1524,12 @@ export type PageLink = {
   html: boolean;
   /** In a pipe table's cell, where `|` is written `\\|`. */
   cell: boolean;
+  /**
+   * A link; a media block's address; or a video's poster, whose `href` is
+   * its file's name in the attachments folder and whose `dest` is its whole
+   * `poster=` key in the mark.
+   */
+  kind: 'link' | 'media' | 'poster';
 };
 
 /**
@@ -1439,12 +1577,54 @@ export function pageLinks(markdown: string): PageLink[] {
         label: place?.ref ? null : back(place?.label ?? null),
         html: token.meta?.bavaHtml === true,
         cell: place?.cell ?? false,
+        kind: 'link',
       });
     });
   };
-  walk(tokens);
+  const media = (token: Token) => {
+    const place = token.meta.bavaAt as LinkPlace | undefined;
+    const read = token.meta.image as ImageRead;
+    out.push({ href: read.src, text: null, dest: back(place?.dest ?? null), label: null, html: false, cell: false, kind: 'media' });
+    const poster = markAttrs(token.type, token.meta.mark as MarkPair[] | undefined).poster as string | undefined;
+    if (poster === undefined) return;
+    out.push({ href: poster, text: null, dest: back(posterPlace(reading, token.meta.markLine as number | null, poster)), label: null, html: false, cell: false, kind: 'poster' });
+  };
+  for (const token of tokens) {
+    if (token.type === 'media_image' || token.type === 'media_video') media(token);
+    else walk([token]);
+  }
   return out;
 }
+
+/** Where a mark's `poster=` key naming `name` is in the page, from the mark's line; null when it cannot be placed. */
+function posterPlace(reading: LinkReading, line: number | null, name: string): Span | null {
+  if (line === null || line >= reading.lines.length) return null;
+  const text = lineText(reading, line);
+  const open = /<!--\s*bava:\s*/.exec(text);
+  const close = text.lastIndexOf('-->');
+  if (!open || close < 0) return null;
+  const from = open.index + open[0].length;
+  const pair = readMark(text.slice(from, close)).find((p) => p.key === 'poster' && p.value === name);
+  if (!pair) return null;
+  // The pairs are read in order, so the first with this text is this one.
+  let at = from;
+  for (const match of text.slice(from, close).matchAll(/([^\s="]+)(?:=("[^"]*"|\S*))?/g)) {
+    if (match[0] === pair.raw) {
+      at += match.index;
+      return [reading.lines[line] + at, reading.lines[line] + at + pair.raw.length];
+    }
+  }
+  return null;
+}
+
+/** The file a mark's written `poster=` key names; null when it is not one. */
+export function posterOf(written: string): string | null {
+  const pairs = readMark(written);
+  return pairs.length === 1 && pairs[0].key === 'poster' && VALID.poster(pairs[0].value) ? (pairs[0].value as string) : null;
+}
+
+/** A mark's `poster=` key naming a file: in quotes, unless it was written without and the name needs none. */
+export const posterKey = (name: string, quoted = true) => (quoted || /[\s"]|--/.test(name) ? `poster="${encodeValue(name)}"` : `poster=${name}`);
 
 /**
  * The address a link's written address reads as, as the Document reads it:

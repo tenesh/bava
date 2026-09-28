@@ -5,6 +5,7 @@ go 1.27.0
 require (
 	github.com/d2lang/d2 v0.9.0
 	github.com/wailsapp/wails/v3 v3.0.0-beta.20
+	golang.design/x/clipboard v0.11.0
 )
 
 require (
@@ -20,6 +21,7 @@ require (
 	github.com/d2lang/rough-go v0.2.0 // indirect
 	github.com/d2lang/util-go v0.2.0 // indirect
 	github.com/dlclark/regexp2/v2 v2.6.0 // indirect
+	github.com/ebitengine/purego v0.10.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-text/typesetting v0.3.4 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
@@ -29,8 +31,11 @@ require (
 	github.com/mazznoer/csscolorparser v0.1.8 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/yuin/goldmark v1.8.5 // indirect
+	golang.design/x/x11 v0.2.0 // indirect
 	golang.org/x/exp v0.0.0-20260727155853-b88d891fe743 // indirect
+	golang.org/x/exp/shiny v0.0.0-20250606033433-dcc06ee1d476 // indirect
 	golang.org/x/image v0.45.0 // indirect
+	golang.org/x/mobile v0.0.0-20250606033058-a2a15c67f36f // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect

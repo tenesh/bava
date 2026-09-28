@@ -875,6 +875,53 @@ is inside it and nothing after, so it is the one fold. A heading carrying the
 old `<!-- bava: toggle -->` mark keeps it as written (an unknown key) and no
 longer folds.
 
+### 92. An image is a Markdown image with a mark (2026-09-28)
+
+The user's choice: `![alt](.bava/attachments/editor.png)`, with Bava's
+settings in the invisible mark above it, as callouts and code blocks have:
+`<!-- bava: width=medium ratio=16:9 align=center caption="The new editor" -->`.
+Every Markdown app shows the image; only Bava applies the width, ratio,
+alignment and caption.
+
+### 93. A video file is written as an image, with a mark (2026-09-28)
+
+The user's choice: `![Demo](.bava/attachments/demo.mp4)`, the image form
+pointing at the video, its settings in the mark above:
+`<!-- bava: width=large poster=".bava/attachments/demo-poster.png" loop muted -->`.
+Obsidian plays it; GitHub shows a broken-image icon with the alt text; Bava
+plays it with its poster, looped and muted as set.
+
+### 94. An online video is written as an image, with a mark (2026-09-28)
+
+The user's choice, the same shape as a video file: `![Launch demo](https://www.youtube.com/watch?v=abc123)`
+with its settings in the mark above. Obsidian embeds the player; GitHub
+shows a broken-image icon; Bava shows a placeholder and loads the video only
+when play is pressed (decision 32).
+
+### 95. A card is a link with a mark (2026-09-28)
+
+The user's choice: an ordinary link, its text the file's name or the page's
+title, with the card's look in the mark above (`card`, or `card=extended`)
+and a web card's saved details there too (`description`, `icon`, `image`,
+the pictures saved in the attachments). A plain link has no mark. A file's
+size and type are read from the file, never written. Other apps show a
+working link.
+
+### 96. A missing attachment is offered for relinking, never relinked by itself (2026-09-28)
+
+The user's choice, settling decisions 10 and 69 (which differed): media
+whose file is gone shows as missing, with "Relink to <file>" when a file of
+that name is in the attachments. Nothing changes until it is pressed, as for
+a missing page link.
+
+### 97. 8.4 is built in three parts (2026-09-28)
+
+The user's choice, as 8.3 was: **8.4.1** the attachments folder, images and
+video files with their settings, relinking; **8.4.2** online videos and file
+and web-link cards (the only part using the network, on the user's paste or
+click); **8.4.3** the Media section and dialog. Named 8.4.1 to 8.4.3 because
+8.4a is the canvas checks that follow.
+
 ## Features
 
 Chosen from Notion's editor, one question at a time (decisions 12 to 50),

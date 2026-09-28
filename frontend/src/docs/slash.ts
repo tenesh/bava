@@ -15,6 +15,7 @@ import { tables } from './table';
 import { insertFootnote } from './footnotes';
 import { insertContents } from './contents';
 import { PICKER } from './emoji';
+import { MEDIA_PICKER } from './media';
 
 /** The `/` menu's groups, shown as labels in its one list. */
 export type SlashGroup = 'basic' | 'advanced' | 'inline';
@@ -43,6 +44,14 @@ const heading = (level: number): SlashItem => ({
   words: `heading h${level} title`,
   run: commands.turnInto('heading', level),
 });
+
+/** Asks the app for images or videos, which it adds at the caret. */
+const chooseMedia =
+  (kind: 'image' | 'video'): Command =>
+  (state, dispatch) => {
+    dispatch?.(state.tr.setMeta(MEDIA_PICKER, kind));
+    return true;
+  };
 
 const listOf = (style: '1' | 'a' | 'i'): Command => (state, dispatch, view) => {
   if (!dispatch) return true;
@@ -82,6 +91,8 @@ export const SLASH_ITEMS: SlashItem[] = [
   { id: 'code', group: 'advanced', label: 'slash.code', words: 'code block snippet programming fence', run: commands.turnInto('code_block') },
   { id: 'equation', group: 'advanced', label: 'slash.equation', words: 'equation math formula tex latex block', run: math.insertBlock },
   { id: 'contents', group: 'advanced', label: 'slash.contents', words: 'contents table toc outline index', run: insertContents },
+  { id: 'image', group: 'advanced', label: 'slash.image', words: 'image picture photo screenshot media', run: chooseMedia('image') },
+  { id: 'video', group: 'advanced', label: 'slash.video', words: 'video movie clip recording media', run: chooseMedia('video') },
   // Inline: put in the line itself.
   { id: 'inlineEquation', group: 'inline', label: 'slash.inlineEquation', words: 'inline equation math formula tex latex', run: math.insertInline },
   { id: 'footnote', group: 'inline', label: 'slash.footnote', words: 'footnote reference citation source', run: insertFootnote },

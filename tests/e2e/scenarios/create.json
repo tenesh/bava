@@ -1,6 +1,7 @@
 {
   "name": "create",
   "folders": ["${SCRATCH}"],
+  "files": [["${REPO}/testdata/media/logo.png"]],
   "steps": [
     { "do": "wait", "target": "text=New Space", "timeoutMs": 30000 },
     { "do": "shot", "name": "start" },
@@ -38,6 +39,10 @@
     { "do": "key", "text": "Enter" },
     { "do": "type", "text": "x := 1" },
     { "do": "wait", "target": ".bava-doc .code-block", "text": "x := 1" },
+    { "do": "key", "text": "ArrowDown" },
+    { "do": "type", "text": "/image" },
+    { "do": "key", "text": "Enter" },
+    { "do": "wait", "target": ".bava-doc figure.media[data-kind='image'][data-state='ready']" },
     { "do": "key", "text": "ArrowDown" },
     { "do": "type", "text": "/table" },
     { "do": "key", "text": "Enter" },

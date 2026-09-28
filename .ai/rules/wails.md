@@ -178,3 +178,11 @@ the main thread themselves; its macOS ones call AppKit directly, and AppKit's
 menu is not safe off the main thread: setting a check from `SetState` crashed
 the app mid-run. Every change to a native menu from a bound call goes through
 `application.InvokeSync` (`MenuService.onMain`), in one hop.
+
+## Files reach the page through the asset server, never a bound call
+A bound call carrying a whole image or video as base64 is slow and holds it
+in memory twice. The page loads them from `/bava-file/`, an
+`AssetOptions.Middleware` (`app.FileRoute`), which checks every request
+against the folders the user opened (`app.OpenedFolders`). A new kind of file
+the page must show goes through that route and its checks, never around them.
+Wails' clipboard reads text only; an image comes from `FileService.ClipboardImage`.

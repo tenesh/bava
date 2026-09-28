@@ -51,6 +51,23 @@ export function ChooseFileToSave(suggestedName: string): $CancellablePromise<$mo
 }
 
 /**
+ * ChooseMedia shows the native open dialog for images or videos ("image" or
+ * "video"), several at once. Cancelling returns no paths and no error.
+ */
+export function ChooseMedia(kind: string): $CancellablePromise<$models.PathsResult> {
+    return $Call.ByID(702476426, kind);
+}
+
+/**
+ * ClipboardImage is the clipboard's image as PNG in base64, for a paste into
+ * the Document; empty when the clipboard holds no image. Wails reads text
+ * only, so the image comes through here.
+ */
+export function ClipboardImage(): $CancellablePromise<string> {
+    return $Call.ByID(1963423996);
+}
+
+/**
  * Open reads and parses a file.
  */
 export function Open(path: string): $CancellablePromise<$models.OpenResult> {

@@ -127,6 +127,42 @@ them beyond handing the parse to `internal/format`.
 | `ChooseFileToSave(suggestedName)` | `DialogResult`: a path, or empty when cancelled |
 | `Settings()` | the user's preferences, defaults when unreadable; since 06.16 they include `arrowBinding` and `midpointSnap`, both on by default (an older file omits them and reads as on), and since Milestone 7 `objectSnap`, off by default |
 | `SaveSettings(settings)` | an error string, empty on success |
+| `ChooseMedia(kind)` | `PathsResult`: the images (`kind` `image`) or videos (`video`) chosen in the native open dialog, several at once; none when cancelled |
+| `ClipboardImage()` | the clipboard's image as PNG in base64, or empty when it holds none; read for a paste, since the webview hands the page text only |
+
+Opening a page allows its folder for the file route below.
+
+### `files:dropped` (Go → frontend)
+
+Files dragged from the desktop onto an element marked `data-file-drop-target`
+(the Document): `{ paths, x, y }`, the point in CSS pixels from the page's
+top left. The window enables file drops (`EnableFileDrop`).
+
+### Files the page shows
+
+Images and videos in a page are drawn from the app's own asset server, not
+through a bound call: `GET /bava-file/?root=<folder>&path=<relative>`, an
+`AssetOptions.Middleware` in front of the embedded frontend. Range requests
+are answered, so a video seeks.
+
+It serves one file, and only when all of these hold; anything else is a 404:
+
+- `root` is absolute and was opened this session: a Space (`SpaceService.Open`
+  or `Create`), or the folder of a page opened on its own (`FileService.Open`).
+- `path` is relative, with `/` between its parts and no `\` or `:` (on Windows
+  either could lead out of `root`), stays inside `root`, and passes through no
+  link. The file is opened through `root` itself (`os.OpenRoot`).
+- No part of `path` is hidden, except the `.bava/attachments/` of
+  `.bava/attachments/<file>`.
+- Its extension is an image (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`,
+  `.svg`) or a video (`.mp4`, `.webm`, `.mov`), served with that type. An SVG
+  is drawn as an image, so no script in it runs.
+
+Every file is sent with `X-Content-Type-Options: nosniff` and a sandboxing
+`Content-Security-Policy`, so an SVG is only ever an image, never a page
+that runs.
+
+The allowed folders live in memory and are forgotten when the app quits.
 
 ## SpaceService
 
@@ -141,7 +177,7 @@ tree.
 | `Create(parent, name)` | `SpaceInfo`: makes a folder named `name` in `parent` (an absolute path the user chose) and opens it as a Space; a taken or invalid name is refused with a `code` |
 | `Open(dir)` | `SpaceInfo`: root, name (the folder's), the Space's page width; creates `.bava/space.json` when missing |
 | `List(root, folder)` | `SpaceList`: one folder's pages (`.md`) and folders in the Space's order; never hidden entries, `.d2` files or `.bava` |
-| `Apply(root, op)` | `OpResult`: the new path, a Trash item's id, or a renamed Space's root. `op.kind` is `createPage`, `createFolder`, `rename`, `move` (`folder`, `index`; -1 for the end), `duplicate`, `trash`, `restore`, `deleteForever`, `emptyTrash`, `renameSpace`, `setPageWidth` or `relink` (`edits`: each page's `path`, `before` and `after` text; a page is written only if it still reads as `before`, and `missed` lists those that were not) |
+| `Apply(root, op)` | `OpResult`: the new path, a Trash item's id, or a renamed Space's root. `op.kind` is `createPage`, `createFolder`, `rename`, `move` (`folder`, `index`; -1 for the end), `duplicate`, `trash`, `restore`, `deleteForever`, `emptyTrash`, `renameSpace`, `setPageWidth`, `relink` (`edits`: each page's `path`, `before` and `after` text; a page is written only if it still reads as `before`, and `missed` lists those that were not), `attach` (`source`, a file anywhere, copied into `.bava/attachments`), `attachData` (`data` in base64, saved under `name`, or with none as `Pasted image <date> <time>.png`) or `renameAttachment` (`attachment` to `name`, its extension kept); the three return the attachment's `name`, numbered when taken by a different file, or an identical file's already there |
 | `Index(root, withText)` | `SpaceIndex`: every page in the Space (its path, its name without `.md`, and with `withText` its text), in the tree's order; never hidden entries or `.bava`. The frontend reads links from the text with the Document's own reader: "Linked from", missing links, and which links a rename rewrites |
 | `Trash(root)` | `TrashList`: items (where each came from, kind, when, size) and the total size |
 | `ChooseFolder(title)` | `DialogResult`: the native folder picker, which can make a folder, titled as the frontend words it (translated there); empty when cancelled |

@@ -205,7 +205,8 @@ check both before building either by hand.
 | `FormatBubble` ✓ | The toolbar over selected text: turn into, bold, italic, underline, strike, code, link, text colour, highlight. Presses keep the selection (mousedown held); the menus open as `ContextMenu`s at the button. |
 | `BlockHandle` ✓ | Left of the hovered block: + to add a block after it, and the grip that drags it or opens its block menu. |
 | `FindBar` ✓ | Find and replace across the top of the page: the field, "n of m", previous and next, the replace field, Replace, Replace all, close. Enter and ⇧Enter step, Escape closes. |
-| `LinkField` ✓ | The link field over selected text: address, Enter to link, Remove to unlink, Escape to leave it. Its field and FindBar's share `.bava-field` in `controls.scss`. |
+| `LinkField` ✓ | The link field over selected text: address, Enter to link, Remove to unlink, Escape to leave it. With `placeholder` and `removeLabel` (null for no Remove) it also takes a medium's caption and its file's new name. Its field and FindBar's share `.bava-field` in `controls.scss`. |
+| `MediaViewer` ✓ | An image full screen over Ark's Dialog (`size="viewer"`, headless): Escape or a click outside leaves. |
 | `EquationField` ✓ | The field over an equation: its TeX, the equation drawn live below by the caller's `render`, Enter to save, Shift+Enter for a new line, Escape to leave it. |
 | `EmojiPicker` ✓ | A search and every emoji under its group; a pick gives the character, Escape or a press outside closes it. The caller supplies the emoji and group names. |
 | `LinkCard` ✓ | The card under a clicked link: its address, Open, Edit, Remove; a missing page says so and offers the one page with its name. Escape or a press outside closes it; focus stays in the page. |

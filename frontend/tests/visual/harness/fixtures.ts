@@ -167,6 +167,35 @@ const tablesPage: FakePage = {
   scene: { version: 1, elements: [] },
 };
 
+// Images at each width, shape and alignment, a captioned one, a video with
+// its poster, and one whose file is missing (a file of its name is in the
+// attachments, so relinking is offered). The files are testdata/media's.
+const mediaPage: FakePage = {
+  source: [
+    '# Media',
+    '',
+    '<!-- bava: width=small align=left caption="Small, on the left" -->',
+    '![Logo](../.bava/attachments/logo.png)',
+    '',
+    '<!-- bava: width=medium ratio=1:1 align=right -->',
+    '![Landscape](../.bava/attachments/landscape.png)',
+    '',
+    '<!-- bava: width=large ratio=16:9 caption="Large, wide" -->',
+    '![Landscape](../.bava/attachments/landscape.png)',
+    '',
+    '![Landscape at its own size](../.bava/attachments/landscape.png)',
+    '',
+    '<!-- bava: width=full poster="demo poster.png" -->',
+    '![Demo](../.bava/attachments/demo.mp4)',
+    '',
+    'Typed after the video.',
+    '',
+    '![Old logo](images/logo.png)',
+    '',
+  ].join('\n'),
+  scene: { version: 1, elements: [] },
+};
+
 // A locked page: nothing on it can be changed until it is unlocked.
 const checklist: FakePage = {
   source: '---\nbava:\n  locked: true\n---\n# Release checklist\n\n- [x] Tag the build\n- [ ] Write the notes\n',
@@ -180,7 +209,7 @@ export function seedSpace(): FakeSpace {
     folders: {
       '': ['Marketing', 'Engineering', 'Roadmap.md', 'Team handbook.md'],
       Marketing: ['Launch plan.md', 'Brand guide.md', 'Press release.md'],
-      Engineering: ['Architecture.md', 'Release checklist.md', 'Blocks.md', 'Tables.md'],
+      Engineering: ['Architecture.md', 'Release checklist.md', 'Blocks.md', 'Tables.md', 'Media.md'],
     },
     pages: {
       'Roadmap.md': roadmap,
@@ -192,6 +221,7 @@ export function seedSpace(): FakeSpace {
       'Engineering/Release checklist.md': checklist,
       'Engineering/Blocks.md': blocks,
       'Engineering/Tables.md': tablesPage,
+      'Engineering/Media.md': mediaPage,
     },
     trash: [
       { id: 't1', path: 'Meeting notes/Q3 retro.md', kind: 'page', deletedAt: '2026-09-27T09:00:00Z', size: 2048 },

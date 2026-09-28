@@ -92,6 +92,28 @@ component per block.
   never `{@const}` of state its own close clears: the calendar's pick read
   `null` that way.
 
+## Images and videos
+- **A media block is drawn once and changed in place** (`docs/media.ts`): its
+  node view's `update` sets the new settings on the same elements, so a video
+  that is playing keeps playing while the page is edited. `stopEvent` leaves
+  the player's clicks and keys to the player; `ignoreMutation` ignores what
+  the player does to its elements. Never return `false` from `update` for a
+  settings change.
+- **Its file comes from the app's file route** (`mediaUrl`), never a
+  `file://` address or a bound call, and only at an address inside the
+  opened folder; or from its own address on the web. A web image loads when
+  shown; a web video loads nothing until play (`preload="none"`), and a web
+  file that fails is never probed.
+- **Its address follows moves like a link's** (`pageLinks` reports it with
+  `kind: 'media'`, a poster with `kind: 'poster'`), and its words never
+  change with it.
+- **Tests do not trust jsdom for events on a node view.** jsdom lays nothing
+  out, so ProseMirror never reaches `stopEvent` or `ignoreMutation` from a
+  dispatched event: call them on the node view itself.
+- **A field or dialog opened from a menu item opens a frame later.** Ark's
+  menu can focus itself in the frame an item is chosen, taking focus back
+  from whatever the item opened.
+
 ## The diagram block
 A diagram is a custom ProseMirror node type whose NodeView hosts a CodeMirror
 instance holding the D2 source, plus a container for the rendered SVG.

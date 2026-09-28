@@ -25,6 +25,8 @@ export type OpOutcome = {
   root?: string;
   /** Relink's pages that were not written: changed since they were read, or not writable. */
   missed?: string[];
+  /** The attachment's name, for attach, attachData and renameAttachment. */
+  name?: string;
   error: string;
 };
 
@@ -53,6 +55,7 @@ export type SpaceIO = {
     id: string;
     root: string;
     missed?: string[] | null;
+    name?: string;
     error: string;
     code?: string;
   }>;
@@ -108,6 +111,9 @@ const overIPC: SpaceIO = {
       id: "",
       width: "",
       edits: [],
+      source: "",
+      data: "",
+      attachment: "",
       ...op,
     }),
   index: (root, withText) =>
@@ -353,6 +359,7 @@ export function createSpace(
         id: result.id,
         root: result.root,
         missed: result.missed ?? [],
+        name: result.name,
         error: "",
       };
       await options.before?.(outcome);

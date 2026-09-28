@@ -267,6 +267,77 @@ for (const theme of THEMES) {
       await expect(page.getByRole('menuitem', { name: 'Heading 1' })).toHaveCount(0);
     });
 
+    test('images and a video, at each width, shape and alignment', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Media.md');
+      // Every image is drawn from its file; the video waits on its poster.
+      await expect(editor(page).locator('figure.media[data-kind="image"][data-state="ready"]')).toHaveCount(4);
+      await expect(editor(page).locator('figure.media[data-kind="video"] video')).toHaveAttribute('poster', /demo\+poster\.png/);
+      await expect(pane(page)).toHaveScreenshot(shot('document', 'media', 'top', theme));
+      await editor(page).getByText('Large, wide').scrollIntoViewIfNeeded();
+      await expect(pane(page)).toHaveScreenshot(shot('document', 'media', 'middle', theme));
+      await editor(page).getByText('Typed after the video.').scrollIntoViewIfNeeded();
+      await expect(editor(page).locator('figure.media[data-state="missing"]')).toHaveCount(1);
+      await expect(pane(page)).toHaveScreenshot(shot('document', 'media', 'bottom', theme));
+    });
+
+    test('a missing image, relinked to the file of its name', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Media.md');
+      const missing = editor(page).locator('figure.media[data-state="missing"]');
+      await missing.scrollIntoViewIfNeeded();
+      await expect(missing).toContainText('logo.png is missing');
+      await missing.getByRole('button', { name: 'Relink to logo.png' }).click();
+      await expect(editor(page).locator('figure.media[data-state="missing"]')).toHaveCount(0);
+      await expect(editor(page).locator('figure.media[data-kind="image"][data-state="ready"]')).toHaveCount(5);
+    });
+
+    test("the media's menu, its caption field and full screen", async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Media.md');
+      await expect(editor(page).locator('figure.media[data-kind="image"][data-state="ready"]')).toHaveCount(4);
+      const openMenu = async (index: number) => {
+        await editor(page).locator('figure.media').nth(index).hover();
+        await page.getByRole('button', { name: 'Drag, or open the block menu' }).click();
+        await expect(page.locator('.bava-menu').filter({ visible: true })).toBeVisible();
+      };
+      await openMenu(0);
+      await page.getByRole('menuitem', { name: 'Width' }).click();
+      await expect(page.getByRole('menuitem', { name: 'Full width' })).toBeVisible();
+      await expect(page).toHaveScreenshot(shot('document', 'media-menu', 'image', theme));
+      await page.getByRole('menuitem', { name: 'Medium' }).click();
+      await expect(editor(page).locator('figure.media').first()).toHaveAttribute('data-width', 'medium');
+
+      await openMenu(0);
+      await page.getByRole('menuitem', { name: 'Caption' }).click();
+      const field = page.getByRole('textbox', { name: 'Caption' });
+      await expect(field).toBeFocused();
+      await field.fill('Medium now');
+      await page.keyboard.press('Enter');
+      await expect(editor(page).locator('figure.media').first().locator('figcaption')).toHaveText('Medium now');
+
+      await openMenu(1);
+      await page.getByRole('menuitem', { name: 'Full screen' }).click();
+      await expect(page.locator('.media-viewer img')).toBeVisible();
+      await expect(page).toHaveScreenshot(shot('document', 'media', 'full-screen', theme));
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.media-viewer')).toHaveCount(0);
+
+      await openMenu(4);
+      await expect(page.getByRole('menuitem', { name: 'Loop' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Turn into' })).toHaveCount(0);
+      await expect(page.getByRole('menuitem', { name: 'Full screen' })).toHaveCount(0);
+      await expect(page).toHaveScreenshot(shot('document', 'media-menu', 'video', theme));
+    });
+
+    test('a video keeps its player while the page is typed in elsewhere', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Media.md');
+      const video = editor(page).locator('figure.media[data-kind="video"] video');
+      await video.evaluate((element) => ((element as HTMLVideoElement & { marked?: boolean }).marked = true));
+      await editor(page).getByText('Typed after the video.').click();
+      await page.keyboard.press('End');
+      await page.keyboard.type(' And more.');
+      await expect(editor(page)).toContainText('Typed after the video. And more.');
+      expect(await video.evaluate((element) => (element as HTMLVideoElement & { marked?: boolean }).marked)).toBe(true);
+    });
+
     test('tables in both forms', async ({ page }) => {
       await openDocument(page, theme, 'Engineering', 'Engineering/Tables.md');
       await expect(editor(page).locator('table')).toHaveCount(2);

@@ -42,7 +42,7 @@ func TestLogsNeverContainContent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	files := app.NewFileService()
+	files := app.NewFileService(app.FileServiceOptions{})
 	opened := files.Open(path)
 	if opened.Error != "" {
 		t.Fatal(opened.Error)

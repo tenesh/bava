@@ -39,6 +39,9 @@ import { chooseEmoji, emojiPlugin, PICKER, type EmojiInfo } from './emoji';
 import { chooseMention, mentionKey, mentionPlugin, type MentionInfo, type PageRef } from './mention';
 import { linkAt, missingLinksPlugin } from './link-view';
 import { addBlock, endLinePlugin, endsWithALine, textWithoutEndLine } from './lines';
+import { posterAfter } from './page-links';
+import { attachmentBlock, MEDIA_PICKER, mediaView, probeFile, type MediaPlace } from './media';
+import { dropPoint } from 'prosemirror-transform';
 import { copyHeadingLink, linkLabel, linkTo, missingTarget, pastedHeadingLink, relinkCandidate, resolveLink, retarget, type Move } from './links';
 import { dateAttrs } from './dates';
 import { keymap } from 'prosemirror-keymap';
@@ -46,6 +49,12 @@ import { keymap } from 'prosemirror-keymap';
 export type DocEditorOptions = {
   /** Called after every change the user makes; never for loading a page. */
   onChange: () => void;
+  /** `/` Image or Video: the app asks for files of that kind, and adds them at the caret. */
+  onChooseMedia?: (kind: 'image' | 'video') => void;
+  /** A paste with no text: the app looks for an image on the clipboard. */
+  onPasteImage?: () => void;
+  /** Whether the file route has a file; asked for media that did not load. Defaults to asking the route. */
+  probeFile?: (url: string) => Promise<boolean>;
   /** ⌘K: the app asks for a link. */
   onLink?: () => void;
   /** ⌘/: the block menu for the block the caret is in. */
@@ -194,6 +203,9 @@ export class DocEditor {
   #options: DocEditorOptions | null = null;
   /** This page's path in its Space (null outside one), and the Space's pages once read. */
   #space: { here: string | null; pages: PageRef[] | null } = { here: null, pages: null };
+  /** The folder this page's images and videos are loaded from, and the blocks to draw again when it changes. */
+  #mediaPlace: MediaPlace | null = null;
+  #mediaWatchers = new Set<() => void>();
   /** The link whose card is showing, to close it when the caret leaves. */
   #card: { from: number; to: number } | null = null;
 
@@ -209,6 +221,8 @@ export class DocEditor {
         contents: (node, view) => contentsView(node, view),
         math_block: (node, view, getPos) => mathView(node, view, getPos, (pos, at) => this.#options?.onEquation?.(pos, at)),
         math_inline: (node, view, getPos) => mathView(node, view, getPos, (pos, at) => this.#options?.onEquation?.(pos, at)),
+        image: (node, view, getPos) => mediaView(node, view, getPos, this.#mediaContext()),
+        video: (node, view, getPos) => mediaView(node, view, getPos, this.#mediaContext()),
         code_block: (node, view, getPos) =>
           codeBlockView(node, view, getPos, {
             onCopy: (text) => this.#options?.onCopy?.(text),
@@ -218,6 +232,12 @@ export class DocEditor {
       attributes: { class: 'bava-doc', spellcheck: 'true' },
       // Spreadsheet cells pasted by the webview itself, as from a right-click Paste.
       handlePaste: (view, event) => {
+        // No text, only files: an image, which the app reads from the clipboard.
+        const types = [...(event.clipboardData?.types ?? [])];
+        if (!this.locked && types.includes('Files') && !types.includes('text/plain') && !types.includes('text/html')) {
+          this.#options?.onPasteImage?.();
+          return true;
+        }
         if (!this.locked && this.#pasteHeadingLink(event.clipboardData?.getData('text/plain') ?? '')) return true;
         const cells = inCodeAt(view.state) ? null : readCells(event.clipboardData?.getData('text/plain') ?? '');
         if (!cells || this.locked) return false;
@@ -250,6 +270,8 @@ export class DocEditor {
         this.#openCard(link.from, link.to, link.href);
         return false;
       },
+      // Files from the desktop are the app's to add, where they land.
+      handleDrop: (_view, event) => [...((event as DragEvent).dataTransfer?.types ?? [])].includes('Files'),
       handleClickOn: (_view, _pos, node, nodePos, _event, direct) => {
         if (direct && node.type === schema.nodes.date) this.#openDate(nodePos);
         return false;
@@ -348,6 +370,7 @@ export class DocEditor {
     view.updateState(view.state.apply(tr));
     if (tr.docChanged) this.#options?.onChange();
     if (tr.getMeta(PICKER)) this.#options?.onEmojiPicker?.(this.#caretAt());
+    if (tr.getMeta(MEDIA_PICKER)) this.#options?.onChooseMedia?.(tr.getMeta(MEDIA_PICKER));
     if (tr.selectionSet || tr.docChanged) this.#options?.onSelection?.();
     const card = this.#card;
     const { from, to } = view.state.selection;
@@ -416,6 +439,14 @@ export class DocEditor {
       return false;
     });
     const tr = view.state.tr;
+    // Media blocks keep their words; their address and poster follow.
+    view.state.doc.descendants((node, pos) => {
+      if (node.type !== schema.nodes.image && node.type !== schema.nodes.video) return true;
+      const src = retarget(page, node.attrs.src as string, '￼', moves)?.href ?? node.attrs.src;
+      const poster = node.attrs.poster ? (posterAfter(node.attrs.poster as string, moves) ?? node.attrs.poster) : null;
+      if (src !== node.attrs.src || poster !== node.attrs.poster) tr.setNodeMarkup(pos, null, { ...node.attrs, src, poster });
+      return false;
+    });
     for (const run of runs.reverse()) {
       // Formatted words are never the file's name, as the other pages read them.
       const next = retarget(page, run.mark.attrs.href as string, run.plain ? run.text : '￼', moves);
@@ -724,6 +755,85 @@ export class DocEditor {
     if (!view || this.locked) return;
     view.dispatch(view.state.tr.insertText(text).scrollIntoView());
     view.focus();
+  }
+
+  /** The folder the user opened that holds this page, and its path there: where its images and videos load from. */
+  setMediaPlace(place: MediaPlace | null): void {
+    const same = place && this.#mediaPlace && place.root === this.#mediaPlace.root && place.here === this.#mediaPlace.here;
+    if (same || (!place && !this.#mediaPlace)) return;
+    this.#mediaPlace = place;
+    for (const redraw of this.#mediaWatchers) redraw();
+  }
+
+  #mediaContext() {
+    return {
+      place: () => this.#mediaPlace,
+      probe: (url: string) => (this.#options?.probeFile ?? probeFile)(url),
+      watchPlace: (redraw: () => void) => {
+        this.#mediaWatchers.add(redraw);
+        return () => this.#mediaWatchers.delete(redraw);
+      },
+      relink: (pos: number, src: string) => this.setMediaAttrs(pos, { src }),
+    };
+  }
+
+  /**
+   * Puts attachments into the page as media blocks, in order, as one edit: at
+   * the caret (an empty line is replaced; a line is split, or they go beside
+   * it at its ends), or where they were dropped (`pos`), between blocks.
+   */
+  insertMedia(names: string[], pos?: number): void {
+    const view = this.view;
+    if (!view || this.locked) return;
+    const here = this.#space.here ?? '';
+    const nodes = names.map((name) => attachmentBlock(here, name)).filter((node): node is Node => node !== null);
+    if (nodes.length === 0) return;
+    const slice = new Slice(Fragment.from(nodes), 0, 0);
+    const tr = view.state.tr;
+    const { selection } = view.state;
+    const $from = selection.$from;
+    let at: number | null = pos ?? null;
+    if (at === null && selection.empty && $from.parent.type === schema.nodes.paragraph) {
+      const line = $from.parent;
+      const holder = $from.node(-1);
+      const index = $from.index(-1);
+      if (line.content.size === 0 && holder.canReplace(index, index + 1, Fragment.from(nodes)) && !(holder.type === schema.nodes.list_item && index === 0)) {
+        tr.replaceWith($from.before(), $from.after(), nodes);
+        at = -1;
+      } else if ($from.parentOffset === line.content.size) at = $from.after();
+      else if ($from.parentOffset === 0) at = $from.before();
+    }
+    if (at === null) tr.replaceSelection(slice);
+    else if (at >= 0) {
+      const target = dropPoint(tr.doc, at, slice);
+      if (target === null) return;
+      tr.insert(target, nodes);
+    }
+    // The last one added is selected, for its menu.
+    const end = tr.mapping.map(selection.to);
+    const last = tr.doc.resolve(Math.min(end, tr.doc.content.size)).nodeBefore;
+    if (last && last.type === nodes[nodes.length - 1].type) tr.setSelection(NodeSelection.create(tr.doc, end - last.nodeSize));
+    view.dispatch(tr.scrollIntoView());
+    view.focus();
+  }
+
+  /** The video drawn for the block at `pos`, to take its frame; null for any other block. */
+  videoAt(pos: number): HTMLVideoElement | null {
+    const dom = this.view?.nodeDOM(pos);
+    return dom instanceof HTMLElement ? dom.querySelector('video') : null;
+  }
+
+  /** The place in the page at a point on screen, for a drop; null outside it. */
+  posAtPoint(x: number, y: number): number | null {
+    return this.view?.posAtCoords({ left: x, top: y })?.pos ?? null;
+  }
+
+  /** Changes the settings or address of the image or video at `pos`, as one edit. */
+  setMediaAttrs(pos: number, attrs: Record<string, unknown>): void {
+    const view = this.view;
+    const node = view?.state.doc.nodeAt(pos);
+    if (!view || this.locked || !node || (node.type !== schema.nodes.image && node.type !== schema.nodes.video)) return;
+    view.dispatch(view.state.tr.setNodeMarkup(pos, null, { ...node.attrs, ...attrs }));
   }
 
   /** Where this page sits in its Space (null outside one), and the Space's pages once read. */

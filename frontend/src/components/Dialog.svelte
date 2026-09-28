@@ -33,7 +33,7 @@
      * whose panes share the width (code beside a preview) shrinks them to
      * nothing without one.
      */
-    size?: 'default' | 'narrow' | 'medium' | 'wide' | 'about' | 'export' | 'settings' | 'diagram' | 'shortcuts' | 'trash';
+    size?: 'default' | 'narrow' | 'medium' | 'wide' | 'about' | 'export' | 'settings' | 'diagram' | 'shortcuts' | 'trash' | 'viewer';
     /** The body runs to the frame's edges, for panes that draw their own. */
     flush?: boolean;
     /** The header is hidden from sight but still names the dialog. */
@@ -198,6 +198,16 @@
     box-sizing: border-box;
     width: var(--size-dialog-trash-width);
     height: var(--size-dialog-trash-height);
+  }
+
+  :global(.bava-dialog-content[data-size='viewer']) {
+    box-sizing: border-box;
+    width: var(--size-media-viewer-width);
+    height: var(--size-media-viewer-height);
+  }
+
+  :global(.bava-dialog-content[data-size='viewer'] .bava-dialog-header[data-hidden='true'] + .bava-dialog-body) {
+    height: 100%;
   }
 
   :global(.bava-dialog-content[data-size='narrow']) {

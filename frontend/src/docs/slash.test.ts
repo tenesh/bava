@@ -25,6 +25,8 @@ describe('the / menu\'s items', () => {
       'advanced:code',
       'advanced:equation',
       'advanced:contents',
+      'advanced:image',
+      'advanced:video',
       'inline:inlineEquation',
       'inline:footnote',
       'inline:emoji',
