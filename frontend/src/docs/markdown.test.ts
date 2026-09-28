@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import MarkdownIt from 'markdown-it';
 import { parsePage, writePage } from './markdown';
 import { schema } from './schema';
+import { Fragment, Slice } from 'prosemirror-model';
+import { dateAttrs } from './dates';
 
 /** A page read and written back: what one save does to it. */
 const tidy = (markdown: string) => {
@@ -705,5 +707,67 @@ describe('real Markdown', async () => {
   // What it shows includes every code block's code, character for character.
   it.each(files)('%s: a save keeps what it shows, and a second changes nothing', (file) => {
     keepsMeaning(readFileSync(file, 'utf8'));
+  });
+});
+
+describe('date chips', () => {
+  const dates = (markdown: string) => {
+    const out: { date: string; text: string }[] = [];
+    parsePage(markdown).doc.descendants((node) => {
+      if (node.type.name === 'date') out.push({ date: node.attrs.date, text: node.attrs.text });
+    });
+    return out;
+  };
+
+  it('reads a date tag as a chip and writes it back exactly', () => {
+    const page = 'The launch is on <time datetime="2026-10-02">2 Oct 2026</time>.\n';
+    same(page);
+    expect(dates(page)).toEqual([{ date: '2026-10-02', text: '2 Oct 2026' }]);
+  });
+
+  it('keeps the words of a date written by hand', () => {
+    const page = 'Due <time datetime="2026-10-02">next Friday</time>.\n';
+    same(page);
+    expect(dates(page)).toEqual([{ date: '2026-10-02', text: 'next Friday' }]);
+  });
+
+  it('writes a changed date in its own words', () => {
+    const { doc, front } = parsePage('Due <time datetime="2026-10-02">next Friday</time>.\n');
+    let at = -1;
+    doc.descendants((node, pos) => {
+      if (node.type.name === 'date') at = pos;
+    });
+    const changed = doc.type.schema.nodes.date.create(dateAttrs('2026-11-05'));
+    const next = doc.replace(at, at + 1, new Slice(Fragment.from(changed), 0, 0));
+    expect(writePage(next, front)).toBe('Due <time datetime="2026-11-05">5 Nov 2026</time>.\n');
+  });
+
+  it('keeps as written a date tag holding more than text, or no real day', () => {
+    for (const page of [
+      'On <time datetime="2026-10-02"><b>2 Oct</b></time>.\n',
+      'On <time datetime="2026-02-30">30 Feb</time>.\n',
+      'On <time datetime="2026-10">October</time>.\n',
+      'On <time>2 Oct</time>.\n',
+      'On <time datetime="2026-10-02" class="x">2 Oct</time>.\n',
+      'On <time datetime="2026-10-02">*2 Oct*</time>.\n',
+      'On <time datetime="2026-10-02"></time>.\n',
+    ]) {
+      same(page);
+      expect(dates(page)).toEqual([]);
+    }
+  });
+
+  it('leaves a date typed as text as text', () => {
+    same('Ship on 2026-10-02.\n');
+    expect(dates('Ship on 2026-10-02.\n')).toEqual([]);
+  });
+
+  it('keeps a chip inside a table cell, in both forms', () => {
+    const plain = `| When${' '.repeat(41)} |\n|${'-'.repeat(47)}|\n| <time datetime="2026-10-02">2 Oct 2026</time> |\n`;
+    same(plain);
+    expect(dates(plain)).toHaveLength(1);
+    const rich = '<table>\n<tr><th>When</th></tr>\n<tr><td data-background="yellow"><time datetime="2026-10-02">2 Oct 2026</time></td></tr>\n</table>\n';
+    same(rich);
+    expect(dates(rich)).toHaveLength(1);
   });
 });

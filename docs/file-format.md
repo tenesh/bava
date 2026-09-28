@@ -66,8 +66,9 @@ The cost is accepted knowingly: a JSON block at the end of a human document.
 ## The document
 
 **Status:** specified 2026-09-27 for Milestone 8.2, and for 8.3a's callouts,
-toggles, code blocks, equations, footnotes, contents and emoji, each ahead of
-the code.
+toggles, code blocks, equations, footnotes, contents and emoji, 8.3b's
+tables, and 8.3c's links between pages and date chips, each ahead of the
+code.
 
 The prose part of a page, everything before the canvas block, is edited as
 formatted text and written back as Markdown in one style. A page whose prose
@@ -364,6 +365,55 @@ another block. A table Bava cannot hold exactly is kept as written:
 an HTML table with anything else in it, a Markdown table with a row longer
 than its header (other readers drop the extra cells), and any table whose
 cells hold blocks.
+
+### Links between pages
+A link to another page is an ordinary Markdown link to its file, so every
+Markdown app follows it:
+
+```markdown
+See the [Launch plan](../Marketing/Launch%20plan.md) and its
+[Timeline](../Marketing/Launch%20plan.md#timeline).
+```
+
+- The path is relative to the linking page, with `/` between folders. A
+  space is written `%20`, and so is every other character a link's address
+  cannot hold as it is (`(`, `)`, `<`, `>`, `%`, `#`, `?`, `|`); GitHub and
+  Obsidian read it back the same.
+- A link to a heading adds the heading's anchor, the same anchors as the
+  contents block's (GitHub's). A link to a heading on the same page is the
+  anchor alone (`#timeline`).
+- The text starts as the page's file name without `.md`, and can be
+  reworded like any link's.
+- **When a page or folder is renamed or moved inside Bava**, every link to a
+  page it moved is rewritten in every page of the Space, and a moved page's
+  own links are rewritten from its new place. Only the link's address
+  changes, and its text where the text is still the old file name; a
+  reworded link keeps its words, and every other byte of the page stays as
+  it was. A link is exactly what the Document shows as one, read by the same
+  reader, so nothing else is ever rewritten: not code, comments, front
+  matter, equations, inline HTML, HTML blocks, text in an HTML table's
+  cells, or a table kept as written. A link in an HTML table is its
+  `<a href>`; a reference link's address is its definition's. A page
+  changed since it was read is left as it is and named.
+- A link to a page that does not exist is kept as written and shown as
+  missing. Nothing written to any file records who links to whom: Bava reads
+  the pages to find a page's "Linked from" list.
+
+### Date chips
+A date is HTML's date tag around the date as a person reads it:
+
+```markdown
+The launch is on <time datetime="2026-10-02">2 Oct 2026</time>.
+```
+
+- `datetime` is the day, `YYYY-MM-DD`. Other apps show the readable text.
+- Bava writes the text as day, short month and year (`2 Oct 2026`), in
+  English. Text written by hand is kept as written until the date is changed
+  in Bava.
+- A tag whose `datetime` is not a valid day, or whose words are empty or hold
+  anything but plain text (a tag, an entity, or Markdown's marks such as `*`,
+  `_`, `` ` ``, `~`, `[`, `]`, `\` and `$`), is kept as written.
+- A date typed as plain text (`2026-10-02`) stays text.
 
 ### Blocks kept as they are
 A block this version cannot edit is shown in the page, read-only, and written

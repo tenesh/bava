@@ -30,6 +30,7 @@ vi.mock('../bindings/github.com/tenesh/bava/internal/app', () => ({
     List: vi.fn().mockResolvedValue({ entries: [{ name: 'Roadmap.md', path: 'Roadmap.md', kind: 'page' }], error: '' }),
     Apply: vi.fn().mockResolvedValue({ path: '', id: '', root: '', error: '' }),
     Create: vi.fn().mockResolvedValue({ root: '/w/Beta', name: 'Beta', pageWidth: '', error: '' }),
+    Index: vi.fn().mockResolvedValue({ pages: [], backlinks: [], error: '' }),
   },
   LogService: {
     Report: vi.fn().mockResolvedValue(undefined),

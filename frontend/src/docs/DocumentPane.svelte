@@ -5,12 +5,14 @@
    * mounted once and destroyed in the cleanup (.ai/rules/editors.md); the app
    * hands it pages and asks it for the Markdown back.
    */
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import BlockHandle from '../components/BlockHandle.svelte';
   import ContextMenu from '../components/ContextMenu.svelte';
   import FindBar from '../components/FindBar.svelte';
   import FormatBubble from '../components/FormatBubble.svelte';
   import LinkField from '../components/LinkField.svelte';
+  import LinkCard from '../components/LinkCard.svelte';
+  import DatePicker from '../components/DatePicker.svelte';
   import EquationField from '../components/EquationField.svelte';
   import EmojiPicker from '../components/EmojiPicker.svelte';
   import PageHeader from '../components/PageHeader.svelte';
@@ -20,7 +22,7 @@
   import { t } from '../i18n/t';
   import type { MessageKey } from '../i18n/messages';
   import { commands, turnIntoChoices, type BlockKind } from './commands';
-  import { DocEditor } from './editor';
+  import { DocEditor, type LinkCard as LinkCardInfo } from './editor';
   import type { PageSettings } from './markdown';
   import type { SlashInfo } from './slash';
   import { pageWidth } from './page-settings';
@@ -30,6 +32,11 @@
   import { tables } from './table';
   import type { Command } from 'prosemirror-state';
   import { loadEmoji, type Emoji, type EmojiInfo } from './emoji';
+  import type { MentionInfo, MentionItem, PageRef } from './mention';
+  import type { Move } from './links';
+  import { latestReads } from './reads';
+  import { backlinks as findBacklinks, type PageText } from './page-links';
+  import { formatDay } from './dates';
   import { LANGUAGES } from '../canvas/code/languages';
 
   type Props = {
@@ -47,9 +54,17 @@
     onTrashPage: () => void;
     /** Text for the clipboard: a code block's Copy. */
     onCopyText: (text: string) => void;
+    /** This page's path in its Space; null outside a Space. */
+    here: string | null;
+    /** The Space's pages, with their text when `withText` is set; null when they could not be read. */
+    readIndex: (withText: boolean) => Promise<PageText[] | null>;
+    /** A link followed: the app opens it. */
+    onFollow: (href: string) => void;
+    /** A page of the Space to open, by its path. */
+    onOpenPage: (path: string) => void;
   };
 
-  let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage, onCopyText }: Props = $props();
+  let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage, onCopyText, here, readIndex, onFollow, onOpenPage }: Props = $props();
 
   const editor = new DocEditor();
   let host: HTMLDivElement;
@@ -69,11 +84,64 @@
   let findFocus = $state.raw<{ field: 'find' | 'replace'; at: number }>({ field: 'find', at: 0 });
   let found = $state.raw({ count: 0, index: -1 });
   let emojiSuggest = $state.raw<EmojiInfo | null>(null);
+  let mention = $state.raw<MentionInfo | null>(null);
+  let linkCard = $state.raw<LinkCardInfo | null>(null);
+  let dateChip = $state.raw<{ pos: number; at: { left: number; bottom: number }; date: string } | null>(null);
+  let backlinks = $state.raw<PageRef[]>([]);
   let picker = $state.raw<{ at: { left: number; top: number; bottom: number }; pick: (emoji: string) => void } | null>(null);
   let emojiList = $state.raw<Emoji[]>([]);
   let equation = $state.raw<{ pos: number; at: EquationAt; value: string; display: boolean } | null>(null);
   let link = $state.raw<{ left: number; top: number; value: string } | null>(null);
   let dragging: number | null = null;
+
+  // The `@` menu links from wherever this page now is, and the page's links
+  // and "Linked from" are read again for it.
+  $effect(() => {
+    void here;
+    untrack(() => void refreshLinks());
+  });
+
+  const reads = latestReads();
+
+  /**
+   * Reads the Space's pages, and what links here, again: when a page opens,
+   * the window regains focus, pages move, and (pages only) each time the `@`
+   * menu opens. A read that fails keeps what was shown.
+   */
+  export async function refreshLinks(withBacklinks = true) {
+    const asked = here;
+    const read = reads.start(withBacklinks);
+    if (asked === null) {
+      editor.setSpacePages(null, null);
+      backlinks = [];
+      return;
+    }
+    const pages = await readIndex(withBacklinks);
+    if (here !== asked || !pages) return;
+    if (read.pagesCurrent()) editor.setSpacePages(asked, pages);
+    if (read.backlinksCurrent()) backlinks = findBacklinks(pages, asked);
+  }
+
+  /** Rewrites this page's links after pages moved; `page` is where it was. */
+  export function followMoves(page: string, moves: Move[]) {
+    editor.followMoves(page, moves);
+  }
+
+  /** Shows the heading an anchor names (`#goals`); false when the page has none. */
+  export function goToAnchor(anchor: string): boolean {
+    return editor.goToAnchor(anchor);
+  }
+
+  function mentionRow(entry: MentionItem, index: number) {
+    if (entry.kind === 'page') {
+      const folder = entry.path.includes('/') ? entry.path.slice(0, entry.path.lastIndexOf('/')) : undefined;
+      return { id: String(index), label: entry.name, detail: folder, group: t('mention.group.pages') };
+    }
+    const day = formatDay(entry.date);
+    return entry.word
+      ? { id: String(index), label: t(`mention.${entry.word}`), detail: day, group: t('mention.group.dates') }
+      : { id: String(index), label: day, group: t('mention.group.dates') };
+  }
 
   const width = $derived(pageWidth(settings.width, spaceWidth, appWidth));
   const widthValue = $derived(width === 'narrow' ? 'var(--size-page-narrow)' : width === 'full' ? '100%' : 'var(--size-page-wide)');
@@ -102,6 +170,13 @@
         if (!editor.locked) menu = { anchor, items: tableItems(), run: runTable };
       },
       onEmoji: (info) => (emojiSuggest = info),
+      onMention: (info) => (mention = info),
+      onMentionPages: () => void refreshLinks(false),
+      onLinkCard: (card) => (linkCard = card),
+      onFollow: (href) => onFollow(href),
+      onDateChip: (pos, at, date) => {
+        if (!editor.locked) dateChip = { pos, at, date };
+      },
       onEmojiPicker: (at) => openPicker(at, (emoji) => editor.insertText(emoji)),
       onEquation: (pos, at) => {
         const block = editor.blockInfo(pos);
@@ -130,20 +205,26 @@
 
   // ---- what the app calls -------------------------------------------------
 
-  /** Shows a page, with fresh undo, and closes anything open over the last one. */
-  /** Shows a page; `page` names it for remembering its folds on this computer. */
+  /**
+   * Shows a page, with fresh undo, and closes anything open over the last
+   * one; `page` names it for remembering its folds on this computer.
+   */
   export function setPage(markdown: string, page: string | null = null) {
     editor.setPage(markdown, page);
     settings = editor.settings;
     slash = null;
     equation = null;
     emojiSuggest = null;
+    mention = null;
+    linkCard = null;
+    dateChip = null;
     picker = null;
     bubble = null;
     menu = null;
     link = null;
     hovered = null;
     onCounts(editor.counts());
+    void refreshLinks();
   }
 
   export const markdown = () => editor.markdown();
@@ -301,7 +382,7 @@
             ...(block.attrs.color ? [item('icon', t('callout.icon'))] : []),
           ]
         : [
-            ...(block?.type === 'heading' ? [item('toggleheading', t('block.toggleHeading'))] : []),
+            ...(block?.type === 'heading' ? [item('toggleheading', t('block.toggleHeading')), item('copylink', t('block.copyLink'))] : []),
             ...(block?.type === 'ordered_list'
               ? [
                   {
@@ -331,6 +412,7 @@
         else if (id.startsWith('panel:')) editor.run(callouts.setColor(pos, id.slice(6)));
         else if (id === 'icon') openPicker({ left: anchor.x, top: anchor.y, bottom: anchor.y }, (emoji) => editor.run(callouts.setIcon(pos, emoji)));
         else if (id === 'toggleheading') editor.run(folds.toggleHeading(pos));
+        else if (id === 'copylink') editor.copyHeadingLink(pos);
         else if (id.startsWith('numbering:')) editor.run(commands.listStyle(id.slice(10) as '1' | 'a' | 'i'));
         else if (id.startsWith('turn:')) runTurn(id);
         else if (id === 'duplicate') editor.run(commands.duplicateBlock);
@@ -376,9 +458,25 @@
     else editor.run(commands[command as 'bold' | 'italic' | 'underline' | 'strike' | 'code']);
   }
 
-  function openLink() {
+  /** Closes the link card, then acts on the link it showed. */
+  function closeCard(then?: (card: LinkCardInfo) => void) {
+    const card = linkCard;
+    linkCard = null;
+    if (card) then?.(card);
+  }
+
+  /** The calendar's pick: the chip it opened for takes the day. */
+  function pickDate(day: string) {
+    const chip = dateChip;
+    dateChip = null;
+    if (!chip) return;
+    editor.setDate(chip.pos, day);
+    editor.focus();
+  }
+
+  function openLink(value = '') {
     const at = editor.selectionRect();
-    if (at) link = { ...at, value: '' };
+    if (at) link = { ...at, value };
   }
 
   function applyLink(value: string) {
@@ -437,6 +535,21 @@
     }}
   >
     <div class="host" bind:this={host}></div>
+    {#if backlinks.length > 0}
+      <nav class="backlinks" aria-label={t('backlinks.label')}>
+        <h2>{t('backlinks.label')}</h2>
+        <ul>
+          {#each backlinks as page (page.path)}
+            <li>
+              <button type="button" onclick={() => onOpenPage(page.path)}>{page.name}</button>
+              {#if page.path.includes('/')}
+                <span class="folder">{page.path.slice(0, page.path.lastIndexOf('/'))}</span>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      </nav>
+    {/if}
     {#if hovered}
       <BlockHandle
         at={{ left: hovered.left, top: hovered.top }}
@@ -478,6 +591,16 @@
       bubbleHeld = false;
       refreshSelection();
     }}
+  />
+{/if}
+
+{#if mention}
+  <SlashMenu
+    label={t('mention.label')}
+    items={mention.items.map(mentionRow)}
+    active={mention.active}
+    at={mention.at}
+    onChoose={(id) => editor.chooseMention(Number(id))}
   />
 {/if}
 
@@ -533,6 +656,42 @@
   />
 {/if}
 
+<!-- Each shows a copy of what it was opened for, so closing it never leaves it reading nothing. -->
+{#each linkCard ? [linkCard] : [] as card (card)}
+  <LinkCard
+    at={card.at}
+    href={card.href}
+    missing={card.missing}
+    relinkName={card.relink?.name ?? null}
+    onOpen={() => closeCard((shown) => onFollow(shown.href))}
+    onEdit={() =>
+      closeCard((shown) => {
+        editor.selectRange(shown.from, shown.to);
+        openLink(shown.href);
+      })}
+    onRemove={() => closeCard((shown) => editor.removeLink(shown.from, shown.to))}
+    onRelink={() => closeCard((shown) => shown.relink && editor.relink(shown.from, shown.to, shown.relink.path))}
+    readOnly={editor.locked}
+    focusFirst={card.focus}
+    onClose={() => {
+      closeCard();
+      editor.focus();
+    }}
+  />
+{/each}
+
+{#each dateChip ? [dateChip] : [] as chip (chip)}
+  <DatePicker
+    at={chip.at}
+    value={chip.date}
+    onPick={pickDate}
+    onClose={() => {
+      dateChip = null;
+      editor.focus();
+    }}
+  />
+{/each}
+
 {#if link}
   <LinkField
     at={link}
@@ -580,7 +739,79 @@
     overflow-y: auto;
   }
 
+  /* A short page keeps "Linked from" at the bottom of the pane; a long one, after its end. */
+  .scroller {
+    display: flex;
+    flex-direction: column;
+  }
+
   .host {
-    min-height: 100%;
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+  }
+
+  .host > :global(.bava-doc) {
+    flex: 1 0 auto;
+    width: 100%;
+    min-height: 0;
+  }
+
+  /* The page's text column, its rule as wide as the text. */
+  .backlinks {
+    box-sizing: border-box;
+    width: calc(100% - 2 * var(--size-doc-gutter));
+    max-width: var(--page-width, var(--size-page-wide));
+    margin: 0 auto;
+    padding: var(--space-4) 0 var(--space-8);
+    border-top: var(--border-width) solid var(--color-border-subtle);
+  }
+
+  h2 {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-meta);
+    font-weight: var(--weight-semibold);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+    gap: var(--space-2);
+    align-items: baseline;
+  }
+
+  li button {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: var(--text-control);
+    color: var(--color-accent);
+    cursor: pointer;
+  }
+
+  li button:hover {
+    text-decoration: underline;
+  }
+
+  li button:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+    border-radius: var(--radius-sm);
+  }
+
+  .folder {
+    font-size: var(--text-meta);
+    color: var(--color-text-muted);
   }
 </style>

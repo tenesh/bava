@@ -41,6 +41,15 @@ export function Create(parent: string, name: string): $CancellablePromise<$model
 }
 
 /**
+ * Index lists every page in a Space, with each page's text when withText is
+ * set: the frontend reads links with the Document's own reader, so what a
+ * link is never differs between an open page and the others.
+ */
+export function Index(root: string, withText: boolean): $CancellablePromise<$models.SpaceIndex> {
+    return $Call.ByID(3863460661, root, withText);
+}
+
+/**
  * List lists one folder of a Space.
  */
 export function List(root: string, folder: string): $CancellablePromise<$models.SpaceList> {

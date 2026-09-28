@@ -59,3 +59,12 @@ templates). A page's text and canvas stay in its own `.md` file, so copying
 one page still carries all of it; `docs/file-format.md` ("Why one file rather
 than a sidecar") is the reason. Every change to a Space goes through
 `internal/space`, which refuses a path that leaves the Space or is hidden.
+
+## A rename rewrites other pages, byte for byte
+Renaming or moving a page or folder rewrites the links to it in every page of
+the Space. That is Bava writing into files the user did not open, so it
+changes only a link's address, and its words where they still read the old
+name, and nothing else; the links are found by the Document's own reader,
+never a second parser. The file side writes a page back only if it still
+reads as it did (`Space.WriteIfUnchanged`), and saving keeps a file's
+permissions.

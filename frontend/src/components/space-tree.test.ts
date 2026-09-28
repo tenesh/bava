@@ -33,6 +33,7 @@ function render(over: Record<string, unknown> = {}) {
     onMove: vi.fn(),
     onTrash: vi.fn(),
     onContextMenu: vi.fn(),
+    onRenameStarted: vi.fn(),
   };
   const app = flushSync(() =>
     mount(SpaceTree, {
@@ -138,8 +139,20 @@ describe('naming in the Files tree', () => {
     unmount(app);
   });
 
+  it('starts a rename asked for a frame later, once a closing menu has taken focus back', async () => {
+    const { target, app, handlers } = render({ renameRequest: 'Roadmap.md' });
+    await settle();
+    expect(renameInput(target)).toBeFalsy();
+    await new Promise((done) => requestAnimationFrame(done));
+    await settle();
+    expect(renameInput(target)).toBeTruthy();
+    expect(handlers.onRenameStarted).toHaveBeenCalledTimes(1);
+    unmount(app);
+  });
+
   it('renames nothing when a rename is cancelled', async () => {
     const { target, app, handlers } = render({ renameRequest: 'Roadmap.md' });
+    await new Promise((done) => requestAnimationFrame(done));
     await settle();
     const input = renameInput(target)!;
     input.value = 'Other';

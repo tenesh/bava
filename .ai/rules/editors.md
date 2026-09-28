@@ -63,6 +63,26 @@ component per block.
 - **The formatting bubble follows focus.** It shows for a text selection only
   while the page has focus: a selection left by find is not one to format.
 
+## Links between pages
+- **One reader decides what a link is.** The Document's own Markdown reader
+  finds a page's links with where each sits in its text (`pageLinks` in
+  `markdown.ts`), for the open page and every other alike: a rename rewrites
+  closed pages from those places (`page-links.ts`), and Go only lists pages
+  and writes one back when it is unchanged since it was read. A second
+  parser on the file side disagreed with this one on 29 of 113 unusual pages;
+  never bring one back. `testdata/links/pages.json` pins what is a link and
+  where; add a case for every surprise.
+- **A rewrite touches only a link's address, and its words where they are
+  still the old name.** Every other byte of a page stays as it was. A link
+  whose place cannot be found exactly is left alone and the page is named,
+  never guessed at.
+- **"Linked from" and missing links are read, never written.** The editor
+  holds the Space's pages (`setSpacePages`) and asks for them again when a
+  page opens, the `@` menu opens, the window regains focus, or pages move.
+- **A floating panel shows a copy of what it opened for** (`{#each x ? [x] : []}`),
+  never `{@const}` of state its own close clears: the calendar's pick read
+  `null` that way.
+
 ## The diagram block
 A diagram is a custom ProseMirror node type whose NodeView hosts a CodeMirror
 instance holding the D2 source, plus a container for the rendered SVG.

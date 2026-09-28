@@ -31,6 +31,10 @@ function fakeIO(folders: Record<string, Entry[]>) {
     chooseFolder: vi.fn(async () => ({ path: '', error: '' })),
     create: vi.fn(async (parent: string, name: string) => ({ root: `${parent}/${name}`, name, pageWidth: '', error: '' })),
     reveal: vi.fn(async () => ({ error: '', code: '' })),
+    index: vi.fn(async (_root: string, withText: boolean) => ({
+      pages: [{ name: 'Roadmap', path: 'Roadmap.md', text: withText ? '# Roadmap\n' : '' }],
+      error: '',
+    })),
   };
   return io as typeof io & SpaceIO;
 }
@@ -275,5 +279,36 @@ describe('a Space, under refusals, moves and overlapping refreshes', () => {
     expect(typeof message).toBe('string');
     expect(message).not.toBe('');
     expect(message).not.toBe('showing folders is unavailable');
+  });
+});
+
+describe("a Space's index", () => {
+  it('lists the pages, with their text when asked', async () => {
+    const io = fakeIO(tree());
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    const pages = await space.index(true);
+    expect(io.index).toHaveBeenCalledWith('/w/Acme', true);
+    expect(pages).toEqual([{ name: 'Roadmap', path: 'Roadmap.md', text: '# Roadmap\n' }]);
+  });
+
+  it('is empty with no Space open, and unknown when reading fails', async () => {
+    const io = fakeIO(tree());
+    const space = createSpace(io, { storage: memoryStorage() });
+    expect(await space.index(false)).toEqual([]);
+    await space.open('/w/Acme');
+    io.index.mockResolvedValueOnce({ pages: null as never, error: 'unreadable' });
+    expect(await space.index(false)).toBeNull();
+    io.index.mockRejectedValueOnce(new Error('the app is closing'));
+    expect(await space.index(false)).toBeNull();
+  });
+
+  it('passes on the pages relink could not write', async () => {
+    const io = fakeIO(tree());
+    io.apply.mockResolvedValueOnce({ path: '', id: '', root: '', error: '', missed: ['Plan.md'] } as never);
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    const outcome = await space.apply({ kind: 'relink', edits: [{ path: 'Plan.md', before: 'a', after: 'b' }] });
+    expect(outcome.missed).toEqual(['Plan.md']);
   });
 });

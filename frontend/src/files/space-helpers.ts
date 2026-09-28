@@ -122,3 +122,10 @@ export async function saveSpaceSettings(
   if (changes.width !== undefined) await apply.setWidth(changes.width);
   if (changes.name !== undefined) await apply.rename(changes.name);
 }
+
+/** What to tell the user about pages whose links a rename or move could not update; null for none. */
+export function linksMissedMessage(missed: string[]): string | null {
+  if (missed.length === 0) return null;
+  if (missed.includes('')) return t('links.missedSpace');
+  return missed.length === 1 ? t('links.missed.one') : t('links.missed').replace('{count}', String(missed.length));
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { folderOf, followMove, formatBytes, launchTarget, pageTitle, saveSpaceSettings, spaceChoices, spaceMessage, treeMenu, unsavedBody, within } from './space-helpers';
+import { folderOf, followMove, linksMissedMessage, formatBytes, launchTarget, pageTitle, saveSpaceSettings, spaceChoices, spaceMessage, treeMenu, unsavedBody, within } from './space-helpers';
 
 describe('the open page when something moves', () => {
   it('follows its own rename or move', () => {
@@ -122,5 +122,17 @@ describe('saving Space settings', () => {
     await saveSpaceSettings({ name: 'Acme Two' }, { setWidth, rename });
     expect(setWidth).not.toHaveBeenCalled();
     expect(rename).toHaveBeenCalledWith('Acme Two');
+  });
+});
+
+describe('pages whose links a rename could not update', () => {
+  it('says how many, in the singular for one, and nothing for none', () => {
+    expect(linksMissedMessage([])).toBeNull();
+    expect(linksMissedMessage(['a.md'])).toBe('Links in 1 page could not be updated.');
+    expect(linksMissedMessage(['a.md', 'b.md'])).toBe('Links in 2 pages could not be updated.');
+  });
+
+  it("says so when the Space's own folder could not be read", () => {
+    expect(linksMissedMessage([''])).toBe("Links could not be updated: the Space's folder could not be read.");
   });
 });

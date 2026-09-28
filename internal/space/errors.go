@@ -20,12 +20,13 @@ var (
 	ErrOutside      = errors.New("outside")
 	ErrThroughLink  = errors.New("throughLink")
 	ErrNotSpace     = errors.New("notSpace")
+	ErrChanged      = errors.New("changed")
 )
 
 // Codes lists every refusal, for mapping an error to its code.
 var Codes = []error{
 	ErrExists, ErrNameEmpty, ErrNameSlash, ErrNameDot, ErrNameReserved, ErrIntoItself,
-	ErrNotFolder, ErrOnlyPage, ErrOutside, ErrThroughLink, ErrNotSpace,
+	ErrNotFolder, ErrOnlyPage, ErrOutside, ErrThroughLink, ErrNotSpace, ErrChanged,
 }
 
 // Code is the refusal's code (the sentinel's text), or "" for any other

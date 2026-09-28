@@ -3,7 +3,7 @@
    * Mount point. Layout lives in Shell; this file owns the imperative
    * libraries and the wiring between them.
    */
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { CanvasStage } from './canvas/stage';
   import { createViewport } from './canvas/viewport';
   import { createTools } from './canvas/tools.svelte';
@@ -37,7 +37,7 @@
   import { statusLocation } from './shell/status-location';
   import { createDocument, sceneToSave } from './files/document.svelte';
   import { createSpace, type TrashEntry } from './files/space.svelte';
-  import { folderOf, followMove, formatBytes, launchTarget, pageTitle, saveSpaceSettings, spaceChoices, treeMenu, unsavedBody, within } from './files/space-helpers';
+  import { folderOf, followMove, formatBytes, linksMissedMessage, launchTarget, pageTitle, saveSpaceSettings, spaceChoices, treeMenu, unsavedBody, within } from './files/space-helpers';
   import { createHistory } from './canvas/history';
   import { createSelection } from './canvas/selection';
   import { createPointerHandler } from './canvas/pointer';
@@ -98,7 +98,9 @@
     type MenuSpec,
   } from './shell/shortcuts';
   import menuSpec from '../../internal/app/menu/spec.json';
-  import { Clipboard, Events } from '@wailsio/runtime';
+  import { Browser, Clipboard, Events } from '@wailsio/runtime';
+  import { followAction, followBeside, joinFile, type Move } from './docs/links';
+  import { relinkEdits } from './docs/page-links';
   import { ExportService, FileService, LogService, MenuService } from '../bindings/github.com/tenesh/bava/internal/app';
   import { t } from './i18n/t';
   import type { MessageKey } from './i18n/messages';
@@ -718,8 +720,19 @@
     if (kind === 'page') await openPath(space.absolute(made.path));
   }
 
+  // One rename or move at a time: each rewrites links from the Space as its
+  // own move left it, before the next begins.
+  let relocating: Promise<void> = Promise.resolve();
+
   /** A rename or move in the tree; the open page follows its file. */
-  async function relocate(op: { kind: 'rename' | 'move'; path: string; name?: string; folder?: string; index?: number }) {
+  function relocate(op: { kind: 'rename' | 'move'; path: string; name?: string; folder?: string; index?: number }): Promise<void> {
+    const next = relocating.then(() => relocateNow(op));
+    // A failed one never stops those after it.
+    relocating = next.catch(() => {});
+    return next;
+  }
+
+  async function relocateNow(op: { kind: 'rename' | 'move'; path: string; name?: string; folder?: string; index?: number }) {
     const rel = openRel;
     // Nothing may write to the old path once the file has moved.
     const release = rel && within(rel, op.path) ? await autosave.hold() : () => {};
@@ -735,9 +748,59 @@
           space.rememberPage(moved);
         },
       });
-      if (result.error) notify(result.error);
+      if (result.error) {
+        notify(result.error);
+        return;
+      }
+      if (result.path !== op.path) await relinkAfter([{ from: op.path, to: result.path }], rel);
+      await docPane?.refreshLinks();
     } finally {
       release();
+    }
+  }
+
+  /**
+   * After pages moved, every page's links follow them: the open page's in the
+   * editor, as an edit; the others read with the Document's own reader and
+   * written back only if unchanged since they were read. `open` is the open
+   * page's path before the move.
+   */
+  async function relinkAfter(moves: Move[], open: string | null) {
+    try {
+      if (open) docPane?.followMoves(open, moves);
+      const pages = await space.index(true);
+      if (!pages) {
+        notify(t('links.missedSpace'));
+        return;
+      }
+      const { edits, unplaced } = relinkEdits(pages, moves, open);
+      const written = edits.length > 0 ? await space.apply({ kind: 'relink', edits }, { refresh: false }) : { missed: [], error: '' };
+      const missed = written.error ? edits.map((e) => e.path) : (written.missed ?? []);
+      const message = linksMissedMessage([...new Set([...missed, ...unplaced])]);
+      if (message) notify(message);
+    } catch (error) {
+      void report(error, 'relink');
+      notify(t('links.missedSpace'));
+    }
+  }
+
+  /** Follows a link from the open page: a heading on it, the browser, another page or a file. */
+  async function followLink(href: string) {
+    if (!doc.path) return;
+    const inSpace = space.root !== null && openRel !== null;
+    const folder = doc.path.replace(/[\\/][^\\/]*$/, '');
+    const action = inSpace ? followAction(openRel!, href) : followBeside(href);
+    if (!action) return;
+    if (action.kind === 'anchor') {
+      docPane?.goToAnchor(action.anchor);
+    } else if (action.kind === 'external') {
+      void Browser.OpenURL(action.url);
+    } else if (action.kind === 'file') {
+      if (inSpace) await revealPath(action.path);
+    } else {
+      await openPath(inSpace ? space.absolute(action.path) : joinFile(folder, action.path));
+      await tick();
+      if (action.anchor) docPane?.goToAnchor(action.anchor);
     }
   }
 
@@ -752,6 +815,7 @@
     if (result.error) notify(result.error);
     else recents.removePrefix(space.absolute(path));
     if (trashOpen) await refreshTrash();
+    await docPane?.refreshLinks();
   }
 
   async function duplicatePath(path: string) {
@@ -825,6 +889,7 @@
     const result = await space.apply({ kind: 'restore', id });
     if (result.error) notify(result.error);
     await refreshTrash();
+    await docPane?.refreshLinks();
   }
 
   async function deleteItem(id: string) {
@@ -1610,8 +1675,12 @@
       if (!keepsBrowserMenu(event.target as Element | null)) event.preventDefault();
     };
     window.addEventListener('contextmenu', onAnyContextMenu);
-    // Files may have changed outside Bava (Finder, sync): re-read the tree.
-    const onWindowFocus = () => void space.refresh();
+    // Files may have changed outside Bava (Finder, sync): re-read the tree,
+    // and which links reach a page.
+    const onWindowFocus = () => {
+      void space.refresh();
+      void docPane?.refreshLinks();
+    };
     window.addEventListener('focus', onWindowFocus);
 
     // The stage is sized at mount; follow the pane as the window or the
@@ -1976,6 +2045,10 @@
       onDuplicatePage={() => openRel && void duplicatePath(openRel)}
       onTrashPage={() => openRel && void trashPath(openRel)}
       onCopyText={(text) => void Clipboard.SetText(text)}
+      here={space.root ? openRel : null}
+      readIndex={(withText) => space.index(withText)}
+      onFollow={(href) => void followLink(href)}
+      onOpenPage={(path) => void openPath(space.absolute(path))}
     />
   {/snippet}
 

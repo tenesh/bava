@@ -11,8 +11,9 @@ import type Token from 'markdown-it/lib/token.mjs';
 import { MarkdownParser, MarkdownSerializer, defaultMarkdownSerializer, type MarkdownSerializerState } from 'prosemirror-markdown';
 import { Fragment, type Mark, type Node } from 'prosemirror-model';
 import { schema } from './schema';
+import { dateTag, isDay } from './dates';
 import { headingEntries, type HeadingEntry } from './contents';
-import { cellHtml, closingDollar, readHtmlTable, rowCells, type Piece } from './table-format';
+import { anchorPlaces, cellHtml, closingDollar, readHtmlTable, rowCells, type Piece } from './table-format';
 import { EditorState } from 'prosemirror-state';
 import { fixTables, TableMap } from 'prosemirror-tables';
 
@@ -321,10 +322,23 @@ function inlineHtml(children: Token[], TokenCtor: typeof Token): Token[] {
   });
 }
 
+/**
+ * A date chip: `<time datetime="YYYY-MM-DD">` around plain words, on a real
+ * day. Words holding Markdown's marks, or none, stay as written.
+ */
+function dateRule(state: StateInline, silent: boolean): boolean {
+  const match = /^<time datetime="(\d{4}-\d{2}-\d{2})">([^<>&\n*_`~[\]\\$]+)<\/time>/.exec(state.src.slice(state.pos));
+  if (!match || !isDay(match[1])) return false;
+  if (!silent) state.push('date', '', 0).meta = { date: match[1], text: match[2] };
+  state.pos += match[0].length;
+  return true;
+}
+
 const md = new MarkdownIt('default', { html: true, linkify: false, typographer: false });
 md.block.ruler.before('fence', 'bava_math', mathBlockRule, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
 md.block.ruler.before('reference', 'bava_footnote', footnoteRule, { alt: ['paragraph', 'reference'] });
 md.inline.ruler.before('link', 'bava_inline', inlineRule);
+md.inline.ruler.before('html_inline', 'bava_date', dateRule);
 
 type BlockRule = (state: StateBlock, startLine: number, endLine: number, silent: boolean) => boolean;
 type RulerInternals = { __rules__: { name: string; fn: BlockRule }[] };
@@ -348,12 +362,52 @@ type InlineRulerInternals = { __rules__: { name: string; fn: InlineRule }[] };
   });
 }
 
+// Where each link sits in the page's text, noted while a page is read for
+// its links (`pageLinks`), so a rename changes exactly what the Document
+// reads as a link.
+{
+  const link = (md.inline.ruler as unknown as InlineRulerInternals).__rules__.find((r) => r.name === 'link')!.fn;
+  md.inline.ruler.at('link', (state, silent) => {
+    const start = state.pos;
+    const before = state.tokens.length;
+    if (!link(state, silent)) return false;
+    const reading = (state.env as LinkEnv).bavaLinks;
+    if (!silent && reading) {
+      const open = state.tokens.slice(before).find((t) => t.type === 'link_open');
+      if (open) open.meta = { ...open.meta, bavaAt: linkPlace(state, start, reading) };
+    }
+    return true;
+  });
+  md.core.ruler.at('inline', (state) => {
+    const reading = (state.env as LinkEnv).bavaLinks;
+    // A pipe table's cells carry no line of their own: their row's.
+    let row: [number, number] | null = null;
+    let cellIndex = -1;
+    state.tokens.forEach((token, i) => {
+      if (token.type === 'tr_open') {
+        row = token.map;
+        cellIndex = -1;
+      }
+      if (token.type !== 'inline') return;
+      if (reading) {
+        reading.cell = !state.inlineMode && /^t[hd]_open$/.test(state.tokens[i - 1]?.type ?? '');
+        if (reading.cell) cellIndex += 1;
+        reading.cellIndex = cellIndex;
+        const map = state.inlineMode ? reading.calloutMap : reading.cell ? row : token.map;
+        reading.bases = map ? lineBases(reading, token.content, map, reading.cell) : null;
+      }
+      state.md.inline.parse(token.content, state.md, state.env, token.children ?? []);
+    });
+  });
+}
+
 // A link reference definition stays where it was written, used or not.
 {
   const reference = (md.block.ruler as unknown as RulerInternals).__rules__.find((r) => r.name === 'reference')!.fn;
   // `at` would reset what the rule can interrupt; it keeps markdown-it's own.
   md.block.ruler.at('reference', (state, startLine, endLine, silent) => {
     if (!reference(state, startLine, endLine, silent)) return false;
+    if (!silent) noteDefinition(state, startLine);
     if (!silent) {
       const token = state.push('kept', '', 0);
       token.map = [startLine, state.line];
@@ -423,6 +477,11 @@ function pieceTokens(pieces: Piece[], TokenCtor: typeof Token): Token[] {
       token.meta = { label: piece.label };
       return token;
     }
+    if (piece.kind === 'date') {
+      const token = new TokenCtor('date', '', 0);
+      token.meta = { date: piece.date, text: piece.text };
+      return token;
+    }
     if (piece.kind === 'kept') {
       const token = new TokenCtor('keptInline', '', 0);
       token.content = piece.text;
@@ -455,6 +514,7 @@ function readTables(state: CoreState): void {
     if (token.type === 'html_block' && /^<table[\s>]/i.test(token.content.trim())) {
       const table = readHtmlTable(token.content);
       if (table) {
+        const first = out.length;
         out.push(new state.Token('table_open', 'table', 1));
         for (const row of table.rows) {
           out.push(new state.Token('table_row_open', 'tr', 1));
@@ -467,6 +527,7 @@ function readTables(state: CoreState): void {
           out.push(new state.Token('table_row_close', 'tr', -1));
         }
         out.push(new state.Token('table_close', 'table', -1));
+        noteTableLinks(state, token, out.slice(first));
         continue;
       }
     }
@@ -591,7 +652,11 @@ function readCallouts(state: CoreState): void {
       drop.add(i + 1).add(i + 2).add(i + 3);
     } else {
       inline.content = rest;
+      // The rest starts on the marker's next line.
+      const reading = (state.env as LinkEnv).bavaLinks;
+      if (reading) reading.calloutMap = inline.map ? [inline.map[0] + 1, inline.map[1]] : null;
       inline.children = state.md.parseInline(rest, state.env)[0].children ?? [];
+      if (reading) reading.calloutMap = null;
     }
   });
   state.tokens = tokens.filter((_, i) => !drop.has(i));
@@ -763,6 +828,7 @@ const parser = new MarkdownParser(schema, md, {
   hardbreak: { node: 'hard_break' },
   kept: { node: 'kept', getAttrs: (tok) => ({ text: tok.content }) },
   keptInline: { node: 'keptInline', getAttrs: (tok) => ({ text: tok.content }) },
+  date: { node: 'date', getAttrs: (tok) => ({ date: tok.meta.date, text: tok.meta.text }) },
   em: { mark: 'em' },
   strong: { mark: 'strong' },
   s: { mark: 'strike' },
@@ -1072,6 +1138,9 @@ const serializer = new MarkdownSerializer(
     math_inline(state, node) {
       writeRaw(state, `$${node.attrs.tex}$`);
     },
+    date(state, node) {
+      writeRaw(state, dateTag(node.attrs.date, node.attrs.text));
+    },
     footnote_ref(state, node, parent, index) {
       // At a line's start and before a `:`, it would read back as a note: the colon is escaped.
       const next = parent.maybeChild(index + 1);
@@ -1128,6 +1197,270 @@ function joinLists(node: Node): Node {
     }
   });
   return node.copy(Fragment.fromArray(children));
+}
+
+// ---- where links are in a page's text -----------------------------------
+
+/** A place in the page's text: a start and an end, in the text as read (line breaks as `\n`). */
+type Span = [number, number];
+
+type Definition = { label: string; dest: Span };
+
+/** What reading a page for its links notes as it goes. */
+type LinkReading = {
+  /** The text read, and where each of its lines starts. */
+  src: string;
+  lines: number[];
+  /** Where each line of the inline text being read starts in the page; null when it cannot be placed. */
+  bases: number[] | null;
+  /** The first line of a callout's text after its marker, while that text is read again. */
+  calloutMap: [number, number] | null;
+  /** Which cell of its row a pipe-table cell is. */
+  cellIndex: number;
+  /** The inline text being read is a pipe-table cell's. */
+  cell: boolean;
+  definitions: Definition[];
+  /** Labels already defined, placed or not. */
+  seen: Set<string>;
+};
+
+type LinkEnv = { bavaLinks?: LinkReading; references?: Record<string, unknown> };
+
+type LinkPlace = { dest: Span | null; label: Span | null; ref: string | null; cell: boolean };
+
+function lineText(reading: LinkReading, line: number): string {
+  const start = reading.lines[line];
+  const end = line + 1 < reading.lines.length ? reading.lines[line + 1] - 1 : reading.src.length;
+  return reading.src.slice(start, end);
+}
+
+/**
+ * Where each line of a block's inline text starts in the page. A paragraph's
+ * lines are its file lines less their container's marks (`>`, a list's
+ * indent), so each is the end of its line; a heading's words sit before any
+ * closing `#`; a table cell's words follow a `|`, left to right.
+ */
+function lineBases(reading: LinkReading, content: string, map: [number, number], cell: boolean): number[] | null {
+  const bases: number[] = [];
+  const parts = content.split('\n');
+  for (let k = 0; k < parts.length; k += 1) {
+    const line = map[0] + k;
+    if (line >= reading.lines.length) return null;
+    const text = lineText(reading, line);
+    const part = parts[k];
+    let at = -1;
+    if (cell) {
+      const column = rowSpans(text)[reading.cellIndex];
+      if (column) {
+        const raw = text.slice(column[0], column[1]);
+        // A cell holding an escaped pipe is read with its backslash dropped: not placed.
+        if (raw.trim() === part) at = column[0] + (raw.length - raw.trimStart().length);
+      }
+    } else if (text.endsWith(part)) at = text.length - part.length;
+    else if (text.trimEnd().endsWith(part)) at = text.trimEnd().length - part.length;
+    else {
+      const i = text.lastIndexOf(part);
+      if (i >= 0 && /^[\s#]*$/.test(text.slice(i + part.length))) at = i;
+    }
+    if (at < 0) return null;
+    bases.push(reading.lines[line] + at);
+  }
+  return bases;
+}
+
+/**
+ * Where each cell of a pipe-table row is in its line, split as markdown-it
+ * splits it: at every `|` not escaped, the empty pieces before a leading `|`
+ * and after a trailing one dropped.
+ */
+function rowSpans(line: string): Span[] {
+  const lead = /^(?:[ \t]*>)*[ \t]*/.exec(line)![0].length;
+  const end = line.trimEnd().length;
+  const cells: Span[] = [];
+  let start = lead;
+  for (let i = lead; i < end; i += 1) {
+    if (line[i] === '|' && line[i - 1] !== '\\') {
+      cells.push([start, i]);
+      start = i + 1;
+    }
+  }
+  cells.push([start, end]);
+  if (cells.length > 0 && cells[0][0] === cells[0][1]) cells.shift();
+  if (cells.length > 0 && cells.at(-1)![0] === cells.at(-1)![1]) cells.pop();
+  return cells;
+}
+
+/** A place in the inline text being read, as a place in the page; null when it cannot be placed. */
+function placeOf(state: StateInline, reading: LinkReading, span: Span): Span | null {
+  if (!reading.bases) return null;
+  const at = (offset: number) => {
+    let line = 0;
+    let start = 0;
+    for (let i = 0; i < offset; i += 1) {
+      if (state.src[i] === '\n') {
+        line += 1;
+        start = i + 1;
+      }
+    }
+    return reading.bases![line] + (offset - start);
+  };
+  const place: Span = [at(span[0]), at(span[1])];
+  // Placed right only if the page holds the same text there.
+  return reading.src.slice(place[0], place[1]) === state.src.slice(span[0], span[1]) ? place : null;
+}
+
+/** Where a link's words and address are, from the `[` that starts it. */
+function linkPlace(state: StateInline, start: number, reading: LinkReading): LinkPlace {
+  const cell = reading.cell;
+  const labelEnd = state.md.helpers.parseLinkLabel(state, start, true);
+  if (labelEnd < 0) return { dest: null, label: null, ref: null, cell };
+  const label = placeOf(state, reading, [start + 1, labelEnd]);
+  if (state.src[labelEnd + 1] === '(') {
+    let pos = labelEnd + 2;
+    while (pos < state.posMax && (state.src[pos] === ' ' || state.src[pos] === '\n')) pos += 1;
+    const dest = state.md.helpers.parseLinkDestination(state.src, pos, state.posMax);
+    return { dest: dest.ok ? placeOf(state, reading, [pos, dest.pos]) : null, label, ref: null, cell };
+  }
+  // A reference: [words][label], [label][] or [label].
+  let name = state.src.slice(start + 1, labelEnd);
+  if (state.src[labelEnd + 1] === '[') {
+    const second = state.md.helpers.parseLinkLabel(state, labelEnd + 1, false);
+    if (second > labelEnd + 2) name = state.src.slice(labelEnd + 2, second);
+  }
+  return { dest: null, label, ref: state.md.utils.normalizeReference(name), cell };
+}
+
+/** A reference definition's address, noted where it is in the page. */
+function noteDefinition(state: StateBlock, startLine: number): void {
+  const reading = (state.env as LinkEnv).bavaLinks;
+  if (!reading) return;
+  // Only a definition whose address is on its own first line is placed: a
+  // later line still holds its container's marks (`>`, a list's indent).
+  const from = state.bMarks[startLine] + state.tShift[startLine];
+  const text = state.src.slice(from, state.eMarks[startLine]);
+  const close = /^\[((?:[^\\\]]|\\.)*)\]:/.exec(text);
+  if (!close) return;
+  // Only the first definition of a label is the one the page uses.
+  const name = state.md.utils.normalizeReference(close[1]);
+  if (reading.seen.has(name)) return;
+  reading.seen.add(name);
+  let pos = close[0].length;
+  while (pos < text.length && /\s/.test(text[pos])) pos += 1;
+  const dest = state.md.helpers.parseLinkDestination(text, pos, text.length);
+  if (!dest.ok || dest.pos === pos) return;
+  const label = state.md.utils.normalizeReference(close[1]);
+  // Placed only when it reads back as the reference the page holds.
+  const held = (state.env as LinkEnv).references?.[label] as { href?: string } | undefined;
+  if (held?.href !== state.md.normalizeLink(dest.str)) return;
+  if (!reading.definitions.some((d) => d.label === label)) reading.definitions.push({ label, dest: [from + pos, from + dest.pos] });
+}
+
+/** The address of each `<a href>` in one of Bava's HTML tables, in order, onto its link tokens. */
+function noteTableLinks(state: CoreState, block: Token, tokens: Token[]): void {
+  const reading = (state.env as LinkEnv).bavaLinks;
+  if (!reading || !block.map) return;
+  const bases = lineBases(reading, block.content.replace(/\n$/, ''), block.map, false);
+  const opens = tokens.flatMap((t) => [t, ...(t.children ?? [])]).filter((t) => t.type === 'link_open');
+  const anchors = anchorPlaces(block.content);
+  if (!bases || !anchors || anchors.length !== opens.length) return;
+  const lineStarts = [0];
+  for (let i = 0; i < block.content.length; i += 1) if (block.content[i] === '\n') lineStarts.push(i + 1);
+  const place = (span: [number, number] | null): Span | null => {
+    if (!span) return null;
+    const at = (offset: number) => {
+      let line = 0;
+      while (line + 1 < lineStarts.length && lineStarts[line + 1] <= offset) line += 1;
+      return bases[line] + (offset - lineStarts[line]);
+    };
+    const out: Span = [at(span[0]), at(span[1])];
+    return reading.src.slice(out[0], out[1]) === block.content.slice(span[0], span[1]) ? out : null;
+  };
+  anchors.forEach((anchor, i) => {
+    opens[i].meta = { ...opens[i].meta, bavaAt: { dest: place(anchor.href), label: place(anchor.words), ref: null, cell: false }, bavaHtml: true };
+  });
+}
+
+/** A link as the Document reads it, and where it sits in the page's text. */
+export type PageLink = {
+  /** The address, as the Document's link holds it. */
+  href: string;
+  /** Its words, when they are one plain run of text; null when formatted. */
+  text: string | null;
+  /** Where its address is in the page (a reference link's is its definition's); null when it cannot be placed. */
+  dest: Span | null;
+  /** Where its words are, for an inline link; null otherwise. */
+  label: Span | null;
+  /** In one of Bava's HTML tables, where text is HTML. */
+  html: boolean;
+  /** In a pipe table's cell, where `|` is written `\\|`. */
+  cell: boolean;
+};
+
+/**
+ * Every link the Document reads in a page, with where its address and words
+ * are in the page's text: what a rename rewrites, and what "Linked from"
+ * counts, read exactly as the Document reads the page.
+ */
+export function pageLinks(markdown: string): PageLink[] {
+  const { body } = readFront(markdown);
+  const bodyAt = markdown.length - body.length;
+  // The text as markdown-it reads it (line breaks as \n, NUL as U+FFFD), and
+  // where each of its characters was in the page.
+  let src = '';
+  const original: number[] = [];
+  for (let i = 0; i < body.length; i += 1) {
+    if (body[i] === '\r') {
+      if (body[i + 1] === '\n') continue;
+      src += '\n';
+    } else src += body[i] === '\0' ? '\uFFFD' : body[i];
+    original.push(bodyAt + i);
+  }
+  original.push(bodyAt + body.length);
+  const lines = [0];
+  for (let i = 0; i < src.length; i += 1) if (src[i] === '\n') lines.push(i + 1);
+  const reading: LinkReading = { src, lines, bases: null, calloutMap: null, cellIndex: -1, cell: false, definitions: [], seen: new Set() };
+  const tokens = md.parse(src, { bavaLinks: reading } satisfies LinkEnv);
+  // A span's end is just past its last character, so a CR before a line's
+  // LF stays outside it.
+  const back = (span: Span | null): Span | null =>
+    span ? [original[span[0]], span[1] > span[0] ? original[span[1] - 1] + 1 : original[span[0]]] : null;
+  const out: PageLink[] = [];
+  const walk = (list: Token[]) => {
+    list.forEach((token, i) => {
+      if (token.children) walk(token.children);
+      if (token.type !== 'link_open') return;
+      const place = token.meta?.bavaAt as LinkPlace | undefined;
+      const close = list.findIndex((t, j) => j > i && t.type === 'link_close');
+      const inside = list.slice(i + 1, close < 0 ? i + 1 : close);
+      const text = inside.length === 1 && inside[0].type === 'text' ? inside[0].content : null;
+      const definition = place?.ref ? reading.definitions.find((d) => d.label === place.ref) : undefined;
+      out.push({
+        href: token.attrGet('href') ?? '',
+        text,
+        dest: back(place?.ref ? (definition?.dest ?? null) : (place?.dest ?? null)),
+        label: place?.ref ? null : back(place?.label ?? null),
+        html: token.meta?.bavaHtml === true,
+        cell: place?.cell ?? false,
+      });
+    });
+  };
+  walk(tokens);
+  return out;
+}
+
+/**
+ * The address a link's written address reads as, as the Document reads it:
+ * in a Markdown link or definition, or (`html`) an HTML table's `href`.
+ */
+export function addressOf(written: string, html: boolean): string | null {
+  if (html) return decodeHTML(written);
+  const dest = md.helpers.parseLinkDestination(written, 0, written.length);
+  return dest.ok && dest.pos === written.length ? md.normalizeLink(dest.str) : null;
+}
+
+/** The words a link's written words read as, when they are plain: escapes and (`html`) entities read. */
+export function wordsOf(written: string, html: boolean): string {
+  return html ? decodeHTML(written) : md.utils.unescapeAll(written);
 }
 
 /** Reads a page's prose: its front matter and its document. */

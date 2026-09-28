@@ -20,6 +20,16 @@ export interface DialogResult {
 }
 
 /**
+ * IndexPage is a page: its path, its name without .md, and its text when
+ * asked for.
+ */
+export interface IndexPage {
+    "name": string;
+    "path": string;
+    "text": string;
+}
+
+/**
  * LogEntry is an error the frontend reports. It carries the error's kind and
  * stack frames, never its message: JavaScript messages quote input (a JSON
  * syntax error shows the text it choked on), and a thrown value can be anything.
@@ -61,6 +71,12 @@ export interface OpResult {
     "path": string;
     "id": string;
     "root": string;
+
+    /**
+     * Missed lists relink's pages that were not written: changed since they
+     * were read, or not writable.
+     */
+    "missed": string[] | null;
     "error": string;
     "code": string;
 }
@@ -85,7 +101,7 @@ export interface OpenResult {
 /**
  * Operation is one change to a Space. Kind is createPage, createFolder,
  * rename, move, duplicate, trash, restore, deleteForever, emptyTrash,
- * renameSpace or setPageWidth; the other fields are what it needs.
+ * renameSpace, setPageWidth or relink; the other fields are what it needs.
  */
 export interface Operation {
     "kind": string;
@@ -99,6 +115,21 @@ export interface Operation {
     "index": number;
     "id": string;
     "width": string;
+
+    /**
+     * Edits are relink's pages: each written only if it still reads as
+     * Before.
+     */
+    "edits": PageEdit[] | null;
+}
+
+/**
+ * PageEdit is a page's text before and after its links followed a rename.
+ */
+export interface PageEdit {
+    "path": string;
+    "before": string;
+    "after": string;
 }
 
 /**
@@ -117,6 +148,15 @@ export interface SaveResult {
     "path": string;
     "stamp": store$0.Stamp;
     "error": string;
+}
+
+/**
+ * SpaceIndex is every page in a Space, in the tree's order.
+ */
+export interface SpaceIndex {
+    "pages": IndexPage[] | null;
+    "error": string;
+    "code": string;
 }
 
 /**

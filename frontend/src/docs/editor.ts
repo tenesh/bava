@@ -14,9 +14,9 @@ import { dropCursor } from 'prosemirror-dropcursor';
 import { gapCursor } from 'prosemirror-gapcursor';
 import { history, redo, undo } from 'prosemirror-history';
 import { selectAll, deleteSelection } from 'prosemirror-commands';
-import { Slice } from 'prosemirror-model';
+import { Fragment, Slice, type Mark } from 'prosemirror-model';
 import type { Node } from 'prosemirror-model';
-import { EditorState, Plugin, TextSelection, type Transaction } from 'prosemirror-state';
+import { EditorState, NodeSelection, Plugin, TextSelection, type Transaction } from 'prosemirror-state';
 import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
 import { t } from '../i18n/t';
 import { countText } from '../shell/status-context';
@@ -34,8 +34,12 @@ import { isSelectedCell, NO_TABLE, pasteCells, readCells, tableKeys, tablePlugin
 import { CellSelection } from 'prosemirror-tables';
 import { mathKeys, mathPlugin, mathView, type EquationAt } from './math';
 import { footnotesPlugin, withoutDroppedNotes } from './footnotes';
-import { contentsPlugin, contentsView } from './contents';
+import { contentsPlugin, contentsView, headingEntries } from './contents';
 import { chooseEmoji, emojiPlugin, PICKER, type EmojiInfo } from './emoji';
+import { chooseMention, mentionKey, mentionPlugin, type MentionInfo, type PageRef } from './mention';
+import { linkAt, missingLinksPlugin } from './link-view';
+import { copyHeadingLink, linkLabel, linkTo, missingTarget, pastedHeadingLink, relinkCandidate, resolveLink, retarget, type Move } from './links';
+import { dateAttrs } from './dates';
 import { keymap } from 'prosemirror-keymap';
 
 export type DocEditorOptions = {
@@ -63,6 +67,29 @@ export type DocEditorOptions = {
   onSelection?: () => void;
   /** The `/` menu opened, changed or closed (null). */
   onSlash?: (info: SlashInfo | null) => void;
+  /** The `@` menu opened, changed or closed (null). */
+  onMention?: (info: MentionInfo | null) => void;
+  /** The `@` menu opened in a Space: the app reads its pages and hands them to `setSpacePages`. */
+  onMentionPages?: () => void;
+  /** A click on a link: the app shows its card; null closes it. */
+  onLinkCard?: (card: LinkCard | null) => void;
+  /** ⌘ or Ctrl and a click on a link, or the card's Open: the app follows it. */
+  onFollow?: (href: string) => void;
+  /** A click on a date chip at `pos`: the app opens the calendar there. */
+  onDateChip?: (pos: number, at: { left: number; top: number; bottom: number }, date: string) => void;
+};
+
+/** A link the app shows a card for: its range, address, and whether its page is missing. */
+export type LinkCard = {
+  from: number;
+  to: number;
+  href: string;
+  at: { left: number; top: number; bottom: number };
+  missing: boolean;
+  /** The one page with the missing page's name, to relink to. */
+  relink: PageRef | null;
+  /** Opened from the keyboard: focus goes into the card. */
+  focus: boolean;
 };
 
 /** The position of the table cell holding `target`, or null outside a table. */
@@ -164,6 +191,10 @@ export class DocEditor {
   /** Cells selected when a right-click began, for its menu to act on. */
   #heldCells: CellSelection | null = null;
   #options: DocEditorOptions | null = null;
+  /** This page's path in its Space (null outside one), and the Space's pages once read. */
+  #space: { here: string | null; pages: PageRef[] | null } = { here: null, pages: null };
+  /** The link whose card is showing, to close it when the caret leaves. */
+  #card: { from: number; to: number } | null = null;
 
   mount(host: HTMLElement, options: DocEditorOptions): void {
     this.#options = options;
@@ -186,13 +217,49 @@ export class DocEditor {
       attributes: { class: 'bava-doc', spellcheck: 'true' },
       // Spreadsheet cells pasted by the webview itself, as from a right-click Paste.
       handlePaste: (view, event) => {
+        if (!this.locked && this.#pasteHeadingLink(event.clipboardData?.getData('text/plain') ?? '')) return true;
         const cells = inCodeAt(view.state) ? null : readCells(event.clipboardData?.getData('text/plain') ?? '');
         if (!cells || this.locked) return false;
         pasteCells(cells)(view.state, view.dispatch);
         return true;
       },
+      // From the keyboard: Enter on a selected date chip opens its calendar,
+      // ⌥Enter in a link opens its card with focus in it.
+      handleKeyDown: (view, event) => {
+        const { selection } = view.state;
+        if (event.key !== 'Enter' || event.shiftKey || event.metaKey || event.ctrlKey) return false;
+        if (!event.altKey && selection instanceof NodeSelection && selection.node.type === schema.nodes.date) {
+          this.#openDate(selection.from);
+          return true;
+        }
+        const link = event.altKey && selection.empty ? linkAt(view.state, selection.from) : null;
+        if (!link) return false;
+        this.#openCard(link.from, link.to, link.href, true);
+        return true;
+      },
+      handleClick: (view, pos, event) => {
+        const link = linkAt(view.state, pos);
+        if (!link) return false;
+        if (event.metaKey || event.ctrlKey) {
+          event.preventDefault();
+          this.#closeCard();
+          this.#options?.onFollow?.(link.href);
+          return true;
+        }
+        this.#openCard(link.from, link.to, link.href);
+        return false;
+      },
+      handleClickOn: (_view, _pos, node, nodePos, _event, direct) => {
+        if (direct && node.type === schema.nodes.date) this.#openDate(nodePos);
+        return false;
+      },
       // The bubble follows focus: a selection left behind by find is not one to format.
       handleDOMEvents: {
+        // A link in the page never navigates the app's own window.
+        click: (_view, event) => {
+          if (event.target instanceof Element && event.target.closest('a')) event.preventDefault();
+          return false;
+        },
         focus: () => void this.#options?.onSelection?.(),
         blur: () => void this.#options?.onSelection?.(),
         // A right-click on selected cells keeps them selected: WebKit on macOS
@@ -235,6 +302,12 @@ export class DocEditor {
         // Before the keymap, so its keys win while it is open.
         slashPlugin((info) => this.#options?.onSlash?.(info)),
         emojiPlugin((info) => this.#options?.onEmoji?.(info)),
+        mentionPlugin(
+          (info) => this.#options?.onMention?.(info),
+          () => this.#space,
+          () => this.#options?.onMentionPages?.(),
+        ),
+        missingLinksPlugin(() => this.#space),
         keymap(codeKeys),
         keymap(tableKeys),
         keymap(foldKeys),
@@ -269,6 +342,163 @@ export class DocEditor {
     if (tr.docChanged) this.#options?.onChange();
     if (tr.getMeta(PICKER)) this.#options?.onEmojiPicker?.(this.#caretAt());
     if (tr.selectionSet || tr.docChanged) this.#options?.onSelection?.();
+    const card = this.#card;
+    const { from, to } = view.state.selection;
+    if (card && (tr.docChanged || from < card.from || to > card.to)) this.#closeCard();
+  }
+
+  /** Asks the app for the calendar of the date chip at `pos`. */
+  #openDate(pos: number): void {
+    const view = this.view;
+    const node = view?.state.doc.nodeAt(pos);
+    if (!view || node?.type !== schema.nodes.date) return;
+    const dom = view.nodeDOM(pos);
+    const rect = dom instanceof Element ? dom.getBoundingClientRect() : { left: 0, top: 0, bottom: 0 };
+    this.#options?.onDateChip?.(pos, { left: rect.left, top: rect.top, bottom: rect.bottom }, node.attrs.date as string);
+  }
+
+  #openCard(from: number, to: number, href: string, focus = false): void {
+    const view = this.view;
+    if (!view) return;
+    const { here, pages } = this.#space;
+    const missing = here !== null && pages ? missingTarget(here, href, new Set(pages.map((p) => p.path))) : null;
+    let at = { left: 0, top: 0, bottom: 0 };
+    try {
+      const coords = view.coordsAtPos(from);
+      at = { left: coords.left, top: coords.top, bottom: coords.bottom };
+    } catch {
+      // No layout (tests): the card still reports the link.
+    }
+    this.#card = { from, to };
+    this.#options?.onLinkCard?.({ from, to, href, at, missing: missing !== null, relink: missing && pages ? relinkCandidate(missing, pages) : null, focus });
+  }
+
+  #closeCard(): void {
+    if (!this.#card) return;
+    this.#card = null;
+    this.#options?.onLinkCard?.(null);
+  }
+
+  /**
+   * Rewrites this page's links after pages or folders moved, as the other
+   * pages are rewritten (`page-links.ts`): `page` is this page's path before
+   * the moves.
+   * One edit, undone as one; nothing when no link reaches what moved.
+   */
+  followMoves(page: string, moves: Move[]): void {
+    const view = this.view;
+    if (!view) return;
+    // `plain`: one run of text carrying nothing but the link, whose words can follow a rename.
+    const runs: { from: number; to: number; text: string; mark: Mark; marks: readonly Mark[]; plain: boolean }[] = [];
+    view.state.doc.descendants((node, pos) => {
+      if (!node.inlineContent) return true;
+      node.forEach((child, offset) => {
+        const mark = child.marks.find((m) => m.type === schema.marks.link);
+        const last = runs.at(-1);
+        const from = pos + 1 + offset;
+        if (!mark) return;
+        if (last && last.to === from && last.mark.eq(mark)) {
+          last.to += child.nodeSize;
+          last.text += child.isText ? child.text! : '￼';
+          last.plain = false;
+        } else {
+          const text = child.isText ? child.text! : '￼';
+          runs.push({ from, to: from + child.nodeSize, text, mark, marks: child.marks, plain: child.isText && child.marks.length === 1 });
+        }
+      });
+      return false;
+    });
+    const tr = view.state.tr;
+    for (const run of runs.reverse()) {
+      // Formatted words are never the file's name, as the other pages read them.
+      const next = retarget(page, run.mark.attrs.href as string, run.plain ? run.text : '￼', moves);
+      if (!next) continue;
+      const link = schema.marks.link.create({ ...run.mark.attrs, href: next.href });
+      if (run.plain && next.text !== run.text) tr.replaceWith(run.from, run.to, schema.text(next.text, link.addToSet(run.mark.removeFromSet(run.marks))));
+      else tr.removeMark(run.from, run.to, schema.marks.link).addMark(run.from, run.to, link);
+    }
+    if (tr.docChanged) view.dispatch(tr);
+  }
+
+  /** Selects the text from `from` to `to`, as for editing a link. */
+  selectRange(from: number, to: number): void {
+    const view = this.view;
+    if (!view) return;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)));
+    view.focus();
+  }
+
+  /** Takes the link off the text from `from` to `to`, keeping the text. */
+  removeLink(from: number, to: number): void {
+    const view = this.view;
+    if (!view || this.locked) return;
+    view.dispatch(view.state.tr.removeMark(from, to, schema.marks.link));
+  }
+
+  /** Points the link from `from` to `to` at a page of the Space, keeping its anchor and title. */
+  relink(from: number, to: number, path: string): void {
+    const view = this.view;
+    const here = this.#space.here;
+    const link = view ? linkAt(view.state, from) : null;
+    if (!view || this.locked || here === null || !link) return;
+    const anchor = resolveLink(here, link.href)?.anchor ?? '';
+    const next = schema.marks.link.create({ ...link.mark.attrs, href: linkTo(here, path, anchor) });
+    view.dispatch(view.state.tr.removeMark(from, to, schema.marks.link).addMark(from, to, next));
+  }
+
+  /** Copies a link to the heading at `pos`, for pasting in any page of the Space. */
+  copyHeadingLink(pos: number): void {
+    const view = this.view;
+    const entry = view ? headingEntries(view.state.doc).find((e) => e.pos === pos) : undefined;
+    if (!entry) return;
+    const here = this.#space.here;
+    const text = here === null ? `[${linkLabel(entry.text)}](#${entry.slug})` : copyHeadingLink(here, `#${entry.slug}`, entry.text);
+    this.#options?.onCopy?.(text);
+  }
+
+  /** A pasted link to a heading copied in this Space, made relative to this page; false for any other text. */
+  #pasteHeadingLink(text: string): boolean {
+    const view = this.view;
+    const here = this.#space.here;
+    const parts = /^(\s*)(\S[\s\S]*?)(\s*)$/.exec(text);
+    const link = parts ? pastedHeadingLink(parts[2]) : null;
+    if (!view || here === null || !parts || !link || inCodeAt(view.state)) return false;
+    const href = link.path === here ? link.anchor : linkTo(here, link.path, link.anchor);
+    const nodes = [
+      ...(parts[1] ? [schema.text(parts[1])] : []),
+      schema.text(link.name, [schema.marks.link.create({ href })]),
+      ...(parts[3] ? [schema.text(parts[3])] : []),
+    ];
+    view.dispatch(view.state.tr.replaceSelection(new Slice(Fragment.fromArray(nodes), 0, 0)).scrollIntoView());
+    return true;
+  }
+
+  /** Puts the caret at the heading an anchor names (`#goals`) and shows it; false when none does. */
+  goToAnchor(anchor: string): boolean {
+    const view = this.view;
+    if (!view) return false;
+    let slug = anchor.replace(/^#/, '');
+    try {
+      slug = decodeURIComponent(slug);
+    } catch {
+      // Not encoded: the anchor as written.
+    }
+    const entry = headingEntries(view.state.doc).find((e) => e.slug === slug);
+    if (!entry) return false;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, entry.pos + 1)));
+    // The heading at the top of the view, as a jump to it reads.
+    const dom = view.nodeDOM(entry.pos);
+    if (dom instanceof HTMLElement) dom.scrollIntoView?.({ block: 'start' });
+    return true;
+  }
+
+  /** Changes the date chip at `pos` to `day`, in Bava's words, as one step. */
+  setDate(pos: number, day: string): void {
+    const view = this.view;
+    const node = view?.state.doc.nodeAt(pos);
+    if (!view || this.locked || node?.type !== schema.nodes.date) return;
+    const tr = view.state.tr.setNodeMarkup(pos, undefined, dateAttrs(day));
+    view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, pos)));
   }
 
   /**
@@ -466,6 +696,18 @@ export class DocEditor {
     view.focus();
   }
 
+  /** Where this page sits in its Space (null outside one), and the Space's pages once read. */
+  setSpacePages(here: string | null, pages: PageRef[] | null): void {
+    this.#space = { here, pages };
+    // An open `@` menu shows the pages that have just arrived.
+    if (this.view && mentionKey.getState(this.view.state) !== undefined) this.view.dispatch(this.view.state.tr.setMeta(mentionKey, {}));
+  }
+
+  /** Chooses the `@` item at `index`, picked with the pointer. */
+  chooseMention(index: number): void {
+    if (this.view) chooseMention(this.view, index, this.#space.here);
+  }
+
   /** Chooses the `:` suggestion at `index`, picked with the pointer. */
   chooseEmoji(index: number): void {
     if (this.view) chooseEmoji(this.view, index);
@@ -571,6 +813,7 @@ export class DocEditor {
   paste(text: string): void {
     const view = this.view;
     if (!view || this.locked) return;
+    if (this.#pasteHeadingLink(text)) return;
     // Cells copied from a spreadsheet arrive as tab-separated rows; in code, a tab is code.
     const cells = inCodeAt(view.state) ? null : readCells(text);
     if (cells) {

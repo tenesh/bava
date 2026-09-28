@@ -128,9 +128,12 @@ func TestSpaceJSONFieldNames(t *testing.T) {
 	}{
 		{"SpaceInfo", app.SpaceInfo{}, []string{"code", "error", "name", "pageWidth", "root"}},
 		{"SpaceList", app.SpaceList{}, []string{"code", "entries", "error"}},
-		{"OpResult", app.OpResult{}, []string{"code", "error", "id", "path", "root"}},
+		{"OpResult", app.OpResult{}, []string{"code", "error", "id", "missed", "path", "root"}},
+		{"SpaceIndex", app.SpaceIndex{}, []string{"code", "error", "pages"}},
+		{"IndexPage", app.IndexPage{}, []string{"name", "path", "text"}},
+		{"PageEdit", app.PageEdit{}, []string{"after", "before", "path"}},
 		{"TrashList", app.TrashList{}, []string{"code", "error", "items", "size"}},
-		{"Operation", app.Operation{}, []string{"folder", "id", "index", "kind", "name", "path", "width"}},
+		{"Operation", app.Operation{}, []string{"edits", "folder", "id", "index", "kind", "name", "path", "width"}},
 	}
 	for _, c := range cases {
 		b, err := json.Marshal(c.v)
@@ -197,5 +200,33 @@ func TestChooseFolderUsesTheGivenPicker(t *testing.T) {
 	})
 	if got := s.ChooseFolder("Spaces"); got.Path != "/scratch/Spaces" || got.Error != "" {
 		t.Errorf("ChooseFolder = %+v", got)
+	}
+}
+
+func TestSpaceIndexListsPagesAndRelinkWritesUnchangedOnes(t *testing.T) {
+	root := t.TempDir()
+	s := spaceService(nil)
+	s.Open(root)
+	for name, text := range map[string]string{"Plan.md": "# Plan\n", "Roadmap.md": "[Plan](Plan.md)\n"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	index := s.Index(root, true)
+	if index.Error != "" || len(index.Pages) != 2 || index.Pages[1].Text != "[Plan](Plan.md)\n" {
+		t.Fatalf("Index = %+v", index)
+	}
+	if bare := s.Index(root, false); bare.Pages[1].Text != "" {
+		t.Errorf("Index without text = %+v", bare)
+	}
+	res := s.Apply(root, app.Operation{Kind: "relink", Edits: []app.PageEdit{
+		{Path: "Roadmap.md", Before: "[Plan](Plan.md)\n", After: "[Q4](Q4.md)\n"},
+		{Path: "Plan.md", Before: "stale\n", After: "x\n"},
+	}})
+	if res.Error != "" || len(res.Missed) != 1 || res.Missed[0] != "Plan.md" {
+		t.Fatalf("relink = %+v", res)
+	}
+	if got, _ := os.ReadFile(filepath.Join(root, "Roadmap.md")); string(got) != "[Q4](Q4.md)\n" {
+		t.Errorf("Roadmap.md = %q", got)
 	}
 }

@@ -3,6 +3,7 @@ package store_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -110,5 +111,45 @@ func TestOpenRecordsModificationState(t *testing.T) {
 	}
 	if file.Stamp.ModifiedUnixNano == 0 {
 		t.Error("Stamp.ModifiedUnixNano is zero")
+	}
+}
+
+// A saved file keeps its permissions; a new one gets what any new file gets,
+// never a temporary file's owner-only mode.
+func TestSaveKeepsTheFilesPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows files have no Unix permissions")
+	}
+	dir := t.TempDir()
+	kept := filepath.Join(dir, "shared.md")
+	if err := os.WriteFile(kept, []byte("before"), 0o664); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(kept, 0o664); err != nil {
+		t.Fatal(err)
+	}
+	fresh := filepath.Join(dir, "new.md")
+	for _, path := range []string{kept, fresh} {
+		if err := store.Save(path, "after"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A new page gets what any new file here gets: 0666 less the user's umask.
+	probe := filepath.Join(dir, "probe")
+	if err := os.WriteFile(probe, nil, 0o666); err != nil {
+		t.Fatal(err)
+	}
+	usual, err := os.Stat(probe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]os.FileMode{kept: 0o664, fresh: usual.Mode().Perm()} {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode().Perm(); got != want {
+			t.Errorf("%s: mode %v; want %v", filepath.Base(path), got, want)
+		}
 	}
 }

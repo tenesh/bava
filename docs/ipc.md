@@ -141,7 +141,8 @@ tree.
 | `Create(parent, name)` | `SpaceInfo`: makes a folder named `name` in `parent` (an absolute path the user chose) and opens it as a Space; a taken or invalid name is refused with a `code` |
 | `Open(dir)` | `SpaceInfo`: root, name (the folder's), the Space's page width; creates `.bava/space.json` when missing |
 | `List(root, folder)` | `SpaceList`: one folder's pages (`.md`) and folders in the Space's order; never hidden entries, `.d2` files or `.bava` |
-| `Apply(root, op)` | `OpResult`: the new path, a Trash item's id, or a renamed Space's root. `op.kind` is `createPage`, `createFolder`, `rename`, `move` (`folder`, `index`; -1 for the end), `duplicate`, `trash`, `restore`, `deleteForever`, `emptyTrash`, `renameSpace` or `setPageWidth` |
+| `Apply(root, op)` | `OpResult`: the new path, a Trash item's id, or a renamed Space's root. `op.kind` is `createPage`, `createFolder`, `rename`, `move` (`folder`, `index`; -1 for the end), `duplicate`, `trash`, `restore`, `deleteForever`, `emptyTrash`, `renameSpace`, `setPageWidth` or `relink` (`edits`: each page's `path`, `before` and `after` text; a page is written only if it still reads as `before`, and `missed` lists those that were not) |
+| `Index(root, withText)` | `SpaceIndex`: every page in the Space (its path, its name without `.md`, and with `withText` its text), in the tree's order; never hidden entries or `.bava`. The frontend reads links from the text with the Document's own reader: "Linked from", missing links, and which links a rename rewrites |
 | `Trash(root)` | `TrashList`: items (where each came from, kind, when, size) and the total size |
 | `ChooseFolder(title)` | `DialogResult`: the native folder picker, which can make a folder, titled as the frontend words it (translated there); empty when cancelled |
 | `Reveal(root, path)` | `Problem` (`error`, `code`), both empty on success: the Space's folder, or an item selected in its folder, in the file manager; `revealUnavailable` when there is no file manager to call |
@@ -154,7 +155,7 @@ refused, in `Error`, and so is one that goes through a symbolic link. So is a na
 
 **Errors are data**, as for `FileService`. A refusal the user can act on
 also carries `code` (`exists`, `nameEmpty`, `nameSlash`, `nameDot`, `nameReserved`,
-`intoItself`, `notFolder`, `onlyPage`, `outside`, `throughLink`, `notSpace`,
+`intoItself`, `notFolder`, `onlyPage`, `outside`, `throughLink`, `notSpace`, `changed`,
 `revealUnavailable`;
 `internal/space/errors.go`), and the frontend words it in the user's language
 (`space.error.*`). Any other failure has an empty `code` and its `error` is

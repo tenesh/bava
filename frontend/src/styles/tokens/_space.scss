@@ -59,6 +59,10 @@
   --size-emoji-picker: 320px;
   --size-emoji-picker-height: 340px;
   --size-emoji-cell: 32px;
+  // A link's card, at its widest, and a day in the date chip's calendar.
+  --size-link-card: 360px;
+  --size-date-cell: 32px;
+  --size-date-icon: 14px;
   // Tables: a cell's narrowest, the column-resize edge, and the + edges.
   --size-table-cell-min: 60px;
   --size-resize-handle: 4px;

@@ -1,0 +1,412 @@
+[
+  {
+    "name": "inline",
+    "src": "See [a](b.md).\n",
+    "links": [
+      "b.md"
+    ]
+  },
+  {
+    "name": "angle brackets",
+    "src": "See [a](<b c.md>).\n",
+    "links": [
+      "<b c.md>"
+    ]
+  },
+  {
+    "name": "a title",
+    "src": "See [a](b.md \"The b\").\n",
+    "links": [
+      "b.md"
+    ]
+  },
+  {
+    "name": "brackets in the text",
+    "src": "See [a [b] c](b.md).\n",
+    "links": [
+      "b.md"
+    ]
+  },
+  {
+    "name": "parentheses in the address",
+    "src": "See [a](b(1).md).\n",
+    "links": [
+      "b(1).md"
+    ]
+  },
+  {
+    "name": "formatting in the text",
+    "src": "See [**a**](b.md).\n",
+    "links": [
+      "b.md"
+    ]
+  },
+  {
+    "name": "two on a line",
+    "src": "[a](a.md) and [b](b.md)\n",
+    "links": [
+      "a.md",
+      "b.md"
+    ]
+  },
+  {
+    "name": "text across lines",
+    "src": "See [a\nb](b.md).\n",
+    "links": [
+      "b.md"
+    ]
+  },
+  {
+    "name": "in a list and a quote",
+    "src": "- [a](a.md)\n\n> [b](b.md)\n",
+    "links": [
+      "a.md",
+      "b.md"
+    ]
+  },
+  {
+    "name": "a continued list item",
+    "src": "- item\n\n    [a](a.md)\n",
+    "links": [
+      "a.md"
+    ]
+  },
+  {
+    "name": "after an unclosed comment",
+    "src": "a <!-- b\n\n[a](a.md)\n",
+    "links": [
+      "a.md"
+    ]
+  },
+  {
+    "name": "a toggle's body",
+    "src": "<details>\n<summary>More</summary>\n\n[a](a.md)\n\n</details>\n",
+    "links": [
+      "a.md"
+    ]
+  },
+  {
+    "name": "an HTML table's links",
+    "src": "<table>\n<tr><td><a href=\"a.md\">a</a></td></tr>\n</table>\n",
+    "links": [
+      "a.md"
+    ]
+  },
+  {
+    "name": "a quote across lines",
+    "src": "> See [a](a.md)\n> and more.\n",
+    "links": [
+      "a.md"
+    ]
+  },
+  {
+    "name": "a setext heading",
+    "src": "See [a](a.md)\n===\n",
+    "links": [
+      "a.md"
+    ]
+  },
+  {
+    "name": "a footnote's note",
+    "src": "Text.[^1]\n\n[^1]: See [a](a.md).\n",
+    "links": [
+      "a.md"
+    ]
+  },
+  {
+    "name": "a table row",
+    "src": "| A |\n|---|\n| [a](a.md) |\n",
+    "links": [
+      "a.md"
+    ]
+  },
+  {
+    "name": "a fenced block",
+    "src": "```\n[a](b.md)\n```\n",
+    "links": []
+  },
+  {
+    "name": "a tilde fence",
+    "src": "~~~md\n[a](b.md)\n~~~\n",
+    "links": []
+  },
+  {
+    "name": "a longer fence",
+    "src": "````\n```\n[a](b.md)\n```\n````\n",
+    "links": []
+  },
+  {
+    "name": "indented code",
+    "src": "Text.\n\n    [a](b.md)\n",
+    "links": []
+  },
+  {
+    "name": "inline code",
+    "src": "Use `[a](b.md)` here.\n",
+    "links": []
+  },
+  {
+    "name": "inline code of two ticks",
+    "src": "Use ``[a](`b`.md)`` here.\n",
+    "links": []
+  },
+  {
+    "name": "a comment",
+    "src": "<!-- [a](b.md)\n[c](d.md) -->\n",
+    "links": []
+  },
+  {
+    "name": "an image",
+    "src": "![a](b.md)\n",
+    "links": []
+  },
+  {
+    "name": "an escaped bracket",
+    "src": "\\[a](b.md)\n",
+    "links": []
+  },
+  {
+    "name": "front matter",
+    "src": "---\nsee: \"[a](b.md)\"\n---\n# Page\n",
+    "links": []
+  },
+  {
+    "name": "the canvas block",
+    "src": "Text.\n\n```bava-canvas\n{\"text\": \"[a](b.md)\"}\n```\n",
+    "links": []
+  },
+  {
+    "name": "a space in a bare address",
+    "src": "[a](b c.md)\n",
+    "links": []
+  },
+  {
+    "name": "an HTML block",
+    "src": "<div>\n[a](b.md)\n</div>\n",
+    "links": []
+  },
+  {
+    "name": "a pre block",
+    "src": "<pre>\n[a](b.md)\n\n</pre>\n",
+    "links": []
+  },
+  {
+    "name": "a script block",
+    "src": "<script>\nlet s = '[a](b.md)'\n</script>\n",
+    "links": []
+  },
+  {
+    "name": "a toggle's summary",
+    "src": "<details>\n<summary>[a](b.md)</summary>\n\nBody.\n\n</details>\n",
+    "links": []
+  },
+  {
+    "name": "text in an HTML table cell",
+    "src": "<table>\n<tr><td>[a](b.md)</td></tr>\n</table>\n",
+    "links": []
+  },
+  {
+    "name": "inline HTML in a paragraph",
+    "src": "See <a href=\"b.md\">b</a> and <span title=\"[a](b.md)\">x</span>.\n",
+    "links": []
+  },
+  {
+    "name": "indented code after a heading",
+    "src": "# Title\n    [a](b.md)\n",
+    "links": []
+  },
+  {
+    "name": "indented code after a fence",
+    "src": "```\nx\n```\n    [a](b.md)\n",
+    "links": []
+  },
+  {
+    "name": "indented code in a list item",
+    "src": "- item\n\n        [a](b.md)\n",
+    "links": []
+  },
+  {
+    "name": "a fence closed only by its own indent",
+    "src": "```md\nx\n    ```\n[a](b.md)\n```\n",
+    "links": []
+  },
+  {
+    "name": "a fence in a quote",
+    "src": "> ~~~\n> [a](b.md)\n> ~~~\n",
+    "links": []
+  },
+  {
+    "name": "a fence in a callout",
+    "src": "> [!NOTE]\n> ```md\n> x ``` y\n> [a](b.md)\n> ```\n",
+    "links": []
+  },
+  {
+    "name": "an inline equation",
+    "src": "Area $[a](b.md)$ here.\n",
+    "links": []
+  },
+  {
+    "name": "an equation block",
+    "src": "$$\n[a](b.md)\n$$\n",
+    "links": []
+  },
+  {
+    "name": "a bava comment",
+    "src": "<!-- bava: caption=\"[a](b.md)\" -->\n```go\nx\n```\n",
+    "links": []
+  },
+  {
+    "name": "a line break in a link's words, in a list item",
+    "src": "- [a\\\n  b](old.md)\n",
+    "links": [
+      "old.md"
+    ]
+  },
+  {
+    "name": "a link's words across lines in a quote",
+    "src": "> [a\\\n> b](old.md)\n",
+    "links": [
+      "old.md"
+    ]
+  },
+  {
+    "name": "a link's words across lines in a callout",
+    "src": "> [!NOTE]\n> [a\\\n> b](old.md)\n",
+    "links": [
+      "old.md"
+    ]
+  },
+  {
+    "name": "a link's words across lines in a numbered item",
+    "src": "1. see [the\n   doc](old.md)\n",
+    "links": [
+      "old.md"
+    ]
+  },
+  {
+    "name": "a link across lines in a list in a quote",
+    "src": "> - a [x\n>   y](old.md)\n",
+    "links": [
+      "old.md"
+    ]
+  },
+  {
+    "name": "a list item with CRLF",
+    "src": "- [a\r\n  b](old.md)\r\n",
+    "links": [
+      "old.md"
+    ]
+  },
+  {
+    "name": "code in an HTML table link",
+    "src": "<table>\n<tr><th>A</th></tr>\n<tr><td><a href=\"old.md\"><code>x</code></a></td></tr>\n</table>\n",
+    "links": [
+      "old.md"
+    ]
+  },
+  {
+    "name": "a line break inside an HTML table link",
+    "src": "<table>\n<tr><th>A</th></tr>\n<tr><td>a<br><a href=\"old.md\">b</a><a href=\"old.md\"><br></a><a href=\"old.md\">c</a></td></tr>\n</table>\n",
+    "links": [
+      "old.md",
+      "old.md",
+      "old.md"
+    ]
+  },
+  {
+    "name": "a blank line inside an equation block",
+    "src": "$$\nx\n\n[a](old.md)\n$$\n",
+    "links": []
+  },
+  {
+    "name": "a paragraph straight after an equation block",
+    "src": "$$\nx\n$$\n[a](old.md)\n",
+    "links": [
+      "old.md"
+    ]
+  },
+  {
+    "name": "$$ opening a sentence",
+    "src": "$$5 price, see [a](old.md)\n",
+    "links": [
+      "old.md"
+    ]
+  },
+  {
+    "name": "an inline $$ equation then a link",
+    "src": "$$x$$ and [a](old.md)\n",
+    "links": [
+      "old.md"
+    ]
+  },
+  {
+    "name": "inside an inline $$ equation",
+    "src": "see $$ [a](old.md) $$ here\n",
+    "links": []
+  },
+  {
+    "name": "front matter closed by --- and a space",
+    "src": "---\ntitle: [a](old.md)\n--- \n\nbody\n",
+    "links": []
+  },
+  {
+    "name": "a processing instruction",
+    "src": "a <?php [a](old.md) ?> b\n",
+    "links": []
+  },
+  {
+    "name": "a declaration",
+    "src": "a <!DOCTYPE [a](old.md)> b\n",
+    "links": []
+  },
+  {
+    "name": "CDATA",
+    "src": "a <![CDATA[ [a](old.md) ]]> b\n",
+    "links": []
+  },
+  {
+    "name": "an empty comment",
+    "src": "x <!--> [a](old.md) -->\n",
+    "links": [
+      "old.md"
+    ]
+  },
+  {
+    "name": "a table with a class is kept",
+    "src": "<table class=\"foo\">\n<tr><td><a href=\"old.md\">x</a></td></tr>\n</table>\n",
+    "links": []
+  },
+  {
+    "name": "a pipe table with a row longer than its header is kept",
+    "src": "| a | b |\n|---|---|\n| [x](old.md) | y | z |\n",
+    "links": []
+  },
+  {
+    "name": "a reference link",
+    "src": "[a][r]\n\n[r]: old.md\n",
+    "links": [
+      "old.md"
+    ]
+  },
+  {
+    "name": "an entity in an address",
+    "src": "[a](old&#46;md)\n",
+    "links": [
+      "old&#46;md"
+    ]
+  },
+  {
+    "name": "a bracket inside inline HTML in a link's words",
+    "src": "[a <span title=\"]\">b</span>](old.md)\n",
+    "links": [
+      "old.md"
+    ]
+  },
+  {
+    "name": "a link inside a link's words",
+    "src": "[a [b](old.md)](other.md)\n",
+    "links": [
+      "old.md"
+    ]
+  }
+]

@@ -5,8 +5,9 @@
  * touches a disk or the network.
  */
 import { PARENT, SPACE_ROOT, seedSpace, type FakeSpace } from './fixtures';
+import { linkName } from '../../../src/docs/links';
 
-type Op = { kind: string; path: string; folder: string; name: string; index: number; id: string; width: string };
+type Op = { kind: string; path: string; folder: string; name: string; index: number; id: string; width: string; edits?: { path: string; before: string; after: string }[] };
 
 const PAGE_EXT = '.md';
 const parentOf = (path: string) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '');
@@ -44,7 +45,7 @@ export function createFakes(first: FakeSpace = seedSpace()) {
   const spaceOf = (root: string) => spaces.get(root);
   const isFolder = (space: FakeSpace, path: string) => path in space.folders;
   const exists = (space: FakeSpace, path: string) => isFolder(space, path) || path in space.pages;
-  const ok = (extra: Record<string, string> = {}) => ({ path: '', id: '', root: '', error: '', code: '', ...extra });
+  const ok = (extra: Record<string, string | string[]> = {}) => ({ path: '', id: '', root: '', error: '', code: '', ...extra });
 
   function remove(space: FakeSpace, path: string) {
     const folder = parentOf(path);
@@ -172,6 +173,15 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       case 'setPageWidth':
         space.pageWidth = op.width;
         return ok();
+      case 'relink': {
+        const missed: string[] = [];
+        for (const edit of op.edits ?? []) {
+          const page = space.pages[edit.path];
+          if (page && page.source === edit.before) page.source = edit.after;
+          else missed.push(edit.path);
+        }
+        return ok({ missed });
+      }
       default:
         return ok(refusal('', `unknown operation "${op.kind}"`));
     }
@@ -218,6 +228,21 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       async Apply(root: string, op: Op) {
         const space = spaceOf(root);
         return space ? apply(space, op) : ok(refusal('notSpace', 'not a Space'));
+      },
+      async Index(root: string, withText: boolean) {
+        const space = spaceOf(root);
+        if (!space) return { pages: null, ...refusal('notSpace', 'not a Space') };
+        // Every page in the tree's order, with its text when asked.
+        const pages: { name: string; path: string; text: string }[] = [];
+        const walk = (folder: string) => {
+          for (const name of space.folders[folder] ?? []) {
+            const path = join(folder, name);
+            if (isFolder(space, path)) walk(path);
+            else pages.push({ name: linkName(path), path, text: withText ? space.pages[path].source : '' });
+          }
+        };
+        walk('');
+        return { pages, error: '', code: '' };
       },
       async Trash(root: string) {
         const space = spaceOf(root);
