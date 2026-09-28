@@ -21,10 +21,14 @@ const MenuCommandEvent = "menu:command"
 type MenuService struct {
 	mu    sync.Mutex
 	built *menu.Built
+	// onMain runs a function on the main thread and waits for it: AppKit's
+	// menu, like GTK's, may only be changed there, and bound methods run on
+	// goroutines of their own.
+	onMain func(func())
 }
 
 // NewMenuService constructs the service registered with the application.
-func NewMenuService() *MenuService { return &MenuService{} }
+func NewMenuService() *MenuService { return &MenuService{onMain: application.InvokeSync} }
 
 // InstallMenu builds the menu bar for platform from the embedded spec, sets it
 // as the application menu, and emits every click as MenuCommandEvent.
@@ -58,8 +62,11 @@ func (s *MenuService) SetState(state menu.State) {
 	if built == nil {
 		return
 	}
-	if built.Apply(state) {
-		// Menu construction belongs on the main thread; on Linux it is GTK.
-		application.InvokeSync(built.Menu.Update)
-	}
+	// Checks, enabled items and any rebuild, all in one hop to the main
+	// thread: a check set from here raced AppKit and crashed on macOS.
+	s.onMain(func() {
+		if built.Apply(state) {
+			built.Menu.Update()
+		}
+	})
 }
