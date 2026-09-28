@@ -171,3 +171,10 @@ last window calls `PostQuitMessage` directly (`unregisterWindow`), so `Run`
 returns and neither `OnShutdown` tasks nor `PostShutdown` run. Shutdown work
 must also happen after `Run` returns, idempotently. On Linux a SIGTERM
 (logout) reaches neither.
+
+## Native menus change on the main thread only
+Bound methods run on goroutines of their own. Wails' Linux menu items hop to
+the main thread themselves; its macOS ones call AppKit directly, and AppKit's
+menu is not safe off the main thread: setting a check from `SetState` crashed
+the app mid-run. Every change to a native menu from a bound call goes through
+`application.InvokeSync` (`MenuService.onMain`), in one hop.
