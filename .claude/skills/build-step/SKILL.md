@@ -260,9 +260,9 @@ wrong facts. When a milestone closes, update this section in the same change.
 
 ### Milestones
 
-- **Committed through Milestone 8.2** (HEAD 4c405ba, 2026-09-27; CI green on
-  all three platforms, the Document smoke steps included). **8.3a (blocks
-  inside a page) passes its gates**, uncommitted; 8.3b, 8.3c and 8.4 to 8.6
+- **Committed through Milestone 8.3a** (HEAD f2facd9, 2026-09-28; CI green on
+  all three platforms, the Document smoke steps included). **8.3b (tables)
+  passes its gates**, uncommitted; 8.3c and 8.4 to 8.6
   follow, then 8.4a (canvas screen checks and smoke runs
   with complex scenes, before 8.5), then Milestone 15 (export, import and
   search). The roadmap (`.claude/plan/roadmap.md`) holds the sequence.
@@ -326,8 +326,8 @@ wrong facts. When a milestone closes, update this section in the same change.
 | `go test ./internal/render -run Golden` | exit 0; goldens under `testdata/golden/` |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 2,074 tests across 155 files (1 skipped) |
-| `npm run visual` (layer 2) | exit 0; 90 walks, 88 references in `testdata/visual/`; needs OrbStack running |
+| `npm test` | exit 0; 2,109 tests across 156 files (1 skipped) |
+| `npm run visual` (layer 2) | exit 0; 98 walks, 94 references in `testdata/visual/`; needs OrbStack running |
 | CI `smoke` (layer 3) | green on all three platforms at 4c405ba; 8.3a's equation and code block steps need a push |
 | `wails3 build` | macOS only, unverified elsewhere |
 

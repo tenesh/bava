@@ -59,6 +59,10 @@
   --size-emoji-picker: 320px;
   --size-emoji-picker-height: 340px;
   --size-emoji-cell: 32px;
+  // Tables: a cell's narrowest, the column-resize edge, and the + edges.
+  --size-table-cell-min: 60px;
+  --size-resize-handle: 4px;
+  --size-table-edge: 16px;
   // Find and replace's fields, and its match count.
   --size-find-field: 200px;
   --size-find-count: 72px;

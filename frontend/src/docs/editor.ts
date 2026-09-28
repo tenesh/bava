@@ -25,6 +25,7 @@ import { filterItems, runItem, slashKey, slashPlugin, type SlashInfo } from './s
 import { schema } from './schema';
 import { codeBlockView, codeHighlight, codeKeys, setLanguage } from './code';
 import { foldKeys, foldPlugin, toggleView } from './fold';
+import { pasteCells, readCells, tableKeys, tablePlugins, tableState } from './table';
 import { mathKeys, mathPlugin, mathView, type EquationAt } from './math';
 import { footnotesPlugin, withoutDroppedNotes } from './footnotes';
 import { contentsPlugin, contentsView } from './contents';
@@ -46,6 +47,8 @@ export type DocEditorOptions = {
   onEmoji?: (info: EmojiInfo | null) => void;
   /** The `/` menu's Emoji: the app opens the picker at the caret. */
   onEmojiPicker?: (at: { left: number; top: number; bottom: number }) => void;
+  /** A right-click in a table: the app opens the table menu there. */
+  onTableMenu?: (at: { x: number; y: number }) => void;
   /** An equation at `pos` to edit: the app opens its field there. */
   onEquation?: (pos: number, at: EquationAt) => void;
   /** A code block's language button, at `pos`: the app offers the languages there. */
@@ -55,6 +58,12 @@ export type DocEditorOptions = {
   /** The `/` menu opened, changed or closed (null). */
   onSlash?: (info: SlashInfo | null) => void;
 };
+
+/** Whether the caret is in code, where pasted tabs are code and never table cells. */
+function inCodeAt(state: EditorState): boolean {
+  const { $from } = state.selection;
+  return $from.parent.type.spec.code === true || schema.marks.code.isInSet(state.storedMarks ?? $from.marks()) !== undefined;
+}
 
 /** An empty page still has a line to type on; it is written back as nothing. */
 function withALine(doc: Node): Node {
@@ -154,10 +163,36 @@ export class DocEditor {
           }),
       },
       attributes: { class: 'bava-doc', spellcheck: 'true' },
+      // Spreadsheet cells pasted by the webview itself, as from a right-click Paste.
+      handlePaste: (view, event) => {
+        const cells = inCodeAt(view.state) ? null : readCells(event.clipboardData?.getData('text/plain') ?? '');
+        if (!cells || this.locked) return false;
+        pasteCells(cells)(view.state, view.dispatch);
+        return true;
+      },
       // The bubble follows focus: a selection left behind by find is not one to format.
       handleDOMEvents: {
         focus: () => void this.#options?.onSelection?.(),
         blur: () => void this.#options?.onSelection?.(),
+        contextmenu: (view, event) => {
+          const hit = view.posAtCoords({ left: event.clientX, top: event.clientY });
+          if (!hit || !this.#options?.onTableMenu) return false;
+          const $hit = view.state.doc.resolve(hit.pos);
+          let inCell = false;
+          for (let d = $hit.depth; d > 0; d -= 1) {
+            const type = $hit.node(d).type;
+            if (type === schema.nodes.table_cell || type === schema.nodes.table_header) inCell = true;
+          }
+          if (!inCell) return false;
+          // A selection of cells stays for the menu to act on; otherwise the caret goes where the click was.
+          const { from, to } = view.state.selection;
+          if (view.state.selection.empty || hit.pos < from || hit.pos > to) {
+            view.dispatch(view.state.tr.setSelection(TextSelection.near($hit)));
+          }
+          event.preventDefault();
+          this.#options.onTableMenu({ x: event.clientX, y: event.clientY });
+          return true;
+        },
       },
       dispatchTransaction: (tr) => this.#dispatch(tr),
     });
@@ -171,6 +206,7 @@ export class DocEditor {
         slashPlugin((info) => this.#options?.onSlash?.(info)),
         emojiPlugin((info) => this.#options?.onEmoji?.(info)),
         keymap(codeKeys),
+        keymap(tableKeys),
         keymap(foldKeys),
         keymap(mathKeys),
         mathPlugin((pos, at) => this.#options?.onEquation?.(pos, at)),
@@ -184,6 +220,7 @@ export class DocEditor {
         dropCursor({ color: false, class: 'bava-drop-cursor' }),
         search(),
         codeHighlight(),
+        ...tablePlugins(),
         footnotesPlugin(),
         contentsPlugin(),
         foldPlugin(() => this.#foldMemory),
@@ -375,6 +412,11 @@ export class DocEditor {
     view.focus();
   }
 
+  /** Where the selection is in a table, for what the table menu offers. */
+  tableState(): { inTable: boolean; canMerge: boolean; canSplit: boolean } {
+    return this.view ? tableState(this.view.state) : { inTable: false, canMerge: false, canSplit: false };
+  }
+
   /** The kind of block the caret is in, as Turn into names it; null for one it does not offer. */
   currentKind(): string | null {
     return this.view ? currentKind(this.view.state) : null;
@@ -492,12 +534,24 @@ export class DocEditor {
   }
 
   /**
-   * Pastes text: a single line as it is, anything longer read as Markdown,
-   * so pasted Markdown arrives formatted and never as the marks themselves.
+   * Pastes text: tab-separated rows (spreadsheet cells) as table cells, a
+   * single line as it is, anything longer read as Markdown, so pasted
+   * Markdown arrives formatted and never as the marks themselves.
    */
   paste(text: string): void {
     const view = this.view;
     if (!view || this.locked) return;
+    // Cells copied from a spreadsheet arrive as tab-separated rows; in code, a tab is code.
+    const cells = inCodeAt(view.state) ? null : readCells(text);
+    if (cells) {
+      pasteCells(cells)(view.state, view.dispatch);
+      return;
+    }
+    // Into code, text goes in exactly as it is.
+    if (inCodeAt(view.state)) {
+      view.dispatch(view.state.tr.insertText(text).scrollIntoView());
+      return;
+    }
     if (!text.includes('\n')) {
       view.dispatch(view.state.tr.insertText(text));
       return;

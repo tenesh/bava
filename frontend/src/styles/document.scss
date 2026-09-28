@@ -407,6 +407,122 @@ $callout-swatches: (
     border-radius: var(--radius-sm);
   }
 
+  // Tables: lines between cells, headers on a quiet ground, a cell's colour
+  // from the swatches, and the + edges along the right and the bottom.
+  // As wide as its table, so the + edges sit along the table itself.
+  .tableWrapper {
+    position: relative;
+    width: fit-content;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 0 var(--size-table-edge) var(--size-table-edge) 0;
+  }
+
+  table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin: 0;
+  }
+
+  td,
+  th {
+    position: relative;
+    box-sizing: border-box;
+    min-width: var(--size-table-cell-min);
+    padding: var(--space-1) var(--space-2);
+    border: var(--border-width) solid var(--color-border-strong);
+    vertical-align: top;
+    text-align: left;
+
+    > p {
+      margin: 0;
+    }
+  }
+
+  th {
+    background: var(--color-surface-sunken);
+    font-weight: var(--weight-semibold);
+    color: var(--color-text-primary);
+  }
+
+  [data-align='center'] {
+    text-align: center;
+  }
+
+  [data-align='right'] {
+    text-align: right;
+  }
+
+  @each $name, $_ in sw.$swatches-light {
+    [data-cell-background='#{$name}'] {
+      background: var(--swatch-#{$name}-fill);
+    }
+  }
+
+  .selectedCell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--color-selection);
+    pointer-events: none;
+  }
+
+  .column-resize-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: calc(-0.5 * var(--size-resize-handle));
+    width: var(--size-resize-handle);
+    background: var(--color-accent);
+    pointer-events: none;
+  }
+
+  &.resize-cursor {
+    cursor: col-resize;
+  }
+
+  .table-edge {
+    position: absolute;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: var(--color-control-hover);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    opacity: 0;
+
+    &::before {
+      content: '+';
+    }
+
+    &:hover {
+      background: var(--color-control-active);
+      color: var(--color-text-primary);
+    }
+
+    &:active {
+      background: var(--color-selection);
+    }
+  }
+
+  .tableWrapper:hover .table-edge {
+    opacity: 1;
+  }
+
+  .table-edge-column {
+    top: 0;
+    right: 0;
+    bottom: var(--size-table-edge);
+    width: var(--size-table-edge);
+  }
+
+  .table-edge-row {
+    left: 0;
+    right: var(--size-table-edge);
+    bottom: 0;
+    height: var(--size-table-edge);
+  }
+
   // Footnotes: a number in the text, and the notes at the foot.
   .footnote-ref {
     padding: 0 var(--space-half);

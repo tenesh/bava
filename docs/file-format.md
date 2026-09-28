@@ -312,10 +312,64 @@ every viewer shows a working list. Bava rewrites the list on every save.
 ### Emoji
 Written as the character itself (`🚀`), never as a `:rocket:` code.
 
+### Tables
+A table is written in one of two forms, chosen on each save by what the
+table uses.
+
+**A Markdown table**, while it has only a header row, cell text and column
+alignment. GitHub, Obsidian and most editors draw it:
+
+```markdown
+| Name | Role   | Hours |
+|------|:------:|------:|
+| Ana  | Design | 12    |
+```
+
+- Alignment is the header line's colons: `:---` left, `:---:` centre,
+  `---:` right; `---` is none.
+- A `|` in a cell is written `\|`; a line break is `<br>`, a closing one
+  included. Spaces at a cell's edges are not written; readers trim them.
+- Cells are padded to line up in a plain editor; the padding carries no
+  meaning.
+
+**An HTML table**, as soon as the table has a merged cell, a cell colour, a
+column width, a header column or no header row. GitHub and Obsidian draw it
+too:
+
+```html
+<table>
+<colgroup><col width="120"><col><col></colgroup>
+<tr><th>Name</th><th>Role</th><th>Hours</th></tr>
+<tr><th>Ana</th><td colspan="2" data-background="yellow"><strong>Design</strong><br>and review</td></tr>
+</table>
+```
+
+- Only `table`, `colgroup`, `col` (`width` in pixels), `thead`, `tbody`,
+  `tr`, `th` and `td` are read, with `colspan`, `rowspan`, `align` (`left`,
+  `center`, `right`) and `data-background` (a swatch name) on cells.
+- A cell is a header cell (`th`) in the header row, the header column, or
+  both.
+- Inside a cell, formatting is HTML: `<strong>`, `<em>`, `<u>`, `<s>`,
+  `<code>`, `<a href title>`, `<span data-color>`, `<span data-highlight>`,
+  `<br>` and inline `$…$`. A footnote reference is `[^label]`; an image is
+  kept as written; other inline HTML (`<kbd>`) is kept as written. Entities
+  are decoded, and `&`, `<`, `>`, `$` and `[` in text are written as
+  entities so they read back as text.
+- Spans are at least 1, and the cells must fill the grid exactly: every row
+  as wide as the others, no cell overlapping another, no span running past
+  the last row. Anything else is kept as written.
+
+A cell holds one line of formatted text, with line breaks, never a list or
+another block. A table Bava cannot hold exactly is kept as written:
+an HTML table with anything else in it, a Markdown table with a row longer
+than its header (other readers drop the extra cells), and any table whose
+cells hold blocks.
+
 ### Blocks kept as they are
 A block this version cannot edit is shown in the page, read-only, and written
-back **byte for byte**: tables, HTML blocks other than `<details>`, link
-reference definitions, and any other construct not listed above. It keeps its place among the other blocks.
+back **byte for byte**: tables Bava cannot hold exactly (above), HTML blocks
+other than `<details>` and Bava's own tables, link reference definitions, and
+any other construct not listed above. It keeps its place among the other blocks.
 Inside a list item or a quote, its lines are written under the container's
 indent or `>`, with the container's own indent written as spaces. Later milestones make these
 editable one by one; until then nothing about them changes.

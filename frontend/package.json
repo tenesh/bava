@@ -52,6 +52,7 @@
     "prosemirror-schema-list": "1.5.1",
     "prosemirror-search": "1.1.1",
     "prosemirror-state": "1.4.4",
+    "prosemirror-tables": "1.8.5",
     "prosemirror-transform": "1.12.2",
     "prosemirror-view": "1.42.6",
     "unicode-emoji-json": "0.9.0"

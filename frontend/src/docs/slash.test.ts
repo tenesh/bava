@@ -21,6 +21,7 @@ describe('the / menu\'s items', () => {
       'basic:quote',
       'basic:divider',
       'advanced:callout',
+      'advanced:table',
       'advanced:code',
       'advanced:equation',
       'advanced:contents',

@@ -135,6 +135,28 @@ const blocks: FakePage = {
   scene: { version: 1, elements: [] },
 };
 
+// Both table forms: a Markdown table, and an HTML one with a merge, colours,
+// a width and a header column.
+const tablesPage: FakePage = {
+  source: [
+    '# Tables',
+    '',
+    '| Name | Role   | Hours |',
+    '|------|:------:|------:|',
+    '| Ana  | Design | 12    |',
+    '| Ben  | Build  | 30    |',
+    '',
+    '<table>',
+    '<colgroup><col width="140"><col><col></colgroup>',
+    '<tr><th>Quarter</th><th>Plan</th><th>Status</th></tr>',
+    '<tr><th>Q1</th><td colspan="2" data-background="yellow"><strong>Beta</strong><br>and review</td></tr>',
+    '<tr><th>Q2</th><td>Launch</td><td data-background="green">On track</td></tr>',
+    '</table>',
+    '',
+  ].join('\n'),
+  scene: { version: 1, elements: [] },
+};
+
 // A locked page: nothing on it can be changed until it is unlocked.
 const checklist: FakePage = {
   source: '---\nbava:\n  locked: true\n---\n# Release checklist\n\n- [x] Tag the build\n- [ ] Write the notes\n',
@@ -148,7 +170,7 @@ export function seedSpace(): FakeSpace {
     folders: {
       '': ['Marketing', 'Engineering', 'Roadmap.md', 'Team handbook.md'],
       Marketing: ['Launch plan.md', 'Brand guide.md', 'Press release.md'],
-      Engineering: ['Architecture.md', 'Release checklist.md', 'Blocks.md'],
+      Engineering: ['Architecture.md', 'Release checklist.md', 'Blocks.md', 'Tables.md'],
     },
     pages: {
       'Roadmap.md': blank(),
@@ -159,6 +181,7 @@ export function seedSpace(): FakeSpace {
       'Engineering/Architecture.md': architecture,
       'Engineering/Release checklist.md': checklist,
       'Engineering/Blocks.md': blocks,
+      'Engineering/Tables.md': tablesPage,
     },
     trash: [
       { id: 't1', path: 'Meeting notes/Q3 retro.md', kind: 'page', deletedAt: '2026-09-27T09:00:00Z', size: 2048 },

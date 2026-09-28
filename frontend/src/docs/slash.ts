@@ -11,6 +11,7 @@ import { schema } from './schema';
 import { callouts } from './callout';
 import { folds } from './fold';
 import { math } from './math';
+import { tables } from './table';
 import { insertFootnote } from './footnotes';
 import { insertContents } from './contents';
 import { PICKER } from './emoji';
@@ -77,6 +78,7 @@ export const SLASH_ITEMS: SlashItem[] = [
     words: 'callout panel box info note success warning error custom',
     run: callouts.insert('info'),
   },
+  { id: 'table', group: 'advanced', label: 'slash.table', words: 'table grid rows columns spreadsheet', run: tables.insert },
   { id: 'code', group: 'advanced', label: 'slash.code', words: 'code block snippet programming fence', run: commands.turnInto('code_block') },
   { id: 'equation', group: 'advanced', label: 'slash.equation', words: 'equation math formula tex latex block', run: math.insertBlock },
   { id: 'contents', group: 'advanced', label: 'slash.contents', words: 'contents table toc outline index', run: insertContents },

@@ -44,6 +44,12 @@ component per block.
 - **Pane state read inside a closing handler is read before it is cleared.**
   A `{@const open = x}` follows `x`: set `x = null` and `open` is null too, so
   a handler reads what it needs from `open` first.
+- **Tables come from `prosemirror-tables`, with Bava's own merge and header
+  toggles.** A cell holds one paragraph, so the package's merge (which joins
+  cells as separate paragraphs) would drop all but the first cell's text:
+  `tables.merge` joins the texts with line breaks first. Its header toggles
+  flip the corner cell; Bava's keep the header row and column independent.
+  The writer picks the table's form on every save (`needsHtml`).
 - **The formatting bubble follows focus.** It shows for a text selection only
   while the page has focus: a selection left by find is not one to format.
 

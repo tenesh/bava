@@ -11,6 +11,7 @@
     { "do": "wait", "target": ".bava-doc", "text": "Written in the smoke run" },
     { "do": "wait", "target": ".bava-doc .math-inline .katex" },
     { "do": "wait", "target": ".bava-doc .code-block", "text": "x := 1" },
+    { "do": "wait", "target": ".bava-doc table", "text": "Cell one" },
     { "do": "menu", "target": "view.canvas" },
     { "do": "wait", "target": "footer", "text": "Nodes 1" },
     { "do": "shot", "name": "reopened" }
