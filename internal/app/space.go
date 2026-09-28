@@ -52,7 +52,7 @@ type SpaceList struct {
 
 // Operation is one change to a Space. Kind is createPage, createFolder,
 // rename, move, duplicate, trash, restore, deleteForever, emptyTrash,
-// renameSpace or setPageWidth; the other fields are what it needs.
+// renameSpace, setPageWidth or relink; the other fields are what it needs.
 type Operation struct {
 	Kind   string `json:"kind"`
 	Path   string `json:"path"`
@@ -62,16 +62,44 @@ type Operation struct {
 	Index int    `json:"index"`
 	ID    string `json:"id"`
 	Width string `json:"width"`
+	// Edits are relink's pages: each written only if it still reads as
+	// Before.
+	Edits []PageEdit `json:"edits"`
+}
+
+// PageEdit is a page's text before and after its links followed a rename.
+type PageEdit struct {
+	Path   string `json:"path"`
+	Before string `json:"before"`
+	After  string `json:"after"`
 }
 
 // OpResult is what an operation made: the item's new path, a Trash item's id,
 // or a renamed Space's new root.
 type OpResult struct {
-	Path  string `json:"path"`
-	ID    string `json:"id"`
-	Root  string `json:"root"`
-	Error string `json:"error"`
-	Code  string `json:"code"`
+	Path string `json:"path"`
+	ID   string `json:"id"`
+	Root string `json:"root"`
+	// Missed lists relink's pages that were not written: changed since they
+	// were read, or not writable.
+	Missed []string `json:"missed"`
+	Error  string   `json:"error"`
+	Code   string   `json:"code"`
+}
+
+// SpaceIndex is every page in a Space, in the tree's order.
+type SpaceIndex struct {
+	Pages []IndexPage `json:"pages"`
+	Error string      `json:"error"`
+	Code  string      `json:"code"`
+}
+
+// IndexPage is a page: its path, its name without .md, and its text when
+// asked for.
+type IndexPage struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+	Text string `json:"text"`
 }
 
 // TrashList is the Space's Trash and its total size in bytes.
@@ -155,6 +183,12 @@ func (s *SpaceService) Apply(root string, op Operation) OpResult {
 		res.Root = next.Root
 	case "setPageWidth":
 		err = sp.SetPageWidth(op.Width)
+	case "relink":
+		for _, edit := range op.Edits {
+			if sp.WriteIfUnchanged(edit.Path, edit.Before, edit.After) != nil {
+				res.Missed = append(res.Missed, edit.Path)
+			}
+		}
 	default:
 		err = fmt.Errorf("unknown operation %q", op.Kind)
 	}
@@ -162,6 +196,30 @@ func (s *SpaceService) Apply(root string, op Operation) OpResult {
 		return OpResult{Error: err.Error(), Code: space.Code(err)}
 	}
 	return res
+}
+
+// Index lists every page in a Space, with each page's text when withText is
+// set: the frontend reads links with the Document's own reader, so what a
+// link is never differs between an open page and the others.
+func (s *SpaceService) Index(root string, withText bool) SpaceIndex {
+	sp, err := space.Load(root)
+	if err != nil {
+		return SpaceIndex{Error: err.Error(), Code: space.Code(err)}
+	}
+	pages, err := sp.Pages()
+	if err != nil {
+		return SpaceIndex{Error: err.Error(), Code: space.Code(err)}
+	}
+	index := SpaceIndex{Pages: []IndexPage{}}
+	for _, page := range pages {
+		entry := IndexPage{Name: page.Name, Path: page.Path}
+		if withText {
+			// A page that cannot be read has no links to read.
+			entry.Text, _ = sp.ReadPage(page.Path)
+		}
+		index.Pages = append(index.Pages, entry)
+	}
+	return index
 }
 
 // Trash lists the Space's Trash, most recently deleted first.

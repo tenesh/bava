@@ -1,0 +1,316 @@
+{
+  "resolve": [
+    {
+      "page": "Roadmap.md",
+      "dest": "Marketing/Launch%20plan.md",
+      "target": "Marketing/Launch plan.md",
+      "anchor": ""
+    },
+    {
+      "page": "Marketing/Launch plan.md",
+      "dest": "../Roadmap.md#goals",
+      "target": "Roadmap.md",
+      "anchor": "#goals"
+    },
+    {
+      "page": "a/b/c.md",
+      "dest": "./d.md",
+      "target": "a/b/d.md",
+      "anchor": ""
+    },
+    {
+      "page": "a/b/c.md",
+      "dest": "../../x.md",
+      "target": "x.md",
+      "anchor": ""
+    },
+    {
+      "page": "a/c.md",
+      "dest": "../../x.md",
+      "target": "",
+      "anchor": ""
+    },
+    {
+      "page": "a/c.md",
+      "dest": "#goals",
+      "target": "",
+      "anchor": ""
+    },
+    {
+      "page": "a/c.md",
+      "dest": "https://example.com/x.md",
+      "target": "",
+      "anchor": ""
+    },
+    {
+      "page": "a/c.md",
+      "dest": "mailto:a@b.c",
+      "target": "",
+      "anchor": ""
+    },
+    {
+      "page": "a/c.md",
+      "dest": "/x.md",
+      "target": "",
+      "anchor": ""
+    },
+    {
+      "page": "a/c.md",
+      "dest": "notes.txt",
+      "target": "a/notes.txt",
+      "anchor": ""
+    },
+    {
+      "page": "c.md",
+      "dest": "Q%25%20%28draft%29.md",
+      "target": "Q% (draft).md",
+      "anchor": ""
+    },
+    {
+      "page": "c.md",
+      "dest": "bad%zz.md",
+      "target": "",
+      "anchor": ""
+    },
+    {
+      "page": "c.md",
+      "dest": "bad%FF.md",
+      "target": "",
+      "anchor": ""
+    },
+    {
+      "page": "a/c.md",
+      "dest": "d.md?v=1#x",
+      "target": "a/d.md",
+      "anchor": "?v=1#x"
+    }
+  ],
+  "linkTo": [
+    {
+      "from": "Roadmap.md",
+      "target": "Marketing/Launch plan.md",
+      "anchor": "",
+      "want": "Marketing/Launch%20plan.md"
+    },
+    {
+      "from": "Marketing/Launch plan.md",
+      "target": "Roadmap.md",
+      "anchor": "#goals",
+      "want": "../Roadmap.md#goals"
+    },
+    {
+      "from": "a/b/c.md",
+      "target": "a/d/e.md",
+      "anchor": "",
+      "want": "../d/e.md"
+    },
+    {
+      "from": "a/c.md",
+      "target": "a/d.md",
+      "anchor": "",
+      "want": "d.md"
+    },
+    {
+      "from": "c.md",
+      "target": "Q% (draft) <1>?#.md",
+      "anchor": "",
+      "want": "Q%25%20%28draft%29%20%3C1%3E%3F%23.md"
+    },
+    {
+      "from": "c.md",
+      "target": "Café.md",
+      "anchor": "",
+      "want": "Café.md"
+    },
+    {
+      "from": "c.md",
+      "target": "A|B.md",
+      "anchor": "",
+      "want": "A%7CB.md"
+    }
+  ],
+  "retarget": [
+    {
+      "name": "a renamed page, text following",
+      "page": "Roadmap.md",
+      "href": "Marketing/Launch%20plan.md",
+      "text": "Launch plan",
+      "moves": [
+        {
+          "from": "Marketing/Launch plan.md",
+          "to": "Marketing/Q4 launch.md"
+        }
+      ],
+      "href2": "Marketing/Q4%20launch.md",
+      "text2": "Q4 launch"
+    },
+    {
+      "name": "reworded text kept",
+      "page": "Roadmap.md",
+      "href": "Marketing/Launch%20plan.md",
+      "text": "the plan",
+      "moves": [
+        {
+          "from": "Marketing/Launch plan.md",
+          "to": "Marketing/Q4 launch.md"
+        }
+      ],
+      "href2": "Marketing/Q4%20launch.md",
+      "text2": "the plan"
+    },
+    {
+      "name": "an anchor kept",
+      "page": "Roadmap.md",
+      "href": "Marketing/Launch%20plan.md#timeline",
+      "text": "Timeline",
+      "moves": [
+        {
+          "from": "Marketing/Launch plan.md",
+          "to": "Launch plan.md"
+        }
+      ],
+      "href2": "Launch%20plan.md#timeline",
+      "text2": "Timeline"
+    },
+    {
+      "name": "a folder renamed",
+      "page": "Roadmap.md",
+      "href": "Marketing/Launch%20plan.md",
+      "text": "Launch plan",
+      "moves": [
+        {
+          "from": "Marketing",
+          "to": "Sales"
+        }
+      ],
+      "href2": "Sales/Launch%20plan.md",
+      "text2": "Launch plan"
+    },
+    {
+      "name": "a folder named like the start of another",
+      "page": "Roadmap.md",
+      "href": "Marketing%202/Launch%20plan.md",
+      "text": "Launch plan",
+      "moves": [
+        {
+          "from": "Marketing",
+          "to": "Sales"
+        }
+      ],
+      "href2": "",
+      "text2": ""
+    },
+    {
+      "name": "the linking page itself moved",
+      "page": "Marketing/Launch plan.md",
+      "href": "../Roadmap.md",
+      "text": "Roadmap",
+      "moves": [
+        {
+          "from": "Marketing/Launch plan.md",
+          "to": "Launch plan.md"
+        }
+      ],
+      "href2": "Roadmap.md",
+      "text2": "Roadmap"
+    },
+    {
+      "name": "the linking page moved, a link to a file beside it",
+      "page": "Marketing/Launch plan.md",
+      "href": "notes.txt",
+      "text": "notes",
+      "moves": [
+        {
+          "from": "Marketing/Launch plan.md",
+          "to": "Launch plan.md"
+        }
+      ],
+      "href2": "Marketing/notes.txt",
+      "text2": "notes"
+    },
+    {
+      "name": "both moved together in a folder",
+      "page": "Marketing/Launch plan.md",
+      "href": "Budget.md",
+      "text": "Budget",
+      "moves": [
+        {
+          "from": "Marketing",
+          "to": "Archive/Marketing"
+        }
+      ],
+      "href2": "",
+      "text2": ""
+    },
+    {
+      "name": "a link to itself when renamed",
+      "page": "Launch plan.md",
+      "href": "Launch%20plan.md#goals",
+      "text": "Launch plan",
+      "moves": [
+        {
+          "from": "Launch plan.md",
+          "to": "Q4 launch.md"
+        }
+      ],
+      "href2": "Q4%20launch.md#goals",
+      "text2": "Q4 launch"
+    },
+    {
+      "name": "text with a Markdown character follows",
+      "page": "Roadmap.md",
+      "href": "Q_1.md",
+      "text": "Q_1",
+      "moves": [
+        {
+          "from": "Q_1.md",
+          "to": "Q_2.md"
+        }
+      ],
+      "href2": "Q_2.md",
+      "text2": "Q_2"
+    },
+    {
+      "name": "an unrelated link untouched",
+      "page": "Roadmap.md",
+      "href": "Other.md",
+      "text": "Other",
+      "moves": [
+        {
+          "from": "Marketing/Launch plan.md",
+          "to": "Marketing/Q4 launch.md"
+        }
+      ],
+      "href2": "",
+      "text2": ""
+    },
+    {
+      "name": "a web link untouched",
+      "page": "Roadmap.md",
+      "href": "https://example.com",
+      "text": "Launch plan",
+      "moves": [
+        {
+          "from": "Launch plan.md",
+          "to": "Q4.md"
+        }
+      ],
+      "href2": "",
+      "text2": ""
+    },
+    {
+      "name": "a query kept",
+      "page": "Marketing/Brief.md",
+      "href": "Plan.md?v=1",
+      "text": "Plan",
+      "moves": [
+        {
+          "from": "Marketing/Brief.md",
+          "to": "Brief.md"
+        }
+      ],
+      "href2": "Marketing/Plan.md?v=1",
+      "text2": "Plan"
+    }
+  ]
+}

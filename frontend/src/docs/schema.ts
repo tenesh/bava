@@ -6,6 +6,7 @@
  *
  * Footnotes sit in one `footnotes` block, always last, as they are written.
  */
+import { formatDay, isDay, plainDateWords } from './dates';
 import { Schema, type DOMOutputSpec, type Node } from 'prosemirror-model';
 import { tableNodes } from 'prosemirror-tables';
 import { calloutLook } from './callout-look';
@@ -240,6 +241,26 @@ export const schema = new Schema({
       // Its number is drawn from the page's order, never stored.
       toDOM: (node): DOMOutputSpec => ['sup', { class: 'footnote-ref', 'data-label': node.attrs.label }],
       leafText: (node) => `[^${node.attrs.label as string}]`,
+    },
+    /** A date chip: the day, and the words the file shows for it. */
+    date: {
+      inline: true,
+      group: 'inline',
+      atom: true,
+      attrs: { date: {}, text: {} },
+      toDOM: (node): DOMOutputSpec => ['time', { class: 'date-chip', datetime: node.attrs.date }, node.attrs.text],
+      parseDOM: [
+        {
+          tag: 'time[datetime]',
+          getAttrs: (dom) => {
+            const date = (dom as HTMLElement).getAttribute('datetime') ?? '';
+            if (!isDay(date)) return false;
+            const text = (dom as HTMLElement).textContent ?? '';
+            return { date, text: text && plainDateWords(text) ? text : formatDay(date) };
+          },
+        },
+      ],
+      leafText: (node) => node.attrs.text as string,
     },
     /** Inline HTML or an image Bava cannot edit yet. */
     keptInline: {

@@ -23,8 +23,13 @@ export type OpOutcome = {
   path: string;
   id?: string;
   root?: string;
+  /** Relink's pages that were not written: changed since they were read, or not writable. */
+  missed?: string[];
   error: string;
 };
+
+/** A page of the Space, with its text when asked for. */
+export type IndexPage = { name: string; path: string; text: string };
 
 export type SpaceIO = {
   open(
@@ -47,9 +52,11 @@ export type SpaceIO = {
     path: string;
     id: string;
     root: string;
+    missed?: string[] | null;
     error: string;
     code?: string;
   }>;
+  index(root: string, withText: boolean): Promise<{ pages: IndexPage[] | null; error: string }>;
   trash(
     root: string,
   ): Promise<{
@@ -100,8 +107,11 @@ const overIPC: SpaceIO = {
       index: -1,
       id: "",
       width: "",
+      edits: [],
       ...op,
     }),
+  index: (root, withText) =>
+    SpaceService.Index(root, withText) as unknown as ReturnType<SpaceIO["index"]>,
   trash: (root) =>
     SpaceService.Trash(root) as unknown as ReturnType<SpaceIO["trash"]>,
   chooseFolder: (title) => SpaceService.ChooseFolder(title),
@@ -342,11 +352,24 @@ export function createSpace(
         path: result.path,
         id: result.id,
         root: result.root,
+        missed: result.missed ?? [],
         error: "",
       };
       await options.before?.(outcome);
       if (options.refresh !== false) await refresh();
       return outcome;
+    },
+
+    /**
+     * Every page in the Space, with its text when `withText` is set. Null when
+     * they could not be read: not knowing is not "no pages", which would mark
+     * every link to a page missing.
+     */
+    async index(withText: boolean): Promise<IndexPage[] | null> {
+      if (!root) return [];
+      const result = await io.index(root, withText).catch(() => null);
+      if (!result || result.error) return null;
+      return result.pages ?? [];
     },
 
     /** A folder moved or was renamed: keep it, and what is open inside it, open. */

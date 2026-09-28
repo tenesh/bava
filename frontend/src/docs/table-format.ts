@@ -4,6 +4,7 @@
  * Markdown form's row splitting. Anything outside Bava's shape is refused, so
  * the table is kept as written.
  */
+import { dateTag, isDay, plainDateWords } from './dates';
 import { decodeHTML } from 'entities';
 import type { Mark, Node } from 'prosemirror-model';
 
@@ -43,6 +44,7 @@ export type Piece =
   | { kind: 'br' }
   | { kind: 'math'; tex: string }
   | { kind: 'footnote'; label: string }
+  | { kind: 'date'; date: string; text: string }
   /** Inline HTML or an image Bava keeps as written. */
   | { kind: 'kept'; text: string };
 
@@ -80,6 +82,38 @@ function tags(html: string): Tag[] | null {
   return at === html.length ? out : null;
 }
 
+/**
+ * Each `<a>` in a table's HTML, read as the table reader reads it: where its
+ * `href` value and its words are in the HTML. Null when the HTML is not all
+ * tags and text.
+ */
+export function anchorPlaces(html: string): { href: [number, number] | null; words: [number, number] | null }[] | null {
+  const list = tags(html);
+  if (!list) return null;
+  let at = 0;
+  const placed = list.map((tag) => {
+    const from = at;
+    at += 'text' in tag ? tag.text.length : tag.raw.length;
+    return { tag, from };
+  });
+  const out: { href: [number, number] | null; words: [number, number] | null }[] = [];
+  placed.forEach(({ tag, from }, i) => {
+    if ('text' in tag || tag.name !== 'a' || tag.close) return;
+    let href: [number, number] | null = null;
+    // Attributes one after another, so a value holding `href=` is never taken for one.
+    for (const attr of tag.raw.slice(2).matchAll(/\s+([a-zA-Z-]+)(?:="([^"]*)")?/g)) {
+      if (attr[1].toLowerCase() === 'href' && attr[2] !== undefined) {
+        const valueAt = from + 2 + attr.index! + attr[0].indexOf('="') + 2;
+        href = [valueAt, valueAt + attr[2].length];
+        break;
+      }
+    }
+    const close = placed.slice(i + 1).find((p) => !('text' in p.tag) && p.tag.name === 'a' && p.tag.close);
+    out.push({ href, words: close ? [from + tag.raw.length, close.from] : null });
+  });
+  return out;
+}
+
 const onlyKeys = (attrs: Record<string, string>, allowed: string[]) => Object.keys(attrs).every((key) => allowed.includes(key));
 
 /** Tags that make a block: a cell holding one is more than a cell holds. */
@@ -111,6 +145,15 @@ function cellPieces(inner: Tag[]): Piece[] | null {
       out.push({ kind: 'code', text: decodeHTML(text.text) });
       i += 2;
       continue;
+    }
+    if (tag.name === 'time' && !tag.close && onlyKeys(tag.attrs, ['datetime']) && isDay(tag.attrs.datetime ?? '')) {
+      const text = inner[i + 1];
+      const end = inner[i + 2];
+      if (text && 'text' in text && plainDateWords(text.text) && end && !('text' in end) && end.name === 'time' && end.close) {
+        out.push({ kind: 'date', date: tag.attrs.datetime, text: text.text });
+        i += 2;
+        continue;
+      }
     }
     const base = INLINE[tag.name];
     if (!base) {
@@ -324,6 +367,7 @@ export function cellHtml(paragraph: Node): string {
     else if (child.type.name === 'hard_break') inner = '<br>';
     else if (child.type.name === 'math_inline') inner = `$${escapeText(child.attrs.tex).replace(/&#36;/g, '$').replace(/&#91;/g, '[')}$`;
     else if (child.type.name === 'footnote_ref') inner = `[^${escapeText(child.attrs.label)}]`;
+    else if (child.type.name === 'date') inner = dateTag(child.attrs.date, child.attrs.text);
     else inner = String(child.attrs.text ?? '');
     out += marks.map(openTag).join('') + inner + [...marks].reverse().map(closeTag).join('');
   });

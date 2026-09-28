@@ -152,6 +152,11 @@ Active while the page has focus. On Windows and Linux, `Ctrl` for `⌘`.
 | `/` at the start of a line or after a space | The block menu; `↑` `↓` choose, `Enter` inserts, `Esc` closes |
 | `⌘F` / `⌥⌘F` | Find / Find and Replace; in the bar `Enter` and `⇧Enter` step, `Esc` closes |
 | `:` and a name | Emoji that match; `↑` `↓` choose, `Enter` or `Tab` puts one in, `Esc` closes |
+| `@` or `[[` at the start of a line or after a space | Dates, then the Space's pages; `↑` `↓` choose, `Enter` or `Tab` puts a date chip or a page link in, `Esc` closes |
+| Click a link | Its card: the address, Open, Edit, Remove; `Esc` closes it |
+| `⌘`-click a link | Follow it: a heading on the page, another page, or a web address in the browser |
+| Click a date chip, or `Enter` on a selected one | A calendar, focus on the chip's day; the arrows move through the month, `Enter` picks a day, `Esc` closes it |
+| `⌥Enter` / `Alt+Enter` in a link | Its card, focus on its first button |
 | `Enter` on a selected equation | Edit its TeX |
 | `Enter` in a toggle's summary | Into the toggle, opening it |
 

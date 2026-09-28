@@ -823,6 +823,33 @@ it uses a rich option (merged cells, a cell colour, column widths, a header
 column or no header row), the whole table is written as an HTML `<table>`, which GitHub and
 Obsidian also draw.
 
+### 87. A date chip is a date tag around the readable date (2026-09-28)
+
+The user's choice: `<time datetime="2026-10-02">2 Oct 2026</time>`. Bava
+reads the exact date from `datetime`; other apps show the readable date as
+plain text. A date typed as ordinary text never becomes a chip.
+
+### 88. A page link's text follows the page's name, unless reworded (2026-09-28)
+
+The user's choice, as Obsidian. A page link is `[Launch plan](../Marketing/Launch%20plan.md)`:
+the path relative to the linking page, spaces and other characters a
+Markdown link cannot hold written as `%20` and so on, which GitHub and
+Obsidian both follow. Its text starts as the page's file name. When the page
+is renamed or moved inside Bava, every link's path is updated, and its text
+too wherever it still reads the old name; a link reworded by hand keeps its
+words.
+
+### 89. One reader decides what a link is (2026-09-28)
+
+The user's choice, after two reviews found Bava's file side and its
+Document disagreeing on what counts as a link (29 of 113 unusual pages,
+two of them layouts Bava writes itself). The Document's own Markdown reader
+finds and rewrites links in every page, closed ones too, changing only
+their addresses (and their words where they follow a rename). The file side
+lists the pages with their text and writes back a page only when it is still
+as it was read. The two can never disagree; a rename in a large Space takes
+a moment longer.
+
 ## Features
 
 Chosen from Notion's editor, one question at a time (decisions 12 to 50),

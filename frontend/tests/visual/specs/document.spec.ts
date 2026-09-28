@@ -373,6 +373,94 @@ for (const theme of THEMES) {
       await expect(page).toHaveScreenshot(shot('document', 'table-pasted', 'open', theme));
     });
 
+    test('the @ menu: dates, then pages, and a page linked', async ({ page }) => {
+      await openDocument(page, theme, '', 'Roadmap.md');
+      await newLineAtEnd(page);
+      await page.keyboard.type('See @');
+      const list = page.getByRole('listbox', { name: 'Dates and pages' });
+      await expect(list.getByRole('option').first()).toContainText('Today');
+      await expect(list.getByRole('option', { name: /Launch plan/ })).toBeVisible();
+      await expect(page).toHaveScreenshot(shot('document', 'mention', 'open', theme));
+      await page.keyboard.type('launch');
+      await expect(list.getByRole('option')).toHaveCount(1);
+      await page.keyboard.press('Enter');
+      await expect(editor(page).locator('a[href="Marketing/Launch%20plan.md"]')).toHaveText('Launch plan');
+    });
+
+    test('a date chip and its calendar', async ({ page }) => {
+      await openDocument(page, theme, '', 'Roadmap.md');
+      await expect(editor(page).locator('time.date-chip')).toHaveText(['2 Oct 2026', 'next Friday']);
+      await editor(page).locator('time.date-chip').first().click();
+      const calendar = page.getByRole('dialog', { name: 'Calendar' });
+      await expect(calendar.locator('.month')).toHaveText('October 2026');
+      await expect(page).toHaveScreenshot(shot('document', 'date-chip', 'calendar', theme));
+      await calendar.locator('.day:not([data-outside-range])', { hasText: /^15$/ }).click();
+      await expect(calendar).toBeHidden();
+      await expect(editor(page).locator('time.date-chip').first()).toHaveText('15 Oct 2026');
+    });
+
+    test('a link card, and a link to a missing page', async ({ page }) => {
+      await openDocument(page, theme, '', 'Roadmap.md');
+      await editor(page).getByText('Brand guide', { exact: true }).click();
+      const card = page.getByRole('dialog', { name: 'Link' });
+      await expect(card.locator('.address')).toHaveText('Marketing/Brand guide.md');
+      await expect(page).toHaveScreenshot(shot('document', 'link-card', 'open', theme));
+      await page.keyboard.press('Escape');
+      await expect(card).toBeHidden();
+      await expect(editor(page).locator('.link-missing')).toHaveText('Brief');
+      await editor(page).getByText('Brief', { exact: true }).click();
+      await expect(card.locator('.missing')).toHaveText('Page not found');
+      await expect(card.getByRole('button', { name: 'Open' })).toHaveCount(0);
+      await expect(page).toHaveScreenshot(shot('document', 'link-card', 'missing', theme));
+      // Remove keeps the words.
+      await card.getByRole('button', { name: 'Remove' }).click();
+      await expect(editor(page).locator('a', { hasText: 'Brief' })).toHaveCount(0);
+      await expect(editor(page)).toContainText('The Brief was never written.');
+    });
+
+    test('following links: Open on a card, Linked from, and ⌘-click to a heading', async ({ page }) => {
+      await openDocument(page, theme, '', 'Roadmap.md');
+      await editor(page).getByText('Brand guide', { exact: true }).click();
+      await page.getByRole('dialog', { name: 'Link' }).getByRole('button', { name: 'Open' }).click();
+      await expect(page.locator('header')).toContainText('Brand guide');
+      const linked = page.getByRole('navigation', { name: 'Linked from' });
+      await expect(linked.getByRole('button')).toHaveText(['Roadmap']);
+      await expect(pane(page)).toHaveScreenshot(shot('document', 'linked-from', 'open', theme));
+      await linked.getByRole('button', { name: 'Roadmap' }).click();
+      await expect(page.locator('header')).toContainText('Roadmap');
+      await editor(page).getByText('Lists', { exact: true }).click({ modifiers: ['ControlOrMeta'] });
+      await expect(page.locator('header')).toContainText('Team handbook');
+      // The heading at the top of the view: where it lands is the check, the
+      // page's look has walks of its own.
+      const heading = editor(page).locator('h2', { hasText: 'Lists' });
+      const top = await pane(page).locator('.scroller').evaluate((el) => el.getBoundingClientRect().top);
+      await expect.poll(async () => Math.round((await heading.boundingBox())!.y - top)).toBeLessThan(40);
+    });
+
+    test('renaming a linked page in the tree: the open page follows', async ({ page }) => {
+      await openDocument(page, theme, '', 'Roadmap.md');
+      await page.locator('[data-path="Marketing"]').click();
+      await page.locator('[data-path="Marketing/Brand guide.md"]').click({ button: 'right' });
+      await page.getByRole('menuitem', { name: 'Rename' }).click();
+      const field = page.locator('input.rename').filter({ visible: true });
+      await field.fill('Brand book');
+      await field.press('Enter');
+      await expect(editor(page).locator('a[href="Marketing/Brand%20book.md"]')).toHaveText('Brand book');
+      await expect(page.locator('header')).toContainText('Roadmap');
+      // A page that is not open follows too: its file is rewritten.
+      await menu(page, 'file.save');
+      await page.locator('[data-path="Marketing/Brand book.md"]').click();
+      await expect(page.locator('header')).toContainText('Brand book');
+      await page.locator('[data-path="Team handbook.md"]').click({ button: 'right' });
+      await page.getByRole('menuitem', { name: 'Rename' }).click();
+      const again = page.locator('input.rename').filter({ visible: true });
+      await again.fill('Handbook');
+      await again.press('Enter');
+      await expect(page.locator('[data-path="Handbook.md"]')).toBeVisible();
+      await page.locator('[data-path="Roadmap.md"]').click();
+      await expect(editor(page).locator('a[href="Handbook.md#lists"]')).toHaveText('Lists');
+    });
+
     test('the page menu', async ({ page }) => {
       await openDocument(page, theme, 'Marketing', 'Marketing/Launch plan.md');
       await page.getByRole('button', { name: 'Page menu' }).click();

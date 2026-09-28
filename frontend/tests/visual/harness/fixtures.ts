@@ -33,6 +33,21 @@ const architecture: FakePage = {
   },
 };
 
+// Links to other pages (one of them missing), to a heading on another page, and dates.
+const roadmap: FakePage = {
+  source: [
+    '# Roadmap',
+    '',
+    'The look is in the [Brand guide](Marketing/Brand%20guide.md); how we work is in [Lists](Team%20handbook.md#lists).',
+    '',
+    'The [Brief](Brief.md) was never written.',
+    '',
+    'Beta on <time datetime="2026-10-02">2 Oct 2026</time>, review <time datetime="2026-10-09">next Friday</time>.',
+    '',
+  ].join('\n'),
+  scene: { version: 1, elements: [] },
+};
+
 const launchPlan: FakePage = {
   source: '# Launch plan\n\nHow we take Bava 1.0 to the first thousand users: goals, dates, and who owns what.\n',
   scene: { version: 1, elements: [] },
@@ -173,7 +188,7 @@ export function seedSpace(): FakeSpace {
       Engineering: ['Architecture.md', 'Release checklist.md', 'Blocks.md', 'Tables.md'],
     },
     pages: {
-      'Roadmap.md': blank(),
+      'Roadmap.md': roadmap,
       'Team handbook.md': handbook,
       'Marketing/Launch plan.md': launchPlan,
       'Marketing/Brand guide.md': blank(),

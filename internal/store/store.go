@@ -7,7 +7,9 @@
 package store
 
 import (
+	"errors"
 	"fmt"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 )
@@ -72,7 +74,7 @@ func Save(path, content string) error {
 		return fmt.Errorf("save %s: %s is not a directory", filepath.Base(path), dir)
 	}
 
-	temp, err := os.CreateTemp(dir, ".bava-*.tmp")
+	temp, err := createTemp(dir)
 	if err != nil {
 		return fmt.Errorf("save %s: %w", filepath.Base(path), err)
 	}
@@ -81,8 +83,18 @@ func Save(path, content string) error {
 	// Any failure from here leaves the original untouched; the temporary file
 	// is removed on the way out.
 	defer func() {
+		// A temporary file made read-only like its target cannot be removed
+		// on Windows until it is writable again.
+		_ = os.Chmod(tempPath, 0o600)
 		_ = os.Remove(tempPath)
 	}()
+
+	// The file keeps its permissions. A new one has what any new file gets
+	// (the temporary file is made as one). A disk that cannot set them (some
+	// network shares) still saves.
+	if existing, err := os.Stat(path); err == nil {
+		_ = temp.Chmod(existing.Mode().Perm())
+	}
 
 	if _, err := temp.WriteString(content); err != nil {
 		temp.Close()
@@ -119,4 +131,18 @@ func stampOf(info os.FileInfo) Stamp {
 		Size:             info.Size(),
 		ModifiedUnixNano: info.ModTime().UnixNano(),
 	}
+}
+
+// createTemp makes a temporary file beside the target, with the permissions
+// any new file gets there (0666 less the user's umask), where os.CreateTemp
+// would make it readable by its owner only.
+func createTemp(dir string) (*os.File, error) {
+	for range 100 {
+		name := filepath.Join(dir, fmt.Sprintf(".bava-%d.tmp", rand.Uint64()))
+		file, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o666)
+		if !errors.Is(err, os.ErrExist) {
+			return file, err
+		}
+	}
+	return nil, fmt.Errorf("no free temporary name in %s", dir)
 }

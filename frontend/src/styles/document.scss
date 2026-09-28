@@ -226,6 +226,33 @@ $callout-swatches: (
     text-underline-offset: var(--space-half);
   }
 
+  // A link to a page the Space does not have.
+  .link-missing {
+    color: var(--color-danger);
+    text-decoration-style: dashed;
+  }
+
+  // A date chip: the day in a quiet pill, a click away from its calendar.
+  .date-chip {
+    display: inline-flex;
+    gap: var(--space-1);
+    align-items: center;
+    padding: 0 var(--space-1);
+    border-radius: var(--radius-sm);
+    background: var(--color-accent-subtle);
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    cursor: pointer;
+
+    &::before {
+      content: '';
+      width: var(--size-date-icon);
+      height: var(--size-date-icon);
+      background: var(--color-accent);
+      mask: icon-mask('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>') center / contain no-repeat;
+    }
+  }
+
   // A callout: a panel in its look's colour, the icon beside its first line.
   .callout {
     display: flex;

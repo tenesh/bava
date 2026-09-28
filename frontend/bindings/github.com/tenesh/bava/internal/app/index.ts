@@ -18,13 +18,16 @@ export {
 
 export type {
     DialogResult,
+    IndexPage,
     LogEntry,
     Notice,
     OpResult,
     OpenResult,
     Operation,
+    PageEdit,
     Problem,
     SaveResult,
+    SpaceIndex,
     SpaceInfo,
     SpaceList,
     TrashList

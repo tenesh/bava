@@ -201,13 +201,15 @@ check both before building either by hand.
 | `ShortcutsDialog` ✓ | Shortcut groups, as the caller derives them from the menu spec; each key its own keycap (`keycaps.ts`). |
 | `StatusBar` ✓ | The Space and the page's path, then, at the far end, what is being worked on: the canvas's engine and node count, or the document's words and characters (`shell/status-context.ts` picks the side); an optional message: autosave paused, a command that failed. |
 | `PageHeader` ✓ | Above a page: its folders and name as a breadcrumb, Locked when it is, and the ⋯ page menu's button. Reports the press; the menu is a `ContextMenu` the caller opens. |
-| `SlashMenu` ✓ | The `/` menu's list at the caret, and the `:` emoji suggestions (`label` names the list): the matching blocks, the active one marked; keys stay in the editor, a press reports the item. |
+| `SlashMenu` ✓ | The `/` menu's list at the caret, the `:` emoji suggestions and the `@` menu (`label` names the list): the matching items, grouped, each with an optional quiet `detail`, the active one marked; keys stay in the editor, a press reports the item. |
 | `FormatBubble` ✓ | The toolbar over selected text: turn into, bold, italic, underline, strike, code, link, text colour, highlight. Presses keep the selection (mousedown held); the menus open as `ContextMenu`s at the button. |
 | `BlockHandle` ✓ | Left of the hovered block: + to add a block after it, and the grip that drags it or opens its block menu. |
 | `FindBar` ✓ | Find and replace across the top of the page: the field, "n of m", previous and next, the replace field, Replace, Replace all, close. Enter and ⇧Enter step, Escape closes. |
 | `LinkField` ✓ | The link field over selected text: address, Enter to link, Remove to unlink, Escape to leave it. Its field and FindBar's share `.bava-field` in `controls.scss`. |
 | `EquationField` ✓ | The field over an equation: its TeX, the equation drawn live below by the caller's `render`, Enter to save, Shift+Enter for a new line, Escape to leave it. |
 | `EmojiPicker` ✓ | A search and every emoji under its group; a pick gives the character, Escape or a press outside closes it. The caller supplies the emoji and group names. |
+| `LinkCard` ✓ | The card under a clicked link: its address, Open, Edit, Remove; a missing page says so and offers the one page with its name. Escape or a press outside closes it; focus stays in the page. |
+| `DatePicker` ✓ | A calendar under a date chip, over Ark's `DatePicker` (inline): the chip's month, its day chosen; a pick gives `YYYY-MM-DD`. Escape or a press outside closes it. |
 | `SpaceTree` ✓ | The Files tree of a Space, wrapping Ark's TreeView (expand, keys, typeahead, F2 rename), with drag to move and reorder added on top; a new page or folder is named in place. Rules in `files/tree.ts`. Reports actions; opens nothing itself. |
 | `SpaceSwitcher` ✓ | The Space's name atop the side pane, opening recent Spaces and Space actions; wraps Ark's Menu. |
 | `StartScreen` ✓ | Nothing open: the mark, New Space, Open Space, Open file, recent Spaces. |

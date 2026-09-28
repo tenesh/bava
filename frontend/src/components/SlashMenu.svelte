@@ -12,8 +12,11 @@
   import { t } from '../i18n/t';
 
   type Props = {
-    /** Items in order; one with a `group` is listed under that group's label. */
-    items: { id: string; label: string; group?: string }[];
+    /**
+     * Items in order; one with a `group` is listed under that group's label,
+     * and a `detail` shows quietly after its label.
+     */
+    items: { id: string; label: string; group?: string; detail?: string }[];
     active: number;
     at: { left: number; bottom: number };
     onChoose: (id: string) => void;
@@ -60,6 +63,9 @@
         }}
       >
         <span class="bava-menu-label">{item.label}</span>
+        {#if item.detail}
+          <span class="detail">{item.detail}</span>
+        {/if}
       </div>
     {:else}
       <div class="empty">{t('slash.none')}</div>
@@ -87,6 +93,11 @@
     text-transform: uppercase;
     letter-spacing: var(--tracking-label);
     user-select: none;
+  }
+
+  .detail {
+    font-size: var(--text-meta);
+    color: var(--color-text-muted);
   }
 
   .empty {

@@ -136,10 +136,13 @@
     }
   });
 
+  // A rename asked for from a menu starts a frame later: the menu moves focus
+  // into itself in an animation frame as it closes, which would otherwise take
+  // focus from the name field and end the rename before it began.
   $effect(() => {
     if (!renameRequest) return;
     const path = renameRequest;
-    queueMicrotask(() => {
+    requestAnimationFrame(() => {
       tree().startRenaming(path);
       onRenameStarted();
     });
