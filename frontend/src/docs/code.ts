@@ -8,7 +8,7 @@
 import type { Parser } from '@lezer/common';
 import type { Node } from 'prosemirror-model';
 import { exitCode, newlineInCode, setBlockType } from 'prosemirror-commands';
-import { Plugin, PluginKey, type Command, type EditorState } from 'prosemirror-state';
+import { Plugin, PluginKey, Selection, type Command, type EditorState } from 'prosemirror-state';
 import { Decoration, DecorationSet, type EditorView, type NodeView } from 'prosemirror-view';
 import { toRanges } from '../canvas/code/highlight';
 import { LANGUAGES, loadParser, type LanguageEntry } from '../canvas/code/languages';
@@ -147,15 +147,20 @@ const outdent: Command = (state, dispatch) => {
   return true;
 };
 
-/** ↓ on a code block's last line, with nothing after it, leaves it. */
+/**
+ * ↓ on a code block's last line leaves it: onto the block after, or a new
+ * line when nothing follows. Done here, not left to the browser, so it holds
+ * however the key arrives.
+ */
 const downOut: Command = (state, dispatch, view) => {
   if (!inCode(state) || !state.selection.empty) return false;
   const { $from } = state.selection;
   const afterCaret = $from.parent.textContent.slice($from.parentOffset);
   if (afterCaret.includes('\n')) return false;
   if (view && !view.endOfTextblock('down')) return false;
-  if ($from.indexAfter(-1) < $from.node(-1).childCount) return false;
-  return exitCode(state, dispatch);
+  if ($from.indexAfter(-1) >= $from.node(-1).childCount) return exitCode(state, dispatch);
+  dispatch?.(state.tr.setSelection(Selection.near(state.doc.resolve($from.after()), 1)).scrollIntoView());
+  return true;
 };
 
 /** Backspace at the start of an empty code block turns it back into text. */

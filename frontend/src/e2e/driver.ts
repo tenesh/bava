@@ -63,6 +63,9 @@ function click(el: HTMLElement) {
   const at: [number, number] = [box.left + box.width / 2, box.top + box.height / 2];
   pointer(el, 'pointerdown', at);
   el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: at[0], clientY: at[1] }));
+  // A press focuses what it lands on, as a person's does: the nearest element
+  // that takes focus. The click's own handlers may move focus on from there.
+  el.closest<HTMLElement>('button, a[href], input, select, textarea, [tabindex]')?.focus();
   pointer(el, 'pointerup', at);
   el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: at[0], clientY: at[1] }));
   el.click();

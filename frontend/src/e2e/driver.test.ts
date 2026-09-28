@@ -43,6 +43,18 @@ describe('the smoke driver', () => {
     expect(keys).toEqual(['Enter']);
   });
 
+  // A click focuses what it lands on, as a person's does, so a key pressed
+  // next (F2 on a row of the Files tree) goes there.
+  it('focuses what a click lands on, before the click runs', async () => {
+    document.body.innerHTML = '<div role="tree"><div role="treeitem" tabindex="-1" id="row"><span id="name">Target</span></div></div>';
+    const row = document.querySelector<HTMLElement>('#row')!;
+    const keys: string[] = [];
+    row.addEventListener('keydown', (event) => keys.push(event.key));
+    expect(await runScenario([{ do: 'click', target: '#name' }, { do: 'key', text: 'F2' }], env())).toBe('');
+    expect(document.activeElement).toBe(row);
+    expect(keys).toEqual(['F2']);
+  });
+
   // A click on an editable page leaves the caret at the end of its text, so
   // what is typed next goes into the page.
   it('clicks into an editable page with the caret at its end', async () => {
