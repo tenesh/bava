@@ -12,6 +12,9 @@ import { MarkdownParser, MarkdownSerializer, defaultMarkdownSerializer, type Mar
 import { Fragment, type Mark, type Node } from 'prosemirror-model';
 import { schema } from './schema';
 import { headingEntries, type HeadingEntry } from './contents';
+import { cellHtml, closingDollar, readHtmlTable, rowCells, type Piece } from './table-format';
+import { EditorState } from 'prosemirror-state';
+import { fixTables, TableMap } from 'prosemirror-tables';
 
 // ---- front matter -----------------------------------------------------------
 
@@ -272,15 +275,6 @@ function inlineRule(state: StateInline, silent: boolean): boolean {
   return false;
 }
 
-/** The next `close` from `from` that no backslash escapes (an even run of them is a TeX line break). */
-function closingDollar(src: string, from: number, close: string): number {
-  for (let at = src.indexOf(close, from); at >= 0; at = src.indexOf(close, at + 1)) {
-    let slashes = 0;
-    while (src[at - 1 - slashes] === '\\') slashes += 1;
-    if (slashes % 2 === 0) return at;
-  }
-  return -1;
-}
 
 /** Inline HTML Bava understands becomes marks, when it is closed; any other stays as it is. */
 function inlineHtml(children: Token[], TokenCtor: typeof Token): Token[] {
@@ -385,7 +379,15 @@ for (const name of ['html_block', 'table']) {
     if (!original(state, startLine, endLine, silent)) return false;
     if (!silent && state.tokens.length > before) {
       const token = state.tokens[before];
-      token.meta = { ...token.meta, keptText: state.getLines(startLine, state.line, state.blkIndent, false).replace(/\s+$/, '') };
+      const keptText = state.getLines(startLine, state.line, state.blkIndent, false).replace(/\s+$/, '');
+      token.meta = { ...token.meta, keptText };
+      // A row longer than the header loses its extra cells in every reader:
+      // such a table is kept as written, never read and rewritten.
+      if (name === 'table') {
+        const lines = keptText.split('\n');
+        const width = rowCells(lines[0]);
+        if (lines.slice(2).some((line) => rowCells(line) > width)) token.meta.keep = true;
+      }
     }
     return true;
   }, { alt });
@@ -394,6 +396,105 @@ for (const name of ['html_block', 'table']) {
 // ---- reading the structure ---------------------------------------------------
 
 type CoreState = { tokens: Token[]; Token: typeof Token; md: MarkdownIt; env: unknown };
+
+const CELL_MARKS: Record<string, string> = { strong: 'strong', em: 'em', underline: 'underline', s: 's', link: 'link', color: 'color', highlight: 'highlight' };
+
+/** An HTML cell's pieces as inline tokens, the way markdown-it would give them. */
+function pieceTokens(pieces: Piece[], TokenCtor: typeof Token): Token[] {
+  return pieces.map((piece) => {
+    if (piece.kind === 'text') {
+      const token = new TokenCtor('text', '', 0);
+      token.content = piece.text;
+      return token;
+    }
+    if (piece.kind === 'code') {
+      const token = new TokenCtor('code_inline', 'code', 0);
+      token.content = piece.text;
+      return token;
+    }
+    if (piece.kind === 'br') return new TokenCtor('hardbreak', 'br', 0);
+    if (piece.kind === 'math') {
+      const token = new TokenCtor('math_inline', '', 0);
+      token.content = piece.tex;
+      return token;
+    }
+    if (piece.kind === 'footnote') {
+      const token = new TokenCtor('footnote_ref', '', 0);
+      token.meta = { label: piece.label };
+      return token;
+    }
+    if (piece.kind === 'kept') {
+      const token = new TokenCtor('keptInline', '', 0);
+      token.content = piece.text;
+      return token;
+    }
+    const name = CELL_MARKS[piece.mark];
+    const token = new TokenCtor(`${name}_${piece.kind}`, '', piece.kind === 'open' ? 1 : -1);
+    if (piece.kind === 'open') for (const [key, value] of Object.entries(piece.attrs ?? {})) token.attrSet(key, value);
+    return token;
+  });
+}
+
+/** A cell: its open token, a paragraph of its inline content, and its close. */
+function cellTokens(state: CoreState, header: boolean, attrs: Record<string, unknown>, children: Token[]): Token[] {
+  const kind = header ? 'table_header' : 'table_cell';
+  const open = new state.Token(`${kind}_open`, '', 1);
+  open.meta = { cell: attrs };
+  const inline = new state.Token('inline', '', 0);
+  inline.children = children;
+  inline.content = '';
+  return [open, new state.Token('paragraph_open', 'p', 1), inline, new state.Token('paragraph_close', 'p', -1), new state.Token(`${kind}_close`, '', -1)];
+}
+
+/** Markdown tables and Bava's HTML tables become table tokens; any other table stays as it is. */
+function readTables(state: CoreState): void {
+  const tokens = state.tokens;
+  const out: Token[] = [];
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = tokens[i];
+    if (token.type === 'html_block' && /^<table[\s>]/i.test(token.content.trim())) {
+      const table = readHtmlTable(token.content);
+      if (table) {
+        out.push(new state.Token('table_open', 'table', 1));
+        for (const row of table.rows) {
+          out.push(new state.Token('table_row_open', 'tr', 1));
+          for (const cell of row) {
+            const widths = table.widths.slice(cell.column, cell.column + cell.colspan);
+            const colwidth = widths.length === cell.colspan && widths.some((w) => w !== null) ? widths.map((w) => w ?? 0) : null;
+            const attrs = { colspan: cell.colspan, rowspan: cell.rowspan, align: cell.align, background: cell.background, colwidth };
+            out.push(...cellTokens(state, cell.header, attrs, pieceTokens(cell.pieces, state.Token)));
+          }
+          out.push(new state.Token('table_row_close', 'tr', -1));
+        }
+        out.push(new state.Token('table_close', 'table', -1));
+        continue;
+      }
+    }
+    if (token.type === 'table_open' && !token.meta?.keep) {
+      const end = tokens.findIndex((t, j) => j > i && t.type === 'table_close' && t.level === token.level);
+      out.push(new state.Token('table_open', 'table', 1));
+      for (let j = i + 1; j < end; j += 1) {
+        const part = tokens[j];
+        if (part.type === 'tr_open') out.push(new state.Token('table_row_open', 'tr', 1));
+        else if (part.type === 'tr_close') out.push(new state.Token('table_row_close', 'tr', -1));
+        else if (part.type === 'th_open' || part.type === 'td_open') {
+          const align = /text-align:\s*(left|center|right)/.exec(part.attrGet('style') ?? '')?.[1] ?? null;
+          // A line break in a cell is `<br>`: here it is a break, not kept HTML.
+          const children = (tokens[j + 1].children ?? []).map((child) =>
+            child.type === 'html_inline' && /^<br\s*\/?>$/i.test(child.content) ? new state.Token('hardbreak', 'br', 0) : child,
+          );
+          out.push(...cellTokens(state, part.type === 'th_open', { align }, children));
+          j += 2;
+        }
+      }
+      out.push(new state.Token('table_close', 'table', -1));
+      i = end;
+      continue;
+    }
+    out.push(token);
+  }
+  state.tokens = out;
+}
 
 const DETAILS = /^<details(\s+open)?>\s*<summary>([^<\n]*)<\/summary>$/;
 
@@ -533,7 +634,7 @@ function readMarksAndKept(state: CoreState & { src: string }): void {
     const whole =
       token.type === 'html_block' || token.type === 'kept'
         ? i
-        : token.type === 'table_open'
+        : token.type === 'table_open' && token.meta?.keep
           ? tokens.findIndex((t, j) => j > i && t.type === 'table_close' && t.level === token.level)
           : -1;
     if (whole >= 0 && (token.map || token.meta?.keptText)) {
@@ -607,6 +708,7 @@ md.core.ruler.push('bava', (state) => {
   readToggles(state);
   readContents(state);
   readCallouts(state);
+  readTables(state);
   readMarksAndKept(state);
   readFootnotes(state);
 });
@@ -653,6 +755,10 @@ const parser = new MarkdownParser(schema, md, {
   footnotes: { block: 'footnotes' },
   footnote: { block: 'footnote', getAttrs: (tok) => ({ label: tok.meta.label }) },
   contents: { node: 'contents' },
+  table: { block: 'table' },
+  table_row: { block: 'table_row' },
+  table_header: { block: 'table_header', getAttrs: (tok) => tok.meta.cell },
+  table_cell: { block: 'table_cell', getAttrs: (tok) => tok.meta.cell },
   hr: { node: 'horizontal_rule' },
   hardbreak: { node: 'hard_break' },
   kept: { node: 'kept', getAttrs: (tok) => ({ text: tok.content }) },
@@ -726,6 +832,97 @@ function asWritten(list: Node): Node {
     });
   });
   return tight ? list : list.type.create({ ...list.attrs, tight: false }, list.content, list.marks);
+}
+
+/**
+ * Whether a table needs the HTML form: a merged cell, a colour, a width, a
+ * header column, no header row, or a cell aligned unlike its column's header.
+ */
+function needsHtml(table: Node): boolean {
+  const map = TableMap.get(table);
+  let rich = false;
+  table.forEach((row, _rowOffset, r) => {
+    row.forEach((cell) => {
+      const a = cell.attrs;
+      if (a.colspan > 1 || a.rowspan > 1 || a.background || (a.colwidth ?? []).some((w: number) => w > 0)) rich = true;
+      if ((r === 0) !== (cell.type.name === 'table_header')) rich = true;
+    });
+  });
+  if (rich) return true;
+  for (let col = 0; col < map.width; col += 1) {
+    const align = table.nodeAt(map.map[col])!.attrs.align;
+    for (let row = 1; row < map.height; row += 1) {
+      if (table.nodeAt(map.map[row * map.width + col])!.attrs.align !== align) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * A cell's text as Markdown for a table row: breaks as `<br>`, pipes
+ * escaped, and no space at either edge, which every reader trims.
+ */
+function cellMarkdown(cell: Node): string {
+  const content = cell.firstChild!;
+  // The Markdown writer drops a paragraph's closing breaks: they are added back.
+  let trailing = 0;
+  while (trailing < content.childCount && content.child(content.childCount - 1 - trailing).type.name === 'hard_break') trailing += 1;
+  const paragraph = schema.nodes.paragraph.create(null, content.content.cut(0, content.content.size - trailing));
+  const text = serializer.serialize(schema.nodes.doc.create(null, paragraph)).replace(/\s+$/, '');
+  return `${text.replace(/\\\n/g, '<br>').replace(/\n/g, ' ').replace(/\|/g, '\\|').trim()}${'<br>'.repeat(trailing)}`;
+}
+
+/** The Markdown form: cells padded to line up, the header line carrying each column's alignment. */
+function markdownTable(table: Node): string {
+  const rows: string[][] = [];
+  table.forEach((row) => {
+    const cells: string[] = [];
+    row.forEach((cell) => cells.push(cellMarkdown(cell)));
+    rows.push(cells);
+  });
+  const widths = rows[0].map((_cell, col) => Math.max(3, ...rows.map((row) => row[col]?.length ?? 0)));
+  const aligns: (string | null)[] = [];
+  table.firstChild!.forEach((cell) => aligns.push(cell.attrs.align));
+  const line = (cells: string[]) => `| ${cells.map((cell, col) => cell.padEnd(widths[col])).join(' | ')} |`;
+  const rule = `|${widths
+    .map((width, col) => {
+      const align = aligns[col];
+      const dashes = '-'.repeat(width);
+      return align === 'center' ? `:${dashes}:` : align === 'left' ? `:${dashes}-` : align === 'right' ? `-${dashes}:` : `-${dashes}-`;
+    })
+    .join('|')}|`;
+  return [line(rows[0]), rule, ...rows.slice(1).map(line)].join('\n');
+}
+
+/** The HTML form: one row a line, widths in a colgroup when any are set. */
+function htmlTable(table: Node): string {
+  const map = TableMap.get(table);
+  const widths: (number | null)[] = [];
+  for (let col = 0; col < map.width; col += 1) {
+    const pos = map.map[col];
+    const cell = table.nodeAt(pos)!;
+    const width = cell.attrs.colwidth?.[col - map.colCount(pos)];
+    widths.push(width > 0 ? width : null);
+  }
+  const lines = ['<table>'];
+  if (widths.some((w) => w !== null)) lines.push(`<colgroup>${widths.map((w) => (w === null ? '<col>' : `<col width="${w}">`)).join('')}</colgroup>`);
+  table.forEach((row) => {
+    let cells = '';
+    row.forEach((cell) => {
+      const a = cell.attrs;
+      const tag = cell.type.name === 'table_header' ? 'th' : 'td';
+      const attrs = [
+        a.colspan > 1 ? ` colspan="${a.colspan}"` : '',
+        a.rowspan > 1 ? ` rowspan="${a.rowspan}"` : '',
+        a.align ? ` align="${a.align}"` : '',
+        a.background ? ` data-background="${a.background}"` : '',
+      ].join('');
+      cells += `<${tag}${attrs}>${cellHtml(cell.firstChild!)}</${tag}>`;
+    });
+    lines.push(`<tr>${cells}</tr>`);
+  });
+  lines.push('</table>');
+  return lines.join('\n');
 }
 
 const base = defaultMarkdownSerializer;
@@ -823,6 +1020,14 @@ const serializer = new MarkdownSerializer(
     footnote(state, node) {
       state.wrapBlock('    ', `[^${node.attrs.label}]: `, node, () => state.renderContent(node));
     },
+    table(state, node) {
+      writeRaw(state, needsHtml(node) ? htmlTable(node) : markdownTable(node));
+      state.closeBlock(node);
+    },
+    // Written by their table.
+    table_row() {},
+    table_header() {},
+    table_cell() {},
     horizontal_rule(state, node) {
       state.write('---');
       state.closeBlock(node);
@@ -928,12 +1133,22 @@ function joinLists(node: Node): Node {
 /** Reads a page's prose: its front matter and its document. */
 export function parsePage(markdown: string): Page {
   const { front, body } = readFront(markdown);
-  return { doc: joinLists(parser.parse(body)), front };
+  return { doc: settleTables(joinLists(parser.parse(body))), front };
+}
+
+/**
+ * Tables as the table editor expects them: every row as wide as the table,
+ * and a column's width on each of its cells, not only on the first row's.
+ */
+function settleTables(doc: Node): Node {
+  const state = EditorState.create({ doc });
+  const tr = fixTables(state);
+  return tr ? tr.doc : doc;
 }
 
 /** Reads Markdown that is not a whole page (pasted text): no front matter. */
 export function parseBody(markdown: string): Node {
-  return joinLists(parser.parse(markdown));
+  return settleTables(joinLists(parser.parse(markdown)));
 }
 
 /** Writes a page's prose in Bava's style: front matter, then the document. */

@@ -27,6 +27,8 @@
   import { CUSTOM_DEFAULT, callouts } from './callout';
   import { folds } from './fold';
   import { math, renderTex, type EquationAt } from './math';
+  import { tables } from './table';
+  import type { Command } from 'prosemirror-state';
   import { loadEmoji, type Emoji, type EmojiInfo } from './emoji';
   import { LANGUAGES } from '../canvas/code/languages';
 
@@ -96,6 +98,9 @@
       onSlash: (info) => (slash = info),
       onLink: openLink,
       onCopy: (text) => onCopyText(text),
+      onTableMenu: (anchor) => {
+        if (!editor.locked) menu = { anchor, items: tableItems(), run: runTable };
+      },
       onEmoji: (info) => (emojiSuggest = info),
       onEmojiPicker: (at) => openPicker(at, (emoji) => editor.insertText(emoji)),
       onEquation: (pos, at) => {
@@ -187,6 +192,68 @@
     else editor.run(commands.turnInto(kind as BlockKind, Number(level) || 1));
   }
 
+  /** The table menu, for the cell or cells selected. */
+  function tableItems(): MenuNode[] {
+    const { canMerge, canSplit } = editor.tableState();
+    const separator: MenuNode = { kind: 'separator' };
+    return [
+      item('t:rowAbove', t('table.rowAbove')),
+      item('t:rowBelow', t('table.rowBelow')),
+      item('t:columnLeft', t('table.columnLeft')),
+      item('t:columnRight', t('table.columnRight')),
+      separator,
+      item('t:moveRowUp', t('table.moveRowUp')),
+      item('t:moveRowDown', t('table.moveRowDown')),
+      item('t:moveColumnLeft', t('table.moveColumnLeft')),
+      item('t:moveColumnRight', t('table.moveColumnRight')),
+      separator,
+      ...(canMerge ? [item('t:merge', t('table.merge'))] : []),
+      ...(canSplit ? [item('t:split', t('table.split'))] : []),
+      item('t:headerRow', t('table.headerRow')),
+      item('t:headerColumn', t('table.headerColumn')),
+      {
+        kind: 'submenu',
+        id: 't:align',
+        label: t('table.align'),
+        items: [
+          item('t:align:left', t('table.alignLeft')),
+          item('t:align:center', t('table.alignCenter')),
+          item('t:align:right', t('table.alignRight')),
+          item('t:align:', t('table.alignNone')),
+        ],
+      },
+      { kind: 'submenu', id: 't:color', label: t('table.color'), items: colours('t:color', 'bubble.none') },
+      separator,
+      item('t:deleteRow', t('table.deleteRow')),
+      item('t:deleteColumn', t('table.deleteColumn')),
+      item('t:deleteTable', t('table.deleteTable')),
+    ];
+  }
+
+  function runTable(id: string) {
+    const [, action, value] = id.split(':');
+    const simple: Record<string, Command> = {
+      rowAbove: tables.rowAbove,
+      rowBelow: tables.rowBelow,
+      columnLeft: tables.columnLeft,
+      columnRight: tables.columnRight,
+      moveRowUp: tables.moveRow(-1),
+      moveRowDown: tables.moveRow(1),
+      moveColumnLeft: tables.moveColumn(-1),
+      moveColumnRight: tables.moveColumn(1),
+      merge: tables.merge,
+      split: tables.split,
+      headerRow: tables.headerRow,
+      headerColumn: tables.headerColumn,
+      deleteRow: tables.deleteRow,
+      deleteColumn: tables.deleteColumn,
+      deleteTable: tables.deleteTable,
+    };
+    if (action === 'align') editor.run(tables.align((value || null) as 'left' | 'center' | 'right' | null));
+    else if (action === 'color') editor.run(tables.color(value || null));
+    else if (simple[action]) editor.run(simple[action]);
+  }
+
   /** Opens the emoji picker at `at`; the names load the first time. */
   function openPicker(at: { left: number; top: number; bottom: number }, pick: (emoji: string) => void) {
     picker = { at, pick };
@@ -200,8 +267,11 @@
     editor.selectBlock(pos);
     const turnOptions = turnIntoItems();
     // A callout's colour is its panel's; a text colour on it would be a second one.
+    // A table's menu is the table's own.
     const styling: MenuNode[] =
-      block?.type === 'callout'
+      block?.type === 'table'
+        ? tableItems()
+        : block?.type === 'callout'
         ? [
             {
               kind: 'submenu',
@@ -249,7 +319,8 @@
         ...styling,
       ],
       run: (id) => {
-        if (id === 'kind:custom') editor.run(callouts.setColor(pos, (block?.attrs.color as string | null) ?? CUSTOM_DEFAULT.color));
+        if (id.startsWith('t:')) runTable(id);
+        else if (id === 'kind:custom') editor.run(callouts.setColor(pos, (block?.attrs.color as string | null) ?? CUSTOM_DEFAULT.color));
         else if (id.startsWith('kind:')) editor.run(callouts.setKind(pos, id.slice(5)));
         else if (id.startsWith('panel:')) editor.run(callouts.setColor(pos, id.slice(6)));
         else if (id === 'icon') openPicker({ left: anchor.x, top: anchor.y, bottom: anchor.y }, (emoji) => editor.run(callouts.setIcon(pos, emoji)));

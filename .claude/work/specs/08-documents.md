@@ -248,6 +248,14 @@ list written out) is decided with the file format.
 TeX formulas drawn properly, on a line of their own (`$$...$$`) and inside a
 sentence (`$...$`), forms GitHub and Obsidian also draw.
 
+### 86. A table cell holds formatted text, never blocks (2026-09-28)
+
+The user's choice, as Notion's tables: bold, italic, underline, strike,
+code, links, colours, highlights, equations and line breaks, but no lists,
+headings or other blocks. Both table forms hold that, so other apps show the
+same table. A line break is `<br>`; in an HTML table, formatting is written
+as HTML, which is all GitHub draws inside one.
+
 ### 24. A canvas embed is an image kept up to date (2026-09-27)
 
 The user: "Document should show the image but its live?", confirmed as: the
@@ -806,6 +814,14 @@ keep their own switches (a callout's Kind, a code block's language, a
 heading's toggle, a numbered list's Numbering); the callout's "Turn into
 quote" goes. Enter in a footnote stays a new line in that note, as Google
 Docs and Word do.
+
+### 85. A table is a Markdown table until it uses a rich option (2026-09-28)
+
+The user's choice, as decision 20 proposed. A table with only a header row,
+cell text and column alignment is written as a Markdown (GitHub) table. Once
+it uses a rich option (merged cells, a cell colour, column widths, a header
+column or no header row), the whole table is written as an HTML `<table>`, which GitHub and
+Obsidian also draw.
 
 ## Features
 

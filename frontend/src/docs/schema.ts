@@ -7,7 +7,33 @@
  * Footnotes sit in one `footnotes` block, always last, as they are written.
  */
 import { Schema, type DOMOutputSpec, type Node } from 'prosemirror-model';
+import { tableNodes } from 'prosemirror-tables';
 import { calloutLook } from './callout-look';
+
+/**
+ * Tables: a cell holds one paragraph of formatted text, with a colour from
+ * the swatches and an alignment; spans and widths are the table package's.
+ */
+const tables = tableNodes({
+  tableGroup: 'block',
+  cellContent: 'paragraph',
+  cellAttributes: {
+    background: {
+      default: null,
+      getFromDOM: (dom) => dom.getAttribute('data-background'),
+      setDOMAttr: (value, attrs) => {
+        if (value) attrs['data-cell-background'] = value;
+      },
+    },
+    align: {
+      default: null,
+      getFromDOM: (dom) => dom.getAttribute('align'),
+      setDOMAttr: (value, attrs) => {
+        if (value) attrs['data-align'] = value;
+      },
+    },
+  },
+});
 
 /** A block's colours and unknown invisible-mark keys, shared by every styled block. */
 const styled = {
@@ -179,6 +205,7 @@ export const schema = new Schema({
       attrs: { label: { default: '1' } },
       toDOM: (node): DOMOutputSpec => ['div', { class: 'footnote', 'data-label': node.attrs.label }, 0],
     },
+    ...tables,
     /** A block Bava cannot edit yet, kept byte for byte. */
     kept: {
       group: 'block',

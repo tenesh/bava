@@ -133,7 +133,7 @@ describe('block colours', () => {
 });
 
 describe('blocks kept as they are', () => {
-  const kept = ['| A | B |\n|---|:-:|\n| 1 | 2 |', '<div align="center">\n  <b>raw</b>\n</div>'];
+  const kept = ['| A | B |\n|---|:-:|\n| 1 | 2 | 3 |', '<div align="center">\n  <b>raw</b>\n</div>'];
 
   it.each(kept)('keeps %j byte for byte, in its place', (block) => {
     same(`Before\n\n${block}\n\nAfter\n`);
@@ -142,17 +142,17 @@ describe('blocks kept as they are', () => {
   // Inside a list item or a quote the container's indent and markers belong
   // to the container: kept with the block, they would stack up on each save.
   it('keeps a block inside a list item or a quote where it is, save after save', () => {
-    const inList = '- Item\n\n  | A |\n  |---|\n  | 1 |\n';
+    const inList = '- Item\n\n  | A |\n  |---|\n  | 1 | 2 |\n';
     expect(tidy(tidy(inList))).toBe(tidy(inList));
-    expect(tidy(inList)).toContain('  | A |\n  |---|\n  | 1 |');
+    expect(tidy(inList)).toContain('  | A |\n  |---|\n  | 1 | 2 |');
     const inQuote = '> <div>\n> raw\n> </div>\n';
     same(inQuote);
   });
 
   it('shows a kept block as one read-only node', () => {
-    const page = parsePage('| A |\n|---|\n| 1 |\n');
+    const page = parsePage('| A |\n|---|\n| 1 | 2 |\n');
     expect(page.doc.firstChild?.type.name).toBe('kept');
-    expect(page.doc.firstChild?.attrs.text).toBe('| A |\n|---|\n| 1 |');
+    expect(page.doc.firstChild?.attrs.text).toBe('| A |\n|---|\n| 1 | 2 |');
   });
 });
 
@@ -446,7 +446,7 @@ describe('what the new blocks must not lose', () => {
     ['a coloured paragraph', '> [!info]\n>\n> <!-- bava: color=red -->\n> Red.\n'],
     ['a toggle heading', '> [!info]\n>\n> <!-- bava: toggle -->\n> ## Head\n'],
     ['a toggle', '> [!info]\n>\n> <details>\n> <summary>S</summary>\n>\n> B.\n>\n> </details>\n'],
-    ['a table', '> [!info]\n>\n> | A |\n> |---|\n> | 1 |\n'],
+    ['a table', '> [!info]\n>\n> | A   |\n> |-----|\n> | 1   |\n'],
   ])('keeps a callout whose first block is %s', (_name, page) => {
     same(page);
     expect(parsePage(page).doc.firstChild!.type.name).toBe('callout');
@@ -493,7 +493,7 @@ describe('what the new blocks must not lose', () => {
 
   it('reads a table or a </details> straight after a paragraph', () => {
     const table = 'Para\n| a | b |\n|---|---|\n| 1 | 2 |\n';
-    expect(tidy(table)).toContain('| a | b |\n|---|---|\n| 1 | 2 |');
+    expect(tidy(table)).toContain('| a   | b   |\n|-----|-----|\n| 1   | 2   |');
     const details = '<details>\n<summary>S</summary>\n\nBody\n</details>\n';
     expect(parsePage(details).doc.firstChild!.type.name).toBe('toggle');
     expect(tidy(tidy(details))).toBe(tidy(details));
@@ -533,6 +533,136 @@ describe('what the new blocks must not lose', () => {
   it('keeps what follows a fence\'s language, and before a callout title, as written', () => {
     same('```go\tmeta   more\nx\n```\n');
     same('> [!info]\tTitle\n> Text.\n');
+  });
+});
+
+describe('tables', () => {
+  const cellTexts = (markdown: string) => {
+    const rows: string[][] = [];
+    parsePage(markdown).doc.firstChild!.forEach((row) => {
+      const cells: string[] = [];
+      row.forEach((cell) => cells.push(`${cell.type.name === 'table_header' ? 'th' : 'td'}:${cell.textContent}`));
+      rows.push(cells);
+    });
+    return rows;
+  };
+
+  it('reads a Markdown table into rows and cells, the first row as headers', () => {
+    const page = '| Name | Role   | Hours |\n|------|:------:|------:|\n| Ana  | Design | 12    |\n';
+    same(page);
+    expect(cellTexts(page)).toEqual([
+      ['th:Name', 'th:Role', 'th:Hours'],
+      ['td:Ana', 'td:Design', 'td:12'],
+    ]);
+    const header = parsePage(page).doc.firstChild!.firstChild!;
+    expect([header.child(0).attrs.align, header.child(1).attrs.align, header.child(2).attrs.align]).toEqual([null, 'center', 'right']);
+  });
+
+  it('tidies a hand-written table to line up, keeping what it shows', () => {
+    const once = keepsMeaning('|a|b|\n|-|:-|\n|longer cell|x|\n');
+    expect(once).toBe('| a           | b   |\n|-------------|:----|\n| longer cell | x   |\n');
+  });
+
+  it('keeps pipes, line breaks, formatting and code in cells', () => {
+    const once = tidy('| A |\n|---|\n| a \\| b<br>**c** `x\\|y` |\n');
+    expect(tidy(once)).toBe(once);
+    expect(once).toContain('| a \\| b<br>**c** `x\\|y` |');
+    const cell = parsePage('| A |\n|---|\n| a \\| b<br>c |\n').doc.firstChild!.child(1).firstChild!.firstChild!;
+    expect(cell.textContent).toBe('a | bc');
+    expect(cell.child(1).type.name).toBe('hard_break');
+  });
+
+  it('reads and writes the HTML form, with merges, colours, widths and a header column', () => {
+    const page = [
+      '<table>',
+      '<colgroup><col width="120"><col><col></colgroup>',
+      '<tr><th>Name</th><th>Role</th><th>Hours</th></tr>',
+      '<tr><th>Ana</th><td colspan="2" align="center" data-background="yellow"><strong>Design</strong><br>and <a href="https://x.y">review</a></td></tr>',
+      '</table>',
+      '',
+    ].join('\n');
+    same(page);
+    const table = parsePage(page).doc.firstChild!;
+    const merged = table.child(1).child(1);
+    expect([merged.attrs.colspan, merged.attrs.background, merged.attrs.align]).toEqual([2, 'yellow', 'center']);
+    expect(table.firstChild!.firstChild!.attrs.colwidth).toEqual([120]);
+  });
+
+  it('keeps text in an HTML cell as text, never as Markdown', () => {
+    same('<table>\n<tr><th>*a* &amp; &lt;b&gt;</th></tr>\n<tr><td data-background="red">b</td></tr>\n</table>\n');
+    expect(cellTexts('<table>\n<tr><th>*a* &amp; &lt;b&gt;</th></tr>\n<tr><td data-background="red">b</td></tr>\n</table>\n')[0]).toEqual(['th:*a* & <b>']);
+  });
+
+  it('writes a table as HTML once it uses a rich option, and as Markdown once it does not', () => {
+    const n = schema.nodes;
+    const para = (text: string) => n.paragraph.create(null, schema.text(text));
+    const doc = n.doc.create(null, [
+      n.table.create(null, [
+        n.table_row.create(null, [n.table_header.create(null, para('A')), n.table_header.create(null, para('B'))]),
+        n.table_row.create(null, [n.table_cell.create({ background: 'blue' }, para('1')), n.table_cell.create(null, para('2'))]),
+      ]),
+    ]);
+    const html = writePage(doc, parsePage('').front);
+    expect(html.startsWith('<table>')).toBe(true);
+    expect(html).toContain('data-background="blue"');
+    expect(tidy('<table>\n<tr><th>A</th><th>B</th></tr>\n<tr><td>1</td><td>2</td></tr>\n</table>\n')).toBe('| A   | B   |\n|-----|-----|\n| 1   | 2   |\n');
+  });
+
+  it('keeps a table it cannot hold exactly as written', () => {
+    same('<table class="wide">\n<tr><td>a</td></tr>\n</table>\n');
+    same('<table>\n<tr><td><ul><li>a</li></ul></td></tr>\n</table>\n');
+    same('| A |\n|---|\n| 1 | extra |\n');
+    expect(parsePage('| A |\n|---|\n| 1 | extra |\n').doc.firstChild!.type.name).toBe('kept');
+  });
+
+  it('keeps an HTML table whose spans do not make an exact grid as written', () => {
+    for (const page of [
+      'Before\n\n<table>\n<tr><td colspan="0">keep me</td></tr>\n</table>\n\nAfter\n',
+      '<table>\n<tr><td rowspan="3">a</td><td>b</td></tr>\n<tr><td>c</td></tr>\n</table>\n',
+      '<table>\n<tr><td>a</td><td>b</td></tr>\n<tr><td>c</td></tr>\n</table>\n',
+    ]) {
+      same(page);
+      expect(parsePage(page).doc.textContent).toContain(page.includes('keep me') ? 'keep me' : 'a');
+    }
+  });
+
+  it('puts each width on its real column under a rowspan, save after save', () => {
+    const page = '<table>\n<colgroup><col width="100"><col></colgroup>\n<tr><th rowspan="2">a</th><th>b</th></tr>\n<tr><td>c</td></tr>\n</table>\n';
+    same(page);
+    const other = '<table>\n<colgroup><col><col width="90"></colgroup>\n<tr><th rowspan="2">a</th><th>b</th></tr>\n<tr><td>c</td></tr>\n</table>\n';
+    same(other);
+  });
+
+  it('keeps footnote references, images, other inline HTML and link titles in the HTML form', () => {
+    const page = '<table>\n<tr><th>A</th></tr>\n<tr><td data-background="red">See[^1] ![i](p.png) <kbd>K</kbd> <a href="u" title="T">l</a> &#91;^x]</td></tr>\n</table>\n\n[^1]: Note.\n';
+    same(page);
+    const cell = parsePage(page).doc.firstChild!.child(1).firstChild!.firstChild!;
+    const kinds: string[] = [];
+    cell.forEach((child) => kinds.push(child.type.name));
+    expect(kinds).toContain('footnote_ref');
+    expect(kinds.filter((k) => k === 'keptInline').length).toBeGreaterThanOrEqual(3);
+    expect(cell.textContent).toContain('[^x]');
+  });
+
+  it('writes a Markdown cell without edge spaces, and keeps trailing line breaks', () => {
+    const n = schema.nodes;
+    const cell = (type: typeof n.table_cell, ...content: import('prosemirror-model').Node[]) => type.create(null, n.paragraph.create(null, content));
+    const doc = n.doc.create(null, [
+      n.table.create(null, [
+        n.table_row.create(null, [cell(n.table_header, schema.text(' a ')), cell(n.table_header, schema.text('  b'))]),
+        n.table_row.create(null, [cell(n.table_cell, schema.text('c'), n.hard_break.create()), cell(n.table_cell, n.hard_break.create())]),
+      ]),
+    ]);
+    const once = writePage(doc, parsePage('').front);
+    expect(tidy(once)).toBe(once);
+    expect(once).toContain('| a ');
+    expect(once).toContain('c<br>');
+  });
+
+  it('keeps a table in a list item and in a quote, save after save', () => {
+    same('- Item\n\n  | A   |\n  |-----|\n  | 1   |\n');
+    same('> | A   |\n> |-----|\n> | 1   |\n');
+    same('- Item\n\n  <table>\n  <tr><th>A</th></tr>\n  <tr><td data-background="red">1</td></tr>\n  </table>\n');
   });
 });
 

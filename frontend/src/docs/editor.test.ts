@@ -304,9 +304,9 @@ describe('edit commands from the menu', () => {
   });
 
   it('copies a kept block in the selection as written', () => {
-    open('Before\n\n| A |\n|---|\n| 1 |\n\nAfter\n');
+    open('Before\n\n| A |\n|---|\n| 1 | 2 |\n\nAfter\n');
     editor!.selectAll();
-    expect(editor!.selectedText()).toContain('| A |\n|---|\n| 1 |');
+    expect(editor!.selectedText()).toContain('| A |\n|---|\n| 1 | 2 |');
   });
 
   it('pastes a plain word into the line the caret is in', () => {
@@ -420,6 +420,7 @@ describe('what the caret is in, for Turn into', () => {
   it('names nothing for a block Turn into does not offer', () => {
     expect(at('<details>\n<summary>Folded</summary>\n\nInside\n\n</details>\n', 'Inside')).toBeNull();
     expect(at('> [!info]\n> Callout\n', 'Callout')).toBeNull();
+    expect(at('| A   |\n|-----|\n| Cell |\n', 'Cell')).toBeNull();
   });
 });
 

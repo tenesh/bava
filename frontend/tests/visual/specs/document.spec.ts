@@ -249,6 +249,62 @@ for (const theme of THEMES) {
       await expect(page.getByRole('menuitem', { name: 'Heading 1' })).toHaveCount(0);
     });
 
+    test('tables in both forms', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Tables.md');
+      await expect(editor(page).locator('table')).toHaveCount(2);
+      await expect(editor(page).locator('td[colspan="2"]')).toHaveCount(1);
+      await expect(pane(page)).toHaveScreenshot(shot('document', 'tables', 'page', theme));
+    });
+
+    test('selecting cells and the table menu', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Tables.md');
+      const from = (await editor(page).getByText('Ana').boundingBox())!;
+      const to = (await editor(page).getByText('Design').boundingBox())!;
+      await page.mouse.move(from.x + 4, from.y + from.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(to.x + 4, to.y + to.height / 2, { steps: 8 });
+      await page.mouse.up();
+      await expect(editor(page).locator('.selectedCell')).toHaveCount(2);
+      await page.mouse.click(to.x + 4, to.y + to.height / 2, { button: 'right' });
+      await expect(page.getByRole('menuitem', { name: 'Merge cells' })).toBeVisible();
+      await expect(page).toHaveScreenshot(shot('document', 'table-menu', 'open', theme));
+      await page.getByRole('menuitem', { name: 'Merge cells' }).click();
+      const first = editor(page).locator('table').first();
+      await expect(first.locator('[colspan="2"]')).toHaveCount(1);
+      await expect(first.locator('[colspan="2"]')).toHaveText('AnaDesign');
+      await expect(first.locator('[colspan="2"] br')).toHaveCount(1);
+      await expect(page.locator('header')).toContainText('unsaved');
+    });
+
+    test('resizing a column and adding a row', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Tables.md');
+      const cell = editor(page).locator('table').first().locator('th').first();
+      const box = (await cell.boundingBox())!;
+      await page.mouse.move(box.x + box.width - 1, box.y + box.height / 2);
+      // The handle runs down the whole column, a piece in each row.
+      await expect(editor(page).locator('.column-resize-handle').first()).toBeVisible();
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width + 80, box.y + box.height / 2, { steps: 8 });
+      await page.mouse.up();
+      expect((await cell.boundingBox())!.width).toBeGreaterThan(box.width + 40);
+      const rows = await editor(page).locator('table').first().locator('tr').count();
+      await editor(page).locator('table').first().hover();
+      await editor(page).locator('.table-edge-row').first().click();
+      await expect(editor(page).locator('table').first().locator('tr')).toHaveCount(rows + 1);
+    });
+
+    test('pasting spreadsheet rows', async ({ page }) => {
+      await openDocument(page, theme, 'Marketing', 'Marketing/Launch plan.md');
+      await newLineAtEnd(page);
+      await editor(page).evaluate((el) => {
+        const data = new DataTransfer();
+        data.setData('text/plain', 'Task\tOwner\nWrite\tAna\nShip\tBen');
+        el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+      });
+      await expect(editor(page).locator('table td')).toHaveCount(4);
+      await expect(page).toHaveScreenshot(shot('document', 'table-pasted', 'open', theme));
+    });
+
     test('the page menu', async ({ page }) => {
       await openDocument(page, theme, 'Marketing', 'Marketing/Launch plan.md');
       await page.getByRole('button', { name: 'Page menu' }).click();

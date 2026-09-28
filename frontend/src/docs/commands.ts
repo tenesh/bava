@@ -37,6 +37,8 @@ export function currentKind(state: EditorState): string | null {
     }
     if (node.type === nodes.blockquote) return 'blockquote';
     if (node.type === nodes.callout || node.type === nodes.toggle || node.type === nodes.footnote) return null;
+    // A cell holds one paragraph: it turns into nothing else.
+    if (node.type === nodes.table_cell || node.type === nodes.table_header) return null;
   }
   const block = $from.parent;
   if (block.type === nodes.paragraph) return 'paragraph';

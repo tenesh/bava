@@ -164,6 +164,18 @@ In a code block:
 | `⌘Enter`, or `↓` on the last line of the page's last block | Leave the block, onto a new line after it |
 | `⌫` in an empty block | Back to text |
 
+In a table:
+
+| Key or gesture | Action |
+|---|---|
+| `Tab` / `⇧Tab` | The next / the previous cell, its text selected; `Tab` in the last cell adds a row |
+| `Enter` | A new line in the cell |
+| Arrow keys at a cell's edge | Into the next cell |
+| Drag across cells | Select them |
+| Right-click in a cell | The table menu: insert, move, merge, split, headers, align, colour, delete |
+| Drag a column's edge | Its width |
+| Paste tab-separated rows | A table, or cells filled from the caret |
+
 Typed at the start of a line, then a space:
 
 | Type | Makes |
