@@ -5,6 +5,11 @@
  * nothing reactive flows in. The app hands it a page and asks for the
  * Markdown back; it says when the user changed something.
  */
+// ProseMirror's own rules the editor relies on: how spaces wrap, no
+// ligatures under the caret, and the browser's highlight hidden while cells
+// or a node are selected; and the gap cursor's line.
+import 'prosemirror-view/style/prosemirror.css';
+import 'prosemirror-gapcursor/style/gapcursor.css';
 import { dropCursor } from 'prosemirror-dropcursor';
 import { gapCursor } from 'prosemirror-gapcursor';
 import { history, redo, undo } from 'prosemirror-history';
@@ -25,7 +30,8 @@ import { filterItems, runItem, slashKey, slashPlugin, type SlashInfo } from './s
 import { schema } from './schema';
 import { codeBlockView, codeHighlight, codeKeys, setLanguage } from './code';
 import { foldKeys, foldPlugin, toggleView } from './fold';
-import { pasteCells, readCells, tableKeys, tablePlugins, tableState } from './table';
+import { isSelectedCell, NO_TABLE, pasteCells, readCells, tableKeys, tablePlugins, tableState, type TableState } from './table';
+import { CellSelection } from 'prosemirror-tables';
 import { mathKeys, mathPlugin, mathView, type EquationAt } from './math';
 import { footnotesPlugin, withoutDroppedNotes } from './footnotes';
 import { contentsPlugin, contentsView } from './contents';
@@ -59,6 +65,18 @@ export type DocEditorOptions = {
   onSlash?: (info: SlashInfo | null) => void;
 };
 
+/** The position of the table cell holding `target`, or null outside a table. */
+function cellAt(view: EditorView, target: EventTarget | null): number | null {
+  const dom = target instanceof Element ? target.closest('td, th') : null;
+  if (!dom || !view.dom.contains(dom)) return null;
+  const $inside = view.state.doc.resolve(view.posAtDOM(dom, 0));
+  for (let d = $inside.depth; d > 0; d -= 1) {
+    const type = $inside.node(d).type;
+    if (type === schema.nodes.table_cell || type === schema.nodes.table_header) return $inside.before(d);
+  }
+  return null;
+}
+
 /** Whether the caret is in code, where pasted tabs are code and never table cells. */
 function inCodeAt(state: EditorState): boolean {
   const { $from } = state.selection;
@@ -80,8 +98,9 @@ function placeholder(): Plugin {
       decorations(state) {
         const { $from, empty } = state.selection;
         const node = $from.parent;
-        // Code is not where blocks are typed: no hint over its language.
-        if (!empty || !node.isTextblock || node.type.spec.code || node.content.size > 0) return null;
+        // Code and table cells are not where blocks are typed: no hint there.
+        const inCell = $from.depth > 1 && ['table_cell', 'table_header'].includes($from.node(-1).type.name);
+        if (!empty || !node.isTextblock || node.type.spec.code || inCell || node.content.size > 0) return null;
         return DecorationSet.create(state.doc, [
           Decoration.node($from.before(), $from.after(), { class: 'is-empty', 'data-placeholder': t('doc.placeholder') }),
         ]);
@@ -142,6 +161,8 @@ export class DocEditor {
   /** The page as it was read, to give back unchanged while nothing in it changes. */
   #loaded: { source: string; doc: Node; front: FrontMatter } | null = null;
   #foldMemory: string | null = null;
+  /** Cells selected when a right-click began, for its menu to act on. */
+  #heldCells: CellSelection | null = null;
   #options: DocEditorOptions | null = null;
 
   mount(host: HTMLElement, options: DocEditorOptions): void {
@@ -174,20 +195,29 @@ export class DocEditor {
       handleDOMEvents: {
         focus: () => void this.#options?.onSelection?.(),
         blur: () => void this.#options?.onSelection?.(),
+        // A right-click on selected cells keeps them selected: WebKit on macOS
+        // would select the word under the pointer instead.
+        mousedown: (view, event) => {
+          this.#heldCells = null;
+          // A right-click, or on a Mac a Control-click, which WebKit treats as one.
+          const context = event.button === 2 || (event.button === 0 && event.ctrlKey && /Mac/.test(navigator.platform));
+          if (!context) return false;
+          const cell = cellAt(view, event.target);
+          if (cell === null || !isSelectedCell(view.state, cell)) return false;
+          this.#heldCells = view.state.selection as CellSelection;
+          event.preventDefault();
+          return true;
+        },
         contextmenu: (view, event) => {
-          const hit = view.posAtCoords({ left: event.clientX, top: event.clientY });
-          if (!hit || !this.#options?.onTableMenu) return false;
-          const $hit = view.state.doc.resolve(hit.pos);
-          let inCell = false;
-          for (let d = $hit.depth; d > 0; d -= 1) {
-            const type = $hit.node(d).type;
-            if (type === schema.nodes.table_cell || type === schema.nodes.table_header) inCell = true;
-          }
-          if (!inCell) return false;
-          // A selection of cells stays for the menu to act on; otherwise the caret goes where the click was.
-          const { from, to } = view.state.selection;
-          if (view.state.selection.empty || hit.pos < from || hit.pos > to) {
-            view.dispatch(view.state.tr.setSelection(TextSelection.near($hit)));
+          const held = this.#heldCells;
+          this.#heldCells = null;
+          const cell = cellAt(view, event.target);
+          if (cell === null || !this.#options?.onTableMenu) return false;
+          if (held && !(view.state.selection instanceof CellSelection) && held.$anchorCell.doc === view.state.doc) {
+            view.dispatch(view.state.tr.setSelection(held));
+          } else if (!isSelectedCell(view.state, cell)) {
+            // Outside the selection: the caret goes into the cell clicked.
+            view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(cell + 1))));
           }
           event.preventDefault();
           this.#options.onTableMenu({ x: event.clientX, y: event.clientY });
@@ -413,8 +443,8 @@ export class DocEditor {
   }
 
   /** Where the selection is in a table, for what the table menu offers. */
-  tableState(): { inTable: boolean; canMerge: boolean; canSplit: boolean } {
-    return this.view ? tableState(this.view.state) : { inTable: false, canMerge: false, canSplit: false };
+  tableState(): TableState {
+    return this.view ? tableState(this.view.state) : NO_TABLE;
   }
 
   /** The kind of block the caret is in, as Turn into names it; null for one it does not offer. */

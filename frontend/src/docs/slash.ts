@@ -97,12 +97,21 @@ export const SLASH_ITEMS: SlashItem[] = [
   },
 ];
 
-/** The items whose name or other words contain what was typed. */
-export function filterItems(query: string): SlashItem[] {
+/**
+ * The items whose name or other words contain what was typed; in a table
+ * cell, which holds one line, only those that go inside a line.
+ */
+export function filterItems(query: string, inLine = false): SlashItem[] {
   const q = query.trim().toLowerCase();
-  if (!q) return SLASH_ITEMS;
-  return SLASH_ITEMS.filter((item) => item.id.toLowerCase().includes(q) || item.words.includes(q));
+  const offered = inLine ? SLASH_ITEMS.filter((item) => item.group === 'inline') : SLASH_ITEMS;
+  if (!q) return offered;
+  return offered.filter((item) => item.id.toLowerCase().includes(q) || item.words.includes(q));
 }
+
+const inTableCell = (state: EditorState) => {
+  const { $from } = state.selection;
+  return $from.depth > 1 && ['table_cell', 'table_header'].includes($from.node(-1).type.name);
+};
 
 export type SlashInfo = {
   query: string;
@@ -145,7 +154,7 @@ export function slashPlugin(report: (info: SlashInfo | null) => void): Plugin {
         if (!now) return { open: null, dismissedAt: null };
         if (meta?.close) return { open: null, dismissedAt: prev.dismissedAt };
         if (meta?.dismiss || prev.dismissedAt === now.from) return { open: null, dismissedAt: now.from };
-        const count = filterItems(now.query).length;
+        const count = filterItems(now.query, inTableCell(state)).length;
         const kept = prev.open && prev.open.from === now.from ? prev.open.active : 0;
         const active = Math.max(0, Math.min(count - 1, meta?.active ?? kept));
         return { open: { ...now, active }, dismissedAt: null };
@@ -155,7 +164,7 @@ export function slashPlugin(report: (info: SlashInfo | null) => void): Plugin {
       handleKeyDown(view, event) {
         const open = slashKey.getState(view.state)?.open;
         if (!open) return false;
-        const items = filterItems(open.query);
+        const items = filterItems(open.query, inTableCell(view.state));
         const move = (by: number) =>
           view.dispatch(view.state.tr.setMeta(slashKey, { active: (open.active + by + items.length) % Math.max(1, items.length) }));
         if (event.key === 'ArrowDown') move(1);
@@ -178,7 +187,7 @@ export function slashPlugin(report: (info: SlashInfo | null) => void): Plugin {
           } catch {
             // Not laid out (a test page): the menu has nowhere to sit yet.
           }
-          info = { query: open.query, items: filterItems(open.query), active: open.active, at };
+          info = { query: open.query, items: filterItems(open.query, inTableCell(view.state)), active: open.active, at };
         }
         const key = info ? `${info.query}|${info.active}|${info.at.left}|${info.at.bottom}` : '';
         if (key === last) return;

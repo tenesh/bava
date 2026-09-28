@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { THEMES, menu, openApp, openPage, shot, type Theme } from './helpers';
 
 const pane = (page: Page) => page.locator('[data-side="document"]');
@@ -40,6 +40,28 @@ async function newLineAtEnd(page: Page) {
     expect(seen).toBe('end');
   }).toPass();
   await page.keyboard.press('Enter');
+}
+
+/** Drags across table cells, from the one holding `from` to the one holding `to`. */
+async function dragCells(page: Page, from: string, to: string) {
+  // Positions are read once the page's fonts have settled.
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const start = (await editor(page).getByText(from, { exact: true }).first().boundingBox())!;
+  const end = (await editor(page).getByText(to, { exact: true }).first().boundingBox())!;
+  await page.mouse.move(start.x + 4, start.y + start.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(end.x + 4, end.y + end.height / 2, { steps: 8 });
+  await page.mouse.up();
+}
+
+/** A right-click on the cell holding `text`, or on the element given. */
+async function rightClick(page: Page, target: string | Locator) {
+  // As a person would: once any menu open before has closed.
+  await expect(page.locator('.bava-menu').filter({ visible: true })).toHaveCount(0);
+  const where = typeof target === 'string' ? editor(page).getByText(target, { exact: true }).first() : target;
+  const box = (await where.boundingBox())!;
+  await page.mouse.click(box.x + 4, box.y + box.height / 2, { button: 'right' });
+  await expect(page.locator('.bava-menu').filter({ visible: true })).toBeVisible();
 }
 
 /** Selects one word of the page, as a double-click on it would. */
@@ -256,24 +278,70 @@ for (const theme of THEMES) {
       await expect(pane(page)).toHaveScreenshot(shot('document', 'tables', 'page', theme));
     });
 
-    test('selecting cells and the table menu', async ({ page }) => {
+    test('merging cells across rows and columns, and splitting them', async ({ page }) => {
       await openDocument(page, theme, 'Engineering', 'Engineering/Tables.md');
-      const from = (await editor(page).getByText('Ana').boundingBox())!;
-      const to = (await editor(page).getByText('Design').boundingBox())!;
-      await page.mouse.move(from.x + 4, from.y + from.height / 2);
-      await page.mouse.down();
-      await page.mouse.move(to.x + 4, to.y + to.height / 2, { steps: 8 });
-      await page.mouse.up();
-      await expect(editor(page).locator('.selectedCell')).toHaveCount(2);
-      await page.mouse.click(to.x + 4, to.y + to.height / 2, { button: 'right' });
+      const table = editor(page).locator('table').first();
+      await dragCells(page, 'Ana', 'Build');
+      await expect(table.locator('.selectedCell')).toHaveCount(4);
+      await rightClick(page, 'Build');
+      // The right-click keeps the four cells selected, and the menu offers merging them.
+      await expect(table.locator('.selectedCell')).toHaveCount(4);
       await expect(page.getByRole('menuitem', { name: 'Merge cells' })).toBeVisible();
-      await expect(page).toHaveScreenshot(shot('document', 'table-menu', 'open', theme));
+      await expect(page.getByRole('menuitem', { name: 'Split cell' })).toHaveCount(0);
+      await expect(page.getByRole('menuitem', { name: 'Move row up' })).toHaveCount(0);
+      await expect(page.getByRole('menuitem', { name: 'Delete rows' })).toBeVisible();
+      await expect(page).toHaveScreenshot(shot('document', 'table-menu', 'cells', theme));
       await page.getByRole('menuitem', { name: 'Merge cells' }).click();
-      const first = editor(page).locator('table').first();
-      await expect(first.locator('[colspan="2"]')).toHaveCount(1);
-      await expect(first.locator('[colspan="2"]')).toHaveText('AnaDesign');
-      await expect(first.locator('[colspan="2"] br')).toHaveCount(1);
-      await expect(page.locator('header')).toContainText('unsaved');
+      const merged = table.locator('[colspan="2"][rowspan="2"]');
+      await expect(merged).toHaveCount(1);
+      await expect(merged).toHaveText('AnaDesignBenBuild');
+      await expect(pane(page)).toHaveScreenshot(shot('document', 'table', 'merged', theme));
+      await rightClick(page, merged);
+      await expect(page.getByRole('menuitem', { name: 'Split cell' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Merge cells' })).toHaveCount(0);
+      await page.getByRole('menuitem', { name: 'Split cell' }).click();
+      await expect(table.locator('[colspan="2"]')).toHaveCount(0);
+      await expect(table.locator('tr').nth(1).locator('td')).toHaveCount(3);
+    });
+
+    test('merging a header with body cells is not offered', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Tables.md');
+      await dragCells(page, 'Name', 'Ana');
+      await expect(editor(page).locator('.selectedCell')).toHaveCount(2);
+      await rightClick(page, 'Ana');
+      await expect(page.getByRole('menuitem', { name: 'Insert row above' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Merge cells' })).toHaveCount(0);
+    });
+
+    test('moving a row, and the header row switched off', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Tables.md');
+      const table = editor(page).locator('table').first();
+      await rightClick(page, 'Name');
+      await expect(page.getByRole('menuitem', { name: 'Move row down' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Move row up' })).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await rightClick(page, 'Ben');
+      await page.getByRole('menuitem', { name: 'Move row up' }).click();
+      await expect(table.locator('tr').nth(1)).toContainText('Ben');
+      await rightClick(page, 'Ben');
+      await page.getByRole('menuitem', { name: 'Remove header row' }).click();
+      await expect(table.locator('th')).toHaveCount(0);
+      // Nothing selected and the pointer away, so only the table is in the picture.
+      await editor(page).locator('h1').click();
+      await page.mouse.move(0, 0);
+      await expect(pane(page)).toHaveScreenshot(shot('document', 'table', 'moved-no-header', theme));
+    });
+
+    test('a new table: no hint in its cells, and a / menu of what goes in a line', async ({ page }) => {
+      await openDocument(page, theme, 'Marketing', 'Marketing/Launch plan.md');
+      await newLineAtEnd(page);
+      await page.keyboard.type('/table');
+      await page.keyboard.press('Enter');
+      await expect(editor(page).locator('table th')).toHaveCount(3);
+      await expect(editor(page).locator('table .is-empty')).toHaveCount(0);
+      await page.keyboard.type('/');
+      await expect(page.locator('.slash-group')).toHaveText(['Inline']);
+      await expect(page).toHaveScreenshot(shot('document', 'table', 'new-slash', theme));
     });
 
     test('resizing a column and adding a row', async ({ page }) => {
