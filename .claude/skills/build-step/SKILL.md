@@ -327,6 +327,7 @@ wrong facts. When a milestone closes, update this section in the same change.
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
 | `npm test` | exit 0; 2,123 tests across 156 files (1 skipped) |
+| `npm run build` | exit 0; the production minifier rejects some CSS that the dev server and the screen checks accept (WebKit-only selectors such as `::selection:window-inactive`), and CI's first step is this build |
 | `npm run visual` (layer 2) | exit 0; 104 walks, 100 references in `testdata/visual/`; needs OrbStack running |
 | CI `smoke` (layer 3) | green on all three platforms at 4c405ba; 8.3a's equation and code block steps need a push |
 | `wails3 build` | macOS only, unverified elsewhere |
