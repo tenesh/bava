@@ -50,6 +50,16 @@ component per block.
   `tables.merge` joins the texts with line breaks first. Its header toggles
   flip the corner cell; Bava's keep the header row and column independent.
   The writer picks the table's form on every save (`needsHtml`).
+- **A cell selection must survive the browser.** Two ways the browser
+  replaces one: WebKit on macOS selects the word under a right-click, and
+  after a drag the browser's own text selection is read back a moment after
+  the mouse is released. The editor holds the cells through a right-click on
+  them, and `keepDraggedCells` keeps them until the next click or key. Both
+  were seen only at a real window or under load, so they have unit tests
+  that stand in for the browser.
+- **ProseMirror's own stylesheets are loaded** (`prosemirror-view`'s and the
+  gap cursor's): they hide the browser's highlight while cells or a node are
+  selected, and draw the gap cursor.
 - **The formatting bubble follows focus.** It shows for a text selection only
   while the page has focus: a selection left by find is not one to format.
 

@@ -192,29 +192,35 @@
     else editor.run(commands.turnInto(kind as BlockKind, Number(level) || 1));
   }
 
-  /** The table menu, for the cell or cells selected. */
+  /** The table menu, for the cell or cells selected: only what can be done there. */
   function tableItems(): MenuNode[] {
-    const { canMerge, canSplit } = editor.tableState();
+    const table = editor.tableState();
     const separator: MenuNode = { kind: 'separator' };
+    const when = (on: boolean, node: MenuNode) => (on ? [node] : []);
+    const moves = [
+      ...when(table.canMoveRowUp, item('t:moveRowUp', t('table.moveRowUp'))),
+      ...when(table.canMoveRowDown, item('t:moveRowDown', t('table.moveRowDown'))),
+      ...when(table.canMoveColumnLeft, item('t:moveColumnLeft', t('table.moveColumnLeft'))),
+      ...when(table.canMoveColumnRight, item('t:moveColumnRight', t('table.moveColumnRight'))),
+    ];
+    const cells = [
+      ...when(table.canMerge, item('t:merge', t('table.merge'))),
+      ...when(table.canSplit, item('t:split', t('table.split'))),
+    ];
     return [
       item('t:rowAbove', t('table.rowAbove')),
       item('t:rowBelow', t('table.rowBelow')),
       item('t:columnLeft', t('table.columnLeft')),
       item('t:columnRight', t('table.columnRight')),
+      ...(moves.length > 0 ? [separator, ...moves] : []),
       separator,
-      item('t:moveRowUp', t('table.moveRowUp')),
-      item('t:moveRowDown', t('table.moveRowDown')),
-      item('t:moveColumnLeft', t('table.moveColumnLeft')),
-      item('t:moveColumnRight', t('table.moveColumnRight')),
-      separator,
-      ...(canMerge ? [item('t:merge', t('table.merge'))] : []),
-      ...(canSplit ? [item('t:split', t('table.split'))] : []),
-      item('t:headerRow', t('table.headerRow')),
-      item('t:headerColumn', t('table.headerColumn')),
+      ...cells,
+      item('t:headerRow', t(table.headerRow ? 'table.headerRowOff' : 'table.headerRowOn')),
+      item('t:headerColumn', t(table.headerColumn ? 'table.headerColumnOff' : 'table.headerColumnOn')),
       {
         kind: 'submenu',
         id: 't:align',
-        label: t('table.align'),
+        label: t(table.columns > 1 ? 'table.alignColumns' : 'table.align'),
         items: [
           item('t:align:left', t('table.alignLeft')),
           item('t:align:center', t('table.alignCenter')),
@@ -222,10 +228,10 @@
           item('t:align:', t('table.alignNone')),
         ],
       },
-      { kind: 'submenu', id: 't:color', label: t('table.color'), items: colours('t:color', 'bubble.none') },
+      { kind: 'submenu', id: 't:color', label: t(table.cells > 1 ? 'table.colorCells' : 'table.color'), items: colours('t:color', 'bubble.none') },
       separator,
-      item('t:deleteRow', t('table.deleteRow')),
-      item('t:deleteColumn', t('table.deleteColumn')),
+      item('t:deleteRow', t(table.rows > 1 ? 'table.deleteRows' : 'table.deleteRow')),
+      item('t:deleteColumn', t(table.columns > 1 ? 'table.deleteColumns' : 'table.deleteColumn')),
       item('t:deleteTable', t('table.deleteTable')),
     ];
   }

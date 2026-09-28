@@ -14,6 +14,9 @@ for (const name of ['getClientRects', 'getBoundingClientRect'] as const) {
   }
 }
 
+// Nor can it say what is under a point, which a press on a cell asks.
+if (typeof document.elementFromPoint !== 'function') document.elementFromPoint = () => null;
+
 let editor: DocEditor | null = null;
 
 afterEach(() => {
@@ -275,3 +278,224 @@ describe('pasting spreadsheet cells', () => {
     expect(editor!.markdown()).toBe('| one<br>two | b   |\n|------------|-----|\n');
   });
 });
+
+/** Selects the cells from the one holding `from` to the one holding `to`. */
+function selectCells(from: string, to: string) {
+  const view = editor!.view!;
+  const cellOf = (text: string) => {
+    let at = -1;
+    view.state.doc.descendants((node, pos) => {
+      if (at < 0 && (node.type.name === 'table_cell' || node.type.name === 'table_header') && node.textContent === text) at = pos;
+    });
+    return at;
+  };
+  view.dispatch(view.state.tr.setSelection(CellSelection.create(view.state.doc, cellOf(from), cellOf(to))));
+}
+
+const GRID = '| A   | B   | C   |\n|-----|-----|-----|\n| 1   | 2   | 3   |\n| 4   | 5   | 6   |\n';
+
+describe('what the table menu offers', () => {
+  it('offers merging only for two or more cells of one kind', () => {
+    open(GRID);
+    caretIn('1');
+    expect(editor!.tableState().canMerge).toBe(false);
+    selectCells('1', '5');
+    expect(editor!.tableState().canMerge).toBe(true);
+    selectCells('B', '2');
+    expect(editor!.tableState().canMerge).toBe(false);
+  });
+
+  it('offers splitting only on a merged cell', () => {
+    open(GRID);
+    caretIn('1');
+    expect(editor!.tableState().canSplit).toBe(false);
+    selectCells('1', '2');
+    run(tables.merge);
+    expect(editor!.tableState().canSplit).toBe(true);
+  });
+
+  it('offers moving a row or a column only where it can go, one at a time', () => {
+    open(GRID);
+    caretIn('1');
+    expect(editor!.tableState()).toMatchObject({ canMoveRowUp: true, canMoveRowDown: true, canMoveColumnLeft: false, canMoveColumnRight: true });
+    caretIn('A');
+    expect(editor!.tableState()).toMatchObject({ canMoveRowUp: false });
+    caretIn('6');
+    expect(editor!.tableState()).toMatchObject({ canMoveRowDown: false, canMoveColumnRight: false });
+    selectCells('1', '5');
+    expect(editor!.tableState()).toMatchObject({ canMoveRowUp: false, canMoveRowDown: false, canMoveColumnLeft: false, canMoveColumnRight: false });
+  });
+
+  it('says whether the header row and header column are on', () => {
+    open(GRID);
+    caretIn('1');
+    expect(editor!.tableState()).toMatchObject({ headerRow: true, headerColumn: false });
+    run(tables.headerColumn);
+    expect(editor!.tableState()).toMatchObject({ headerRow: true, headerColumn: true });
+  });
+});
+
+describe('a right-click on selected cells', () => {
+  it('keeps the cells selected for the menu, even when the webview selects a word under the pointer', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const onTableMenu = vi.fn();
+    editor = new DocEditor();
+    editor.mount(host, { onChange: vi.fn(), onTableMenu });
+    editor.setPage(GRID);
+    selectCells('1', '5');
+    const view = editor.view!;
+    const cell = [...host.querySelectorAll('td')].find((td) => td.textContent === '5')!;
+    cell.dispatchEvent(new MouseEvent('mousedown', { button: 2, bubbles: true, cancelable: true }));
+    // What WebKit on macOS does next: the word under the pointer becomes the selection.
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, view.posAtDOM(cell, 0) + 1)));
+    cell.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    expect(view.state.selection instanceof CellSelection).toBe(true);
+    expect(editor.tableState().canMerge).toBe(true);
+    expect(onTableMenu).toHaveBeenCalled();
+  });
+
+  it('puts the caret in a cell right-clicked outside the selection', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const onTableMenu = vi.fn();
+    editor = new DocEditor();
+    editor.mount(host, { onChange: vi.fn(), onTableMenu });
+    editor.setPage(GRID);
+    selectCells('1', '2');
+    const cell = [...host.querySelectorAll('td')].find((td) => td.textContent === '6')!;
+    cell.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    expect(editor.view!.state.selection.$from.parent.textContent).toBe('6');
+  });
+});
+
+describe('inside a cell', () => {
+  it('shows no hint to type /, and the / menu offers only what goes in a line', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const onSlash = vi.fn();
+    editor = new DocEditor();
+    editor.mount(host, { onChange: vi.fn(), onSlash });
+    editor.setPage('| A   | B   |\n|-----|-----|\n|     | 2   |\n');
+    const view = editor.view!;
+    let empty = -1;
+    view.state.doc.descendants((node, pos) => {
+      if (empty < 0 && node.type.name === 'table_cell' && node.textContent === '') empty = pos + 2;
+    });
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, empty)));
+    expect(host.querySelector('.is-empty')).toBeNull();
+    type('/');
+    const info = onSlash.mock.calls.at(-1)![0];
+    expect(info.items.map((i: { group: string }) => i.group)).toEqual(['inline', 'inline', 'inline']);
+  });
+});
+
+describe('cells selected by dragging', () => {
+  it('stay selected when the browser reads back its own selection after the drag, until the next click or key', () => {
+    const view = open(GRID);
+    selectCells('1', '5');
+    view.dom.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    const $inside = view.state.doc.resolve(view.state.selection.from + 2);
+    const read = () => view.someProp('createSelectionBetween', (f) => f(view, $inside, $inside));
+    expect(read()).toBe(view.state.selection);
+    view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(read()).toBeFalsy();
+  });
+});
+
+describe('the table menu, next to merged cells and after a right-click', () => {
+  it('offers moving only where the table can actually move it', () => {
+    // A row cannot move through a cell merged down the rows; a column can pass it.
+    open(GRID);
+    selectCells('1', '4');
+    run(tables.merge);
+    caretIn('5');
+    expect(editor!.tableState()).toMatchObject({ canMoveRowUp: false, canMoveColumnLeft: true });
+    // Next to a cell merged across columns, the menu offers exactly what the table allows.
+    open(GRID);
+    selectCells('2', '3');
+    run(tables.merge);
+    caretIn('5');
+    const state = editor!.view!.state;
+    expect(editor!.tableState()).toMatchObject({
+      canMoveColumnLeft: tables.moveColumn(-1)(state),
+      canMoveColumnRight: tables.moveColumn(1)(state),
+      canMoveRowUp: tables.moveRow(-1)(state),
+    });
+    expect(editor!.tableState().canMoveColumnRight).toBe(false);
+  });
+
+  it('forgets cells held for a right-click that did not open the menu', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const onTableMenu = vi.fn();
+    editor = new DocEditor();
+    editor.mount(host, { onChange: vi.fn(), onTableMenu });
+    editor.setPage(GRID);
+    selectCells('1', '5');
+    const cellWith = (text: string) => [...host.querySelectorAll('td')].find((td) => td.textContent === text)!;
+    cellWith('5').dispatchEvent(new MouseEvent('mousedown', { button: 2, bubbles: true, cancelable: true }));
+    // The menu opened elsewhere, off the cells; later the caret is put in 6 and 6 right-clicked.
+    host.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    caretIn('6');
+    cellWith('6').dispatchEvent(new MouseEvent('mousedown', { button: 2, bubbles: true, cancelable: true }));
+    cellWith('6').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    expect(editor.view!.state.selection.$from.parent.textContent).toBe('6');
+  });
+
+  it('keeps the cells through a Control-click, the Mac right-click', () => {
+    const platform = Object.getOwnPropertyDescriptor(navigator, 'platform');
+    Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true });
+    try {
+      const host = document.createElement('div');
+      document.body.append(host);
+      editor = new DocEditor();
+      editor.mount(host, { onChange: vi.fn(), onTableMenu: vi.fn() });
+      editor.setPage(GRID);
+      selectCells('1', '5');
+      const cell = [...host.querySelectorAll('td')].find((td) => td.textContent === '5')!;
+      const down = new MouseEvent('mousedown', { button: 0, ctrlKey: true, bubbles: true, cancelable: true });
+      cell.dispatchEvent(down);
+      expect(down.defaultPrevented).toBe(true);
+      cell.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      expect(editor.view!.state.selection instanceof CellSelection).toBe(true);
+    } finally {
+      if (platform) Object.defineProperty(navigator, 'platform', platform);
+      else delete (navigator as { platform?: string }).platform;
+    }
+  });
+
+  it('lets go of dragged cells on the next pointer press', () => {
+    const view = open(GRID);
+    selectCells('1', '5');
+    view.dom.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    const $inside = view.state.doc.resolve(view.state.selection.from + 2);
+    const read = () => view.someProp('createSelectionBetween', (f) => f(view, $inside, $inside));
+    expect(read()).toBe(view.state.selection);
+    view.dom.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(read()).toBeFalsy();
+  });
+
+  it('shows no hint and a line-only / menu after Tab, in body and header cells alike', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const onSlash = vi.fn();
+    editor = new DocEditor();
+    editor.mount(host, { onChange: vi.fn(), onSlash });
+    editor.setPage('| A   |     |\n|-----|-----|\n| 1   |     |\n');
+    caretIn('A');
+    key('Tab');
+    expect(host.querySelector('.is-empty')).toBeNull();
+    type('/');
+    expect(onSlash.mock.calls.at(-1)![0].items.every((i: { group: string }) => i.group === 'inline')).toBe(true);
+  });
+
+  it('counts the cells selected, for the menu to say cell or cells', () => {
+    open(GRID);
+    selectCells('1', '5');
+    expect(editor!.tableState().cells).toBe(4);
+    run(tables.merge);
+    expect(editor!.tableState().cells).toBe(1);
+  });
+});
+

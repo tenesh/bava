@@ -5,7 +5,7 @@
  * keys, the commands the menus run, and the `+` edges.
  */
 import { Fragment, type Node } from 'prosemirror-model';
-import { TextSelection, type Command, type EditorState } from 'prosemirror-state';
+import { Plugin, TextSelection, type Command, type EditorState } from 'prosemirror-state';
 import type { EditorView } from 'prosemirror-view';
 import {
   addColumn,
@@ -227,14 +227,84 @@ export const tables = {
   color: (background: string | null) => setCellAttr('background', background),
 };
 
-/** What the table menu can offer where the selection is. */
-export function tableState(state: EditorState): { inTable: boolean; canMerge: boolean; canSplit: boolean } {
-  const inTable = isInTable(state);
+export type TableState = {
+  inTable: boolean;
+  canMerge: boolean;
+  canSplit: boolean;
+  canMoveRowUp: boolean;
+  canMoveRowDown: boolean;
+  canMoveColumnLeft: boolean;
+  canMoveColumnRight: boolean;
+  headerRow: boolean;
+  headerColumn: boolean;
+  /** How many rows and columns the selection covers, and how many cells it holds. */
+  rows: number;
+  columns: number;
+  cells: number;
+};
+
+export const NO_TABLE: TableState = {
+  inTable: false,
+  canMerge: false,
+  canSplit: false,
+  canMoveRowUp: false,
+  canMoveRowDown: false,
+  canMoveColumnLeft: false,
+  canMoveColumnRight: false,
+  headerRow: false,
+  headerColumn: false,
+  rows: 0,
+  columns: 0,
+  cells: 0,
+};
+
+/**
+ * What the table menu can offer where the selection is:
+ * - merging, for two or more cells that make a rectangle and are all headers
+ *   or all body cells;
+ * - splitting, for a merged cell;
+ * - moving, for one row or one column that has somewhere to go;
+ * - whether the header row and the header column are on.
+ */
+export function tableState(state: EditorState): TableState {
+  if (!isInTable(state)) return NO_TABLE;
+  const rect = selectedRect(state);
+  const { map, table } = rect;
+  const kinds = new Set<string>();
+  if (state.selection instanceof CellSelection) state.selection.forEachCell((cell) => kinds.add(cell.type.name));
+  const isHeader = (row: number, col: number) => table.nodeAt(map.map[row * map.width + col])!.type === schema.nodes.table_header;
+  // Asked of the commands themselves: a move next to a merged cell is refused.
+  const can = (command: Command) => command(state);
+  let cells = 1;
+  if (state.selection instanceof CellSelection) {
+    cells = 0;
+    state.selection.forEachCell(() => (cells += 1));
+  }
   return {
-    inTable,
-    canMerge: inTable && state.selection instanceof CellSelection && mergeCells(state),
-    canSplit: inTable && splitCell(state),
+    inTable: true,
+    canMerge: state.selection instanceof CellSelection && kinds.size === 1 && mergeCells(state),
+    canSplit: splitCell(state),
+    canMoveRowUp: rect.bottom - rect.top === 1 && can(move('row', -1)),
+    canMoveRowDown: rect.bottom - rect.top === 1 && can(move('row', 1)),
+    canMoveColumnLeft: rect.right - rect.left === 1 && can(move('column', -1)),
+    canMoveColumnRight: rect.right - rect.left === 1 && can(move('column', 1)),
+    headerRow: Array.from({ length: map.width }, (_, col) => isHeader(0, col)).every(Boolean),
+    headerColumn: map.height > 1 && Array.from({ length: map.height - 1 }, (_, row) => isHeader(row + 1, 0)).every(Boolean),
+    rows: rect.bottom - rect.top,
+    columns: rect.right - rect.left,
+    cells,
   };
+}
+
+/** Whether the cell at `cellPos` is one of a cell selection's. */
+export function isSelectedCell(state: EditorState, cellPos: number): boolean {
+  const selection = state.selection;
+  if (!(selection instanceof CellSelection)) return false;
+  let found = false;
+  selection.forEachCell((_cell, pos) => {
+    if (pos === cellPos) found = true;
+  });
+  return found;
 }
 
 // ---- the table in the page ----------------------------------------------------
@@ -283,9 +353,47 @@ class TableWithEdges extends TableView {
   }
 }
 
+/**
+ * Cells selected by dragging stay selected. When the mouse is released, the
+ * browser's own text selection from the drag can be read back a moment
+ * later and would replace them; until the next click or key press, the
+ * cells win.
+ */
+function keepDraggedCells(): Plugin {
+  const holding = new WeakSet<EditorView>();
+  return new Plugin({
+    props: {
+      handleDOMEvents: {
+        mouseup: (view) => {
+          if (view.state.selection instanceof CellSelection) holding.add(view);
+          return false;
+        },
+        mousedown: (view) => {
+          holding.delete(view);
+          return false;
+        },
+        pointerdown: (view) => {
+          holding.delete(view);
+          return false;
+        },
+        touchstart: (view) => {
+          holding.delete(view);
+          return false;
+        },
+        keydown: (view) => {
+          holding.delete(view);
+          return false;
+        },
+      },
+      createSelectionBetween: (view) => (holding.has(view) && view.state.selection instanceof CellSelection ? view.state.selection : null),
+    },
+  });
+}
+
 /** Cell selection, column resizing and the table's own view. */
 export function tablePlugins() {
   return [
+    keepDraggedCells(),
     columnResizing({
       cellMinWidth: cellMinWidth(),
       View: TableWithEdges,

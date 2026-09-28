@@ -326,8 +326,8 @@ wrong facts. When a milestone closes, update this section in the same change.
 | `go test ./internal/render -run Golden` | exit 0; goldens under `testdata/golden/` |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 2,109 tests across 156 files (1 skipped) |
-| `npm run visual` (layer 2) | exit 0; 98 walks, 94 references in `testdata/visual/`; needs OrbStack running |
+| `npm test` | exit 0; 2,123 tests across 156 files (1 skipped) |
+| `npm run visual` (layer 2) | exit 0; 104 walks, 100 references in `testdata/visual/`; needs OrbStack running |
 | CI `smoke` (layer 3) | green on all three platforms at 4c405ba; 8.3a's equation and code block steps need a push |
 | `wails3 build` | macOS only, unverified elsewhere |
 

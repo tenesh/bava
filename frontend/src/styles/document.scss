@@ -36,9 +36,37 @@ $callout-swatches: (
   font-size: var(--text-doc-body);
   line-height: var(--leading-prose);
   color: var(--color-text-prose);
-  white-space: pre-wrap;
-  word-wrap: break-word;
   caret-color: var(--color-text-primary);
+
+  // What ProseMirror's own stylesheet sets, stated here too so the page does
+  // not depend on which stylesheet loads last: spaces kept as typed, and no
+  // ligatures, which would put the caret inside a joined glyph.
+  &.ProseMirror {
+    word-wrap: break-word;
+    white-space: break-spaces;
+    font-variant-ligatures: none;
+    font-feature-settings: 'liga' 0;
+  }
+
+  // A selected block (a divider, an equation, the contents block) is ringed
+  // in the theme's focus colour, not ProseMirror's own light blue.
+  .ProseMirror-selectednode {
+    outline: var(--border-width) solid var(--color-focus-ring);
+  }
+
+  li.ProseMirror-selectednode {
+    outline: none;
+  }
+
+  li.ProseMirror-selectednode::after {
+    inset: calc(-1 * var(--border-width));
+    left: calc(-1 * var(--size-list-indent));
+    border: var(--border-width) solid var(--color-focus-ring);
+  }
+
+  .ProseMirror-gapcursor::after {
+    border-top-color: var(--color-text-primary);
+  }
 
   // No block brings the browser's own margins; the rhythm below sets them.
   :where(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre) {
@@ -341,11 +369,6 @@ $callout-swatches: (
     text-align: center;
   }
 
-  .ProseMirror-selectednode.math-block,
-  .ProseMirror-selectednode.math-inline {
-    outline: var(--border-width) solid var(--color-focus-ring);
-  }
-
   .math-source {
     font-family: var(--font-mono);
     font-size: var(--text-doc-code);
@@ -403,8 +426,13 @@ $callout-swatches: (
   }
 
   .ProseMirror-selectednode.contents {
-    outline: var(--border-width) solid var(--color-focus-ring);
     border-radius: var(--radius-sm);
+  }
+
+  // With cells selected the browser's own highlight is hidden, as ProseMirror
+  // hides it, in a window without focus too, which WebKit styles apart.
+  &.ProseMirror-hideselection *::selection:window-inactive {
+    background: transparent;
   }
 
   // Tables: lines between cells, headers on a quiet ground, a cell's colour
