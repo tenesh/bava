@@ -55,6 +55,19 @@ describe('the smoke driver', () => {
     expect(keys).toEqual(['F2']);
   });
 
+  // A key can name what it is pressed on: it is focused, and the key goes
+  // there, wherever focus was left.
+  it('presses a key on its target when one is named', async () => {
+    document.body.innerHTML = '<input id="elsewhere" /><div role="treeitem" tabindex="-1" id="row">Target</div>';
+    document.querySelector<HTMLElement>('#elsewhere')!.focus();
+    const row = document.querySelector<HTMLElement>('#row')!;
+    const keys: string[] = [];
+    row.addEventListener('keydown', (event) => keys.push(event.key));
+    expect(await runScenario([{ do: 'key', text: 'F2', target: '#row' }], env())).toBe('');
+    expect(keys).toEqual(['F2']);
+    expect(document.activeElement).toBe(row);
+  });
+
   // A click on an editable page leaves the caret at the end of its text, so
   // what is typed next goes into the page.
   it('clicks into an editable page with the caret at its end', async () => {

@@ -8,6 +8,7 @@ import { Call } from '@wailsio/runtime';
 
 export type Step = {
   do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag';
+  /** What a click, wait or drag acts on; for a key, what it is pressed on (else whatever has focus). */
   target?: string;
   text?: string;
   name?: string;
@@ -99,8 +100,10 @@ async function type(text: string) {
   }
 }
 
-function key(name: string) {
-  const el = (document.activeElement as HTMLElement | null) ?? document.body;
+/** A key pressed on `on` (focused first), or on whatever has focus. */
+function key(name: string, on?: HTMLElement) {
+  on?.focus();
+  const el = on ?? (document.activeElement as HTMLElement | null) ?? document.body;
   el.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true }));
   el.dispatchEvent(new KeyboardEvent('keyup', { key: name, bubbles: true, cancelable: true }));
 }
@@ -118,9 +121,16 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
     case 'type':
       await type(s.text!);
       return '';
-    case 'key':
-      key(s.text!);
+    case 'key': {
+      if (!s.target) {
+        key(s.text!);
+        return '';
+      }
+      let el: HTMLElement | undefined;
+      if (!(await until(() => (el = candidates(s.target!).find(visible)) !== undefined, timeout))) return 'not found';
+      key(s.text!, el!.closest<HTMLElement>('button, a[href], input, select, textarea, [tabindex]') ?? el!);
       return '';
+    }
     case 'menu':
       env.menu(s.target!);
       return '';

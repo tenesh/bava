@@ -16,7 +16,7 @@
     { "do": "click", "target": "[data-path='Target.md']" },
     { "do": "wait", "target": "header", "text": "Target" },
     { "do": "wait", "target": "nav.backlinks", "text": "First page" },
-    { "do": "key", "text": "F2" },
+    { "do": "key", "text": "F2", "target": "[data-path='Target.md']" },
     { "do": "wait", "target": "input.rename" },
     { "do": "type", "text": "Goal" },
     { "do": "key", "text": "Enter" },
