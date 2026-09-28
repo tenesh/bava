@@ -780,7 +780,8 @@ export class DocEditor {
   /**
    * Puts attachments into the page as media blocks, in order, as one edit: at
    * the caret (an empty line is replaced; a line is split, or they go beside
-   * it at its ends), or where they were dropped (`pos`), between blocks.
+   * it at its ends), or where they were dropped (`pos`), between blocks. The
+   * caret then waits on the line after them.
    */
   insertMedia(names: string[], pos?: number): void {
     const view = this.view;
@@ -809,10 +810,21 @@ export class DocEditor {
       if (target === null) return;
       tr.insert(target, nodes);
     }
-    // The last one added is selected, for its menu.
-    const end = tr.mapping.map(selection.to);
-    const last = tr.doc.resolve(Math.min(end, tr.doc.content.size)).nodeBefore;
-    if (last && last.type === nodes[nodes.length - 1].type) tr.setSelection(NodeSelection.create(tr.doc, end - last.nodeSize));
+    // The caret waits on the line after them, to type on: the next line, or
+    // a new one where no line follows.
+    let after = -1;
+    tr.doc.descendants((node, pos) => {
+      if (after < 0 && node === nodes[nodes.length - 1]) after = pos + node.nodeSize;
+      return after < 0;
+    });
+    if (after >= 0) {
+      const $after = tr.doc.resolve(after);
+      if ($after.nodeAfter?.isTextblock) tr.setSelection(TextSelection.create(tr.doc, after + 1));
+      else {
+        tr.insert(after, schema.nodes.paragraph.create());
+        tr.setSelection(TextSelection.create(tr.doc, after + 1));
+      }
+    }
     view.dispatch(tr.scrollIntoView());
     view.focus();
   }

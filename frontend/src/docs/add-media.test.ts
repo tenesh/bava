@@ -132,6 +132,21 @@ describe('media blocks going into the page', () => {
     expect(kinds).not.toContain('video');
   });
 
+  it('leave the caret on the line after them, to type on', () => {
+    const { view } = open('Before\n\nAfter\n');
+    caretAfter('Before');
+    editor!.insertMedia(['a.png']);
+    view.dispatch(view.state.tr.insertText('typed'));
+    expect(editor!.markdown()).toBe('Before\n\n![a](.bava/attachments/a.png)\n\ntypedAfter\n');
+    // At the end of the page, on the line it always ends with.
+    open('Last\n');
+    caretAfter('Last');
+    editor!.insertMedia(['a.png']);
+    const next = editor!.view!;
+    next.dispatch(next.state.tr.insertText('typed'));
+    expect(editor!.markdown()).toBe('Last\n\n![a](.bava/attachments/a.png)\n\ntyped\n');
+  });
+
   it('split the line the caret is in', () => {
     open('OneTwo\n');
     caretAfter('One');

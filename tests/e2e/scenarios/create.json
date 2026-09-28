@@ -43,7 +43,6 @@
     { "do": "type", "text": "/image" },
     { "do": "key", "text": "Enter" },
     { "do": "wait", "target": ".bava-doc figure.media[data-kind='image'][data-state='ready']" },
-    { "do": "key", "text": "ArrowDown" },
     { "do": "type", "text": "/table" },
     { "do": "key", "text": "Enter" },
     { "do": "type", "text": "Cell one" },
