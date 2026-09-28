@@ -17,8 +17,8 @@ type Toggles = { loop: boolean; muted: boolean; poster: string | null };
  * nothing that keeps or finds a file is offered; a file on the web (`web`) is
  * not shown in a folder.
  */
-export function mediaMenuItems(kind: 'image' | 'video', attrs: Toggles, attachment: boolean, inSpace = true, web = false): MenuNode[] {
-  const video = kind === 'video';
+export function mediaMenuItems(kind: 'image' | 'video', attrs: Toggles, attachment: boolean, inSpace = true, web = false, online = false): MenuNode[] {
+  const video = kind === 'video' && !online;
   return [
     {
       kind: 'submenu',
@@ -52,8 +52,10 @@ export function mediaMenuItems(kind: 'image' | 'video', attrs: Toggles, attachme
           ...(inSpace ? [item('m:poster', 'media.poster')] : []),
           ...(attrs.poster ? [item('m:noposter', 'media.noPoster')] : []),
         ]
-      : [item('m:fullscreen', 'media.fullScreen')]),
-    ...(inSpace
+      : online
+        ? [item('m:open', 'media.openInBrowser')]
+        : [item('m:fullscreen', 'media.fullScreen')]),
+    ...(inSpace && !online
       ? [{ kind: 'separator' } satisfies MenuNode, item('m:replace', 'media.replace'), ...(attachment ? [item('m:rename', 'media.rename')] : []), ...(web ? [] : [item('m:reveal', 'space.reveal')])]
       : []),
   ];
@@ -80,4 +82,25 @@ export function posterName(src: string): string {
   }
   const dot = name.lastIndexOf('.');
   return `${dot > 0 ? name.slice(0, dot) : name} poster.png`;
+}
+
+/**
+ * A card's items: its look (a plain link, a card, an extended card); a web
+ * card's details fetched again; a file's replace, rename and show, in a Space.
+ * Ids start `c:`.
+ */
+export function cardMenuItems(where: { web: boolean; attachment: boolean; inSpace: boolean }): MenuNode[] {
+  const file = !where.web && where.inSpace;
+  return [
+    {
+      kind: 'submenu',
+      id: 'c:look',
+      label: t('card.look'),
+      items: [item('c:look:link', 'card.link'), item('c:look:card', 'card.card'), item('c:look:extended', 'card.extended')],
+    },
+    ...(where.web ? [item('c:refresh', 'card.refresh')] : []),
+    ...(file
+      ? [{ kind: 'separator' } satisfies MenuNode, item('c:replace', 'media.replace'), ...(where.attachment ? [item('c:rename', 'media.rename')] : []), item('c:reveal', 'space.reveal')]
+      : []),
+  ];
 }

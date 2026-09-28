@@ -17,13 +17,14 @@ func TestParseReadsAScenario(t *testing.T) {
 			{"do": "key", "text": "Enter"},
 			{"do": "wait", "target": "header", "text": "First page"},
 			{"do": "drag", "target": ".canvas-host", "from": [100, 100], "to": [260, 180]},
+			{"do": "pause", "timeoutMs": 500},
 			{"do": "shot", "name": "after-save"}
 		]
 	}`), map[string]string{"SCRATCH": "/tmp/run"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sc.Name != "create" || len(sc.Steps) != 6 || sc.Folders[0] != "/tmp/run" {
+	if sc.Name != "create" || len(sc.Steps) != 7 || sc.Folders[0] != "/tmp/run" {
 		t.Errorf("Parse = %+v", sc)
 	}
 }
@@ -34,6 +35,7 @@ func TestParseRefusesWhatCannotRun(t *testing.T) {
 		"click, no target": `{"name":"x","steps":[{"do":"click"}]}`,
 		"shot, no name":    `{"name":"x","steps":[{"do":"shot"}]}`,
 		"drag, no points":  `{"name":"x","steps":[{"do":"drag","target":"a"}]}`,
+		"pause, no time":   `{"name":"x","steps":[{"do":"pause"}]}`,
 		"no steps":         `{"name":"x","steps":[]}`,
 		"unset variable":   `{"name":"x","folders":["${NOPE}"],"steps":[{"do":"menu","target":"file.new"}]}`,
 	}

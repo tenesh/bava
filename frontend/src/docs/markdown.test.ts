@@ -878,3 +878,72 @@ describe('images and videos', () => {
     expect(writePage(doc, page.front)).toBe('![a](new.png "T")\n');
   });
 });
+
+describe('online videos and cards', () => {
+  const first = (markdown: string) => parsePage(markdown).doc.firstChild!;
+
+  it('reads an online video as a video block, and writes it back as written', () => {
+    const page = '<!-- bava: width=large caption="The launch demo" -->\n![Launch demo](https://www.youtube.com/watch?v=abc123)\n';
+    same(page);
+    expect(first(page).type.name).toBe('video');
+    expect(first(page).attrs).toMatchObject({ src: 'https://www.youtube.com/watch?v=abc123', width: 'large', caption: 'The launch demo' });
+    same('![Talk](https://vimeo.com/76979871)\n');
+    expect(first('![Talk](https://vimeo.com/76979871)\n').type.name).toBe('video');
+    // Any other site's page stays as written.
+    expect(first('![x](https://example.com/watch?v=1)\n').type.name).toBe('paragraph');
+  });
+
+  it('reads a link alone on its line with a card mark as a card, simple or extended', () => {
+    const file = '<!-- bava: card -->\n[Q3 report.pdf](.bava/attachments/Q3%20report.pdf)\n';
+    same(file);
+    expect(first(file).type.name).toBe('card');
+    expect(first(file).attrs).toMatchObject({ href: '.bava/attachments/Q3%20report.pdf', text: 'Q3 report.pdf', look: 'card' });
+    const web =
+      '<!-- bava: card=extended description="How we ship each week." icon="example.com icon.png" image="example.com picture.png" -->\n[Release notes](https://example.com/notes "Notes")\n';
+    same(web);
+    expect(first(web).attrs).toMatchObject({
+      href: 'https://example.com/notes',
+      title: 'Notes',
+      text: 'Release notes',
+      look: 'extended',
+      description: 'How we ship each week.',
+      icon: 'example.com icon.png',
+      image: 'example.com picture.png',
+    });
+  });
+
+  it('keeps a card whose words hold escaped characters exactly as written', () => {
+    const page = '<!-- bava: card -->\n[a \\[b\\]](<my file.pdf> "T")\n';
+    expect(first('<!-- bava: card -->\n[a \\[b\\]](x.pdf)\n').type.name).toBe('card');
+    same('<!-- bava: card -->\n[a \\[b\\]](x.pdf)\n');
+    same(page);
+  });
+
+  it('keeps a card key on anything but a plain link alone on its line, as written', () => {
+    for (const page of [
+      '<!-- bava: card -->\nSee [a](a.pdf).\n',
+      '<!-- bava: card -->\n[a](a.pdf) [b](b.pdf)\n',
+      '<!-- bava: card -->\n[a\nb](a.pdf)\n',
+      '<!-- bava: card -->\n[x][r]\n\n[r]: a.pdf\n',
+      '<!-- bava: card -->\n<https://example.com>\n',
+      '<!-- bava: card=huge -->\n[a](a.pdf)\n',
+    ]) {
+      expect(keepsMeaning(page), page).toContain('<!-- bava: card');
+      expect(first(page).type.name, page).not.toBe('card');
+    }
+  });
+
+  it("keeps a card's icon that is not a plain file name as written, never as its icon", () => {
+    const page = '<!-- bava: card icon="../x.png" -->\n[a](a.pdf)\n';
+    same(page);
+    expect(first(page).attrs).toMatchObject({ icon: null, extra: 'icon="../x.png"' });
+  });
+
+  it('writes a new card from its address and words', () => {
+    const n = schema.nodes;
+    const doc = n.doc.create(null, [n.card.create({ href: 'my%20file.pdf', text: 'my [file]', look: 'extended' })]);
+    const written = writePage(doc, parsePage('').front);
+    expect(written).toBe('<!-- bava: card=extended -->\n[my \\[file\\]](my%20file.pdf)\n');
+    expect(parsePage(written).doc.firstChild!.attrs).toMatchObject({ href: 'my%20file.pdf', text: 'my [file]', look: 'extended' });
+  });
+});

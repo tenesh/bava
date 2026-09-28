@@ -7,7 +7,7 @@
 import { Call } from '@wailsio/runtime';
 
 export type Step = {
-  do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag';
+  do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag' | 'pause';
   /** What a click, wait or drag acts on; for a key, what it is pressed on (else whatever has focus). */
   target?: string;
   text?: string;
@@ -145,6 +145,10 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
       return (await until(() => !candidates(s.target!).some(visible), timeout)) ? '' : 'still there';
     case 'shot':
       return env.shot(s.name!);
+    // Time for what cannot be waited on from the page, such as a web player loading.
+    case 'pause':
+      await new Promise((resolve) => setTimeout(resolve, s.timeoutMs));
+      return '';
     case 'drag': {
       const el = candidates(s.target!).find(visible);
       if (!el) return 'not found';

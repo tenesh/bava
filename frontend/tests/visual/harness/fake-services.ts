@@ -255,6 +255,9 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       async Reveal(_root: string, _path: string) {
         return { error: '', code: '' };
       },
+      async FetchCard(_root: string, _address: string) {
+        return { title: '', description: '', icon: '', image: '', error: 'offline' };
+      },
     },
     FileService: {
       async Open(path: string) {
@@ -281,6 +284,14 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         return { paths: [], error: '' };
       },
       async ClipboardImage() {
+        return '';
+      },
+      async FileDetails(_root: string, path: string) {
+        // The pretend Space's files: the one card fixture that is there.
+        const there = path === '.bava/attachments/Q3 report.pdf';
+        return { exists: there, size: there ? 248_000 : 0, modified: there ? '2026-09-21T09:00:00Z' : '', error: '' };
+      },
+      async OpenFile(_root: string, _path: string) {
         return '';
       },
       async Settings() {

@@ -38,7 +38,9 @@
   import { backlinks as findBacklinks, type PageText } from './page-links';
   import { formatDay } from './dates';
   import { isWeb, mediaUrl, videoFrame, type MediaPlace } from './media';
-  import { mediaMenuItems, mediaSetting, posterName } from './media-menu';
+  import { cardMenuItems, mediaMenuItems, mediaSetting, posterName } from './media-menu';
+  import { onlineVideo } from './online-video';
+  import type { FileDetails } from './card';
   import MediaViewer from '../components/MediaViewer.svelte';
   import { LANGUAGES } from '../canvas/code/languages';
 
@@ -68,11 +70,17 @@
     /** A page of the Space to open, by its path. */
     onOpenPage: (path: string) => void;
     /** `/` Image or Video: the app asks for files, then adds them (`insertMedia`). */
-    onChooseMedia: (kind: 'image' | 'video') => void;
+    onChooseMedia: (kind: 'image' | 'video' | 'file') => void;
+    /** A card clicked, or an online video that plays in the browser: the app opens its address, as written in the page. */
+    onOpenFile: (href: string) => void;
+    /** A file's size and date, for its card. */
+    fileDetails: (root: string, path: string) => Promise<FileDetails>;
+    /** A web card's details, fetched when its link is pasted or refreshed; null when they could not be. */
+    fetchCard: (address: string) => Promise<{ title: string; description: string; icon: string; image: string } | null>;
     /** A paste with no text: the app looks for an image on the clipboard. */
     onPasteImage: () => void;
     /** A medium's file replaced: the app asks for one and attaches it; its name, or null. */
-    onReplaceMedia: (kind: 'image' | 'video') => Promise<string | null>;
+    onReplaceMedia: (kind: 'image' | 'video' | 'file') => Promise<string | null>;
     /** An attachment renamed; the app follows it in every page. */
     onRenameAttachment: (name: string, next: string) => void;
     /** A file of the Space shown in its folder, by its path in the Space. */
@@ -83,7 +91,7 @@
     onNotify: (message: string) => void;
   };
 
-  let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage, onCopyText, here, mediaPlace, readIndex, onFollow, onOpenPage, onChooseMedia, onPasteImage, onReplaceMedia, onRenameAttachment, onRevealFile, onAttachPoster, onNotify }: Props = $props();
+  let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage, onCopyText, here, mediaPlace, readIndex, onFollow, onOpenPage, onChooseMedia, onOpenFile, fileDetails, fetchCard, onPasteImage, onReplaceMedia, onRenameAttachment, onRevealFile, onAttachPoster, onNotify }: Props = $props();
 
   const editor = new DocEditor();
   let host: HTMLDivElement;
@@ -112,7 +120,7 @@
   let equation = $state.raw<{ pos: number; at: EquationAt; value: string; display: boolean } | null>(null);
   let link = $state.raw<{ left: number; top: number; value: string } | null>(null);
   // A medium's caption or its file's new name, asked for beside it.
-  let mediaField = $state.raw<{ kind: 'caption' | 'rename'; pos: number; left: number; top: number; value: string } | null>(null);
+  let mediaField = $state.raw<{ kind: 'caption' | 'rename' | 'weblink' | 'onlinevideo'; pos: number; left: number; top: number; value: string } | null>(null);
   let viewer = $state.raw<{ src: string; alt: string } | null>(null);
   let dragging: number | null = null;
 
@@ -207,6 +215,12 @@
       onLinkCard: (card) => (linkCard = card),
       onFollow: (href) => onFollow(href),
       onChooseMedia: (kind) => onChooseMedia(kind),
+      onOpenFile: (href) => onOpenFile(href),
+      fileDetails: (root, path) => fileDetails(root, path),
+      fetchCard: (address) => fetchCard(address),
+      onAskAddress: (kind, at) => {
+        if (!editor.locked) mediaField = { kind, pos: -1, left: at.left, top: at.bottom, value: '' };
+      },
       onPasteImage: () => onPasteImage(),
       onDateChip: (pos, at, date) => {
         if (!editor.locked) dateChip = { pos, at, date };
@@ -386,14 +400,24 @@
     if (pos === undefined || editor.locked) return;
     const block = editor.blockInfo(pos);
     editor.selectBlock(pos);
-    // An image or a video turns into nothing.
-    const turnOptions = block?.type === 'image' || block?.type === 'video' ? [] : turnIntoItems();
+    // An image, a video or a card turns into nothing.
+    const turnOptions = block?.type === 'image' || block?.type === 'video' || block?.type === 'card' ? [] : turnIntoItems();
     // A callout's colour is its panel's; a text colour on it would be a second one.
     // A table's menu is the table's own.
     const media = block?.type === 'image' || block?.type === 'video' ? mediaFile(block.attrs.src as string) : null;
+    const card = block?.type === 'card' ? mediaFile(block.attrs.href as string) : null;
     const styling: MenuNode[] =
       block && media
-        ? mediaMenuItems(block.type as 'image' | 'video', block.attrs as { loop: boolean; muted: boolean; poster: string | null }, media.attachment !== null, here !== null, isWeb(block.attrs.src as string))
+        ? mediaMenuItems(
+            block.type as 'image' | 'video',
+            block.attrs as { loop: boolean; muted: boolean; poster: string | null },
+            media.attachment !== null,
+            here !== null,
+            isWeb(block.attrs.src as string),
+            onlineVideo(block.attrs.src as string) !== null,
+          )
+        : block && card
+        ? cardMenuItems({ web: isWeb(block.attrs.href as string), attachment: card.attachment !== null, inSpace: here !== null })
         : block?.type === 'table'
         ? tableItems()
         : block?.type === 'callout'
@@ -420,6 +444,7 @@
             ...(block.attrs.color ? [item('icon', t('callout.icon'))] : []),
           ]
         : [
+            ...(block?.type === 'paragraph' && editor.loneLinkAt(pos) ? [item('c:tocard', t('card.toCard'))] : []),
             ...(block?.type === 'heading' ? [item('copylink', t('block.copyLink'))] : []),
             ...(block?.type === 'ordered_list'
               ? [
@@ -447,6 +472,7 @@
       ],
       run: (id) => {
         if (id.startsWith('m:')) void runMedia(pos, id, anchor);
+        else if (id.startsWith('c:')) void runCard(pos, id, anchor);
         else if (id.startsWith('t:')) runTable(id);
         else if (id === 'kind:custom') editor.run(callouts.setColor(pos, (block?.attrs.color as string | null) ?? CUSTOM_DEFAULT.color));
         else if (id.startsWith('kind:')) editor.run(callouts.setKind(pos, id.slice(5)));
@@ -486,12 +512,15 @@
     else if (id === 'm:caption') mediaField = { kind: 'caption', pos, left: anchor.x, top: anchor.y, value: (attrs.caption as string | null) ?? '' };
     else if (id === 'm:rename' && file.attachment) mediaField = { kind: 'rename', pos, left: anchor.x, top: anchor.y, value: file.attachment.replace(/\.[^.]*$/, '') };
     else if (id === 'm:reveal' && file.target) onRevealFile(file.target);
+    else if (id === 'm:open') onOpenFile(attrs.src as string);
     else if (id === 'm:fullscreen') {
       const src = mediaUrl(mediaPlace, attrs.src as string);
       if (src) viewer = { src, alt: attrs.alt as string };
     } else if (id === 'm:replace') {
+      const now = editor.follow(pos);
       const name = await onReplaceMedia(block.type);
-      if (name) editor.setMediaAttrs(pos, { src: linkTo(here ?? '', ATTACHMENTS + name, '') });
+      const at = now();
+      if (name && at !== null) editor.setMediaAttrs(at, { src: linkTo(here ?? '', ATTACHMENTS + name, '') });
     } else if (id === 'm:poster') {
       const video = editor.videoAt(pos);
       const frame = video ? videoFrame(video) : null;
@@ -500,18 +529,64 @@
         return;
       }
       // A name that could not be saved was said already.
+      const now = editor.follow(pos);
       const name = await onAttachPoster(frame, posterName(attrs.src as string));
-      if (name) editor.setMediaAttrs(pos, { poster: name });
+      const at = now();
+      if (name && at !== null) editor.setMediaAttrs(at, { poster: name });
     }
+  }
+
+  async function runCard(pos: number, id: string, anchor: { x: number; y: number }) {
+    if (id === 'c:tocard') {
+      editor.linkToCard(pos);
+      return;
+    }
+    const block = editor.blockInfo(pos);
+    if (block?.type !== 'card') return;
+    const href = block.attrs.href as string;
+    const file = mediaFile(href);
+    if (id === 'c:rename') await new Promise((next) => requestAnimationFrame(next));
+    if (id === 'c:look:link') editor.cardToLink(pos);
+    else if (id === 'c:look:card' || id === 'c:look:extended') editor.setMediaAttrs(pos, { look: id.slice(7) });
+    else if (id === 'c:reveal' && file.target) onRevealFile(file.target);
+    else if (id === 'c:rename' && file.attachment) mediaField = { kind: 'rename', pos, left: anchor.x, top: anchor.y, value: file.attachment.replace(/\.[^.]*$/, '') };
+    else if (id === 'c:replace' || id === 'c:refresh') {
+      // What the card holds may move while the dialog or the site answers.
+      const now = editor.follow(pos);
+      if (id === 'c:replace') {
+        const name = await onReplaceMedia('file');
+        const at = now();
+        if (name && at !== null) editor.setMediaAttrs(at, { href: linkTo(here ?? '', ATTACHMENTS + name, ''), text: name });
+        return;
+      }
+      const details = await fetchCard(href);
+      const at = now();
+      if (!details) onNotify(t('card.refreshFailed'));
+      else if (at !== null) editor.setMediaAttrs(at, { description: details.description || null, icon: details.icon || null, image: details.image || null });
+    }
+  }
+
+  /** The address typed for `/` Web link or Online video, put in at the caret. */
+  function applyAddress(kind: 'weblink' | 'onlinevideo', value: string) {
+    const address = value.trim();
+    if (!/^https?:\/\/\S+$/i.test(address)) onNotify(t('media.notAddress'));
+    else if (kind === 'onlinevideo' && !onlineVideo(address)) onNotify(t('media.notOnlineVideo'));
+    else editor.insertAddress(address);
   }
 
   function applyMediaField(value: string) {
     const field = mediaField;
     mediaField = null;
     if (!field) return;
+    if (field.kind === 'weblink' || field.kind === 'onlinevideo') {
+      if (value.trim() !== '') applyAddress(field.kind, value);
+      editor.focus();
+      return;
+    }
     if (field.kind === 'caption') editor.setMediaAttrs(field.pos, { caption: value.trim() === '' ? null : value });
     else {
-      const attachment = mediaFile(editor.blockInfo(field.pos)?.attrs.src as string).attachment;
+      const attrs = editor.blockInfo(field.pos)?.attrs;
+      const attachment = mediaFile((attrs?.src ?? attrs?.href) as string).attachment;
       if (attachment && value.trim() !== '' && value.trim() !== attachment.replace(/\.[^.]*$/, '')) onRenameAttachment(attachment, value.trim());
     }
     editor.focus();
@@ -805,7 +880,7 @@
   <LinkField
     at={mediaField}
     value={mediaField.value}
-    placeholder={t(mediaField.kind === 'caption' ? 'media.captionPlaceholder' : 'media.renamePlaceholder')}
+    placeholder={t(mediaField.kind === 'caption' ? 'media.captionPlaceholder' : mediaField.kind === 'rename' ? 'media.renamePlaceholder' : 'media.address')}
     removeLabel={mediaField.kind === 'caption' && mediaField.value ? t('media.captionRemove') : null}
     onApply={applyMediaField}
     onRemove={() => applyMediaField('')}

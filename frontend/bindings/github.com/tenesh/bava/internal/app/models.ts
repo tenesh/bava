@@ -12,10 +12,33 @@ import * as space$0 from "../space/models.js";
 import * as store$0 from "../store/models.js";
 
 /**
+ * CardDetails are a web card's saved details: the page's title and
+ * description, and its icon and picture as attachment names ("" when none).
+ */
+export interface CardDetails {
+    "title": string;
+    "description": string;
+    "icon": string;
+    "image": string;
+    "error": string;
+}
+
+/**
  * DialogResult is a chosen path, or an empty one when the user cancelled.
  */
 export interface DialogResult {
     "path": string;
+    "error": string;
+}
+
+/**
+ * FileDetailsResult is what a file card shows of a file: whether it is
+ * there, its size in bytes, and when it was last changed (RFC 3339).
+ */
+export interface FileDetailsResult {
+    "exists": boolean;
+    "size": number;
+    "modified": string;
     "error": string;
 }
 

@@ -41,6 +41,16 @@ export function Create(parent: string, name: string): $CancellablePromise<$model
 }
 
 /**
+ * FetchCard reads a web page's details for a card, when the user pastes its
+ * link or asks for its details again. The icon and picture are saved in the
+ * Space's attachments, named by the site; outside a Space (root "") they are
+ * not kept.
+ */
+export function FetchCard(root: string, address: string): $CancellablePromise<$models.CardDetails> {
+    return $Call.ByID(728531723, root, address);
+}
+
+/**
  * Index lists every page in a Space, with each page's text when withText is
  * set: the frontend reads links with the Document's own reader, so what a
  * link is never differs between an open page and the others.

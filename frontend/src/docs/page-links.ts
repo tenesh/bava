@@ -5,7 +5,7 @@
  * only an address, and its words where they are still the old name, change.
  */
 import type { Node } from 'prosemirror-model';
-import { addressOf, pageLinks, parsePage, posterKey, posterOf, wordsOf, type PageLink } from './markdown';
+import { addressOf, markFileKey, markFileOf, pageLinks, parsePage, wordsOf, type MarkFileKey, type PageLink } from './markdown';
 import { movedFrom, movedTo, resolveLink, retarget, type Move } from './links';
 
 const ATTACHMENTS = '.bava/attachments/';
@@ -52,8 +52,9 @@ export function rewritePageLinks(page: string, text: string, moves: Move[]): Rew
       const name = posterAfter(link.href, moves);
       if (name === null) continue;
       any = true;
-      if (!link.dest || posterOf(text.slice(link.dest[0], link.dest[1])) !== link.href) unplaced += 1;
-      else edits.set(link.dest[0], { end: link.dest[1], with: posterKey(name, text.startsWith('poster="', link.dest[0])) });
+      const key = link.key ?? 'poster';
+      if (!link.dest || markFileOf(text.slice(link.dest[0], link.dest[1]), key) !== link.href) unplaced += 1;
+      else edits.set(link.dest[0], { end: link.dest[1], with: markFileKey(key, name, text.startsWith(`${key}="`, link.dest[0])) });
       continue;
     }
     const next = retarget(page, link.href, link.text ?? '￼', moves);
@@ -84,7 +85,7 @@ export function rewritePageLinks(page: string, text: string, moves: Move[]): Rew
   return { text: out, unplaced };
 }
 
-type Run = { kind: 'link' | 'media' | 'poster'; href: string; text: string };
+type Run = { kind: 'link' | 'media' | 'poster'; href: string; text: string; key?: MarkFileKey };
 
 /** A page as the Document reads it, with every link's address and words left out, and its links in order. */
 function reading(markdown: string): { rest: string; links: Run[] } {
@@ -100,8 +101,14 @@ function reading(markdown: string): { rest: string; links: Run[] } {
     // A media block's address, and a video's poster, may change; its words may not.
     if (node.type.name === 'image' || node.type.name === 'video') {
       links.push({ kind: 'media', href: node.attrs.src as string, text: node.attrs.alt as string });
-      if (node.attrs.poster) links.push({ kind: 'poster', href: node.attrs.poster as string, text: '' });
+      if (node.attrs.poster) links.push({ kind: 'poster', key: 'poster', href: node.attrs.poster as string, text: '' });
       return { ...json, attrs: { ...node.attrs, src: '', written: null, poster: node.attrs.poster ? '' : null } };
+    }
+    // A card's address and words may change as a link's; its pictures as a poster.
+    if (node.type.name === 'card') {
+      links.push({ kind: 'link', href: node.attrs.href as string, text: node.attrs.text as string });
+      for (const key of ['icon', 'image'] as const) if (node.attrs[key]) links.push({ kind: 'poster', key, href: node.attrs[key] as string, text: '' });
+      return { ...json, attrs: { ...node.attrs, href: '', text: '', written: null, icon: node.attrs.icon ? '' : null, image: node.attrs.image ? '' : null } };
     }
     // A reference definition is kept as written; its address is a link's.
     if (node.type.name === 'kept') {
@@ -128,7 +135,7 @@ export function onlyLinksChanged(page: string, before: string, after: string, mo
   if (was.rest !== now.rest || was.links.length !== now.links.length) return false;
   return was.links.every((link, i) => {
     const got = now.links[i];
-    if (got.kind !== link.kind) return false;
+    if (got.kind !== link.kind || got.key !== link.key) return false;
     if (link.kind === 'poster') return got.href === (posterAfter(link.href, moves) ?? link.href);
     if (link.kind === 'media') return got.text === link.text && got.href === (retarget(page, link.href, link.text, moves)?.href ?? link.href);
     const next = retarget(page, link.href, link.text, moves);

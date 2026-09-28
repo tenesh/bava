@@ -262,12 +262,14 @@ wrong facts. When a milestone closes, update this section in the same change.
 
 - **Committed through Milestone 8.3d** (2026-09-28; CI green on all three
   platforms, the smoke run included). **8.4.1** (attachments, images and
-  video files) passes its gates locally on 2026-09-29, uncommitted; its smoke
-  steps (an image added through the picker, found loaded after reopening)
-  have not run yet, CI runs them. It adds `golang.design/x/clipboard` (MIT,
+  video files) is committed, CI green on all three platforms with its smoke
+  steps (an image added through the picker, found loaded after reopening). It adds `golang.design/x/clipboard` (MIT,
   pure Go on every platform: no build dependency on Linux) for pasted
   images, and the file route at `/bava-file/` (`internal/app/files.go`).
-  8.4.2, 8.4.3, 8.5 and 8.6 follow, then 8.4a (canvas screen checks and smoke runs
+  **8.4.2** (online videos and cards) passes its gates locally on
+  2026-09-29, uncommitted; its smoke steps (a file card through the picker,
+  a YouTube video played, a screenshot kept after 8 s) run on CI first.
+  8.4.3, 8.5 and 8.6 follow, then 8.4a (canvas screen checks and smoke runs
   with complex scenes, before 8.5), then Milestone 15 (export, import and
   search). The roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **The Document** (`frontend/src/docs/`): a ProseMirror editor over the
@@ -320,6 +322,10 @@ wrong facts. When a milestone closes, update this section in the same change.
 - Bindings are regenerated with
   `wails3 generate bindings -f '' -clean=true -ts -i` after any bound Go
   change, including comments (the generated TypeScript copies them).
+  **It deletes `frontend/bindings/.../internal/e2e/`**, which only a build
+  with the `e2e` tag generates: put those three files back from `HEAD`
+  (`git show HEAD:<path> > <path>`) and check `git status` shows them
+  unchanged.
 
 ### Gate status: last run 2026-09-28, after 8.3c
 

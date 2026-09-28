@@ -127,7 +127,9 @@ them beyond handing the parse to `internal/format`.
 | `ChooseFileToSave(suggestedName)` | `DialogResult`: a path, or empty when cancelled |
 | `Settings()` | the user's preferences, defaults when unreadable; since 06.16 they include `arrowBinding` and `midpointSnap`, both on by default (an older file omits them and reads as on), and since Milestone 7 `objectSnap`, off by default |
 | `SaveSettings(settings)` | an error string, empty on success |
-| `ChooseMedia(kind)` | `PathsResult`: the images (`kind` `image`) or videos (`video`) chosen in the native open dialog, several at once; none when cancelled |
+| `ChooseMedia(kind)` | `PathsResult`: the images (`kind` `image`), videos (`video`) or files of any type (`file`) chosen in the native open dialog, several at once; none when cancelled |
+| `FileDetails(root, path)` | `FileDetailsResult`: whether a file of a folder the user opened is there, its size and date modified, for a file card; an error outside those folders |
+| `OpenFile(root, path)` | an error string, empty on success: opens a file of a folder the user opened in its own app, as a file card's click; a program, a script or a folder is shown in its folder instead, so a click never runs code |
 | `ClipboardImage()` | the clipboard's image as PNG in base64, or empty when it holds none; read for a paste, since the webview hands the page text only |
 
 Opening a page allows its folder for the file route below.
@@ -177,6 +179,7 @@ tree.
 | `Create(parent, name)` | `SpaceInfo`: makes a folder named `name` in `parent` (an absolute path the user chose) and opens it as a Space; a taken or invalid name is refused with a `code` |
 | `Open(dir)` | `SpaceInfo`: root, name (the folder's), the Space's page width; creates `.bava/space.json` when missing |
 | `List(root, folder)` | `SpaceList`: one folder's pages (`.md`) and folders in the Space's order; never hidden entries, `.d2` files or `.bava` |
+| `FetchCard(root, address)` | `CardDetails`: a web page's title, description, and its icon and picture saved as attachments (their names; none outside a Space). The one fetch of a page: on the user's paste of its link, or Refresh details. At most 8 s, 5 redirects, 1 MB of the page, 2 MB a picture; no cookies; `User-Agent: Bava` |
 | `Apply(root, op)` | `OpResult`: the new path, a Trash item's id, or a renamed Space's root. `op.kind` is `createPage`, `createFolder`, `rename`, `move` (`folder`, `index`; -1 for the end), `duplicate`, `trash`, `restore`, `deleteForever`, `emptyTrash`, `renameSpace`, `setPageWidth`, `relink` (`edits`: each page's `path`, `before` and `after` text; a page is written only if it still reads as `before`, and `missed` lists those that were not), `attach` (`source`, a file anywhere, copied into `.bava/attachments`), `attachData` (`data` in base64, saved under `name`, or with none as `Pasted image <date> <time>.png`) or `renameAttachment` (`attachment` to `name`, its extension kept); the three return the attachment's `name`, numbered when taken by a different file, or an identical file's already there |
 | `Index(root, withText)` | `SpaceIndex`: every page in the Space (its path, its name without `.md`, and with `withText` its text), in the tree's order; never hidden entries or `.bava`. The frontend reads links from the text with the Document's own reader: "Linked from", missing links, and which links a rename rewrites |
 | `Trash(root)` | `TrashList`: items (where each came from, kind, when, size) and the total size |

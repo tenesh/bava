@@ -99,10 +99,10 @@
   } from './shell/shortcuts';
   import menuSpec from '../../internal/app/menu/spec.json';
   import { Browser, Clipboard, Events } from '@wailsio/runtime';
-  import { followAction, followBeside, joinFile, type Move } from './docs/links';
+  import { followAction, followBeside, joinFile, resolveLink, type Move } from './docs/links';
   import { relinkEdits } from './docs/page-links';
   import { addMedia, type MediaFile } from './docs/add-media';
-  import { ExportService, FileService, LogService, MenuService } from '../bindings/github.com/tenesh/bava/internal/app';
+  import { ExportService, FileService, LogService, MenuService, SpaceService } from '../bindings/github.com/tenesh/bava/internal/app';
   import { t } from './i18n/t';
   import type { MessageKey } from './i18n/messages';
 
@@ -958,7 +958,7 @@
   }
 
   /** A medium's new file, picked and attached; its name, or null. */
-  async function replaceMedia(kind: 'image' | 'video'): Promise<string | null> {
+  async function replaceMedia(kind: 'image' | 'video' | 'file'): Promise<string | null> {
     const chosen = await FileService.ChooseMedia(kind);
     const path = chosen.paths?.[0];
     if (chosen.error) notify(chosen.error);
@@ -979,7 +979,28 @@
     await relinkAfter([{ from: folder + name, to: folder + (result.name ?? next) }], openRel);
   }
 
-  async function chooseMedia(kind: 'image' | 'video') {
+  /**
+   * Opens what a card or an online video reaches: a web page in the browser,
+   * a file of the opened folder in its own app (a program is shown instead).
+   */
+  async function openFromPage(href: string) {
+    if (/^https?:\/\//i.test(href)) {
+      void Browser.OpenURL(href);
+      return;
+    }
+    const target = mediaPlace ? resolveLink(mediaPlace.here, href)?.target : undefined;
+    if (!mediaPlace || !target) return;
+    // A page of the Space opens here, as a link to it does.
+    if (/\.md$/i.test(target)) {
+      await followLink(href);
+      return;
+    }
+    const error = await FileService.OpenFile(mediaPlace.root, target);
+    // Go's words name the file, which is the user's content: not logged.
+    if (error) notify(t('card.openFailed'));
+  }
+
+  async function chooseMedia(kind: 'image' | 'video' | 'file') {
     const chosen = await FileService.ChooseMedia(kind);
     if (chosen.error) notify(chosen.error);
     else if (chosen.paths?.length) await addMediaFiles(chosen.paths.map((path) => ({ path })));
@@ -2130,6 +2151,13 @@
       onFollow={(href) => void followLink(href)}
       onOpenPage={(path) => void openPath(space.absolute(path))}
       onChooseMedia={(kind) => void chooseMedia(kind)}
+      onOpenFile={(href) => void openFromPage(href)}
+      fileDetails={(root, path) => FileService.FileDetails(root, path)}
+      fetchCard={async (address) => {
+        // Pictures are kept only in the Space the page is in.
+        const details = await SpaceService.FetchCard(space.root !== null && openRel !== null ? space.root : '', address);
+        return details.error ? null : details;
+      }}
       onPasteImage={() => void pasteImage()}
       onReplaceMedia={replaceMedia}
       onRenameAttachment={(name, next) => void renameAttachment(name, next)}
