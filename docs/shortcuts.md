@@ -159,6 +159,8 @@ Active while the page has focus. On Windows and Linux, `Ctrl` for `⌘`.
 | `⌥Enter` / `Alt+Enter` in a link | Its card, focus on its first button |
 | `Enter` on a selected equation | Edit its TeX |
 | `Enter` in a toggle's summary | Into the toggle, opening it |
+| `⌘Enter` / `⇧⌘Enter` | A new block after / before the block the caret is in: a list item gets a new item, a table or a toggle's title a line after the whole table or toggle; an empty list item, or an empty last (or first) line of a quote, callout, toggle or list item, moves out one level, so pressing again climbs out of what it is in; an empty line in the middle of a quote, callout or toggle stays inside, and an empty item holding a nested list gets a new item, as Enter does |
+| `+` beside a block, `⌥`-click | Add a block after it, `⌥` before it, with the `/` menu open |
 
 In a code block:
 
@@ -166,7 +168,8 @@ In a code block:
 |---|---|
 | `Enter` | New line |
 | `Tab` / `⇧Tab` | Indent / outdent by two spaces: the caret's line, or every line the selection touches |
-| `⌘Enter`, or `↓` on the last line of the page's last block | Leave the block, onto a new line after it |
+| `⌘Enter` / `⇧⌘Enter` | A new line after / before the code block |
+| `↓` on the last line | Onto the line after the block |
 | `⌫` in an empty block | Back to text |
 
 In a table:

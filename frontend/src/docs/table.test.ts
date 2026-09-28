@@ -6,6 +6,7 @@ import { Slice } from 'prosemirror-model';
 import { DocEditor } from './editor';
 import { runItem, SLASH_ITEMS } from './slash';
 import { readCells, tables } from './table';
+import { atTextEnd } from './test-caret';
 
 // jsdom lays nothing out: scrolling to the caret asks a text range for rectangles it has none of.
 for (const name of ['getClientRects', 'getBoundingClientRect'] as const) {
@@ -223,7 +224,7 @@ describe('pasting spreadsheet cells', () => {
   it('makes a table of rows pasted outside one, the first row as its headers', () => {
     open('Before\n');
     const view = editor!.view!;
-    view.dispatch(view.state.tr.setSelection(TextSelection.atEnd(view.state.doc)));
+    view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)));
     editor!.paste('a\tb\n1\t2\n');
     expect(editor!.markdown()).toBe('Before\n\n| a   | b   |\n|-----|-----|\n| 1   | 2   |\n');
   });
@@ -246,7 +247,8 @@ describe('pasting spreadsheet cells', () => {
     const view = open('```go\nx\n```\n');
     view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)));
     editor!.paste('if x {\n\treturn\n}');
-    expect(editor!.view!.state.doc.childCount).toBe(1);
+    // The code block, and the empty line the page ends with: no table.
+    expect(editor!.view!.state.doc.childCount).toBe(2);
     expect(editor!.view!.state.doc.firstChild!.textContent).toContain('\treturn');
     const event = { clipboardData: { getData: () => '\tindented' } } as unknown as ClipboardEvent;
     expect(view.someProp('handlePaste', (f) => f(view, event, Slice.empty))).toBeFalsy();

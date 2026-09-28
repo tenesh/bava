@@ -182,6 +182,8 @@ icon need a Bava addition to it.
 
 ### 14. Toggle lists and toggle headings (2026-09-27)
 
+*Toggle headings reversed by decision 91: the toggle list is the one fold.*
+
 Both, each opening on its own (not accordion groups): a **toggle list** folds
 the content indented inside it; a **toggle heading** folds its section, up to
 the next heading of its size. A toggle list is stored as HTML `<details>`,
@@ -759,12 +761,16 @@ kinds have theirs; other apps show a plain note box. The five named kinds are
 
 ### 79. Only headings made toggles fold (2026-09-27)
 
+*Reversed by decision 91: there are no toggle headings.*
+
 The user's choice, as Notion: "Toggle heading" is chosen from the `/` menu or
 the block menu, and marked with the invisible mark `<!-- bava: toggle -->`
 above the heading. Other apps show an ordinary heading with its section
 visible. Toggle lists stay HTML `<details>` (decision 14).
 
 ### 80. Folding is remembered on this computer, never saved (2026-09-27)
+
+*Toggle headings are gone (decision 91); this holds for toggle lists.*
 
 The user's choice. Folding or unfolding a toggle list or toggle heading does
 not change the file or mark the page unsaved; Bava remembers what was folded
@@ -849,6 +855,25 @@ their addresses (and their words where they follow a rename). The file side
 lists the pages with their text and writes back a page only when it is still
 as it was read. The two can never disagree; a rename in a large Space takes
 a moment longer.
+
+### 90. A line before or after any block, and always a line at the end (2026-09-28)
+
+The user's choice, after finding no way out of a table at the end of a page.
+The page always ends with an empty line, which is never saved (decision 17).
+One way works for every block: ⌘Enter adds an empty line after the nearest
+block that can have one beside it, ⇧⌘Enter one before, as ProseMirror
+editors leave a code block and as Notion's `+` works on the block it is
+beside. The block menu and the handle's `+` (⌥ for above) do the same.
+
+### 91. No toggle headings (2026-09-28)
+
+The user's choice, reversing decision 79. A toggle heading folded every block
+after it up to the next heading of its size, so a line after a folded heading
+was hidden too; Notion's toggle heading holds only what is put inside it,
+which Markdown cannot hold without a second mark. A toggle list folds what
+is inside it and nothing after, so it is the one fold. A heading carrying the
+old `<!-- bava: toggle -->` mark keeps it as written (an unknown key) and no
+longer folds.
 
 ## Features
 

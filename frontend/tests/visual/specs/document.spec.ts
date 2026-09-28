@@ -12,34 +12,31 @@ async function openDocument(page: Page, theme: Theme, folder: string, path: stri
   await expect(editor(page)).toBeVisible();
 }
 
-/** Puts the caret on a new empty line after the page's last text. */
+/** Puts the caret on the empty line the page always ends with. */
 async function newLineAtEnd(page: Page) {
   const last = editor(page).locator('p').last();
+  await expect(last).toHaveText('');
   await last.click();
-  // The caret at the paragraph's very end, placed directly: End stops at the
-  // end of a wrapped line, and the click can land anywhere in the text. The
-  // editor settles the click's own caret just after the mouse is released, so
-  // the caret is placed again until it holds.
+  // The editor settles the click's own caret just after the mouse is
+  // released, so it is checked until it holds on that line.
   await expect(async () => {
-    await last.evaluate((p) => {
-      const range = document.createRange();
-      range.selectNodeContents(p);
-      range.collapse(false);
-      document.getSelection()!.removeAllRanges();
-      document.getSelection()!.addRange(range);
-    });
-    await page.waitForTimeout(100);
-    const seen = await last.evaluate((p) => {
+    const onIt = await last.evaluate((p) => {
       const selection = document.getSelection()!;
-      if (!selection.isCollapsed || !p.contains(selection.anchorNode)) return 'outside';
-      const after = document.createRange();
-      after.setStart(selection.anchorNode!, selection.anchorOffset);
-      after.setEnd(p, p.childNodes.length);
-      return after.toString() === '' ? 'end' : 'inside';
+      return selection.isCollapsed && p.contains(selection.anchorNode);
     });
-    expect(seen).toBe('end');
+    expect(onIt).toBe(true);
   }).toPass();
-  await page.keyboard.press('Enter');
+}
+
+/** Clicks the table cell holding `text`, and waits for the caret to settle in it. */
+async function caretInCell(page: Page, text: string) {
+  await editor(page).getByText(text, { exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => document.getSelection()?.anchorNode?.parentElement?.closest('td, th')?.textContent ?? ''))
+    .toBe(text);
+  // The editor reads a click's selection a moment after the page shows it;
+  // keys pressed at once, as no person presses them, would act on the last one.
+  await page.waitForTimeout(150);
 }
 
 /** Drags across table cells, from the one holding `from` to the one holding `to`. */
@@ -193,19 +190,18 @@ for (const theme of THEMES) {
       await expect(editor(page).locator('.syntax-keyword').first()).toBeVisible();
       await expect(editor(page).locator('.math-block .katex-display')).toHaveCount(1);
       await expect(editor(page).locator('.math-error')).toHaveCount(1);
-      await expect(editor(page).locator('.contents a')).toHaveCount(4);
-      // A folded toggle and toggle heading hide what they hold.
+      await expect(editor(page).locator('.contents a')).toHaveCount(3);
+      // A folded toggle hides what it holds.
       await expect(editor(page).getByText('Hidden inside it.')).toBeHidden();
-      await expect(editor(page).getByText('Hidden under its heading.')).toBeHidden();
       await expect(pane(page)).toHaveScreenshot(shot('document', 'blocks', 'top', theme));
       await editor(page).locator('.footnotes').scrollIntoViewIfNeeded();
       await expect(pane(page)).toHaveScreenshot(shot('document', 'blocks', 'bottom', theme));
     });
 
-    test('unfolding a toggle heading', async ({ page }) => {
+    test('unfolding a toggle', async ({ page }) => {
       await openDocument(page, theme, 'Engineering', 'Engineering/Blocks.md');
-      await editor(page).locator('h2 .toggle-arrow').first().click();
-      await expect(editor(page).getByText('Hidden under its heading.')).toBeVisible();
+      await editor(page).locator('.toggle', { hasText: 'A folded toggle' }).locator('.toggle-arrow').first().click();
+      await expect(editor(page).getByText('Hidden inside it.')).toBeVisible();
       await expect(page.locator('header')).not.toContainText('unsaved');
     });
 
@@ -459,6 +455,46 @@ for (const theme of THEMES) {
       await expect(page.locator('[data-path="Handbook.md"]')).toBeVisible();
       await page.locator('[data-path="Roadmap.md"]').click();
       await expect(editor(page).locator('a[href="Handbook.md#lists"]')).toHaveText('Lists');
+    });
+
+    test('a page ending in a table keeps an empty line after it', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Tables.md');
+      const last = editor(page).locator('p').last();
+      await expect(last).toHaveText('');
+      await last.click();
+      await expect(pane(page)).toHaveScreenshot(shot('document', 'table', 'end-line', theme));
+      await page.keyboard.type('After the table');
+      await expect(editor(page).locator('p').last()).toHaveText('');
+      await expect(editor(page).getByText('After the table')).toBeVisible();
+    });
+
+    test('⌘Enter adds a block after a table, and ⇧⌘Enter before it', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Tables.md');
+      const blocks = editor(page).locator(':scope > *');
+      const count = await blocks.count();
+      await caretInCell(page, 'Ana');
+      await page.keyboard.press('ControlOrMeta+Enter');
+      await page.keyboard.type('Between the tables');
+      await expect(blocks).toHaveCount(count + 1);
+      await expect(editor(page).locator('.tableWrapper').first().locator('xpath=following-sibling::*[1]')).toHaveText('Between the tables');
+      await caretInCell(page, 'Ana');
+      await page.keyboard.press('ControlOrMeta+Shift+Enter');
+      await page.keyboard.type('Before the table');
+      await expect(editor(page).locator('.tableWrapper').first().locator('xpath=preceding-sibling::*[1]')).toHaveText('Before the table');
+    });
+
+    test('a second ⌘Enter on an empty last line leaves a callout', async ({ page }) => {
+      await openDocument(page, theme, 'Engineering', 'Engineering/Blocks.md');
+      await editor(page).getByText('An info callout.', { exact: false }).click();
+      await page.keyboard.press('End');
+      await page.keyboard.press('ControlOrMeta+Enter');
+      await page.keyboard.type('Inside');
+      await expect(editor(page).locator('.callout').first()).toContainText('Inside');
+      await page.keyboard.press('ControlOrMeta+Enter');
+      await page.keyboard.press('ControlOrMeta+Enter');
+      await page.keyboard.type('Outside');
+      await expect(editor(page).locator('.callout').first()).not.toContainText('Outside');
+      await expect(editor(page).locator('.callout').first().locator('xpath=following-sibling::*[1]')).toHaveText('Outside');
     });
 
     test('the page menu', async ({ page }) => {

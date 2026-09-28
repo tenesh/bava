@@ -2,8 +2,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
-import { folds, sectionOf } from './fold';
-import { parsePage } from './markdown';
 import { runItem, SLASH_ITEMS } from './slash';
 
 let editor: DocEditor | null = null;
@@ -42,20 +40,6 @@ function key(name: string) {
 const press = (el: Element) => el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
 const TOGGLE = '<details>\n<summary>Details</summary>\n\nThe secret.\n\n</details>\n';
 
-describe("a toggle heading's section", () => {
-  it('runs to the next heading of its size or larger', () => {
-    const doc = parsePage('<!-- bava: toggle -->\n## Two\n\nA\n\n### Three\n\nB\n\n## Next\n\nC\n').doc;
-    const { from, to } = sectionOf(doc, 0)!;
-    expect(doc.textBetween(from, to, '|')).toBe('A|Three|B');
-  });
-
-  it('runs to the end of the page when nothing larger follows', () => {
-    const doc = parsePage('<!-- bava: toggle -->\n# One\n\nA\n\n## Two\n').doc;
-    const { from, to } = sectionOf(doc, 0)!;
-    expect(doc.textBetween(from, to, '|')).toBe('A|Two');
-  });
-});
-
 describe('folding', () => {
   it('starts a toggle folded, or open when the file says so', () => {
     const { host } = open(TOGGLE + '\n<details open>\n<summary>Open</summary>\n\nShown.\n\n</details>\n');
@@ -80,13 +64,11 @@ describe('folding', () => {
     expect(editor!.markdown()).toBe(TOGGLE);
   });
 
-  it("hides a folded toggle heading's section", () => {
-    const { host } = open('<!-- bava: toggle -->\n## Plan\n\nHidden.\n\n## After\n');
-    const [hidden, after] = [...host.querySelectorAll('p, h2')].slice(1);
-    expect(hidden.classList.contains('folded-away')).toBe(true);
-    expect(after.classList.contains('folded-away')).toBe(false);
-    press(host.querySelector('.toggle-arrow')!);
-    expect(hidden.classList.contains('folded-away')).toBe(false);
+  it('never folds a heading, even one carrying the old toggle mark', () => {
+    const { host } = open('<!-- bava: toggle -->\n## Plan\n\nShown.\n\n## After\n');
+    expect(host.querySelector('.toggle-arrow')).toBeNull();
+    expect(host.querySelector('.folded-away')).toBeNull();
+    expect(editor!.markdown()).toBe('<!-- bava: toggle -->\n## Plan\n\nShown.\n\n## After\n');
   });
 
   it('remembers what was unfolded on this computer, per page', () => {
@@ -117,11 +99,6 @@ describe('folding', () => {
     expect(host.querySelector('.toggle')!.hasAttribute('data-folded')).toBe(false);
   });
 
-  it('folds the section by the toggle heading command', () => {
-    const { view } = open('## Plan\n\nText.\n');
-    folds.toggleHeading(0)(view.state, view.dispatch);
-    expect(editor!.markdown()).toBe('<!-- bava: toggle -->\n## Plan\n\nText.\n');
-  });
 });
 
 describe('making toggles', () => {
@@ -133,14 +110,6 @@ describe('making toggles', () => {
     type('The editor.');
     expect(editor!.markdown()).toBe('<details>\n<summary>What ships</summary>\n\nThe editor.\n\n</details>\n');
     expect(host.querySelector('.toggle')!.hasAttribute('data-folded')).toBe(false);
-  });
-
-  it('makes a heading a toggle heading', () => {
-    open('');
-    runItem(editor!.view!, SLASH_ITEMS.find((i) => i.id === 'heading2')!);
-    type('Plan');
-    folds.toggleHeading(0)(editor!.view!.state, editor!.view!.dispatch);
-    expect(editor!.markdown()).toBe('<!-- bava: toggle -->\n## Plan\n');
   });
 
   it('turns an empty toggle back into text with Backspace in its summary', () => {

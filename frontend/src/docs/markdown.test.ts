@@ -259,10 +259,13 @@ describe('toggles', () => {
     same('<details>\n<summary>Never closed</summary>\n\nText.\n');
   });
 
-  it('reads a toggle heading from its mark', () => {
-    same('<!-- bava: toggle -->\n## Launch checklist\n\nFolds away.\n');
-    expect(parsePage('<!-- bava: toggle -->\n## Launch\n').doc.firstChild!.attrs.toggle).toBe(true);
-    same('<!-- bava: toggle color=red -->\n# Both\n');
+  it('keeps the mark of a toggle heading, which no longer folds, as written', () => {
+    same('<!-- bava: toggle -->\n## Launch checklist\n\nShown.\n');
+    same('<!-- bava: color=red toggle -->\n# Both\n');
+    // After an edit elsewhere on the page too.
+    const { doc, front } = parsePage('<!-- bava: toggle -->\n## Launch\n\nOld.\n');
+    const edited = doc.replace(doc.content.size - 5, doc.content.size - 1, new Slice(Fragment.from(schema.text('New.')), 0, 0));
+    expect(writePage(edited, front)).toBe('<!-- bava: toggle -->\n## Launch\n\nNew.\n');
   });
 });
 

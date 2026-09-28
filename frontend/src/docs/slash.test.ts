@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
 import { filterItems, SLASH_ITEMS, slashKey } from './slash';
+import { atTextEnd } from './test-caret';
 
 describe('the / menu\'s items', () => {
   it('offers each kind of block once, in three groups', () => {
@@ -57,7 +57,7 @@ function open(markdown: string) {
   editor.mount(host, { onChange: vi.fn(), onSlash });
   editor.setPage(markdown);
   const view = editor.view!;
-  view.dispatch(view.state.tr.setSelection(TextSelection.atEnd(view.state.doc)));
+  view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)));
   return { onSlash, view };
 }
 
@@ -131,13 +131,15 @@ describe('the / menu in the page', () => {
   });
 
   it('opens from the + on an empty line itself, adding no line', () => {
-    const { onSlash } = open('First\n\n\n');
+    // The empty line the page always ends with.
+    const { onSlash } = open('First\n');
     const view = editor!.view!;
-    view.dispatch(view.state.tr.insert(view.state.doc.content.size, view.state.schema.nodes.paragraph.create()));
     const empty = view.state.doc.content.size - 2;
     editor!.addBlockAfter(empty);
     expect(onSlash).toHaveBeenLastCalledWith(expect.objectContaining({ query: '' }));
-    expect(view.state.doc.childCount).toBe(2);
+    // The `/` went into that line itself; a new empty line keeps the page's end.
+    expect(view.state.doc.child(1).textContent).toBe('/');
+    expect(view.state.doc.childCount).toBe(3);
   });
 
   it('turns the line into a code block', () => {

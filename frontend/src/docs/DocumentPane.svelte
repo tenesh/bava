@@ -7,6 +7,7 @@
    */
   import { onMount, untrack } from 'svelte';
   import BlockHandle from '../components/BlockHandle.svelte';
+  import { currentPlatform, modifierName } from '../shell/shortcuts';
   import ContextMenu from '../components/ContextMenu.svelte';
   import FindBar from '../components/FindBar.svelte';
   import FormatBubble from '../components/FormatBubble.svelte';
@@ -27,7 +28,6 @@
   import type { SlashInfo } from './slash';
   import { pageWidth } from './page-settings';
   import { CUSTOM_DEFAULT, callouts } from './callout';
-  import { folds } from './fold';
   import { math, renderTex, type EquationAt } from './math';
   import { tables } from './table';
   import type { Command } from 'prosemirror-state';
@@ -382,7 +382,7 @@
             ...(block.attrs.color ? [item('icon', t('callout.icon'))] : []),
           ]
         : [
-            ...(block?.type === 'heading' ? [item('toggleheading', t('block.toggleHeading')), item('copylink', t('block.copyLink'))] : []),
+            ...(block?.type === 'heading' ? [item('copylink', t('block.copyLink'))] : []),
             ...(block?.type === 'ordered_list'
               ? [
                   {
@@ -400,6 +400,8 @@
       anchor,
       items: [
         ...(turnOptions.length > 0 ? [{ kind: 'submenu', id: 'turn', label: t('block.turnInto'), items: turnOptions } satisfies MenuNode] : []),
+        item('addbefore', t('block.addBefore')),
+        item('addafter', t('block.addAfter')),
         item('duplicate', t('block.duplicate')),
         item('delete', t('block.delete')),
         { kind: 'separator' },
@@ -411,10 +413,10 @@
         else if (id.startsWith('kind:')) editor.run(callouts.setKind(pos, id.slice(5)));
         else if (id.startsWith('panel:')) editor.run(callouts.setColor(pos, id.slice(6)));
         else if (id === 'icon') openPicker({ left: anchor.x, top: anchor.y, bottom: anchor.y }, (emoji) => editor.run(callouts.setIcon(pos, emoji)));
-        else if (id === 'toggleheading') editor.run(folds.toggleHeading(pos));
         else if (id === 'copylink') editor.copyHeadingLink(pos);
         else if (id.startsWith('numbering:')) editor.run(commands.listStyle(id.slice(10) as '1' | 'a' | 'i'));
         else if (id.startsWith('turn:')) runTurn(id);
+        else if (id === 'addbefore' || id === 'addafter') editor.addBlockBeside(pos, id === 'addbefore' ? 'before' : 'after');
         else if (id === 'duplicate') editor.run(commands.duplicateBlock);
         else if (id === 'delete') editor.run(commands.deleteBlock);
         else if (id.startsWith('color:')) editor.run(commands.blockColor({ color: id.slice(6) || null }));
@@ -553,7 +555,8 @@
     {#if hovered}
       <BlockHandle
         at={{ left: hovered.left, top: hovered.top }}
-        onAdd={() => hovered && editor.addBlockAfter(hovered.pos)}
+        alt={modifierName('optionoralt', currentPlatform())}
+        onAdd={(before) => hovered && (before ? editor.addBlockBefore(hovered.pos) : editor.addBlockAfter(hovered.pos))}
         onMenu={openBlockMenu}
         onDragStart={(event) => {
           if (!hovered) return;

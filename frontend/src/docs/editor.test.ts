@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
 import { commands, turnIntoChoices } from './commands';
+import { atTextEnd } from './test-caret';
 
 let editor: DocEditor | null = null;
 
@@ -49,7 +50,7 @@ function key(name: string, mods: { shift?: boolean; mod?: boolean; alt?: boolean
 /** Puts the caret at the end of the document. */
 function toEnd() {
   const view = editor!.view!;
-  view.dispatch(view.state.tr.setSelection(TextSelection.atEnd(view.state.doc)));
+  view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)));
 }
 
 describe('opening and saving a page', () => {
@@ -440,7 +441,8 @@ describe("the handle's + beside the notes", () => {
     const notes = view.state.doc.content.size - view.state.doc.lastChild!.nodeSize;
     expect(() => editor!.addBlockAfter(notes)).not.toThrow();
     expect(view.state.doc.lastChild!.type.name).toBe('footnotes');
-    expect(view.state.doc.child(view.state.doc.childCount - 2).textContent).toBe('/');
+    // Before the notes, and before the empty line the page ends with.
+    expect(view.state.doc.child(view.state.doc.childCount - 3).textContent).toBe('/');
   });
 });
 

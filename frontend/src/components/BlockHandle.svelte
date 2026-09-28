@@ -1,7 +1,8 @@
 <script lang="ts">
   /**
    * Beside the block under the pointer in the Document: `+` to add a block
-   * below it, ⋮⋮ to drag it or open its menu.
+   * after it (with ⌥, Alt elsewhere, before it), ⋮⋮ to drag it or open its
+   * menu.
    *
    * Presentational: it reports the press, the drag's start, and where the
    * menu should open.
@@ -12,17 +13,22 @@
   type Props = {
     /** Where the block starts, relative to the pane. */
     at: { left: number; top: number };
-    onAdd: () => void;
+    /** The Option key's name on this platform: ⌥, or Alt. */
+    alt: string;
+    /** `before`: ⌥ was held. */
+    onAdd: (before: boolean) => void;
     onMenu: (anchor: { x: number; y: number }) => void;
     onDragStart: (event: DragEvent) => void;
     onDragEnd: () => void;
   };
 
-  let { at, onAdd, onMenu, onDragStart, onDragEnd }: Props = $props();
+  let { at, alt, onAdd, onMenu, onDragStart, onDragEnd }: Props = $props();
+
+  const tip = $derived(t('doc.addBlockTip').replace('{alt}', alt));
 </script>
 
 <div class="handle" style:left={`${at.left}px`} style:top={`${at.top}px`}>
-  <button type="button" class="bava-icon-button small" aria-label={t('doc.addBlock')} title={t('doc.addBlock')} onmousedown={(event) => event.preventDefault()} onclick={onAdd}>
+  <button type="button" class="bava-icon-button small" aria-label={t('doc.addBlock')} title={tip} onmousedown={(event) => event.preventDefault()} onclick={(event) => onAdd(event.altKey)}>
     <ToolIcon id="insert" size="sm" />
   </button>
   <button

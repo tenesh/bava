@@ -4,6 +4,7 @@ import { TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
 import { loadEmoji, searchEmoji } from './emoji';
 import { runItem, SLASH_ITEMS } from './slash';
+import { atTextEnd } from './test-caret';
 
 let editor: DocEditor | null = null;
 
@@ -22,7 +23,7 @@ function open(markdown: string) {
   editor.mount(host, { onChange: vi.fn(), onEmoji, onEmojiPicker });
   editor.setPage(markdown);
   const view = editor.view!;
-  view.dispatch(view.state.tr.setSelection(TextSelection.atEnd(view.state.doc)));
+  view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)));
   return { onEmoji, onEmojiPicker, view };
 }
 

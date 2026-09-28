@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
 import { rankPages, typedDates } from './mention';
+import { atTextEnd } from './test-caret';
 
 const pages = [
   { name: 'Launch plan', path: 'Marketing/Launch plan.md' },
@@ -81,7 +81,7 @@ function open(markdown: string, here: string | null = 'Notes/Today.md') {
   editor.setPage(markdown);
   editor.setSpacePages(here, null);
   const view = editor.view!;
-  view.dispatch(view.state.tr.setSelection(TextSelection.atEnd(view.state.doc)));
+  view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)));
   return { onMention, onMentionPages, view };
 }
 

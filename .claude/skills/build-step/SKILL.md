@@ -260,8 +260,8 @@ wrong facts. When a milestone closes, update this section in the same change.
 
 ### Milestones
 
-- **Committed through Milestone 8.3b** (HEAD ef8310d, 2026-09-28; CI green on
-  all three platforms). **8.3c (links between pages, date chips) passes its
+- **Committed through Milestone 8.3c** (2026-09-28). **8.3d (a block before
+  or after any block, the line at the end, no toggle headings) passes its
   gates**, uncommitted; 8.4 to 8.6
   follow, then 8.4a (canvas screen checks and smoke runs
   with complex scenes, before 8.5), then Milestone 15 (export, import and
@@ -326,9 +326,9 @@ wrong facts. When a milestone closes, update this section in the same change.
 | `go test ./internal/render -run Golden` | exit 0; goldens under `testdata/golden/` |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 2,272 tests across 164 files (1 skipped) |
+| `npm test` | exit 0; 2,318 tests across 167 files (1 skipped) |
 | `npm run build` | exit 0; the production minifier rejects some CSS that the dev server and the screen checks accept (WebKit-only selectors such as `::selection:window-inactive`), and CI's first step is this build |
-| `npm run visual` (layer 2) | exit 0; 114 walks, 110 references in `testdata/visual/`; needs OrbStack running |
+| `npm run visual` (layer 2) | exit 0; 120 walks, 112 references in `testdata/visual/`; needs OrbStack running |
 | CI `smoke` (layer 3) | green on all three platforms at ef8310d; 8.3c's page link and rename steps need a push |
 | `wails3 build` | macOS only, unverified elsewhere |
 

@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { NodeSelection, TextSelection } from 'prosemirror-state';
+import { NodeSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
 import { math, renderTex } from './math';
 import { runItem, SLASH_ITEMS } from './slash';
 import { parsePage } from './markdown';
+import { atTextEnd } from './test-caret';
 
 const parsePageDoc = (markdown: string) => parsePage(markdown).doc;
 
@@ -24,7 +25,7 @@ function open(markdown: string) {
   editor.mount(host, { onChange: vi.fn(), onEquation });
   editor.setPage(markdown);
   const view = editor.view!;
-  view.dispatch(view.state.tr.setSelection(TextSelection.atEnd(view.state.doc)));
+  view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)));
   return { host, onEquation, view };
 }
 

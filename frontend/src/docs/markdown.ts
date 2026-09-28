@@ -136,7 +136,7 @@ function readMark(text: string): MarkPair[] {
 /** The keys each block takes from a mark; any other key on it is kept as written. */
 const APPLIES: Record<string, string[]> = {
   paragraph_open: ['color', 'background'],
-  heading_open: ['color', 'background', 'toggle'],
+  heading_open: ['color', 'background'],
   blockquote_open: ['color', 'background'],
   callout_open: ['color', 'background', 'icon'],
   bullet_list_open: ['color', 'background'],
@@ -150,7 +150,6 @@ const VALID: Record<string, (value: string | true) => boolean> = {
   background: (v) => typeof v === 'string' && v !== '',
   icon: (v) => typeof v === 'string' && v !== '',
   list: (v) => v === 'a' || v === 'i',
-  toggle: (v) => v === true,
   wrap: (v) => v === true,
   caption: (v) => typeof v === 'string',
 };
@@ -846,7 +845,6 @@ function writeMark(state: MarkdownSerializerState, node: Node) {
   const a = node.attrs;
   const keys = [
     a.style && a.style !== '1' ? `list=${a.style}` : '',
-    a.toggle ? 'toggle' : '',
     a.wrap ? 'wrap' : '',
     a.caption !== null && a.caption !== undefined ? `caption="${encodeValue(a.caption)}"` : '',
     a.color ? `color=${a.color}` : '',

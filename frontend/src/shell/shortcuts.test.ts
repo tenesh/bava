@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import spec from '../../../internal/app/menu/spec.json';
-import { canvasScoped, formatAccelerator, keysFor, matchShortcut, reservedByMenu, ROLE_ACCELERATORS, shortcutGroups, type MenuSpec } from './shortcuts';
+import { canvasScoped, formatAccelerator, keysFor, matchShortcut, reservedByMenu, ROLE_ACCELERATORS, shortcutGroups, type MenuSpec, modifierName } from './shortcuts';
 
 describe('formatAccelerator', () => {
   it('uses symbols on macOS, in the platform order', () => {
@@ -190,5 +190,13 @@ describe('the window menu keys', () => {
     const block = go.slice(go.indexOf('var RoleAccelerators'), go.indexOf('}', go.indexOf('var RoleAccelerators')));
     const fromGo = Object.fromEntries([...block.matchAll(/"(\w+)":\s*"([^"]*)"/g)].map((m) => [m[1], m[2]]));
     expect(ROLE_ACCELERATORS).toEqual(fromGo);
+  });
+});
+
+describe('a modifier on its own', () => {
+  it('is named as the platform names it', () => {
+    expect(modifierName('optionoralt', 'darwin')).toBe('⌥');
+    expect(modifierName('optionoralt', 'windows')).toBe('Alt');
+    expect(modifierName('cmdorctrl', 'linux')).toBe('Ctrl');
   });
 });
