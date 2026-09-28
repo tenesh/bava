@@ -139,3 +139,24 @@ describe('a code block in the page', () => {
     expect(host.querySelector('.code-language')!.textContent).toBe('Go');
   });
 });
+
+describe("↓ on a code block's last line", () => {
+  it('moves the caret onto the block after, whatever sends the key', () => {
+    for (const [page, next] of [
+      ['```go\nx\n```\n\nNext\n', 'Next'],
+      ['```go\nx\n```\n', ''],
+    ] as const) {
+      open(page);
+      const view = editor!.view!;
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)));
+      // No layout here: the caret is on the block's last line as drawn.
+      view.endOfTextblock = () => true;
+      const moved = view.someProp('handleKeyDown', (f) => f(view, new KeyboardEvent('keydown', { key: 'ArrowDown' })));
+      expect(moved, page).toBe(true);
+      expect(view.state.selection.$from.parent.type.name, page).toBe('paragraph');
+      expect(view.state.selection.$from.parent.textContent, page).toBe(next);
+      editor!.destroy();
+      editor = null;
+    }
+  });
+});

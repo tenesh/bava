@@ -326,7 +326,7 @@ wrong facts. When a milestone closes, update this section in the same change.
 | `go test ./internal/render -run Golden` | exit 0; goldens under `testdata/golden/` |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 2,318 tests across 167 files (1 skipped) |
+| `npm test` | exit 0; 2,320 tests across 167 files (1 skipped) |
 | `npm run build` | exit 0; the production minifier rejects some CSS that the dev server and the screen checks accept (WebKit-only selectors such as `::selection:window-inactive`), and CI's first step is this build |
 | `npm run visual` (layer 2) | exit 0; 120 walks, 112 references in `testdata/visual/`; needs OrbStack running |
 | CI `smoke` (layer 3) | green on all three platforms at ef8310d; 8.3c's page link and rename steps need a push |
