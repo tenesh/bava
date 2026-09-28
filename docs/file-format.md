@@ -163,7 +163,8 @@ A paragraph in red on yellow.
 - A mark with a key Bava does not know is kept, with that key, on the block;
   known keys are written first. `list` on a block that is not a numbered list
   is kept as written.
-- `toggle`: a heading that folds its section (below).
+- `toggle` on a heading was a toggle heading in earlier versions; Bava no
+  longer folds headings, so it is kept as written, as any unknown key.
 - `wrap` and `caption="…"`: a code block's settings (below).
 - `color=<swatch>` and `icon=<emoji>` on a note callout: a custom callout
   (below).
@@ -215,13 +216,8 @@ The editor, the tree and the Trash.
   makes it start open. A `<details>` whose content does not start after a
   blank line is kept as written.
 
-A **toggle heading** is an ordinary heading with a mark, folding its section
-(every block up to the next heading of its size or larger) in Bava only:
-
-```markdown
-<!-- bava: toggle -->
-## Launch checklist
-```
+A toggle list is the only fold: a heading never folds. A heading carrying the
+`<!-- bava: toggle -->` mark of earlier versions keeps it, as written.
 
 Whether a toggle is folded is **never written**: Bava remembers it on this
 computer. One it has no memory of starts folded, unless the file says `open`.

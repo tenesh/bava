@@ -366,19 +366,6 @@ $callout-swatches: (
     }
   }
 
-  // A toggle heading's arrow sits before its text, clear of the block
-  // handle in the gutter.
-  :is(h1, h2, h3, h4, h5, h6) > .toggle-arrow {
-    display: inline-block;
-    height: var(--size-toggle-arrow);
-    margin-right: var(--space-1);
-    vertical-align: middle;
-  }
-
-  .folded-away {
-    display: none;
-  }
-
   // Equations: drawn, and pressed to edit.
   .math-block,
   .math-inline {

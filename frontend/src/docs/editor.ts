@@ -38,6 +38,7 @@ import { contentsPlugin, contentsView, headingEntries } from './contents';
 import { chooseEmoji, emojiPlugin, PICKER, type EmojiInfo } from './emoji';
 import { chooseMention, mentionKey, mentionPlugin, type MentionInfo, type PageRef } from './mention';
 import { linkAt, missingLinksPlugin } from './link-view';
+import { addBlock, endLinePlugin, endsWithALine, textWithoutEndLine } from './lines';
 import { copyHeadingLink, linkLabel, linkTo, missingTarget, pastedHeadingLink, relinkCandidate, resolveLink, retarget, type Move } from './links';
 import { dateAttrs } from './dates';
 import { keymap } from 'prosemirror-keymap';
@@ -308,6 +309,12 @@ export class DocEditor {
           () => this.#options?.onMentionPages?.(),
         ),
         missingLinksPlugin(() => this.#space),
+        // Before the code block's own ⌘Enter, which does the same for code.
+        keymap({
+          'Mod-Enter': (state, dispatch) => !this.locked && addBlock('after')(state, dispatch),
+          'Shift-Mod-Enter': (state, dispatch) => !this.locked && addBlock('before')(state, dispatch),
+        }),
+        endLinePlugin(),
         keymap(codeKeys),
         keymap(tableKeys),
         keymap(foldKeys),
@@ -508,7 +515,7 @@ export class DocEditor {
   setPage(markdown: string, foldMemory: string | null = null): void {
     this.#foldMemory = foldMemory;
     const page = parsePage(markdown);
-    const doc = withALine(page.doc);
+    const doc = endsWithALine(withALine(page.doc));
     this.#front = page.front;
     this.#loaded = { source: markdown, doc, front: page.front };
     this.view?.updateState(this.#state(doc));
@@ -551,7 +558,7 @@ export class DocEditor {
     const state = this.view?.state;
     if (!state) return { words: 0, characters: 0 };
     const { from, to, empty } = state.selection;
-    const text = empty ? state.doc.textBetween(0, state.doc.content.size, '\n', ' ') : state.doc.textBetween(from, to, '\n', ' ');
+    const text = empty ? textWithoutEndLine(state.doc, 0, state.doc.content.size, ' ') : textWithoutEndLine(state.doc, from, to, ' ');
     return countText(text);
   }
 
@@ -655,6 +662,29 @@ export class DocEditor {
     if (!view || !target || this.locked) return;
     const half = y < target.rect.top + target.rect.height / 2 ? 'top' : 'bottom';
     commands.moveBlock(from, dropPosition(view.state.doc, target.pos, half))(view.state, view.dispatch);
+  }
+
+  /** The handle's `+` with ⌥: a line before the block at `pos`, with the `/` menu open on it. */
+  addBlockBefore(pos: number): void {
+    const view = this.view;
+    const node = view?.state.doc.nodeAt(pos);
+    if (!view || !node || this.locked) return;
+    const tr = view.state.tr.insert(pos, schema.nodes.paragraph.create());
+    tr.insertText('/', pos + 1);
+    view.dispatch(tr.setSelection(TextSelection.create(tr.doc, pos + 2)).scrollIntoView());
+    view.focus();
+  }
+
+  /** The block menu's Add a block before or after: an empty line beside the block at `pos`, the caret on it. */
+  addBlockBeside(pos: number, side: 'before' | 'after'): void {
+    const view = this.view;
+    const node = view?.state.doc.nodeAt(pos);
+    if (!view || !node || this.locked) return;
+    // The notes stay last: a block for them goes before them.
+    const at = side === 'before' || node.type === schema.nodes.footnotes ? pos : pos + node.nodeSize;
+    const tr = view.state.tr.insert(at, schema.nodes.paragraph.create());
+    view.dispatch(tr.setSelection(TextSelection.create(tr.doc, at + 1)).scrollIntoView());
+    view.focus();
   }
 
   /** The handle's +: a new line after the block at `pos`, with the `/` menu open on it. */
@@ -802,7 +832,7 @@ export class DocEditor {
     if (!state) return '';
     const { from, to } = state.selection;
     // A kept block or run as written; a line break as a space.
-    return state.doc.textBetween(from, to, '\n', (leaf) => leaf.type.spec.leafText?.(leaf) ?? ' ');
+    return textWithoutEndLine(state.doc, from, to, (leaf) => leaf.type.spec.leafText?.(leaf) ?? ' ');
   }
 
   /**

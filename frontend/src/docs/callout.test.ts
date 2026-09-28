@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
 import { calloutLook, callouts } from './callout';
 import { runItem } from './slash';
 import { SLASH_ITEMS } from './slash';
+import { atTextEnd } from './test-caret';
 
 let editor: DocEditor | null = null;
 
@@ -21,7 +21,7 @@ function open(markdown: string) {
   editor.mount(host, { onChange: vi.fn() });
   editor.setPage(markdown);
   const view = editor.view!;
-  view.dispatch(view.state.tr.setSelection(TextSelection.atEnd(view.state.doc)));
+  view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)));
   return { view, host };
 }
 

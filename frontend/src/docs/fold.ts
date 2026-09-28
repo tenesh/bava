@@ -1,5 +1,5 @@
 /**
- * Toggle lists and toggle headings, and folding them.
+ * Toggle lists, and folding them.
  *
  * Whether a toggle is folded is never part of the page: it lives in the
  * editor, as decorations that follow edits, so folding cannot mark the page
@@ -14,7 +14,7 @@ import { t } from '../i18n/t';
 import { schema } from './schema';
 
 type FoldState = {
-  /** The folded toggles and toggle headings: a node decoration each, marked `fold`. */
+  /** The folded toggles: a node decoration each, marked `fold`. */
   folded: DecorationSet;
   /** Counts fold changes, so the memory is written when one happens. */
   version: number;
@@ -46,19 +46,14 @@ function writeMemory(page: string, value: Record<string, boolean>): void {
 }
 
 /**
- * Every toggle and toggle heading, with a name that finds it again when the
- * page is reopened: its kind, its text, and which of that name it is.
+ * Every toggle, with a name that finds it again when the page is reopened:
+ * its summary's text, and which of that name it is.
  */
 function foldables(doc: Node): { pos: number; node: Node; id: string }[] {
   const seen = new Map<string, number>();
   const out: { pos: number; node: Node; id: string }[] = [];
   doc.descendants((node, pos) => {
-    const base =
-      node.type === schema.nodes.toggle
-        ? `t:${node.firstChild?.textContent ?? ''}`
-        : node.type === schema.nodes.heading && node.attrs.toggle
-          ? `h${node.attrs.level}:${node.textContent}`
-          : null;
+    const base = node.type === schema.nodes.toggle ? `t:${node.firstChild?.textContent ?? ''}` : null;
     if (base !== null) {
       const n = seen.get(base) ?? 0;
       seen.set(base, n + 1);
@@ -71,24 +66,6 @@ function foldables(doc: Node): { pos: number; node: Node; id: string }[] {
 
 // ---- what a fold hides -----------------------------------------------------------
 
-/** A toggle heading's section: the blocks after it, up to the next heading of its size or larger. */
-export function sectionOf(doc: Node, pos: number): { from: number; to: number } | null {
-  const $pos = doc.resolve(pos);
-  const parent = $pos.parent;
-  const index = $pos.index();
-  const heading = parent.maybeChild(index);
-  if (heading?.type !== schema.nodes.heading) return null;
-  const from = pos + heading.nodeSize;
-  let to = from;
-  for (let i = index + 1; i < parent.childCount; i += 1) {
-    const child = parent.child(i);
-    if (child.type === schema.nodes.footnotes) break;
-    if (child.type === schema.nodes.heading && child.attrs.level <= heading.attrs.level) break;
-    to += child.nodeSize;
-  }
-  return { from, to };
-}
-
 /** What a folded toggle at `pos` hides, or null when it hides nothing. */
 function hiddenBy(doc: Node, pos: number): { from: number; to: number } | null {
   const node = doc.nodeAt(pos);
@@ -96,10 +73,6 @@ function hiddenBy(doc: Node, pos: number): { from: number; to: number } | null {
     const from = pos + 1 + node.firstChild!.nodeSize;
     const to = pos + node.nodeSize - 1;
     return to > from ? { from, to } : null;
-  }
-  if (node?.type === schema.nodes.heading && node.attrs.toggle) {
-    const section = sectionOf(doc, pos);
-    return section && section.to > section.from ? section : null;
   }
   return null;
 }
@@ -109,24 +82,6 @@ function hiddenBy(doc: Node, pos: number): { from: number; to: number } | null {
 function foldMark(doc: Node, pos: number): Decoration | null {
   const node = doc.nodeAt(pos);
   return node ? Decoration.node(pos, pos + node.nodeSize, {}, { fold: true }) : null;
-}
-
-/** The arrow before a toggle heading's text. */
-function headingArrow(folded: boolean) {
-  return (view: EditorView, getPos: () => number | undefined) => {
-    const arrow = document.createElement('button');
-    arrow.type = 'button';
-    arrow.className = 'toggle-arrow';
-    arrow.contentEditable = 'false';
-    arrow.setAttribute('aria-label', t('toggle.fold'));
-    arrow.setAttribute('aria-expanded', String(!folded));
-    arrow.addEventListener('mousedown', (event) => {
-      event.preventDefault();
-      const at = getPos();
-      if (at !== undefined) view.dispatch(view.state.tr.setMeta(foldKey, { toggle: at - 1 } satisfies FoldMeta));
-    });
-    return arrow;
-  };
 }
 
 /** Folding; `page` names the page for the memory, or null for none. */
@@ -164,22 +119,6 @@ export function foldPlugin(page: () => string | null): Plugin<FoldState> {
         state.doc.descendants((node, pos) => {
           if (node.type === schema.nodes.toggle && isFolded(pos)) {
             shown.push(Decoration.node(pos, pos + node.nodeSize, { 'data-folded': '' }, { folded: true }));
-          }
-          if (node.type === schema.nodes.heading && node.attrs.toggle) {
-            const shut = isFolded(pos);
-            shown.push(Decoration.widget(pos + 1, headingArrow(shut), { side: -1, key: `fold-${shut}`, ignoreSelection: true }));
-            if (shut) {
-              shown.push(Decoration.node(pos, pos + node.nodeSize, { 'data-folded': '' }));
-              const section = sectionOf(state.doc, pos);
-              if (section) {
-                state.doc.nodesBetween(section.from, section.to, (child, childPos) => {
-                  if (childPos >= section.from && childPos + child.nodeSize <= section.to) {
-                    shown.push(Decoration.node(childPos, childPos + child.nodeSize, { class: 'folded-away' }));
-                  }
-                  return false;
-                });
-              }
-            }
           }
           return true;
         });
@@ -310,14 +249,4 @@ export const folds = {
     }
     return true;
   }) satisfies Command,
-
-  /** Makes the heading at `pos` a toggle heading, or an ordinary one again. */
-  toggleHeading(pos: number): Command {
-    return (state, dispatch) => {
-      const node = state.doc.nodeAt(pos);
-      if (node?.type !== schema.nodes.heading) return false;
-      dispatch?.(state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, toggle: !node.attrs.toggle }));
-      return true;
-    };
-  },
 };

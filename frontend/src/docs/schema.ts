@@ -65,13 +65,8 @@ export const schema = new Schema({
       group: 'block',
       content: 'inline*',
       defining: true,
-      /** `toggle`: the heading folds its section. */
-      attrs: { level: { default: 1 }, toggle: { default: false }, ...styled },
-      toDOM: (node): DOMOutputSpec => [
-        `h${node.attrs.level}`,
-        { ...styleAttrs(node), ...(node.attrs.toggle ? { 'data-toggle': '' } : {}) },
-        0,
-      ],
+      attrs: { level: { default: 1 }, ...styled },
+      toDOM: (node): DOMOutputSpec => [`h${node.attrs.level}`, styleAttrs(node), 0],
       parseDOM: [1, 2, 3, 4, 5, 6].map((level) => ({ tag: `h${level}`, attrs: { level } })),
     },
     blockquote: {

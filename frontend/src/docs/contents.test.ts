@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
 import { headingEntries } from './contents';
 import { parsePage } from './markdown';
 import { runItem, SLASH_ITEMS } from './slash';
+import { atTextEnd } from './test-caret';
 
 let editor: DocEditor | null = null;
 
@@ -59,7 +59,7 @@ describe('the contents block', () => {
 
   it('is inserted from the / menu', () => {
     const { view } = open('# Title\n\n\n');
-    view.dispatch(view.state.tr.setSelection(TextSelection.atEnd(view.state.doc)));
+    view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)));
     runItem(view, SLASH_ITEMS.find((i) => i.id === 'contents')!);
     expect(editor!.markdown()).toBe('# Title\n\n<!-- bava: contents -->\n\n- [Title](#title)\n\n<!-- bava: /contents -->\n');
   });

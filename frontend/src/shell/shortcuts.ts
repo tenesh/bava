@@ -53,6 +53,11 @@ export function formatAccelerator(accelerator: string, platform: Platform): stri
   return [...names, upper].join('+');
 }
 
+/** A modifier on its own (`optionoralt`, `cmdorctrl`, `shift`, `ctrl`), as the platform names it: ⌥, or Alt. */
+export function modifierName(modifier: string, platform: Platform): string {
+  return platform === 'darwin' ? MAC_SYMBOLS[modifier] : OTHER_NAMES[modifier];
+}
+
 function onPlatform(entry: { platforms?: string[] }, platform: Platform): boolean {
   return !entry.platforms || entry.platforms.includes(platform);
 }

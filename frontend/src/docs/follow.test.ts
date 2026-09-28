@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NodeSelection, TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
 import { classifyLink, followAction, followBeside, joinFile, missingTarget, relinkCandidate } from './links';
+import { atTextEnd } from './test-caret';
 
 const pages = [
   { name: 'Launch plan', path: 'Marketing/Launch plan.md' },
@@ -175,7 +176,7 @@ describe('links to headings', () => {
     expect(copied).toBe('[Time line](Marketing/Launch%20plan.md#time-line)');
     editor!.destroy();
     open('Paste:\n', 'Notes/Today.md');
-    editor!.view!.dispatch(editor!.view!.state.tr.setSelection(TextSelection.atEnd(editor!.view!.state.doc)));
+    editor!.view!.dispatch(editor!.view!.state.tr.setSelection(atTextEnd(editor!.view!.state.doc)));
     editor!.paste(' ' + copied);
     expect(editor!.markdown()).toBe('Paste: [Time line](../Marketing/Launch%20plan.md#time-line)\n');
   });
@@ -187,7 +188,7 @@ describe('links to headings', () => {
       if (node.type.name === 'heading' && node.textContent === 'Goals') heading = pos;
     });
     editor!.copyHeadingLink(heading);
-    view.dispatch(view.state.tr.setSelection(TextSelection.atEnd(view.state.doc)));
+    view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)));
     editor!.paste(' ' + onCopy.mock.calls.at(-1)![0]);
     expect(editor!.markdown()).toBe('# Launch\n\n## Goals\n\nSee [Goals](#goals)\n');
   });

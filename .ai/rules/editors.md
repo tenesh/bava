@@ -63,6 +63,15 @@ component per block.
 - **The formatting bubble follows focus.** It shows for a text selection only
   while the page has focus: a selection left by find is not one to format.
 
+## Adding blocks, and the line at the end
+- **One way for every block** (`docs/lines.ts`): ⌘Enter / ⇧⌘Enter add an
+  empty block after or before the nearest block that can have one beside it.
+  A new kind of block needs a row in `lines.test.ts`, not a key of its own.
+- **The page always ends with an empty line** (`endsWithALine` on reading,
+  `endLinePlugin` after each change). It is never saved and never counted:
+  counts and copies read the text through `textWithoutEndLine`. Tests put the
+  caret at the end of a page's text with `atTextEnd`, never `Selection.atEnd`.
+
 ## Links between pages
 - **One reader decides what a link is.** The Document's own Markdown reader
   finds a page's links with where each sits in its text (`pageLinks` in
