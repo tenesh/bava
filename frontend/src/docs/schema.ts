@@ -51,6 +51,36 @@ function styleAttrs(node: Node): Record<string, string> {
   return out;
 }
 
+/**
+ * An image or a video file alone on its line: its address as the Document
+ * reads it, its words and title, the line as the file wrote it (kept while it
+ * still reads the same), and its settings from the mark above.
+ */
+function media(kind: 'image' | 'video') {
+  return {
+    group: 'block',
+    atom: true,
+    selectable: true,
+    draggable: true,
+    attrs: {
+      src: { default: '' },
+      alt: { default: '' },
+      title: { default: null as string | null },
+      written: { default: null as string | null },
+      width: { default: null as string | null },
+      ratio: { default: null as string | null },
+      align: { default: null as string | null },
+      caption: { default: null as string | null },
+      poster: { default: null as string | null },
+      loop: { default: false },
+      muted: { default: false },
+      extra: { default: null as string | null },
+    },
+    toDOM: (): DOMOutputSpec => ['figure', { class: 'media', 'data-kind': kind }],
+    leafText: (node: Node) => node.attrs.alt as string,
+  };
+}
+
 export const schema = new Schema({
   nodes: {
     doc: { content: 'block* footnotes?' },
@@ -202,6 +232,8 @@ export const schema = new Schema({
       toDOM: (node): DOMOutputSpec => ['div', { class: 'footnote', 'data-label': node.attrs.label }, 0],
     },
     ...tables,
+    image: media('image'),
+    video: media('video'),
     /** A block Bava cannot edit yet, kept byte for byte. */
     kept: {
       group: 'block',
@@ -257,7 +289,7 @@ export const schema = new Schema({
       ],
       leafText: (node) => node.attrs.text as string,
     },
-    /** Inline HTML or an image Bava cannot edit yet. */
+    /** Inline HTML, or an image in a line of text, kept as written. */
     keptInline: {
       inline: true,
       group: 'inline',

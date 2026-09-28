@@ -1,8 +1,10 @@
 package app
 
 import (
+	"encoding/base64"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -25,6 +27,9 @@ type SpaceServiceOptions struct {
 	// one: the smoke test build takes its answers from the scenario. Nil
 	// shows the native picker.
 	ChooseFolder func(title string) (string, error)
+	// Folders learns each Space opened, so the page may be shown its images
+	// and videos. Nil allows nothing.
+	Folders *OpenedFolders
 }
 
 // NewSpaceService constructs the service registered with the application.
@@ -52,7 +57,8 @@ type SpaceList struct {
 
 // Operation is one change to a Space. Kind is createPage, createFolder,
 // rename, move, duplicate, trash, restore, deleteForever, emptyTrash,
-// renameSpace, setPageWidth or relink; the other fields are what it needs.
+// renameSpace, setPageWidth, relink, attach, attachData or renameAttachment;
+// the other fields are what it needs.
 type Operation struct {
 	Kind   string `json:"kind"`
 	Path   string `json:"path"`
@@ -65,6 +71,12 @@ type Operation struct {
 	// Edits are relink's pages: each written only if it still reads as
 	// Before.
 	Edits []PageEdit `json:"edits"`
+	// Source is the file attach copies in, from anywhere on disk.
+	Source string `json:"source"`
+	// Data is what attachData saves, in base64, under Name.
+	Data string `json:"data"`
+	// Attachment is the file renameAttachment renames, to Name.
+	Attachment string `json:"attachment"`
 }
 
 // PageEdit is a page's text before and after its links followed a rename.
@@ -83,8 +95,11 @@ type OpResult struct {
 	// Missed lists relink's pages that were not written: changed since they
 	// were read, or not writable.
 	Missed []string `json:"missed"`
-	Error  string   `json:"error"`
-	Code   string   `json:"code"`
+	// Name is the attachment's name after attach, attachData or
+	// renameAttachment.
+	Name  string `json:"name"`
+	Error string `json:"error"`
+	Code  string `json:"code"`
 }
 
 // SpaceIndex is every page in a Space, in the tree's order.
@@ -120,6 +135,7 @@ func (s *SpaceService) Open(dir string) SpaceInfo {
 	if err != nil {
 		return SpaceInfo{Error: err.Error(), Code: space.Code(err)}
 	}
+	s.options.Folders.Allow(sp.Root)
 	return SpaceInfo{Root: sp.Root, Name: filepath.Base(sp.Root), PageWidth: width}
 }
 
@@ -183,6 +199,20 @@ func (s *SpaceService) Apply(root string, op Operation) OpResult {
 		res.Root = next.Root
 	case "setPageWidth":
 		err = sp.SetPageWidth(op.Width)
+	case "attach":
+		res.Name, err = sp.Attach(op.Source)
+	case "attachData":
+		var data []byte
+		if data, err = base64.StdEncoding.DecodeString(op.Data); err == nil {
+			// Bytes with no name (a pasted screenshot) are named by when they came.
+			name := op.Name
+			if name == "" {
+				name = space.PastedImageName(time.Now())
+			}
+			res.Name, err = sp.AttachData(name, data)
+		}
+	case "renameAttachment":
+		res.Name, err = sp.RenameAttachment(op.Attachment, op.Name)
 	case "relink":
 		for _, edit := range op.Edits {
 			if sp.WriteIfUnchanged(edit.Path, edit.Before, edit.After) != nil {

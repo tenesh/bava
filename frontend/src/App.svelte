@@ -101,6 +101,7 @@
   import { Browser, Clipboard, Events } from '@wailsio/runtime';
   import { followAction, followBeside, joinFile, type Move } from './docs/links';
   import { relinkEdits } from './docs/page-links';
+  import { addMedia, type MediaFile } from './docs/add-media';
   import { ExportService, FileService, LogService, MenuService } from '../bindings/github.com/tenesh/bava/internal/app';
   import { t } from './i18n/t';
   import type { MessageKey } from './i18n/messages';
@@ -587,6 +588,17 @@
 
   // The open page relative to its Space, or null for no page or a loose one.
   const openRel = $derived(doc.path ? space.relative(doc.path) : null);
+  // Where the open page's images and videos load from: its Space, or the
+  // folder of a page opened on its own.
+  const mediaPlace = $derived.by(() => {
+    if (!doc.path) return null;
+    if (space.root && openRel !== null) return { root: space.root, here: openRel };
+    const at = Math.max(doc.path.lastIndexOf('/'), doc.path.lastIndexOf('\\'));
+    const folder = doc.path.slice(0, at);
+    // A page at the root of a disk: the root keeps its separator (`/`, `C:\`).
+    const root = folder === '' || /^[A-Za-z]:$/.test(folder) ? doc.path.slice(0, at + 1) : folder;
+    return { root, here: doc.path.slice(at + 1) };
+  });
 
   /**
    * Open a folder as a Space, closing the page first, and reopen its last
@@ -908,12 +920,69 @@
     await refreshTrash();
   }
 
-  // A yes-or-no question for what cannot be undone.
-  let confirming = $state.raw<{ title: string; body: string; resolve: (yes: boolean) => void } | null>(null);
-  function confirm(title: string, body: string): Promise<boolean> {
+  // A yes-or-no question: for what cannot be undone, or (`yes`) what else it asks.
+  let confirming = $state.raw<{ title: string; body: string; yes: string; resolve: (yes: boolean) => void } | null>(null);
+  function confirm(title: string, body: string, yes = t('trash.confirm')): Promise<boolean> {
     return new Promise((resolve) => {
-      confirming = { title, body, resolve };
+      confirming = { title, body, yes, resolve };
     });
+  }
+
+  /**
+   * Adds images and videos to the open page: copied into the Space's
+   * attachments, then put where they were dropped (`at`) or at the caret. A
+   * page opened on its own first offers to open its folder as a Space.
+   */
+  async function addMediaFiles(files: MediaFile[], at?: { x: number; y: number }) {
+    if (!doc.path) return;
+    await addMedia(files, {
+      inSpace: () => space.root !== null && openRel !== null,
+      offerSpace: async () => {
+        const path = doc.path;
+        if (!path || !(await confirm(t('media.needsSpace.title'), t('media.needsSpace.body'), t('tree.openAsSpace')))) return false;
+        return openSpace(path.replace(/[\\/][^\\/]*$/, ''), true);
+      },
+      attach: async (file) => {
+        const result = await space.apply('path' in file ? { kind: 'attach', source: file.path } : { kind: 'attachData', data: file.data }, { refresh: false });
+        return result.error ? { error: result.error } : { name: result.name ?? '' };
+      },
+      insert: (names) => docPane?.insertMedia(names, at),
+      notify,
+    });
+  }
+
+  /** A paste with no text: the clipboard's image, when it holds one. */
+  async function pasteImage() {
+    const image = await FileService.ClipboardImage();
+    if (image) await addMediaFiles([{ data: image }]);
+  }
+
+  /** A medium's new file, picked and attached; its name, or null. */
+  async function replaceMedia(kind: 'image' | 'video'): Promise<string | null> {
+    const chosen = await FileService.ChooseMedia(kind);
+    const path = chosen.paths?.[0];
+    if (chosen.error) notify(chosen.error);
+    if (!path) return null;
+    const result = await space.apply({ kind: 'attach', source: path }, { refresh: false });
+    if (result.error) notify(result.error);
+    return result.error ? null : (result.name ?? null);
+  }
+
+  /** Renames an attachment, and every page's images and videos follow it. */
+  async function renameAttachment(name: string, next: string) {
+    const result = await space.apply({ kind: 'renameAttachment', attachment: name, name: next }, { refresh: false });
+    if (result.error) {
+      notify(result.error);
+      return;
+    }
+    const folder = '.bava/attachments/';
+    await relinkAfter([{ from: folder + name, to: folder + (result.name ?? next) }], openRel);
+  }
+
+  async function chooseMedia(kind: 'image' | 'video') {
+    const chosen = await FileService.ChooseMedia(kind);
+    if (chosen.error) notify(chosen.error);
+    else if (chosen.paths?.length) await addMediaFiles(chosen.paths.map((path) => ({ path })));
   }
 
   // Space settings.
@@ -1173,7 +1242,11 @@
           const text = await Clipboard.Text();
           editor?.replaceSelection(text);
         },
-        document: async () => docPane?.paste(await Clipboard.Text()),
+        document: async () => {
+          const text = await Clipboard.Text();
+          if (text) docPane?.paste(text);
+          else await pasteImage();
+        },
         code: async () => codeEditor?.replaceSelection(await Clipboard.Text()),
         field: async () => void document.execCommand('insertText', false, await Clipboard.Text()),
         canvas: () => {
@@ -1798,6 +1871,11 @@
     });
     // Go recovered from a panic.
     const offAppError = Events.On('app:error', (event) => errors.unexpected(event.data as GoError));
+    // Files dragged from the desktop onto the Document, added where they land.
+    const offDrop = Events.On('files:dropped', (event) => {
+      const drop = event.data as { paths: string[]; x: number; y: number };
+      void addMediaFiles(drop.paths.map((path) => ({ path })), { x: drop.x, y: drop.y });
+    });
     // Told once: the previous session ended unexpectedly, or the webview was
     // reloaded after its process died.
     void LogService.TakeNotices()
@@ -1807,6 +1885,7 @@
     return () => {
       removeErrorHandlers();
       offAppError();
+      offDrop();
       offMenu();
       window.removeEventListener('keydown', onShortcut, true);
       clearTimeout(noticeTimer);
@@ -2046,9 +2125,21 @@
       onTrashPage={() => openRel && void trashPath(openRel)}
       onCopyText={(text) => void Clipboard.SetText(text)}
       here={space.root ? openRel : null}
+      {mediaPlace}
       readIndex={(withText) => space.index(withText)}
       onFollow={(href) => void followLink(href)}
       onOpenPage={(path) => void openPath(space.absolute(path))}
+      onChooseMedia={(kind) => void chooseMedia(kind)}
+      onPasteImage={() => void pasteImage()}
+      onReplaceMedia={replaceMedia}
+      onRenameAttachment={(name, next) => void renameAttachment(name, next)}
+      onRevealFile={(path) => void revealPath(path)}
+      onAttachPoster={async (data, name) => {
+        const result = await space.apply({ kind: 'attachData', data, name }, { refresh: false });
+        if (result.error) notify(result.error);
+        return result.error ? null : (result.name ?? null);
+      }}
+      onNotify={notify}
     />
   {/snippet}
 
@@ -2279,7 +2370,7 @@
     body={confirming.body}
     options={[
       { value: 'cancel', label: t('file.cancel') },
-      { value: 'yes', label: t('trash.confirm'), primary: true },
+      { value: 'yes', label: confirming.yes, primary: true },
     ]}
     onChoose={(choice) => {
       const pending = confirming;

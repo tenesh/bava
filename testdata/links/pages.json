@@ -408,5 +408,25 @@
     "links": [
       "old.md"
     ]
+  },
+  {
+    "name": "an image alone on its line",
+    "src": "![a](pic.png)\n\n> ![b](<my pic.png>)\n",
+    "links": [
+      "pic.png",
+      "<my pic.png>"
+    ]
+  },
+  {
+    "name": "a video alone on its line, under its mark",
+    "src": "<!-- bava: width=large -->\n![Demo](.bava/attachments/demo.mp4)\n",
+    "links": [
+      ".bava/attachments/demo.mp4"
+    ]
+  },
+  {
+    "name": "an image in a line of text is not read",
+    "src": "See ![a](pic.png) here.\n\n![a](file.pdf)\n",
+    "links": []
   }
 ]

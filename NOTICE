@@ -51,6 +51,13 @@ Emoji names
     Copyright (c) 2019 Mu-An Chiou
     https://github.com/muan/unicode-emoji-json
 
+Pasted images
+  golang.design/x/clipboard, golang.design/x/x11: MIT
+    Copyright (c) 2021 Changkun Ou <contact@changkun.de>
+    https://github.com/golang-design/clipboard
+  purego (github.com/ebitengine/purego): Apache-2.0
+    https://github.com/ebitengine/purego
+
 Icons
   Lucide (@lucide/svelte): ISC
     Copyright (c) 2026 Lucide Icons and Contributors

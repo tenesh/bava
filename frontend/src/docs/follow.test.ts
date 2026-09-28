@@ -243,6 +243,23 @@ describe('the open page after a rename or move', () => {
   });
 });
 
+describe("the open page's images and videos after a rename or move", () => {
+  it('follow an attachment renamed, address and poster, as one edit', () => {
+    const page = '<!-- bava: poster="logo.png" -->\n![Demo](.bava/attachments/demo.mp4)\n\n![Logo](.bava/attachments/logo.png)\n';
+    open(page, 'Page.md');
+    editor!.followMoves('Page.md', [{ from: '.bava/attachments/logo.png', to: '.bava/attachments/brand.png' }]);
+    expect(editor!.markdown()).toBe('<!-- bava: poster="brand.png" -->\n![Demo](.bava/attachments/demo.mp4)\n\n![Logo](.bava/attachments/brand.png)\n');
+    editor!.undo();
+    expect(editor!.markdown()).toBe(page);
+  });
+
+  it('keep reaching their files when the page moved', () => {
+    open('![Logo](.bava/attachments/logo.png)\n', 'Page.md');
+    editor!.followMoves('Page.md', [{ from: 'Page.md', to: 'Notes/Page.md' }]);
+    expect(editor!.markdown()).toBe('![Logo](../.bava/attachments/logo.png)\n');
+  });
+});
+
 describe('the open page and formatted link text', () => {
   it('keeps a link whose words are formatted as written, as the closed pages do', () => {
     const { view } = open('See [**Launch** plan](Launch%20plan.md).\n');

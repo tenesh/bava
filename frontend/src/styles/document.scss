@@ -69,7 +69,7 @@ $callout-swatches: (
   }
 
   // No block brings the browser's own margins; the rhythm below sets them.
-  :where(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre) {
+  :where(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre, figure) {
     margin: 0;
   }
 
@@ -734,6 +734,133 @@ $callout-swatches: (
     height: 0;
     color: var(--color-text-faint);
     pointer-events: none;
+  }
+
+  // An image or a video: at its own size up to the column, or at a width
+  // preset; cropped to a ratio about its centre; centred unless aligned; its
+  // caption under it.
+  .media {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-radius: var(--radius-md);
+
+    &[data-align='left'] {
+      align-items: flex-start;
+    }
+
+    &[data-align='right'] {
+      align-items: flex-end;
+    }
+  }
+
+  .media-frame {
+    position: relative;
+    max-width: 100%;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+  }
+
+  @each $width in small, medium, large {
+    .media[data-width='#{$width}'] .media-frame {
+      width: var(--size-media-#{$width});
+    }
+  }
+
+  .media[data-width='full'] .media-frame {
+    width: 100%;
+  }
+
+  .media-file {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .media[data-width] .media-file {
+    width: 100%;
+  }
+
+  @each $ratio, $value in ('16:9': 16 / 9, '4:3': 4 / 3, '1:1': 1) {
+    .media[data-ratio='#{$ratio}'] .media-file {
+      width: 100%;
+      aspect-ratio: $value;
+      object-fit: cover;
+      object-position: center;
+    }
+  }
+
+  .media-notice {
+    display: none;
+  }
+
+  // Not shown: the file is missing, or this webview cannot play it. The
+  // notice takes the file's place, with the relink offer when there is one.
+  .media:is([data-state='missing'], [data-state='unplayable']) {
+    .media-frame {
+      width: 100%;
+      min-height: var(--size-media-notice);
+      border: var(--border-width) dashed var(--color-border-strong);
+      background: var(--color-surface-sunken);
+    }
+
+    .media-notice {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      color: var(--color-text-muted);
+      font-size: var(--text-meta);
+      text-align: center;
+    }
+  }
+
+  .media[data-state='missing'] .media-file {
+    visibility: hidden;
+  }
+
+  .media-relink {
+    height: var(--size-row-sm);
+    padding: 0 var(--space-2);
+    border: var(--border-width) solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    font: inherit;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-control-hover);
+    }
+
+    &:active {
+      background: var(--color-control-active);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring-width) solid var(--color-focus-ring);
+      outline-offset: var(--focus-halo-width);
+    }
+  }
+
+  .media-caption {
+    max-width: 100%;
+    margin-top: var(--space-1);
+    color: var(--color-text-muted);
+    font-size: var(--text-meta);
+    text-align: center;
+  }
+
+  .media[data-align='left'] .media-caption {
+    text-align: left;
+  }
+
+  .media[data-align='right'] .media-caption {
+    text-align: right;
   }
 
   // What this version cannot edit: shown as written, and said so.

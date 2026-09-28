@@ -277,6 +277,12 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       async ChooseFileToSave(suggestedName: string) {
         return { path: `${PARENT}/${suggestedName}`, error: '' };
       },
+      async ChooseMedia(_kind: string) {
+        return { paths: [], error: '' };
+      },
+      async ClipboardImage() {
+        return '';
+      },
       async Settings() {
         return { ...settings };
       },

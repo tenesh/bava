@@ -25,6 +25,7 @@ export type {
     OpenResult,
     Operation,
     PageEdit,
+    PathsResult,
     Problem,
     SaveResult,
     SpaceIndex,

@@ -139,8 +139,9 @@ An entity in the file (`&amp;`, `&copy;`, `&nbsp;`) is written as the
 character it stands for.
 
 Inline HTML Bava does not know (`<kbd>`, `<sup>`, a comment, a `<u>` never
-closed) is kept as it is, in its place in the text. Images are kept as
-written too. A numbered list that starts at another number keeps its first
+closed) is kept as it is, in its place in the text. An image inside a line of text
+is kept as written too; an image alone on its line is a media block (below).
+A numbered list that starts at another number keeps its first
 number.
 
 ### Invisible marks
@@ -166,6 +167,8 @@ A paragraph in red on yellow.
 - `toggle` on a heading was a toggle heading in earlier versions; Bava no
   longer folds headings, so it is kept as written, as any unknown key.
 - `wrap` and `caption="…"`: a code block's settings (below).
+- `width`, `ratio`, `align` and `caption="…"`: an image's or a video's
+  settings; `poster`, `loop` and `muted`: a video's (below).
 - `color=<swatch>` and `icon=<emoji>` on a note callout: a custom callout
   (below).
 - A value with spaces is quoted (`caption="Start the server"`). Inside the
@@ -410,6 +413,46 @@ The launch is on <time datetime="2026-10-02">2 Oct 2026</time>.
   anything but plain text (a tag, an entity, or Markdown's marks such as `*`,
   `_`, `` ` ``, `~`, `[`, `]`, `\` and `$`), is kept as written.
 - A date typed as plain text (`2026-10-02`) stays text.
+
+### Images and videos
+An image or a video file alone on its line is a media block: a Markdown
+image, its settings in the mark above.
+
+```markdown
+<!-- bava: width=medium ratio=16:9 caption="The new editor" -->
+![The new editor](.bava/attachments/editor.png)
+
+<!-- bava: width=large poster="demo-poster.png" loop muted -->
+![Demo](.bava/attachments/demo.mp4)
+```
+
+- **Which it is:** by the address's file type. `.png`, `.jpg`, `.jpeg`,
+  `.gif`, `.webp` and `.svg` are images; `.mp4`, `.webm` and `.mov` are
+  videos. Any other type stays a kept image, as written.
+- **Where it is:** relative to the page, or on the web (`https://…`). An
+  image on the web is loaded when the page shows it, so opening the page
+  reaches that site; a video on the web loads nothing until play is pressed.
+  An address from the root of the disk (`/…`) or by another scheme stays a
+  kept image.
+- **The address** is relative to the page, with `%20` and the other
+  encodings of a link (above). Files Bava adds are in the Space's
+  `.bava/attachments/`. Moving or renaming a page, or renaming an attachment
+  in Bava, rewrites every address that reaches it, and nothing else.
+- **The alt text** starts as the file's name without its extension; Bava
+  keeps what is written there.
+- **The settings**, each left out when it is the default:
+  - `width`: `small`, `medium`, `large` or `full` (of the page's column).
+    Without it the image is drawn at its own size, up to the column.
+  - `ratio`: `16:9`, `4:3` or `1:1`. The image fills that shape, cropped
+    about its centre. Without it, its own shape.
+  - `align`: `left` or `right`. Without it, centred.
+  - `caption="…"`: shown under it, in Bava only.
+  - `poster="<file>"`, a video's still, by its name in the attachments
+    folder (never a path, so moving the page never changes it); `loop`;
+    `muted`.
+- Other apps show the image (and Obsidian plays the video; GitHub shows a
+  video as a broken image); the settings show in Bava only. A video never
+  plays by itself.
 
 ### Blocks kept as they are
 A block this version cannot edit is shown in the page, read-only, and written
@@ -699,6 +742,7 @@ My Space/
   Roadmap.md
   .bava/
     space.json
+    attachments/
     trash/
 ```
 
@@ -753,6 +797,23 @@ A page or folder moved to the Trash goes, whole and unchanged, into
   (`Launch plan 2.md`).
 - A folder holding a `.bava/` of its own is not a Space inside a Space: Bava
   treats only the folder opened as the Space.
+
+### `.bava/attachments/`
+
+The files pages show: images and videos added by paste, drop or the `/`
+menu, each copied here, in one folder for the whole Space.
+
+- A file keeps its name. A different file with a name already there is
+  saved numbered (`logo 2.png`); a file with the same bytes as one already
+  there is not copied again, and the page uses that one.
+- A pasted image with no name is saved as `Pasted image YYYY-MM-DD
+  HH.MM.SS.png`.
+- Nothing records which page uses which file: a file no page reaches is
+  unused, worked out by reading the pages. Removing media from a page never
+  deletes its file.
+- A file renamed or removed outside Bava leaves its media missing; Bava
+  offers to relink it to a file of the same name here, and changes nothing
+  until asked.
 
 ## What is not in a file
 

@@ -774,3 +774,107 @@ describe('date chips', () => {
     expect(dates(rich)).toHaveLength(1);
   });
 });
+
+describe('images and videos', () => {
+  const first = (markdown: string) => parsePage(markdown).doc.firstChild!;
+
+  it('reads an image alone on its line as an image block, and writes it back as written', () => {
+    const page = '![The new editor](.bava/attachments/editor.png)\n';
+    same(page);
+    const image = first(page);
+    expect(image.type.name).toBe('image');
+    expect(image.attrs).toMatchObject({ src: '.bava/attachments/editor.png', alt: 'The new editor', title: null });
+  });
+
+  it('reads its settings from the mark above, and writes them in Bava\'s order', () => {
+    same('<!-- bava: width=medium ratio=16:9 align=left caption="The new editor" -->\n![The new editor](.bava/attachments/editor.png)\n');
+    expect(first('<!-- bava: width=medium ratio=16:9 align=left caption="The new editor" -->\n![a](a.png)\n').attrs).toMatchObject({
+      width: 'medium',
+      ratio: '16:9',
+      align: 'left',
+      caption: 'The new editor',
+    });
+    expect(tidy('<!-- bava: caption="c" align=right width=small -->\n![a](a.png)\n')).toBe('<!-- bava: width=small align=right caption="c" -->\n![a](a.png)\n');
+  });
+
+  it('reads a video by its file type, with its poster, loop and mute', () => {
+    const page = '<!-- bava: width=large poster="demo poster.png" loop muted -->\n![Demo](.bava/attachments/demo.mp4)\n';
+    same(page);
+    const video = first(page);
+    expect(video.type.name).toBe('video');
+    expect(video.attrs).toMatchObject({ src: '.bava/attachments/demo.mp4', width: 'large', poster: 'demo poster.png', loop: true, muted: true });
+    for (const ext of ['webm', 'MOV']) expect(first(`![v](v.${ext})\n`).type.name).toBe('video');
+    for (const ext of ['jpg', 'jpeg', 'gif', 'webp', 'svg', 'PNG']) expect(first(`![i](i.${ext})\n`).type.name).toBe('image');
+  });
+
+  it('reads an image or a video on the web as a block', () => {
+    same('<!-- bava: width=large -->\n![Chart](https://example.com/chart.png)\n');
+    expect(first('![Chart](https://example.com/chart.png)\n').type.name).toBe('image');
+    expect(first('![Clip](http://example.com/clip.mp4)\n').type.name).toBe('video');
+  });
+
+  it('keeps a hand-written image line exactly as written', () => {
+    for (const page of ['![a *b*](<my pic.png> "The \\"title\\"")\n', '![](a.png)\n', '![a](my%20pic.png?v=2#x)\n']) {
+      expect(first(page).type.name, page).toBe('image');
+    }
+    // Spaces around the line mean nothing to any reader: they go.
+    expect(keepsMeaning('  ![a](a.png)  \n')).toBe('![a](a.png)\n');
+    same('![a *b*](<my pic.png> "The \\"title\\"")\n');
+    same('![](a.png)\n');
+    same('![a](my%20pic.png?v=2#x)\n');
+  });
+
+  it('keeps an image by reference exactly as written: its address is its definition\'s', () => {
+    same('![x][r]\n\n[r]: a.png\n');
+    same('![r]\n\n[r]: a.png\n');
+  });
+
+  it('keeps an image in a line of text, of another type, from the disk\'s root or another scheme, or opening a list item, as written', () => {
+    for (const page of ['An ![a](pic.png) inline.\n', '![a](file.pdf)\n', '![a](a.png) ![b](b.png)\n', '![a](a.png)\nmore\n', '- ![a](a.png)\n', '![a](/tmp/a.png)\n', '![a](ftp://example.com/a.png)\n']) {
+      keepsMeaning(page);
+      const kinds: string[] = [];
+      parsePage(page).doc.descendants((node) => {
+        kinds.push(node.type.name);
+      });
+      expect(kinds, page).not.toContain('image');
+      expect(kinds, page).toContain('keptInline');
+    }
+  });
+
+  it('holds an image inside a quote, a callout, a toggle and a list item after its first line', () => {
+    same('> ![a](a.png)\n');
+    same('> [!note]\n>\n> ![a](a.png)\n');
+    same('<details>\n<summary>More</summary>\n\n![a](a.png)\n\n</details>\n');
+    same('- item\n\n  ![a](a.png)\n');
+    const kinds: string[] = [];
+    parsePage('- item\n\n  ![a](a.png)\n').doc.descendants((node) => {
+      kinds.push(node.type.name);
+    });
+    expect(kinds).toContain('image');
+  });
+
+  it('keeps a key it does not take, or a value it does not know, as written', () => {
+    same('<!-- bava: loop -->\n![a](a.png)\n');
+    expect(first('<!-- bava: loop -->\n![a](a.png)\n').attrs.extra).toBe('loop');
+    same('<!-- bava: width=huge ratio=2:1 align=center poster="../x.png" -->\n![a](a.mp4)\n');
+    expect(first('<!-- bava: width=huge -->\n![a](a.png)\n').attrs).toMatchObject({ width: null, extra: 'width=huge' });
+  });
+
+  it('writes a new image from its address and words', () => {
+    const n = schema.nodes;
+    const doc = n.doc.create(null, [
+      n.image.create({ src: 'my%20pic.png', alt: 'a [b] *c*', width: 'full' }),
+      n.paragraph.create(null, schema.text('After')),
+    ]);
+    const written = writePage(doc, parsePage('').front);
+    expect(written).toBe('<!-- bava: width=full -->\n![a \\[b\\] \\*c\\*](my%20pic.png)\n\nAfter\n');
+    expect(parsePage(written).doc.firstChild!.attrs).toMatchObject({ src: 'my%20pic.png', alt: 'a [b] *c*', width: 'full' });
+  });
+
+  it('writes an image whose address changed from its new address, not as it was written', () => {
+    const page = parsePage('![a](<old pic.png> "T")\n');
+    const image = page.doc.firstChild!;
+    const doc = page.doc.type.create(null, [image.type.create({ ...image.attrs, src: 'new.png' }), ...page.doc.content.content.slice(1)]);
+    expect(writePage(doc, page.front)).toBe('![a](new.png "T")\n');
+  });
+});

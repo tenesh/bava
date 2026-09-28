@@ -47,6 +47,15 @@
   --size-page-narrow: 640px;
   --size-page-wide: 760px;
   --size-doc-gutter: 56px;
+  // An image's or a video's width presets, as parts of the page's column,
+  // and the height of one that could not be shown.
+  --size-media-small: 33%;
+  --size-media-medium: 50%;
+  --size-media-large: 75%;
+  --size-media-notice: 120px;
+  // An image full screen: the window, less a margin to show it is over the app.
+  --size-media-viewer-width: 92vw;
+  --size-media-viewer-height: 92vh;
   // A to-do's box, a quote's rule, a list's indent.
   --size-todo-box: 14px;
   // A callout's icon, beside its first line.

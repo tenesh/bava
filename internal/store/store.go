@@ -9,9 +9,11 @@ package store
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Stamp is what a file looked like when it was read.
@@ -62,6 +64,12 @@ func Open(path string) (File, error) {
 // filesystems is not atomic) and is then renamed over the target. A crash
 // mid-save leaves either the old file or the new one, never a truncated one.
 func Save(path, content string) error {
+	return SaveFrom(path, strings.NewReader(content))
+}
+
+// SaveFrom writes what r holds to path atomically, as Save does, without
+// holding it all in memory: a video can be large.
+func SaveFrom(path string, r io.Reader) error {
 	dir := filepath.Dir(path)
 
 	// Deliberately not creating the directory: silently making folders turns a
@@ -96,7 +104,7 @@ func Save(path, content string) error {
 		_ = temp.Chmod(existing.Mode().Perm())
 	}
 
-	if _, err := temp.WriteString(content); err != nil {
+	if _, err := io.Copy(temp, r); err != nil {
 		temp.Close()
 		return fmt.Errorf("save %s: %w", filepath.Base(path), err)
 	}

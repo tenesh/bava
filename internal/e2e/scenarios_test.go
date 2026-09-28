@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -14,8 +15,17 @@ func TestTheCommittedScenariosParse(t *testing.T) {
 		t.Fatalf("no scenarios found: %v", err)
 	}
 	for _, file := range files {
-		if _, err := e2e.Load(file, map[string]string{"SCRATCH": "/tmp/scratch"}); err != nil {
+		sc, err := e2e.Load(file, map[string]string{"SCRATCH": "/tmp/scratch", "REPO": "../.."})
+		if err != nil {
 			t.Errorf("%s: %v", file, err)
+		}
+		// A file a picker is answered with is in the repository.
+		for _, answer := range sc.Files {
+			for _, picked := range answer {
+				if _, err := os.Stat(picked); err != nil {
+					t.Errorf("%s: %v", file, err)
+				}
+			}
 		}
 	}
 }

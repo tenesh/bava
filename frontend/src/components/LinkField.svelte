@@ -1,9 +1,11 @@
 <script lang="ts">
   /**
    * The link field over selected text: type an address and press Enter to
-   * link it, Remove to unlink, Escape to leave it as it was.
+   * link it, Remove to unlink, Escape to leave it as it was. The same field
+   * takes a medium's caption and its file's new name (`placeholder`,
+   * `removeLabel`, or none to offer no Remove).
    *
-   * Presentational: it reports the address; the Document editor links.
+   * Presentational: it reports what was typed; the Document acts on it.
    */
   import { Portal } from '@ark-ui/svelte';
   import { portalRoot } from './portal-root';
@@ -17,16 +19,22 @@
     onApply: (href: string) => void;
     onRemove: () => void;
     onCancel: () => void;
+    /** What the field asks for; a link's address by default. */
+    placeholder?: string;
+    /** The Remove button's words; null for no Remove. */
+    removeLabel?: string | null;
   };
 
-  let { at, value, onApply, onRemove, onCancel }: Props = $props();
+  let { at, value, onApply, onRemove, onCancel, placeholder = t('link.placeholder'), removeLabel = t('link.remove') }: Props = $props();
 
   // Seeded once from the link the selection has; the field then owns it.
   // svelte-ignore state_referenced_locally
   let href = $state(value);
-  let field: HTMLInputElement;
+  // Focused once the portal has put it in the page, not before.
+  let field: HTMLInputElement | undefined = $state();
 
   $effect(() => {
+    if (!field) return;
     field.focus();
     field.select();
   });
@@ -46,8 +54,8 @@
       bind:this={field}
       bind:value={href}
       class="bava-field"
-      placeholder={t('link.placeholder')}
-      aria-label={t('link.placeholder')}
+      {placeholder}
+      aria-label={placeholder}
       onkeydown={(event) => {
         if (event.key === 'Escape') {
           event.preventDefault();
@@ -55,7 +63,9 @@
         }
       }}
     />
-    <button type="button" class="bava-button ghost" onclick={onRemove}>{t('link.remove')}</button>
+    {#if removeLabel}
+      <button type="button" class="bava-button ghost" onclick={onRemove}>{removeLabel}</button>
+    {/if}
   </form>
 </Portal>
 

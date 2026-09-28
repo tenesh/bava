@@ -18,7 +18,7 @@ func TestOpenReturnsProseAndScene(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := app.NewFileService().Open(path)
+	result := app.NewFileService(app.FileServiceOptions{}).Open(path)
 
 	if result.Error != "" {
 		t.Fatalf("Error = %q", result.Error)
@@ -34,7 +34,7 @@ func TestOpenReturnsProseAndScene(t *testing.T) {
 // A missing file is something the user can act on, so it is data rather than
 // a failed call, the same shape as a compile diagnostic.
 func TestOpenMissingFileReportsInError(t *testing.T) {
-	result := app.NewFileService().Open(filepath.Join(t.TempDir(), "absent.md"))
+	result := app.NewFileService(app.FileServiceOptions{}).Open(filepath.Join(t.TempDir(), "absent.md"))
 	if result.Error == "" {
 		t.Fatal("expected an error message")
 	}
@@ -45,7 +45,7 @@ func TestOpenMissingFileReportsInError(t *testing.T) {
 
 func TestSaveThenOpenRoundTrips(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "notes.md")
-	service := app.NewFileService()
+	service := app.NewFileService(app.FileServiceOptions{})
 	scene := format.Scene{
 		Version:  format.Version,
 		Elements: []format.Element{{ID: "e1", Type: "rect", W: 10, H: 10, Z: 1}},
@@ -70,7 +70,7 @@ func TestSaveThenOpenRoundTrips(t *testing.T) {
 
 func TestChangedOnDiskNoticesAnotherWriter(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "notes.md")
-	service := app.NewFileService()
+	service := app.NewFileService(app.FileServiceOptions{})
 	saved := service.Save(path, "one\n", format.Scene{})
 	if saved.Error != "" {
 		t.Fatal(saved.Error)

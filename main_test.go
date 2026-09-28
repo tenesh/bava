@@ -1,6 +1,9 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,7 +25,7 @@ func TestPostShutdownClosesTheSession(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	options := appOptions(session, nil, func(app.AppError) {})
+	options := appOptions(session, nil, func(app.AppError) {}, app.NewOpenedFolders())
 	if options.PostShutdown == nil {
 		t.Fatal("PostShutdown is not set")
 	}
@@ -48,5 +51,32 @@ func TestPostShutdownClosesTheSession(t *testing.T) {
 	defer next.Close()
 	if next.Previous.Unexpected {
 		t.Error("a quit through PostShutdown was reported as unexpected at the next launch")
+	}
+}
+
+// The page is shown images and videos through the app's own asset server:
+// the file route must sit in front of it.
+func TestTheFileRouteIsInstalled(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "a.png"), []byte("png"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	folders := app.NewOpenedFolders()
+	folders.Allow(root)
+	session, err := logs.Start(logs.Options{Dir: t.TempDir(), Now: time.Date(2026, 9, 29, 10, 0, 0, 0, time.UTC), PID: 42})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
+	options := appOptions(session, nil, func(app.AppError) {}, folders)
+	if options.Assets.Middleware == nil {
+		t.Fatal("no file route")
+	}
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusTeapot) })
+	rec := httptest.NewRecorder()
+	query := url.Values{"root": {root}, "path": {"a.png"}}
+	options.Assets.Middleware(next).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/bava-file/?"+query.Encode(), nil))
+	if rec.Code != http.StatusOK || rec.Body.String() != "png" {
+		t.Errorf("served %d %q", rec.Code, rec.Body.String())
 	}
 }

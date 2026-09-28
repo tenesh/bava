@@ -55,3 +55,28 @@ func TestFoldersAreAnsweredInOrderThenRefused(t *testing.T) {
 		t.Errorf("a picker with no answer left = %v", err)
 	}
 }
+
+func TestFilesAreAnsweredInOrderWithTheirVariables(t *testing.T) {
+	sc, err := e2e.Parse([]byte(`{
+		"name": "media",
+		"files": [["${REPO}/logo.png", "${REPO}/demo.mp4"], []],
+		"steps": [{"do": "menu", "target": "file.new"}]
+	}`), map[string]string{"REPO": "/repo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := e2e.NewFileQueue(sc.Files)
+	got, err := q.Next("image")
+	if err != nil || len(got) != 2 || got[0] != "/repo/logo.png" || got[1] != "/repo/demo.mp4" {
+		t.Errorf("first answer = %v, %v", got, err)
+	}
+	if got, err := q.Next("video"); err != nil || len(got) != 0 {
+		t.Errorf("a cancelled picker = %v, %v", got, err)
+	}
+	if _, err := q.Next("image"); err == nil || !strings.Contains(err.Error(), "no answer") {
+		t.Errorf("a picker with no answer left = %v", err)
+	}
+	if _, err := e2e.Parse([]byte(`{"name":"x","files":[["${NOPE}"]],"steps":[{"do":"menu","target":"file.new"}]}`), nil); err == nil {
+		t.Error("an unset variable in a file answer was parsed")
+	}
+}

@@ -25,17 +25,33 @@ type Step struct {
 	TimeoutMs int       `json:"timeoutMs,omitempty"`
 }
 
-// Scenario is a smoke walk: the folder picker's answers, in the order the
+// Scenario is a smoke walk: the folder picker's answers and the media
+// picker's (each a list of files, empty for a cancel), in the order the
 // pickers are shown, and the steps.
 type Scenario struct {
-	Name    string   `json:"name"`
-	Folders []string `json:"folders,omitempty"`
-	Steps   []Step   `json:"steps"`
+	Name    string     `json:"name"`
+	Folders []string   `json:"folders,omitempty"`
+	Files   [][]string `json:"files,omitempty"`
+	Steps   []Step     `json:"steps"`
 }
 
 var variable = regexp.MustCompile(`\$\{([A-Z_]+)\}`)
 
-// Parse reads a scenario, replacing ${NAME} in folder answers with vars, and
+// expand replaces ${NAME} in an answer with its value in vars.
+func expand(answer string, vars map[string]string) (string, error) {
+	var missing error
+	out := variable.ReplaceAllStringFunc(answer, func(m string) string {
+		name := variable.FindStringSubmatch(m)[1]
+		value, ok := vars[name]
+		if !ok {
+			missing = fmt.Errorf("scenario: ${%s} is not set", name)
+		}
+		return value
+	})
+	return out, missing
+}
+
+// Parse reads a scenario, replacing ${NAME} in picker answers with vars, and
 // refuses one that could not run to the end.
 func Parse(data []byte, vars map[string]string) (Scenario, error) {
 	var sc Scenario
@@ -46,17 +62,17 @@ func Parse(data []byte, vars map[string]string) (Scenario, error) {
 		return sc, errors.New("scenario: no steps")
 	}
 	for i, folder := range sc.Folders {
-		var missing error
-		sc.Folders[i] = variable.ReplaceAllStringFunc(folder, func(m string) string {
-			name := variable.FindStringSubmatch(m)[1]
-			value, ok := vars[name]
-			if !ok {
-				missing = fmt.Errorf("scenario: ${%s} is not set", name)
+		var err error
+		if sc.Folders[i], err = expand(folder, vars); err != nil {
+			return sc, err
+		}
+	}
+	for i, answer := range sc.Files {
+		for j, file := range answer {
+			var err error
+			if sc.Files[i][j], err = expand(file, vars); err != nil {
+				return sc, err
 			}
-			return value
-		})
-		if missing != nil {
-			return sc, missing
 		}
 	}
 	for i, step := range sc.Steps {
@@ -126,4 +142,28 @@ func (q *FolderQueue) Next(title string) (string, error) {
 	next := q.answers[0]
 	q.answers = q.answers[1:]
 	return next, nil
+}
+
+// FileQueue answers the media picker from a scenario, one answer per picker
+// shown.
+type FileQueue struct {
+	mu      sync.Mutex
+	answers [][]string
+}
+
+// NewFileQueue holds a scenario's file answers.
+func NewFileQueue(answers [][]string) *FileQueue {
+	return &FileQueue{answers: append([][]string(nil), answers...)}
+}
+
+// Next is the next answer; a picker shown with none left is a scenario error.
+func (q *FileQueue) Next(kind string) ([]string, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if len(q.answers) == 0 {
+		return nil, fmt.Errorf("e2e: the %s picker was shown with no answer left", kind)
+	}
+	next := q.answers[0]
+	q.answers = q.answers[1:]
+	return append([]string{}, next...), nil
 }

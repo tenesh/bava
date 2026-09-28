@@ -9,6 +9,7 @@ function shown(markdown: string): string[] {
   const out: string[] = [];
   parsePage(markdown).doc.descendants((node) => {
     for (const mark of node.marks) if (mark.type.name === 'link') out.push(mark.attrs.href as string);
+    if (node.type.name === 'image' || node.type.name === 'video') out.push(node.attrs.src as string);
   });
   return out;
 }
@@ -208,5 +209,45 @@ describe('a label defined twice', () => {
     expect(rewritePageLinks('r.md', unused, zed)).toEqual({ text: unused, unplaced: 1 });
     const used = '[x][q]\n\n[q]: b.md\n\n[q]: other.md\n';
     expect(rewritePageLinks('r.md', used, zed)?.text).toBe('[x][q]\n\n[q]: Zed.md\n\n[q]: other.md\n');
+  });
+});
+
+describe('images and videos after a rename', () => {
+  it('follow a page that moved, and never change their words', () => {
+    const text = '<!-- bava: width=small -->\n![Logo](../.bava/attachments/logo.png)\n\nSee ![inline](../x.png).\n';
+    const got = rewritePageLinks('Notes/Page.md', text, [{ from: 'Notes/Page.md', to: 'Page.md' }]);
+    expect(got).toEqual({ text: '<!-- bava: width=small -->\n![Logo](.bava/attachments/logo.png)\n\nSee ![inline](../x.png).\n', unplaced: 0 });
+  });
+
+  it('follow an attachment renamed, its address and every poster naming it', () => {
+    const text = '<!-- bava: caption="poster=logo.png" poster="logo.png" loop -->\n![Demo](.bava/attachments/demo.mp4)\n\n![Logo](.bava/attachments/logo.png)\n';
+    const got = rewritePageLinks('Page.md', text, [{ from: '.bava/attachments/logo.png', to: '.bava/attachments/brand mark.png' }]);
+    expect(got).toEqual({
+      text: '<!-- bava: caption="poster=logo.png" poster="brand mark.png" loop -->\n![Demo](.bava/attachments/demo.mp4)\n\n![Logo](.bava/attachments/brand%20mark.png)\n',
+      unplaced: 0,
+    });
+  });
+
+  it('keep a poster written without quotes that way', () => {
+    const text = '<!-- bava: poster=logo.png -->\n![Demo](.bava/attachments/demo.mp4)\n';
+    expect(rewritePageLinks('Page.md', text, [{ from: '.bava/attachments/logo.png', to: '.bava/attachments/brand.png' }])?.text).toBe(
+      '<!-- bava: poster=brand.png -->\n![Demo](.bava/attachments/demo.mp4)\n',
+    );
+    // A new name that needs quotes gets them.
+    expect(rewritePageLinks('Page.md', text, [{ from: '.bava/attachments/logo.png', to: '.bava/attachments/brand mark.png' }])?.text).toBe(
+      '<!-- bava: poster="brand mark.png" -->\n![Demo](.bava/attachments/demo.mp4)\n',
+    );
+  });
+
+  it('leave a page with no image of what moved alone', () => {
+    expect(rewritePageLinks('Page.md', '<!-- bava: poster="a.png" -->\n![v](.bava/attachments/v.mp4)\n', [{ from: '.bava/attachments/b.png', to: '.bava/attachments/c.png' }])).toBeNull();
+  });
+
+  it('are what the read-back check allows to change, and nothing else about them', () => {
+    const moves = [{ from: '.bava/attachments/a.png', to: '.bava/attachments/b.png' }];
+    const before = '<!-- bava: width=small -->\n![A](.bava/attachments/a.png)\n';
+    expect(onlyLinksChanged('Page.md', before, '<!-- bava: width=small -->\n![A](.bava/attachments/b.png)\n', moves)).toBe(true);
+    expect(onlyLinksChanged('Page.md', before, '<!-- bava: width=large -->\n![A](.bava/attachments/b.png)\n', moves)).toBe(false);
+    expect(onlyLinksChanged('Page.md', before, '<!-- bava: width=small -->\n![B](.bava/attachments/b.png)\n', moves)).toBe(false);
   });
 });

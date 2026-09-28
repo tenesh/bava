@@ -77,6 +77,12 @@ export interface OpResult {
      * were read, or not writable.
      */
     "missed": string[] | null;
+
+    /**
+     * Name is the attachment's name after attach, attachData or
+     * renameAttachment.
+     */
+    "name": string;
     "error": string;
     "code": string;
 }
@@ -101,7 +107,8 @@ export interface OpenResult {
 /**
  * Operation is one change to a Space. Kind is createPage, createFolder,
  * rename, move, duplicate, trash, restore, deleteForever, emptyTrash,
- * renameSpace, setPageWidth or relink; the other fields are what it needs.
+ * renameSpace, setPageWidth, relink, attach, attachData or renameAttachment;
+ * the other fields are what it needs.
  */
 export interface Operation {
     "kind": string;
@@ -121,6 +128,21 @@ export interface Operation {
      * Before.
      */
     "edits": PageEdit[] | null;
+
+    /**
+     * Source is the file attach copies in, from anywhere on disk.
+     */
+    "source": string;
+
+    /**
+     * Data is what attachData saves, in base64, under Name.
+     */
+    "data": string;
+
+    /**
+     * Attachment is the file renameAttachment renames, to Name.
+     */
+    "attachment": string;
 }
 
 /**
@@ -130,6 +152,14 @@ export interface PageEdit {
     "path": string;
     "before": string;
     "after": string;
+}
+
+/**
+ * PathsResult is the paths chosen, none when the user cancelled.
+ */
+export interface PathsResult {
+    "paths": string[] | null;
+    "error": string;
 }
 
 /**

@@ -260,10 +260,14 @@ wrong facts. When a milestone closes, update this section in the same change.
 
 ### Milestones
 
-- **Committed through Milestone 8.3c** (2026-09-28). **8.3d (a block before
-  or after any block, the line at the end, no toggle headings) passes its
-  gates**, uncommitted; 8.4 to 8.6
-  follow, then 8.4a (canvas screen checks and smoke runs
+- **Committed through Milestone 8.3d** (2026-09-28; CI green on all three
+  platforms, the smoke run included). **8.4.1** (attachments, images and
+  video files) passes its gates locally on 2026-09-29, uncommitted; its smoke
+  steps (an image added through the picker, found loaded after reopening)
+  have not run yet, CI runs them. It adds `golang.design/x/clipboard` (MIT,
+  pure Go on every platform: no build dependency on Linux) for pasted
+  images, and the file route at `/bava-file/` (`internal/app/files.go`).
+  8.4.2, 8.4.3, 8.5 and 8.6 follow, then 8.4a (canvas screen checks and smoke runs
   with complex scenes, before 8.5), then Milestone 15 (export, import and
   search). The roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **The Document** (`frontend/src/docs/`): a ProseMirror editor over the
@@ -329,7 +333,7 @@ wrong facts. When a milestone closes, update this section in the same change.
 | `npm test` | exit 0; 2,321 tests across 167 files (1 skipped) |
 | `npm run build` | exit 0; the production minifier rejects some CSS that the dev server and the screen checks accept (WebKit-only selectors such as `::selection:window-inactive`), and CI's first step is this build |
 | `npm run visual` (layer 2) | exit 0; 120 walks, 112 references in `testdata/visual/`; needs OrbStack running |
-| CI `smoke` (layer 3) | green on all three platforms at ef8310d; 8.3c's page link and rename steps need a push |
+| CI `smoke` (layer 3) | green on all three platforms after 8.3d, the page link and rename steps included |
 | `wails3 build` | macOS only, unverified elsewhere |
 
 ### Open problems

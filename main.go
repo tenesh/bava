@@ -58,12 +58,19 @@ func main() {
 		SaveVerbose: app.SaveVerbosePreference,
 	})
 
+	// The folders the user opened this session: the page is shown images and
+	// videos from these alone.
+	folders := app.NewOpenedFolders()
 	menus := app.NewMenuService()
 	// Only a -tags e2e build has a driver and answers pickers itself.
-	driver, chooseFolder := smokeRun(current.Load)
+	driver, answers := smokeRun(current.Load)
 	services := []application.Service{
 		application.NewService(app.NewRenderService()),
-		application.NewService(app.NewFileService()),
+		application.NewService(app.NewFileService(app.FileServiceOptions{
+			Folders:        folders,
+			ClipboardImage: app.ReadClipboardImage,
+			ChooseFiles:    answers.chooseFiles,
+		})),
 		application.NewService(app.NewSpaceService(app.SpaceServiceOptions{
 			Reveal: func(path string, selectFile bool) error {
 				a := current.Load()
@@ -72,16 +79,17 @@ func main() {
 				}
 				return a.Env.OpenFileManager(path, selectFile)
 			},
-			ChooseFolder: chooseFolder,
+			ChooseFolder: answers.chooseFolder,
+			Folders:      folders,
 		})),
 		application.NewService(app.NewExportService()),
 		application.NewService(menus),
 		application.NewService(logService),
 	}
-	if chooseFolder != nil {
+	if answers.chooseFolder != nil {
 		services = append(services, driver)
 	}
-	wailsApp := application.New(appOptions(session, services, emit))
+	wailsApp := application.New(appOptions(session, services, emit, folders))
 	current.Store(wailsApp)
 
 	// After application.New: native role items need the application.
@@ -90,6 +98,10 @@ func main() {
 	}
 
 	window := wailsApp.Window.NewWithOptions(app.MainWindowOptions())
+	window.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
+		ctx := event.Context()
+		wailsApp.Event.Emit(app.FilesDroppedEvent, app.DroppedFiles(ctx.DroppedFiles(), ctx.DropTargetDetails()))
+	})
 	// macOS only: Wails beta.20 does not surface the equivalent on Windows or
 	// Linux. See ContentProcessDied.
 	window.OnWindowEvent(events.Mac.WebViewWebContentProcessDidTerminate, func(*application.WindowEvent) {
@@ -106,6 +118,13 @@ func main() {
 	session.Close()
 }
 
+// pickers answer the folder and media pickers in a smoke run; nil fields
+// show the native ones.
+type pickers struct {
+	chooseFolder func(title string) (string, error)
+	chooseFiles  func(kind string) ([]string, error)
+}
+
 // appOptions is the application's configuration.
 //
 // The session closes in PostShutdown as well as after Run returns: on macOS
@@ -114,7 +133,7 @@ func main() {
 // services shut down, so their last log lines are kept. OnShutdown would be
 // too early: it runs before services stop. (beta.20: on Windows the
 // last-window close skips cleanup; see main.)
-func appOptions(session *logs.Session, services []application.Service, emit func(app.AppError)) application.Options {
+func appOptions(session *logs.Session, services []application.Service, emit func(app.AppError), folders *app.OpenedFolders) application.Options {
 	return application.Options{
 		// Wails builds the native role labels from this: "Hide Bava", "Quit Bava".
 		Name:        "Bava",
@@ -129,6 +148,8 @@ func appOptions(session *logs.Session, services []application.Service, emit func
 		Services:     services,
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
+			// Images and videos from the folders the user opened.
+			Middleware: app.FileRoute(folders),
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
