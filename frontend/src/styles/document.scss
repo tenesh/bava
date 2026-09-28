@@ -429,11 +429,6 @@ $callout-swatches: (
     border-radius: var(--radius-sm);
   }
 
-  // With cells selected the browser's own highlight is hidden, as ProseMirror
-  // hides it, in a window without focus too, which WebKit styles apart.
-  &.ProseMirror-hideselection *::selection:window-inactive {
-    background: transparent;
-  }
 
   // Tables: lines between cells, headers on a quiet ground, a cell's colour
   // from the swatches, and the + edges along the right and the bottom.
