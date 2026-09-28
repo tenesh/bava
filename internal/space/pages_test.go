@@ -62,6 +62,11 @@ func TestPagesSkipsAFolderItCannotRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(filepath.Join(s.Root, "Locked"), 0o755) })
+	// Windows (and a root user) can still read a folder with no permissions:
+	// there, no folder can be made unreadable to test with.
+	if _, err := os.ReadDir(filepath.Join(s.Root, "Locked")); err == nil {
+		t.Skip("this system cannot make a folder unreadable")
+	}
 	got, err := s.Pages()
 	if err != nil {
 		t.Fatalf("Pages: %v", err)
