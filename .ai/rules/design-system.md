@@ -207,6 +207,9 @@ check both before building either by hand.
 | `FindBar` ✓ | Find and replace across the top of the page: the field, "n of m", previous and next, the replace field, Replace, Replace all, close. Enter and ⇧Enter step, Escape closes. |
 | `LinkField` ✓ | The link field over selected text: address, Enter to link, Remove to unlink, Escape to leave it. With `placeholder` and `removeLabel` (null for no Remove) it also takes a medium's caption, its file's new name, and a web address for `/` Web link and Online video. Enter applies it from its own key handler too, since a script's key submits no form. Its field and FindBar's share `.bava-field` in `controls.scss`. |
 | `MediaViewer` ✓ | An image full screen over Ark's Dialog (`size="viewer"`, headless): Escape or a click outside leaves. |
+| `MediaSection` ✓ | The Space's attachments under Files: compact rows (thumbnail, name, size), search, Add files, open the dialog; a row drags into the page (`application/x-bava-attachment`), or Enter or a double-click places it at the caret; the arrows move between rows. |
+| `MediaThumb` ✓ | An attachment's picture (the image, or a video's poster) at row or grid size, else its kind's icon; a picture that will not load gives way to the icon. |
+| `MediaDialog` ✓ | The Media dialog over Ark's Dialog (`size="media"`, unmounted when closed): grid or list, filters, search, sort (each a `Segments`), a file's pages, rename, show in folder, delete, Add files, Move unused to Trash. |
 | `EquationField` ✓ | The field over an equation: its TeX, the equation drawn live below by the caller's `render`, Enter to save, Shift+Enter for a new line, Escape to leave it. |
 | `EmojiPicker` ✓ | A search and every emoji under its group; a pick gives the character, Escape or a press outside closes it. The caller supplies the emoji and group names. |
 | `LinkCard` ✓ | The card under a clicked link: its address, Open, Edit, Remove; a missing page says so and offers the one page with its name. Escape or a press outside closes it; focus stays in the page. |
@@ -250,7 +253,7 @@ check both before building either by hand.
 ✓ marks what exists. Build the rest as screens need them, not upfront: an
 unused component is an unmaintained one.
 
-**Wrapped from Ark so far**: `Dialog`, `Splitter` (unused for now), `Tooltip`, `Progress`, SegmentGroup inside
+**Wrapped from Ark so far**: `Dialog`, `Splitter` (the side pane's Files and Media, stacked with `orientation="vertical"`; Ark draws its handle as a button, whose own look the wrapper resets), `Tooltip`, `Progress`, SegmentGroup inside
 `Segments`, Collapsible inside `Disclosure`, Menu inside `ContextMenu`, and
 Popover with RadioGroup inside `StyleBar` and `OptionPicker`, Slider inside
 `OpacityPicker`, Switch inside `Toggle`, TreeView inside `SpaceTree`, Menu

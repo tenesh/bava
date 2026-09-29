@@ -99,6 +99,7 @@ const REFUSALS = {
   outside: 'space.error.outside',
   throughLink: 'space.error.throughLink',
   notSpace: 'space.error.notSpace',
+  notAttachment: 'space.error.notAttachment',
   revealUnavailable: 'space.error.revealUnavailable',
 } as const;
 

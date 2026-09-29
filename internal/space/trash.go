@@ -15,7 +15,8 @@ import (
 	"time"
 )
 
-// TrashItem is a page or folder in the Trash (docs/file-format.md, "Spaces").
+// TrashItem is a page, a folder or an attachment in the Trash
+// (docs/file-format.md, "Spaces").
 type TrashItem struct {
 	ID string `json:"id"`
 	// Path is where it came from, relative to the Space.
@@ -40,7 +41,12 @@ func (s Space) Trash(p string) (TrashItem, error) {
 	if err != nil {
 		return TrashItem{}, err
 	}
-	kind := s.kindOf(rel)
+	return s.trash(rel, s.kindOf(rel))
+}
+
+// trash moves rel, of a kind, into its own slot of the Trash. A page or a
+// folder leaves the page order; an attachment was never in it.
+func (s Space) trash(rel, kind string) (TrashItem, error) {
 	id, err := newID()
 	if err != nil {
 		return TrashItem{}, err
@@ -67,17 +73,22 @@ func (s Space) Trash(p string) (TrashItem, error) {
 	}
 	var order []string
 	dir, name := parent(rel), path.Base(rel)
-	if err := s.update(func(f *File) error {
-		order = s.arranged(f, dir)
-		return nil
-	}); err != nil {
-		return TrashItem{}, err
+	if kind != KindAttachment {
+		if err := s.update(func(f *File) error {
+			order = s.arranged(f, dir)
+			return nil
+		}); err != nil {
+			return TrashItem{}, err
+		}
 	}
 	if err := os.Rename(s.abs(rel), filepath.Join(slot, name)); err != nil {
 		return TrashItem{}, fmt.Errorf("move to trash: %w", err)
 	}
 	moved = true
 	item := TrashItem{ID: id, Path: rel, Kind: kind, DeletedAt: stored.DeletedAt}
+	if kind == KindAttachment {
+		return item, nil
+	}
 	return item, s.update(func(f *File) error {
 		f.Order[dir] = remove(order, name)
 		if kind == KindFolder {
@@ -124,6 +135,9 @@ func (s Space) Restore(id string) (string, error) {
 	stored, err := s.readItem(id)
 	if err != nil {
 		return "", err
+	}
+	if stored.Kind == KindAttachment {
+		return s.restoreAttachment(slot, stored)
 	}
 	// Resolved, not only cleaned: a folder on the way back may have become a
 	// link since the item was trashed.
@@ -224,4 +238,41 @@ func sizeOf(p string) int64 {
 		return nil
 	})
 	return total
+}
+
+// restoreAttachment puts an attachment back in the attachments folder,
+// numbered when its name was taken meanwhile. The page order is untouched.
+func (s Space) restoreAttachment(slot string, stored itemFile) (string, error) {
+	name := path.Base(stored.Path)
+	if _, err := validName(name); err != nil || stored.Path != attachmentsRel+"/"+name {
+		return "", refuse(ErrOutside, "restore: %q is not an attachment", stored.Path)
+	}
+	if _, err := s.attachmentsFolder(); err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(s.attachmentsDir(), 0o755); err != nil {
+		return "", fmt.Errorf("restore: %w", err)
+	}
+	back := name
+	if _, err := os.Lstat(filepath.Join(s.attachmentsDir(), name)); err == nil {
+		ext := filepath.Ext(name)
+		back = freeName(s.attachmentsDir(), strings.TrimSuffix(name, ext), ext)
+	}
+	if err := os.Rename(filepath.Join(slot, name), filepath.Join(s.attachmentsDir(), back)); err != nil {
+		return "", fmt.Errorf("restore: %w", err)
+	}
+	if err := os.RemoveAll(slot); err != nil {
+		return "", fmt.Errorf("restore: %w", err)
+	}
+	return attachmentsRel + "/" + back, nil
+}
+
+// freeName finds "base 2ext", "base 3ext", … free in a folder on disk.
+func freeName(dir, base, ext string) string {
+	for n := 2; ; n++ {
+		name := fmt.Sprintf("%s %d%s", base, n, ext)
+		if _, err := os.Lstat(filepath.Join(dir, name)); errors.Is(err, os.ErrNotExist) {
+			return name
+		}
+	}
 }

@@ -22,7 +22,17 @@ type Persisted = {
   showsAI: boolean;
   // The Files section folded under its header, the tree hidden.
   filesFolded: boolean;
+  // The Media section under Files: folded, and its share of the pane (%).
+  mediaFolded: boolean;
+  mediaShare: number;
 };
+
+/**
+ * The Media section's share of the side pane, in percent: where it starts,
+ * and never so small or large as to hide it or Files (whose least is `files`).
+ */
+export const MEDIA_SHARE = { start: 35, min: 10, max: 80, files: 15 } as const;
+const clampShare = (share: number) => Math.min(MEDIA_SHARE.max, Math.max(MEDIA_SHARE.min, share));
 
 const DEFAULTS: Persisted = {
   mode: 'both',
@@ -31,6 +41,8 @@ const DEFAULTS: Persisted = {
   // of the window teaches the user nothing.
   showsAI: false,
   filesFolded: false,
+  mediaFolded: false,
+  mediaShare: MEDIA_SHARE.start,
 };
 
 function isMode(value: unknown): value is ViewMode {
@@ -48,6 +60,8 @@ function parse(raw: string | null): Persisted {
       showsFiles: typeof c.showsFiles === 'boolean' ? c.showsFiles : DEFAULTS.showsFiles,
       showsAI: typeof c.showsAI === 'boolean' ? c.showsAI : DEFAULTS.showsAI,
       filesFolded: typeof c.filesFolded === 'boolean' ? c.filesFolded : DEFAULTS.filesFolded,
+      mediaFolded: typeof c.mediaFolded === 'boolean' ? c.mediaFolded : DEFAULTS.mediaFolded,
+      mediaShare: typeof c.mediaShare === 'number' && c.mediaShare >= MEDIA_SHARE.min && c.mediaShare <= MEDIA_SHARE.max ? c.mediaShare : DEFAULTS.mediaShare,
     };
   } catch {
     return DEFAULTS;
@@ -95,6 +109,12 @@ export function createViewState(options: { storage?: ViewStorage } = {}) {
     get filesFolded() {
       return state.filesFolded;
     },
+    get mediaFolded() {
+      return state.mediaFolded;
+    },
+    get mediaShare() {
+      return state.mediaShare;
+    },
 
     setMode(mode: ViewMode) {
       update({ ...state, mode });
@@ -104,6 +124,12 @@ export function createViewState(options: { storage?: ViewStorage } = {}) {
     },
     toggleFilesFolded() {
       update({ ...state, filesFolded: !state.filesFolded });
+    },
+    toggleMediaFolded() {
+      update({ ...state, mediaFolded: !state.mediaFolded });
+    },
+    setMediaShare(share: number) {
+      update({ ...state, mediaShare: clampShare(share) });
     },
     toggleAI() {
       update({ ...state, showsAI: !state.showsAI });

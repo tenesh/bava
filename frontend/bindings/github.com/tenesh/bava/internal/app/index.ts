@@ -17,6 +17,7 @@ export {
 };
 
 export type {
+    AttachmentList,
     CardDetails,
     DialogResult,
     FileDetailsResult,

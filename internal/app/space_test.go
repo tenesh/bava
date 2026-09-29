@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"testing"
 
 	"github.com/tenesh/bava/internal/app"
@@ -135,7 +136,7 @@ func TestSpaceJSONFieldNames(t *testing.T) {
 		{"SpaceList", app.SpaceList{}, []string{"code", "entries", "error"}},
 		{"OpResult", app.OpResult{}, []string{"code", "error", "id", "missed", "name", "path", "root"}},
 		{"SpaceIndex", app.SpaceIndex{}, []string{"code", "error", "pages"}},
-		{"IndexPage", app.IndexPage{}, []string{"name", "path", "text"}},
+		{"IndexPage", app.IndexPage{}, []string{"name", "path", "text", "unreadable"}},
 		{"PageEdit", app.PageEdit{}, []string{"after", "before", "path"}},
 		{"TrashList", app.TrashList{}, []string{"code", "error", "items", "size"}},
 		{"Operation", app.Operation{}, []string{"attachment", "data", "edits", "folder", "id", "index", "kind", "name", "path", "source", "width"}},
@@ -310,5 +311,66 @@ func TestFetchCardThatFailsSaysWhy(t *testing.T) {
 	s := fetching(web.Details{}, errors.New("offline"))
 	if got := s.FetchCard(t.TempDir(), "https://www.example.com/notes"); got.Error == "" {
 		t.Errorf("FetchCard = %+v", got)
+	}
+}
+
+func TestTheSpacesAttachmentsAreListedAndTrashed(t *testing.T) {
+	root := t.TempDir()
+	s := spaceService(nil)
+	s.Open(root)
+	if got := s.Attachments(root); got.Error != "" || got.Attachments == nil || len(got.Attachments) != 0 {
+		t.Fatalf("none yet: %+v", got)
+	}
+	s.Apply(root, app.Operation{Kind: "attachData", Name: "a.png", Data: base64.StdEncoding.EncodeToString([]byte("png"))})
+	if got := s.Attachments(root); len(got.Attachments) != 1 || got.Attachments[0].Name != "a.png" || got.Attachments[0].Size != 3 {
+		t.Fatalf("Attachments = %+v", got)
+	}
+	trashed := s.Apply(root, app.Operation{Kind: "trashAttachment", Attachment: "a.png"})
+	if trashed.Error != "" || trashed.ID == "" || len(s.Attachments(root).Attachments) != 0 {
+		t.Errorf("trashAttachment = %+v", trashed)
+	}
+}
+
+func TestAnAttachmentIsShownInItsFolder(t *testing.T) {
+	root := t.TempDir()
+	var revealed [2]string
+	s := spaceService(&revealed)
+	s.Open(root)
+	s.Apply(root, app.Operation{Kind: "attachData", Name: "logo.png", Data: base64.StdEncoding.EncodeToString([]byte("png"))})
+	if got := s.Reveal(root, ".bava/attachments/logo.png"); got.Error != "" || revealed[0] != filepath.Join(root, ".bava", "attachments", "logo.png") || revealed[1] != "select" {
+		t.Errorf("Reveal = %+v, revealed %v", got, revealed)
+	}
+	for _, bad := range []string{".bava/attachments/../space.json", ".bava/space.json", ".bava/attachments/a/b.png"} {
+		if got := s.Reveal(root, bad); got.Error == "" {
+			t.Errorf("%s: revealed", bad)
+		}
+	}
+}
+
+// A page that cannot be read says so: its text is not "no links".
+func TestIndexSaysWhichPagesCouldNotBeRead(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("a file cannot be made unreadable this way on Windows")
+	}
+	root := t.TempDir()
+	s := spaceService(nil)
+	s.Open(root)
+	for _, name := range []string{"a.md", "b.md"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte("# "+name), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Chmod(filepath.Join(root, "b.md"), 0); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(filepath.Join(root, "b.md"), 0o644)
+	if _, err := os.ReadFile(filepath.Join(root, "b.md")); err == nil {
+		t.Skip("the file is still readable here")
+	}
+	got := s.Index(root, true)
+	for _, page := range got.Pages {
+		if page.Unreadable != (page.Path == "b.md") {
+			t.Errorf("%s: unreadable %v", page.Path, page.Unreadable)
+		}
 	}
 }

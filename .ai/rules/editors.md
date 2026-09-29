@@ -118,6 +118,9 @@ component per block.
 - **A card's click opens; a program never runs.** `FileService.OpenFile`
   opens only a document type on its list and shows anything else in its
   folder: a list of what may open, never of what may not.
+- **An attachment dragged from Media** arrives as
+  `application/x-bava-attachment` (its name) and goes in where it lands,
+  never copied again (`handleDrop`).
 - **Tests do not trust jsdom for events on a node view.** jsdom lays nothing
   out, so ProseMirror never reaches `stopEvent` or `ignoreMutation` from a
   dispatched event: call them on the node view itself.

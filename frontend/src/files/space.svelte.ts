@@ -31,7 +31,8 @@ export type OpOutcome = {
 };
 
 /** A page of the Space, with its text when asked for. */
-export type IndexPage = { name: string; path: string; text: string };
+/** A page of the Space; `unreadable` when its text could not be read (so its links are not known). */
+export type IndexPage = { name: string; path: string; text: string; unreadable?: boolean };
 
 export type SpaceIO = {
   open(
@@ -85,7 +86,8 @@ export type SpaceIO = {
 export type TrashEntry = {
   id: string;
   path: string;
-  kind: EntryKind;
+  /** A page, a folder, or a file of Media. */
+  kind: EntryKind | "attachment";
   deletedAt: string;
   size: number;
 };

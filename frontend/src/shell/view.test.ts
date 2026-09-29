@@ -88,3 +88,26 @@ describe('the Files section', () => {
     expect(createViewState({ storage }).filesFolded).toBe(true);
   });
 });
+
+describe('the Media section', () => {
+  it('starts open with a third of the pane, folds, resizes, and is remembered', () => {
+    const storage = memoryStorage();
+    const view = createViewState({ storage });
+    expect(view.mediaFolded).toBe(false);
+    expect(view.mediaShare).toBe(35);
+    view.toggleMediaFolded();
+    view.setMediaShare(50);
+    const again = createViewState({ storage });
+    expect(again.mediaFolded).toBe(true);
+    expect(again.mediaShare).toBe(50);
+  });
+
+  it('keeps a share that makes sense, whatever was stored', () => {
+    const storage = memoryStorage();
+    storage.setItem('bava.view', JSON.stringify({ mediaShare: 400 }));
+    expect(createViewState({ storage }).mediaShare).toBe(35);
+    const view = createViewState({ storage });
+    view.setMediaShare(2);
+    expect(view.mediaShare).toBe(10);
+  });
+});

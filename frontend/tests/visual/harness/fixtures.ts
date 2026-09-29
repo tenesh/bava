@@ -3,7 +3,8 @@
  * screenshot can be read against them. Fixed content, fixed dates.
  */
 export type FakePage = { source: string; scene: { version: number; elements: unknown[] } };
-export type FakeTrashItem = { id: string; path: string; kind: 'page' | 'folder'; deletedAt: string; size: number };
+export type FakeTrashItem = { id: string; path: string; kind: 'page' | 'folder' | 'attachment'; deletedAt: string; size: number };
+export type FakeAttachment = { name: string; size: number; modified: string };
 
 export type FakeSpace = {
   root: string;
@@ -12,6 +13,8 @@ export type FakeSpace = {
   folders: Record<string, string[]>;
   pages: Record<string, FakePage>;
   trash: FakeTrashItem[];
+  /** The files of `.bava/attachments`, testdata/media's where the route serves them. */
+  attachments: FakeAttachment[];
 };
 
 export const SPACE_ROOT = '/Users/you/Documents/Acme Product';
@@ -243,6 +246,17 @@ export function seedSpace(): FakeSpace {
       'Engineering/Tables.md': tablesPage,
       'Engineering/Media.md': mediaPage,
     },
+    attachments: [
+      { name: 'Budget draft.xlsx', size: 18_400, modified: '2026-09-04T09:00:00Z' },
+      { name: 'Q3 report.pdf', size: 248_000, modified: '2026-09-21T09:00:00Z' },
+      { name: 'demo poster.png', size: 4_120, modified: '2026-09-12T09:00:00Z' },
+      { name: 'demo.mp4', size: 3_400_000, modified: '2026-09-12T09:00:00Z' },
+      { name: 'example.com icon.png', size: 380, modified: '2026-09-20T09:00:00Z' },
+      { name: 'example.com picture.png', size: 2_900, modified: '2026-09-20T09:00:00Z' },
+      { name: 'landscape.png', size: 4_085, modified: '2026-09-10T09:00:00Z' },
+      { name: 'logo.png', size: 1_058, modified: '2026-09-08T09:00:00Z' },
+      { name: 'old diagram.png', size: 12_600, modified: '2026-08-02T09:00:00Z' },
+    ],
     trash: [
       { id: 't1', path: 'Meeting notes/Q3 retro.md', kind: 'page', deletedAt: '2026-09-27T09:00:00Z', size: 2048 },
       { id: 't2', path: 'Marketing/Old drafts', kind: 'folder', deletedAt: '2026-09-21T09:00:00Z', size: 48_000 },

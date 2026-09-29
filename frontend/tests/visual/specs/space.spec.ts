@@ -16,7 +16,7 @@ for (const theme of THEMES) {
     test('the Files section folded', async ({ page }) => {
       await openApp(page, theme);
       await openSpace(page);
-      await page.locator('.files-fold').click();
+      await page.locator('.files-fold[data-section="files"]').click();
       await expect(page.locator('[data-path="Roadmap.md"]')).toHaveCount(0);
       await expect(sidePane(page)).toHaveScreenshot(shot('space', 'files', 'folded', theme));
     });
@@ -35,6 +35,26 @@ for (const theme of THEMES) {
       await menu(page, 'file.new');
       await expect(page.locator('input.rename').filter({ visible: true })).toBeFocused();
       await expect(sidePane(page)).toHaveScreenshot(shot('space', 'files', 'naming', theme));
+    });
+
+    test('the Media section', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      const rows = sidePane(page).locator('.media-row');
+      await expect(rows).toHaveCount(9);
+      await expect(rows.filter({ hasText: 'logo.png' }).locator('img')).toHaveJSProperty('complete', true);
+      await expect(sidePane(page)).toHaveScreenshot(shot('space', 'media', 'section', theme));
+      await sidePane(page).getByRole('searchbox', { name: 'Search files' }).fill('EXAMPLE');
+      await expect(rows).toHaveCount(2);
+      await expect(sidePane(page)).toHaveScreenshot(shot('space', 'media', 'searching', theme));
+    });
+
+    test('the Media section folded', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await page.locator('.files-fold[data-section="media"]').click();
+      await expect(sidePane(page).locator('.media-row')).toHaveCount(0);
+      await expect(sidePane(page)).toHaveScreenshot(shot('space', 'media', 'folded', theme));
     });
 
     test('the Space switcher', async ({ page }) => {

@@ -6,6 +6,13 @@
  * Imported one file at a time, so only these icons reach the bundle.
  */
 import type { Component } from 'svelte';
+import FileImage from '@lucide/svelte/icons/file-image';
+import FilePlay from '@lucide/svelte/icons/file-play';
+import FileText from '@lucide/svelte/icons/file-text';
+import LayoutGrid from '@lucide/svelte/icons/layout-grid';
+import ListIcon from '@lucide/svelte/icons/list';
+import Upload from '@lucide/svelte/icons/upload';
+import Maximize2 from '@lucide/svelte/icons/maximize-2';
 import Bold from '@lucide/svelte/icons/bold';
 import Italic from '@lucide/svelte/icons/italic';
 import Underline from '@lucide/svelte/icons/underline';
@@ -186,6 +193,14 @@ export const LUCIDE_ICONS = {
   grip: GripVertical,
   chevronUp: ChevronUp,
   replace: Replace,
+  // Media: a file by its kind, the grid and list views, adding, the dialog.
+  fileImage: FileImage,
+  fileVideo: FilePlay,
+  fileText: FileText,
+  viewGrid: LayoutGrid,
+  viewList: ListIcon,
+  upload: Upload,
+  expand: Maximize2,
 } satisfies Record<string, Component>;
 
 export type IconId = keyof typeof LUCIDE_ICONS | 'parallelogram';

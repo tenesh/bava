@@ -7,7 +7,7 @@
 import { PARENT, SPACE_ROOT, seedSpace, type FakeSpace } from './fixtures';
 import { linkName } from '../../../src/docs/links';
 
-type Op = { kind: string; path: string; folder: string; name: string; index: number; id: string; width: string; edits?: { path: string; before: string; after: string }[] };
+type Op = { kind: string; path: string; folder: string; name: string; index: number; id: string; width: string; attachment?: string; edits?: { path: string; before: string; after: string }[] };
 
 const PAGE_EXT = '.md';
 const parentOf = (path: string) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '');
@@ -134,9 +134,22 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         space.trash.unshift({ id, path: op.path, kind: isFolder(space, `\u0000trash/${id}/${op.path}`) ? 'folder' : 'page', deletedAt: '2026-09-27T12:00:00Z', size: 1024 });
         return ok({ id, path: op.path });
       }
+      case 'trashAttachment': {
+        const at = space.attachments.findIndex((file) => file.name === op.attachment);
+        if (at < 0) return ok({ error: `"${op.attachment}" is not an attachment` });
+        const [file] = space.attachments.splice(at, 1);
+        const id = `t${(trashIds += 1)}`;
+        space.trash.unshift({ id, path: `.bava/attachments/${file.name}`, kind: 'attachment', deletedAt: '2026-09-27T12:00:00Z', size: file.size });
+        return ok({ id, path: `.bava/attachments/${file.name}` });
+      }
       case 'restore': {
         const item = space.trash.find((entry) => entry.id === op.id);
         if (!item) return ok(refusal('', `"${op.id}" is not in the Trash`));
+        if (item.kind === 'attachment') {
+          space.trash = space.trash.filter((entry) => entry.id !== item.id);
+          space.attachments.push({ name: baseOf(item.path), size: item.size, modified: '2026-09-27T12:00:00Z' });
+          return ok({ path: item.path });
+        }
         const folder = parentOf(item.path);
         let name = baseOf(item.path);
         if (exists(space, item.path)) {
@@ -211,7 +224,7 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         if ('code' in checked) return { root: '', name: '', pageWidth: '', ...checked };
         const root = join(parent, checked.name);
         if (spaces.has(root)) return { root: '', name: '', pageWidth: '', ...refusal('exists', `"${checked.name}" already exists`) };
-        const space: FakeSpace = { root, pageWidth: '', folders: { '': [] }, pages: {}, trash: [] };
+        const space: FakeSpace = { root, pageWidth: '', folders: { '': [] }, pages: {}, trash: [], attachments: [] };
         spaces.set(root, space);
         return info(space);
       },
@@ -254,6 +267,9 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       },
       async Reveal(_root: string, _path: string) {
         return { error: '', code: '' };
+      },
+      async Attachments(_root: string) {
+        return { attachments: structuredClone(spaceOf(_root)?.attachments ?? []), error: '' };
       },
       async FetchCard(_root: string, _address: string) {
         return { title: '', description: '', icon: '', image: '', error: 'offline' };

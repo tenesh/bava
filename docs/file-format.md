@@ -828,15 +828,17 @@ not in it: they live in `localStorage`, as below.
 
 ### `.bava/trash/`
 
-A page or folder moved to the Trash goes, whole and unchanged, into
+A page, a folder or an attachment moved to the Trash goes, whole and
+unchanged, into
 `.bava/trash/<id>/`, beside an `item.json`:
 
 ```json
 { "path": "Marketing/Launch plan.md", "kind": "page", "deletedAt": "2026-09-27T10:12:00Z" }
 ```
 
-- `path`: where it came from, relative to the Space; `kind`: `page` or
-  `folder`; `deletedAt`: RFC 3339.
+- `path`: where it came from, relative to the Space; `kind`: `page`,
+  `folder` or `attachment` (its `path` is `.bava/attachments/<name>`);
+  `deletedAt`: RFC 3339.
 - `<id>` is opaque and unique within the Trash.
 - The order kept for a trashed folder's contents is not kept with it: a
   restored folder comes back at the end of its parent, its contents by name.
@@ -844,22 +846,29 @@ A page or folder moved to the Trash goes, whole and unchanged, into
   nothing is removed by age. Restoring moves the item back to `path`,
   recreating missing folders; if the name is taken it comes back numbered
   (`Launch plan 2.md`).
+- An attachment is restored to the attachments folder, numbered if its
+  name was taken meanwhile; the page order never names it.
 - A folder holding a `.bava/` of its own is not a Space inside a Space: Bava
   treats only the folder opened as the Space.
 
 ### `.bava/attachments/`
 
-The files pages show: images and videos added by paste, drop or the `/`
-menu, each copied here, in one folder for the whole Space.
+The files pages show or link to: images, videos and any other file added
+by paste, drop, the `/` menu or Media, each copied here, in one folder for
+the whole Space.
 
 - A file keeps its name. A different file with a name already there is
   saved numbered (`logo 2.png`); a file with the same bytes as one already
   there is not copied again, and the page uses that one.
 - A pasted image with no name is saved as `Pasted image YYYY-MM-DD
   HH.MM.SS.png`.
-- Nothing records which page uses which file: a file no page reaches is
-  unused, worked out by reading the pages. Removing media from a page never
-  deletes its file.
+- Nothing records which page uses which file: a file no page names is
+  unused, worked out by reading the pages. A page that names the file
+  anywhere uses it (a mistake only ever keeps a file), and while any page
+  cannot be read, no file is unused. Removing media from a page never
+  deletes its file; Media moves unused files to the Trash when asked.
+- A file of this folder's date modified is when Bava attached it: Media
+  sorts by it as the date added.
 - A file renamed or removed outside Bava leaves its media missing; Bava
   offers to relink it to a file of the same name here, and changes nothing
   until asked.
