@@ -16,7 +16,7 @@ import { closeHistory, history, redo, undo } from 'prosemirror-history';
 import { selectAll, deleteSelection } from 'prosemirror-commands';
 import { Fragment, Slice, type Mark } from 'prosemirror-model';
 import type { Node } from 'prosemirror-model';
-import { EditorState, NodeSelection, Plugin, TextSelection, type Transaction } from 'prosemirror-state';
+import { EditorState, NodeSelection, Plugin, PluginKey, TextSelection, type Transaction } from 'prosemirror-state';
 import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
 import { t } from '../i18n/t';
 import { countText } from '../shell/status-context';
@@ -35,14 +35,14 @@ import { CellSelection } from 'prosemirror-tables';
 import { mathKeys, mathPlugin, mathView, type EquationAt } from './math';
 import { footnotesPlugin, withoutDroppedNotes } from './footnotes';
 import { contentsPlugin, contentsView, headingEntries } from './contents';
-import { chooseEmoji, emojiPlugin, PICKER, type EmojiInfo } from './emoji';
+import { chooseEmoji, emojiKey, emojiPlugin, PICKER, type EmojiInfo } from './emoji';
 import { chooseMention, mentionKey, mentionPlugin, type MentionInfo, type PageRef } from './mention';
 import { linkAt, missingLinksPlugin } from './link-view';
 import { addBlock, endLinePlugin, endsWithALine, textWithoutEndLine } from './lines';
 import { posterAfter } from './page-links';
 import { ADDRESS_ASK, attachmentBlock, MEDIA_PICKER, mediaView, probeFile, type MediaPlace } from './media';
 import { cardView, type FileDetails } from './card';
-import { onlineVideo } from './online-video';
+import { onlineVideo, playsInPage } from './online-video';
 import { dropPoint } from 'prosemirror-transform';
 import { copyHeadingLink, linkLabel, linkTo, missingTarget, pastedHeadingLink, relinkCandidate, resolveLink, retarget, type Move } from './links';
 import { dateAttrs } from './dates';
@@ -57,9 +57,7 @@ export type DocEditorOptions = {
   onPasteImage?: () => void;
   /** A web card's details, fetched when its link is pasted; null when they could not be. */
   fetchCard?: (address: string) => Promise<{ title: string; description: string; icon: string; image: string } | null>;
-  /** `/` Web link or Online video: the app asks for an address, then puts it in (`insertAddress`). */
-  onAskAddress?: (kind: 'weblink' | 'onlinevideo', at: { left: number; top: number; bottom: number }) => void;
-  /** Whether a site's videos play inside Bava's window; by default they all do. */
+  /** Whether a site's videos play inside Bava's window; by default, where the site allows it (`playsInPage`). */
   playsInPage?: (provider: 'YouTube' | 'Vimeo' | 'Loom') => boolean;
   /** A card clicked, or an online video that plays in the browser: the app opens what it reaches (its address as written in the page). */
   onOpenFile?: (href: string) => void;
@@ -146,9 +144,29 @@ function withALine(doc: Node): Node {
 
 const emptyFront: FrontMatter = { lines: null, bavaAt: null, bavaLines: [], settings: {} };
 
-/** "Type / for commands" on the empty line the caret is in. */
-function placeholder(): Plugin {
-  return new Plugin({
+/** The empty line `/` Web link or Online video left the caret on, asking for an address, while it is still empty. */
+type AddressHint = { at: number; kind: 'weblink' | 'onlinevideo' } | null;
+const addressHintKey = new PluginKey<AddressHint>('address-hint');
+
+/**
+ * "Type / for commands" on the empty line the caret is in; on the line
+ * `/` Web link or Online video left it on, what to paste there instead.
+ */
+function placeholder(): Plugin<AddressHint> {
+  return new Plugin<AddressHint>({
+    key: addressHintKey,
+    state: {
+      init: () => null,
+      apply(tr, hint, _old, state) {
+        const asked = tr.getMeta(ADDRESS_ASK) as 'weblink' | 'onlinevideo' | undefined;
+        const { $from, empty } = state.selection;
+        if (asked) return { at: $from.before(), kind: asked };
+        if (!hint) return null;
+        // Kept only while the caret stays on that line and it stays empty.
+        const at = tr.mapping.map(hint.at);
+        return empty && $from.depth > 0 && $from.before() === at && $from.parent.content.size === 0 ? { at, kind: hint.kind } : null;
+      },
+    },
     props: {
       decorations(state) {
         const { $from, empty } = state.selection;
@@ -156,9 +174,9 @@ function placeholder(): Plugin {
         // Code and table cells are not where blocks are typed: no hint there.
         const inCell = $from.depth > 1 && ['table_cell', 'table_header'].includes($from.node(-1).type.name);
         if (!empty || !node.isTextblock || node.type.spec.code || inCell || node.content.size > 0) return null;
-        return DecorationSet.create(state.doc, [
-          Decoration.node($from.before(), $from.after(), { class: 'is-empty', 'data-placeholder': t('doc.placeholder') }),
-        ]);
+        const hint = addressHintKey.getState(state);
+        const words = hint && hint.at === $from.before() ? t(hint.kind === 'onlinevideo' ? 'media.pasteVideo' : 'media.pasteLink') : t('doc.placeholder');
+        return DecorationSet.create(state.doc, [Decoration.node($from.before(), $from.after(), { class: 'is-empty', 'data-placeholder': words })]);
       },
     },
   });
@@ -412,7 +430,6 @@ export class DocEditor {
     if (tr.docChanged) this.#options?.onChange();
     if (tr.getMeta(PICKER)) this.#options?.onEmojiPicker?.(this.#caretAt());
     if (tr.getMeta(MEDIA_PICKER)) this.#options?.onChooseMedia?.(tr.getMeta(MEDIA_PICKER));
-    if (tr.getMeta(ADDRESS_ASK)) this.#options?.onAskAddress?.(tr.getMeta(ADDRESS_ASK), this.#caretAt());
     if (tr.selectionSet || tr.docChanged) this.#options?.onSelection?.();
     const card = this.#card;
     const { from, to } = view.state.selection;
@@ -836,7 +853,7 @@ export class DocEditor {
         return () => this.#mediaWatchers.delete(redraw);
       },
       relink: (pos: number, src: string) => this.setMediaAttrs(pos, { src }),
-      playsInPage: (provider: 'YouTube' | 'Vimeo' | 'Loom') => this.#options?.playsInPage?.(provider) ?? true,
+      playsInPage: (provider: 'YouTube' | 'Vimeo' | 'Loom') => this.#options?.playsInPage?.(provider) ?? playsInPage(provider, window.location.protocol),
       openExternal: (href: string) => this.#options?.onOpenFile?.(href),
     };
   }
@@ -1008,6 +1025,17 @@ export class DocEditor {
     const node = view?.state.doc.nodeAt(pos);
     if (!view || this.locked || !node || ![schema.nodes.image, schema.nodes.video, schema.nodes.card].includes(node.type)) return;
     view.dispatch(view.state.tr.setNodeMarkup(pos, null, { ...node.attrs, ...attrs }));
+  }
+
+  /** Closes the menus that follow typing (`/`, `@`, emoji by name), as Escape does: a press outside the page. */
+  dismissSuggestions(): void {
+    const view = this.view;
+    if (!view) return;
+    const open = [slashKey, mentionKey, emojiKey].filter((key) => (key.getState(view.state) as { open?: unknown } | undefined)?.open);
+    if (open.length === 0) return;
+    const tr = view.state.tr;
+    for (const key of open) tr.setMeta(key, { dismiss: true });
+    view.dispatch(tr);
   }
 
   /** Where this page sits in its Space (null outside one), and the Space's pages once read. */

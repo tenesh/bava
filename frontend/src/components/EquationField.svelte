@@ -9,6 +9,7 @@
    */
   import { Portal } from '@ark-ui/svelte';
   import { portalRoot } from './portal-root';
+  import { pressAway } from './press-away';
   import { t } from '../i18n/t';
 
   type Props = {
@@ -40,6 +41,10 @@
     if (preview) render(tex, preview, display);
   });
 
+  // A press anywhere else keeps what was typed and closes it.
+  let box: HTMLElement | undefined = $state();
+  $effect(() => pressAway(() => box, () => onSave(tex)));
+
   function keydown(event: KeyboardEvent) {
     // An equation in a line is one line: Shift+Enter saves it too.
     if (event.key === 'Enter' && (!event.shiftKey || !display)) {
@@ -53,7 +58,7 @@
 </script>
 
 <Portal container={portalRoot()}>
-  <div class="equation-field" style:left={`${at.left}px`} style:top={`calc(${at.bottom}px + var(--space-2))`}>
+  <div bind:this={box} class="equation-field" style:left={`${at.left}px`} style:top={`calc(${at.bottom}px + var(--space-2))`}>
     <textarea
       bind:this={field}
       bind:value={tex}

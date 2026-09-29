@@ -114,6 +114,18 @@ describe('the smoke driver', () => {
     expect(clicked).toBe('start');
   });
 
+  it('pastes text into what has focus, as ⌘V over the page does', async () => {
+    document.body.innerHTML = '<div id="page" tabindex="0"></div>';
+    const pageEl = document.querySelector<HTMLElement>('#page')!;
+    let pasted = '';
+    pageEl.addEventListener('paste', (event) => {
+      pasted = (event as ClipboardEvent).clipboardData?.getData('text/plain') ?? '';
+    });
+    pageEl.focus();
+    expect(await runScenario([{ do: 'paste', text: 'https://youtu.be/abc123' }], env())).toBe('');
+    expect(pasted).toBe('https://youtu.be/abc123');
+  });
+
   it('pauses for as long as a pause step says, as a page loads', async () => {
     const started = Date.now();
     expect(await runScenario([{ do: 'pause', timeoutMs: 60 }], env())).toBe('');

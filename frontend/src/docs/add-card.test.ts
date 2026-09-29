@@ -153,3 +153,41 @@ describe('a block followed across a wait', () => {
     expect(find()).toBeNull();
   });
 });
+
+describe('/ Web link and / Online video', () => {
+  // The newest editor's line: a test may open more than one.
+  const hint = () => [...document.querySelectorAll('.is-empty')].at(-1)?.getAttribute('data-placeholder') ?? null;
+  function choose(kind: 'weblink' | 'onlinevideo', before = '') {
+    const { view, fetchCard } = open(`Text\n`);
+    toEndLine();
+    view.dispatch(view.state.tr.insertText(`${before}/`));
+    editor!.chooseSlash(kind);
+    return { view, fetchCard };
+  }
+
+  it('leave the caret on the empty line, asking for the address there', () => {
+    choose('onlinevideo');
+    expect(hint()).toBe('Paste a YouTube, Vimeo or Loom link');
+    choose('weblink');
+    expect(hint()).toBe('Paste a web link');
+  });
+
+  it('make the pasted address a video or a card, right there', () => {
+    choose('onlinevideo');
+    editor!.paste('https://youtu.be/abc123');
+    expect(editor!.markdown()).toBe('Text\n\n![](https://youtu.be/abc123)\n');
+  });
+
+  it('make a line of their own when chosen after words', () => {
+    const { view } = choose('weblink', 'Words ');
+    expect(hint()).toBe('Paste a web link');
+    expect(view.state.doc.textContent).toContain('Words');
+  });
+
+  it('ask nothing more once something else is typed there', () => {
+    const { view } = choose('weblink');
+    view.dispatch(view.state.tr.insertText('x'));
+    view.dispatch(view.state.tr.delete(view.state.selection.from - 1, view.state.selection.from));
+    expect(hint()).toBe('Type / for commands');
+  });
+});

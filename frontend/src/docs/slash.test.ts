@@ -163,3 +163,16 @@ describe('the / menu in the page', () => {
     expect(editor!.markdown()).toBe('---\n\nAfter\n');
   });
 });
+
+describe('the menus that follow typing, on a press outside the page', () => {
+  it('close, as Escape closes them', () => {
+    const { onSlash } = open('');
+    type('/');
+    expect(onSlash).toHaveBeenLastCalledWith(expect.objectContaining({ query: '' }));
+    editor!.dismissSuggestions();
+    expect(onSlash).toHaveBeenLastCalledWith(null);
+    // Typing on does not bring it back until a new / is typed.
+    type('x');
+    expect(onSlash).toHaveBeenLastCalledWith(null);
+  });
+});

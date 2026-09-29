@@ -107,9 +107,11 @@ component per block.
 - **Its address follows moves like a link's** (`pageLinks` reports it with
   `kind: 'media'`, a poster with `kind: 'poster'`), and its words never
   change with it.
-- **An online video contacts no one until play is pressed** (`onlineView`):
-  its placeholder loads nothing, and play puts the site's player in a
-  sandboxed frame. Its ids are checked to letters, digits, `-` and `_` before
+- **An online video loads no player until play is pressed** (`onlineView`):
+  its placeholder shows the site's thumbnail (the user's choice: loaded as
+  the page shows it), and play puts the site's player in a sandboxed frame,
+  or opens the browser where the site refuses Bava's window
+  (`playsInPage`: YouTube on a page with no web address). Its ids are checked to letters, digits, `-` and `_` before
   they reach the player's address (`online-video.ts`).
 - **A web card's details are fetched once**, on the paste of its link or
   Refresh details, in Go (`internal/web`, bounded, no cookies), and saved:

@@ -102,7 +102,7 @@ func check(step Step) error {
 		if step.Target == "" {
 			return errors.New(`"wait" needs a target`)
 		}
-	case "type", "key":
+	case "type", "key", "paste":
 		if step.Text == "" {
 			return fmt.Errorf("%q needs text", step.Do)
 		}

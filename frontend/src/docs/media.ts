@@ -11,7 +11,7 @@ import type { EditorView, NodeView } from 'prosemirror-view';
 import { t } from '../i18n/t';
 import { linkTo, resolveLink } from './links';
 import { mediaKind } from './markdown';
-import { onlineVideo, type OnlineVideo } from './online-video';
+import { onlineVideo, thumbnail, type OnlineVideo } from './online-video';
 import { schema } from './schema';
 
 /** The folder the user opened (a Space, or a loose page's folder) and this page's path in it. */
@@ -125,6 +125,21 @@ function onlineView(node: Node, online: OnlineVideo, context: MediaContext): Nod
   address.className = 'media-address';
   address.textContent = node.attrs.src as string;
   placeholder.append(play, site, address);
+  // The video's picture, loaded as the page shows it; where it cannot load
+  // (offline), the placeholder stands alone.
+  const picture = thumbnail(online);
+  if (picture) {
+    const image = document.createElement('img');
+    image.className = 'media-thumbnail';
+    image.alt = '';
+    image.src = picture;
+    image.addEventListener('error', () => {
+      image.remove();
+      delete placeholder.dataset.picture;
+    });
+    placeholder.dataset.picture = '';
+    placeholder.prepend(image);
+  }
   frame.append(placeholder);
   const caption = document.createElement('figcaption');
   caption.className = 'media-caption';
@@ -247,9 +262,12 @@ export function mediaView(node: Node, view: EditorView, getPos: () => number | u
       setState('missing');
       return;
     }
-    // A video on the web loads nothing until play is pressed.
-    if (player instanceof HTMLVideoElement) player.preload = isWeb(current.attrs.src) ? 'none' : 'metadata';
-    player.src = next;
+    // A video shows its first frame as the page opens (asked for by the
+    // address's time), and plays nothing until play is pressed.
+    if (player instanceof HTMLVideoElement) {
+      player.preload = 'metadata';
+      player.src = next.includes('#') ? next : `${next}#t=0.001`;
+    } else player.src = next;
   };
 
   const drawPoster = () => {
