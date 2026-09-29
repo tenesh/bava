@@ -42,6 +42,7 @@
   import { onlineVideo } from './online-video';
   import type { FileDetails } from './card';
   import MediaViewer from '../components/MediaViewer.svelte';
+  import { pressAway } from '../components/press-away';
   import { LANGUAGES } from '../canvas/code/languages';
 
   type Props = {
@@ -120,7 +121,7 @@
   let equation = $state.raw<{ pos: number; at: EquationAt; value: string; display: boolean } | null>(null);
   let link = $state.raw<{ left: number; top: number; value: string } | null>(null);
   // A medium's caption or its file's new name, asked for beside it.
-  let mediaField = $state.raw<{ kind: 'caption' | 'rename' | 'weblink' | 'onlinevideo'; pos: number; left: number; top: number; value: string } | null>(null);
+  let mediaField = $state.raw<{ kind: 'caption' | 'rename'; pos: number; left: number; top: number; value: string } | null>(null);
   let viewer = $state.raw<{ src: string; alt: string } | null>(null);
   let dragging: number | null = null;
 
@@ -129,6 +130,12 @@
   $effect(() => {
     void here;
     untrack(() => void refreshLinks());
+  });
+
+  // The menus that follow typing close on a press outside the page and them.
+  $effect(() => {
+    if (!slash && !mention && !emojiSuggest) return;
+    return pressAway(() => [host, ...document.querySelectorAll('.bava-menu')], () => editor.dismissSuggestions());
   });
 
   // Images and videos load from the folder the page sits in, followed as it moves.
@@ -223,9 +230,6 @@
       onOpenFile: (href) => onOpenFile(href),
       fileDetails: (root, path) => fileDetails(root, path),
       fetchCard: (address) => fetchCard(address),
-      onAskAddress: (kind, at) => {
-        if (!editor.locked) mediaField = { kind, pos: -1, left: at.left, top: at.bottom, value: '' };
-      },
       onPasteImage: () => onPasteImage(),
       onDateChip: (pos, at, date) => {
         if (!editor.locked) dateChip = { pos, at, date };
@@ -571,23 +575,10 @@
     }
   }
 
-  /** The address typed for `/` Web link or Online video, put in at the caret. */
-  function applyAddress(kind: 'weblink' | 'onlinevideo', value: string) {
-    const address = value.trim();
-    if (!/^https?:\/\/\S+$/i.test(address)) onNotify(t('media.notAddress'));
-    else if (kind === 'onlinevideo' && !onlineVideo(address)) onNotify(t('media.notOnlineVideo'));
-    else editor.insertAddress(address);
-  }
-
   function applyMediaField(value: string) {
     const field = mediaField;
     mediaField = null;
     if (!field) return;
-    if (field.kind === 'weblink' || field.kind === 'onlinevideo') {
-      if (value.trim() !== '') applyAddress(field.kind, value);
-      editor.focus();
-      return;
-    }
     if (field.kind === 'caption') editor.setMediaAttrs(field.pos, { caption: value.trim() === '' ? null : value });
     else {
       const attrs = editor.blockInfo(field.pos)?.attrs;
@@ -885,8 +876,9 @@
   <LinkField
     at={mediaField}
     value={mediaField.value}
-    placeholder={t(mediaField.kind === 'caption' ? 'media.captionPlaceholder' : mediaField.kind === 'rename' ? 'media.renamePlaceholder' : 'media.address')}
+    placeholder={t(mediaField.kind === 'caption' ? 'media.captionPlaceholder' : 'media.renamePlaceholder')}
     removeLabel={mediaField.kind === 'caption' && mediaField.value ? t('media.captionRemove') : null}
+    keepOnAway
     onApply={applyMediaField}
     onRemove={() => applyMediaField('')}
     onCancel={() => {

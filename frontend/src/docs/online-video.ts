@@ -1,7 +1,7 @@
 /**
  * Videos on YouTube, Vimeo and Loom, by the address of their page: which
- * site, which video, and the address of the site's player, loaded only when
- * play is pressed. YouTube's player is its no-cookie one.
+ * site, which video, the address of the site's player (loaded only when
+ * play is pressed; YouTube's is its no-cookie one), and its picture.
  */
 
 export type OnlineVideo = { provider: 'YouTube' | 'Vimeo' | 'Loom'; id: string; player: string };
@@ -34,4 +34,21 @@ export function onlineVideo(address: string): OnlineVideo | null {
     Loom: `https://www.loom.com/embed/${found.id}?autoplay=1`,
   }[found.provider];
   return { ...found, player };
+}
+
+/**
+ * Whether a site's video plays inside the page. YouTube refuses to play for
+ * a page whose address is not a web one (Bava's window on macOS), so there
+ * play opens the browser instead.
+ */
+export function playsInPage(provider: OnlineVideo['provider'], protocol: string): boolean {
+  return provider !== 'YouTube' || protocol === 'https:' || protocol === 'http:';
+}
+
+/**
+ * The address of a video's picture, loaded when the page shows it: YouTube's
+ * own thumbnail. Null for a site that publishes none at a fixed address.
+ */
+export function thumbnail(video: OnlineVideo): string | null {
+  return video.provider === 'YouTube' ? `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg` : null;
 }

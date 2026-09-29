@@ -54,4 +54,15 @@ describe('EquationField', () => {
     press(field, 'Escape');
     expect(props.onCancel).toHaveBeenCalled();
   });
+
+  it('keeps what was typed when the pointer goes down anywhere else', async () => {
+    const { props, field } = await render('x^2');
+    field.value = 'x^3';
+    flushSync(() => field.dispatchEvent(new Event('input', { bubbles: true })));
+    // Inside the field: nothing happens.
+    field.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    expect(props.onSave).not.toHaveBeenCalled();
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    expect(props.onSave).toHaveBeenCalledWith('x^3');
+  });
 });

@@ -7,7 +7,7 @@
 import { Call } from '@wailsio/runtime';
 
 export type Step = {
-  do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag' | 'pause';
+  do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag' | 'pause' | 'paste';
   /** What a click, wait or drag acts on; for a key, what it is pressed on (else whatever has focus). */
   target?: string;
   text?: string;
@@ -145,6 +145,17 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
       return (await until(() => !candidates(s.target!).some(visible), timeout)) ? '' : 'still there';
     case 'shot':
       return env.shot(s.name!);
+    // Text pasted into what has focus, as ⌘V over the page gives it.
+    case 'paste': {
+      // The clipboard given as the event's own: a script cannot fill the real one.
+      const event = new Event('paste', { bubbles: true, cancelable: true });
+      const text = s.text!;
+      Object.defineProperty(event, 'clipboardData', {
+        value: { types: ['text/plain'], files: [], items: [], getData: (type: string) => (type === 'text/plain' ? text : '') },
+      });
+      (document.activeElement ?? document.body).dispatchEvent(event);
+      return '';
+    }
     // Time for what cannot be waited on from the page, such as a web player loading.
     case 'pause':
       await new Promise((resolve) => setTimeout(resolve, s.timeoutMs));

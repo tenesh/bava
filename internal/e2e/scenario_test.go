@@ -36,6 +36,7 @@ func TestParseRefusesWhatCannotRun(t *testing.T) {
 		"shot, no name":    `{"name":"x","steps":[{"do":"shot"}]}`,
 		"drag, no points":  `{"name":"x","steps":[{"do":"drag","target":"a"}]}`,
 		"pause, no time":   `{"name":"x","steps":[{"do":"pause"}]}`,
+		"paste, no text":   `{"name":"x","steps":[{"do":"paste"}]}`,
 		"no steps":         `{"name":"x","steps":[]}`,
 		"unset variable":   `{"name":"x","folders":["${NOPE}"],"steps":[{"do":"menu","target":"file.new"}]}`,
 	}
@@ -80,5 +81,11 @@ func TestFilesAreAnsweredInOrderWithTheirVariables(t *testing.T) {
 	}
 	if _, err := e2e.Parse([]byte(`{"name":"x","files":[["${NOPE}"]],"steps":[{"do":"menu","target":"file.new"}]}`), nil); err == nil {
 		t.Error("an unset variable in a file answer was parsed")
+	}
+}
+
+func TestParseReadsAPasteStep(t *testing.T) {
+	if _, err := e2e.Parse([]byte(`{"name":"x","steps":[{"do":"paste","text":"https://youtu.be/abc123"}]}`), nil); err != nil {
+		t.Errorf("a paste step: %v", err)
 	}
 }

@@ -324,3 +324,16 @@ In a `.svelte` component it scopes a rule outward. In a plain stylesheet under
 `styles/`, sass emits it verbatim and the browser drops the whole rule: four
 code-editor rules were dead that way. Use plain descendant selectors there;
 `no-literals.test.ts` compiles the stylesheet and fails on `:global`.
+
+## Everything that floats closes on a press elsewhere
+A menu, picker, field, card or dialog closes when the pointer goes down
+anywhere outside it: on the page's own text, or outside the page. Ark's
+pieces do this themselves; a hand-built one uses `pressAway`
+(`components/press-away.ts`), counting as inside whatever belongs with it
+(the page, for the menus that follow typing). What a press elsewhere does
+to what was typed is chosen per field: a link field changes nothing, as
+Escape does; a caption, a name or an equation keeps what was typed. The
+walk in `tests/visual/specs/click-away.spec.ts` checks each; a new floating
+piece gets a row there. The Find bar is the one exception: it stays until
+closed, as a browser's does.
+

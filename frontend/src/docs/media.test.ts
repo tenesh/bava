@@ -118,6 +118,13 @@ describe('an image in the page', () => {
 });
 
 describe('a video in the page', () => {
+  it("shows its first frame as the page opens, not a blank box", () => {
+    const { host } = open('![Demo](.bava/attachments/demo.mp4)\n');
+    const video = host.querySelector('video')!;
+    expect(video.preload).toBe('metadata');
+    expect(video.getAttribute('src')).toMatch(/#t=0\.001$/);
+  });
+
   it('waits for play, with the webview player, its poster, loop and mute', () => {
     const { host } = open('<!-- bava: poster="still.png" loop muted -->\n![Demo](.bava/attachments/demo.mp4)\n');
     const video = host.querySelector('video')!;
@@ -137,11 +144,12 @@ describe('a video in the page', () => {
     expect(figure.getAttribute('data-state')).toBe('ready');
   });
 
-  it('loads nothing of a video on the web until play is pressed', () => {
+  it('shows the first frame of a video on the web too, and plays nothing by itself', () => {
     const { host } = open('![Clip](https://example.com/clip.mp4)\n');
     const video = host.querySelector('video')!;
-    expect(video.preload).toBe('none');
-    expect(video.getAttribute('src')).toBe('https://example.com/clip.mp4');
+    expect(video.preload).toBe('metadata');
+    expect(video.autoplay).toBe(false);
+    expect(video.getAttribute('src')).toBe('https://example.com/clip.mp4#t=0.001');
   });
 
   it('says an image on the web could not be loaded, and asks no one whether it is there', async () => {
@@ -204,16 +212,24 @@ describe('a video in the page', () => {
 describe('an online video in the page', () => {
   const page = '<!-- bava: caption="Demo" -->\n![Launch demo](https://www.youtube.com/watch?v=abc123)\n';
 
-  it('is a placeholder that contacts no one until play is pressed', async () => {
+  it("shows the video's picture as the page opens, and loads no player until play", async () => {
     const { host, probeFile } = open(page);
     const figure = host.querySelector('figure.media')!;
     expect(figure.getAttribute('data-kind')).toBe('online');
     expect(figure.getAttribute('data-ratio')).toBe('16:9');
     expect(figure.textContent).toContain('YouTube');
-    expect(figure.querySelector('iframe, video, img')).toBeNull();
-    for (const element of figure.querySelectorAll('[src]')) expect(element.getAttribute('src')).toBe('');
+    expect(figure.querySelector('iframe, video')).toBeNull();
+    expect(figure.querySelector<HTMLImageElement>('img.media-thumbnail')!.getAttribute('src')).toBe('https://i.ytimg.com/vi/abc123/hqdefault.jpg');
     await settle();
     expect(probeFile).not.toHaveBeenCalled();
+  });
+
+  it('shows the placeholder alone when the picture cannot load, as offline', () => {
+    const { host } = open(page);
+    const figure = host.querySelector('figure.media')!;
+    figure.querySelector('img.media-thumbnail')!.dispatchEvent(new Event('error'));
+    expect(figure.querySelector('img.media-thumbnail')).toBeNull();
+    expect(figure.textContent).toContain('YouTube');
   });
 
   it("puts the site's player in its place when play is pressed, playing at once", () => {

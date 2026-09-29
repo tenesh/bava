@@ -9,6 +9,7 @@
    */
   import { Portal } from '@ark-ui/svelte';
   import { portalRoot } from './portal-root';
+  import { pressAway } from './press-away';
   import { t } from '../i18n/t';
 
   type Props = {
@@ -23,9 +24,19 @@
     placeholder?: string;
     /** The Remove button's words; null for no Remove. */
     removeLabel?: string | null;
+    /**
+     * What a press elsewhere does: by default it closes the field changing
+     * nothing, as Escape does; `keepOnAway` keeps what was typed (a caption,
+     * a file's name), as leaving a name field does.
+     */
+    keepOnAway?: boolean;
   };
 
-  let { at, value, onApply, onRemove, onCancel, placeholder = t('link.placeholder'), removeLabel = t('link.remove') }: Props = $props();
+  let { at, value, onApply, onRemove, onCancel, placeholder = t('link.placeholder'), removeLabel = t('link.remove'), keepOnAway = false }: Props = $props();
+  let form: HTMLFormElement | undefined = $state();
+
+  // A press anywhere else closes it.
+  $effect(() => pressAway(() => form, () => (keepOnAway ? onApply(href) : onCancel())));
 
   // Seeded once from the link the selection has; the field then owns it.
   // svelte-ignore state_referenced_locally
@@ -42,6 +53,7 @@
 
 <Portal container={portalRoot()}>
   <form
+    bind:this={form}
     class="link-field"
     style:left={`${at.left}px`}
     style:top={`calc(${at.top}px - var(--size-row-lg) - var(--space-3))`}

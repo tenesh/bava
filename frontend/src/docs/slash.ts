@@ -53,11 +53,22 @@ const chooseMedia =
     return true;
   };
 
-/** Asks the app for a web address, which it puts in at the caret. */
+/**
+ * Leaves the caret on an empty line asking for a web address (pasted there,
+ * it becomes a card or a video): the line it is on, or a new one after it.
+ */
 const askAddress =
   (kind: 'weblink' | 'onlinevideo'): Command =>
   (state, dispatch) => {
-    dispatch?.(state.tr.setMeta(ADDRESS_ASK, kind));
+    if (!dispatch) return true;
+    const tr = state.tr;
+    const { $from } = tr.selection;
+    if ($from.parent.content.size > 0) {
+      const after = $from.after();
+      tr.insert(after, schema.nodes.paragraph.create());
+      tr.setSelection(TextSelection.create(tr.doc, after + 1));
+    }
+    dispatch(tr.setMeta(ADDRESS_ASK, kind).scrollIntoView());
     return true;
   };
 

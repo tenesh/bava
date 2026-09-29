@@ -8,6 +8,7 @@
    */
   import { Portal } from '@ark-ui/svelte';
   import { portalRoot } from './portal-root';
+  import { pressAway } from './press-away';
   import { t } from '../i18n/t';
 
   type Item = { emoji: string; name: string; group: string };
@@ -48,13 +49,7 @@
   });
 
   // A press anywhere else closes it.
-  $effect(() => {
-    const away = (event: PointerEvent) => {
-      if (panel && !panel.contains(event.target as Node)) onClose();
-    };
-    document.addEventListener('pointerdown', away, true);
-    return () => document.removeEventListener('pointerdown', away, true);
-  });
+  $effect(() => pressAway(() => panel, onClose));
 
   function keydown(event: KeyboardEvent) {
     if (event.key === 'Escape') {

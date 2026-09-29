@@ -433,7 +433,8 @@ image, its settings in the mark above.
   videos. Any other type stays a kept image, as written.
 - **Where it is:** relative to the page, or on the web (`https://…`). An
   image on the web is loaded when the page shows it, so opening the page
-  reaches that site; a video on the web loads nothing until play is pressed.
+  reaches that site; a video on the web loads its first frame then, and
+  plays nothing until play is pressed.
   An address from the root of the disk (`/…`) or by another scheme stays a
   kept image.
 - **The address** is relative to the page, with `%20` and the other
@@ -468,10 +469,14 @@ image, its settings in the mark above.
 - It takes `width`, `ratio`, `align` and `caption`; without a `ratio` it is
   drawn 16:9. `poster`, `loop` and `muted` are a video file's only, and kept
   as written on an online one.
-- Until play is pressed Bava shows a placeholder and contacts no one; then
-  it loads the site's player: YouTube's from `youtube-nocookie.com`,
-  Vimeo's asked to keep no record of the viewer (`dnt=1`), and Loom's as
-  Loom serves it (it has no such setting).
+- When the page shows it, Bava loads the video's picture from the site
+  (YouTube's thumbnail; Vimeo and Loom publish none at a fixed address, so
+  theirs is a placeholder), and offline shows the placeholder. Nothing plays
+  until play is pressed; then Bava loads the site's player: YouTube's from
+  `youtube-nocookie.com`, Vimeo's asked to keep no record of the viewer
+  (`dnt=1`), and Loom's as Loom serves it (it has no such setting). Where
+  YouTube will not play inside Bava's window (macOS, whose page has no web
+  address), play opens the video in the browser.
   Obsidian embeds the player; GitHub shows a broken image.
 - The page of any other site stays a kept image, as written.
 
