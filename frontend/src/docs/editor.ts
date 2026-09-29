@@ -301,8 +301,18 @@ export class DocEditor {
         this.#openCard(link.from, link.to, link.href);
         return false;
       },
-      // Files from the desktop are the app's to add, where they land.
-      handleDrop: (_view, event) => [...((event as DragEvent).dataTransfer?.types ?? [])].includes('Files'),
+      // Files from the desktop are the app's to add, where they land; an
+      // attachment dragged from Media goes in where it lands, as it is.
+      handleDrop: (view, event) => {
+        const drop = event as DragEvent;
+        const types = [...(drop.dataTransfer?.types ?? [])];
+        if (types.includes('application/x-bava-attachment')) {
+          const name = drop.dataTransfer!.getData('application/x-bava-attachment');
+          if (name) this.insertMedia([name], this.posAtPoint(drop.clientX, drop.clientY) ?? undefined);
+          return true;
+        }
+        return types.includes('Files');
+      },
       handleClickOn: (_view, _pos, node, nodePos, _event, direct) => {
         if (direct && node.type === schema.nodes.date) this.#openDate(nodePos);
         return false;
@@ -984,7 +994,12 @@ export class DocEditor {
 
   /** The place in the page at a point on screen, for a drop; null outside it. */
   posAtPoint(x: number, y: number): number | null {
-    return this.view?.posAtCoords({ left: x, top: y })?.pos ?? null;
+    try {
+      return this.view?.posAtCoords({ left: x, top: y })?.pos ?? null;
+    } catch {
+      // A point the page cannot place: at the caret instead.
+      return null;
+    }
   }
 
   /** Changes the settings or address of the image, video or card at `pos`, as one edit. */

@@ -9,24 +9,25 @@ import (
 // sentinel, so a caller can word it in the user's language (errors.Is) while
 // the message keeps the detail for the log.
 var (
-	ErrExists       = errors.New("exists")
-	ErrNameEmpty    = errors.New("nameEmpty")
-	ErrNameSlash    = errors.New("nameSlash")
-	ErrNameDot      = errors.New("nameDot")
-	ErrNameReserved = errors.New("nameReserved")
-	ErrIntoItself   = errors.New("intoItself")
-	ErrNotFolder    = errors.New("notFolder")
-	ErrOnlyPage     = errors.New("onlyPage")
-	ErrOutside      = errors.New("outside")
-	ErrThroughLink  = errors.New("throughLink")
-	ErrNotSpace     = errors.New("notSpace")
-	ErrChanged      = errors.New("changed")
+	ErrExists        = errors.New("exists")
+	ErrNameEmpty     = errors.New("nameEmpty")
+	ErrNameSlash     = errors.New("nameSlash")
+	ErrNameDot       = errors.New("nameDot")
+	ErrNameReserved  = errors.New("nameReserved")
+	ErrIntoItself    = errors.New("intoItself")
+	ErrNotFolder     = errors.New("notFolder")
+	ErrOnlyPage      = errors.New("onlyPage")
+	ErrOutside       = errors.New("outside")
+	ErrThroughLink   = errors.New("throughLink")
+	ErrNotSpace      = errors.New("notSpace")
+	ErrChanged       = errors.New("changed")
+	ErrNotAttachment = errors.New("notAttachment")
 )
 
 // Codes lists every refusal, for mapping an error to its code.
 var Codes = []error{
 	ErrExists, ErrNameEmpty, ErrNameSlash, ErrNameDot, ErrNameReserved, ErrIntoItself,
-	ErrNotFolder, ErrOnlyPage, ErrOutside, ErrThroughLink, ErrNotSpace, ErrChanged,
+	ErrNotFolder, ErrOnlyPage, ErrOutside, ErrThroughLink, ErrNotSpace, ErrChanged, ErrNotAttachment,
 }
 
 // Code is the refusal's code (the sentinel's text), or "" for any other

@@ -24,6 +24,14 @@ export function Apply(root: string, op: $models.Operation): $CancellablePromise<
 }
 
 /**
+ * Attachments lists the files of the Space's attachments folder, for Media.
+ * Which pages use each is worked out by the page, from the pages' text.
+ */
+export function Attachments(root: string): $CancellablePromise<$models.AttachmentList> {
+    return $Call.ByID(299153851, root);
+}
+
+/**
  * ChooseFolder shows the native folder picker, which can also make a new
  * folder, titled as the frontend words it. An empty path means the user
  * cancelled.

@@ -18,15 +18,18 @@
 
   type Props = {
     panels: Panel[];
+    /** Side by side (the default), or stacked one above the other. */
+    orientation?: 'horizontal' | 'vertical';
     onSizeChange?: (sizes: number[]) => void;
     panel: Snippet<[string]>;
   };
 
-  let { panels, onSizeChange, panel }: Props = $props();
+  let { panels, orientation = 'horizontal', onSizeChange, panel }: Props = $props();
 </script>
 
 <Splitter.Root
   class="bava-splitter"
+  {orientation}
   panels={panels.map((p) => ({ id: p.id, minSize: p.minSize }))}
   size={panels.map((p) => p.size)}
   onResize={(details) => onSizeChange?.(details.size)}
@@ -54,11 +57,25 @@
     overflow: hidden;
   }
 
+  /* Ark draws the handle as a button: none of the button's own look. */
   :global(.bava-splitter-handle) {
     flex: none;
+    padding: 0;
+    border: 0;
+    appearance: none;
     width: var(--border-width);
     background: var(--color-border-subtle);
     cursor: col-resize;
+  }
+
+  :global(.bava-splitter[data-orientation='vertical']) {
+    flex-direction: column;
+  }
+
+  :global(.bava-splitter[data-orientation='vertical'] > .bava-splitter-handle) {
+    width: auto;
+    height: var(--border-width);
+    cursor: row-resize;
   }
 
   :global(.bava-splitter-handle:hover),

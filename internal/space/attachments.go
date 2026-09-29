@@ -54,7 +54,10 @@ func (s Space) attach(name string, size int64, open func() (io.ReadCloser, error
 	if err != nil {
 		return "", err
 	}
-	dir := s.attachmentsDir()
+	dir, err := s.attachmentsFolder()
+	if err != nil {
+		return "", err
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("attach %s: %w", name, err)
 	}
@@ -131,13 +134,9 @@ func (s Space) freeAttachmentName(base, ext string) string {
 func (s Space) RenameAttachment(name, next string) (string, error) {
 	attaching.Lock()
 	defer attaching.Unlock()
-	name, err := validName(name)
+	from, err := s.AttachmentPath(name)
 	if err != nil {
 		return "", err
-	}
-	from := filepath.Join(s.attachmentsDir(), name)
-	if info, err := os.Lstat(from); err != nil || !info.Mode().IsRegular() {
-		return "", fmt.Errorf("%s is not in the attachments", name)
 	}
 	next, err = validName(next)
 	if err != nil {
@@ -155,4 +154,84 @@ func (s Space) RenameAttachment(name, next string) (string, error) {
 		return "", fmt.Errorf("rename %s: %w", name, err)
 	}
 	return next, nil
+}
+
+// attachmentsRel is the attachments folder, relative to the Space.
+const attachmentsRel = Dir + "/attachments"
+
+// Attachment is a file of the attachments folder: its name, size in bytes,
+// and date modified (RFC 3339), which is when Bava attached it.
+type Attachment struct {
+	Name     string `json:"name"`
+	Size     int64  `json:"size"`
+	Modified string `json:"modified"`
+}
+
+// Attachments lists the attachments folder's files by name: none when it is
+// not there yet. Folders, links and hidden files in it are not attachments.
+func (s Space) Attachments() ([]Attachment, error) {
+	dir, err := s.attachmentsFolder()
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return []Attachment{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read attachments: %w", err)
+	}
+	out := []Attachment{}
+	for _, entry := range entries {
+		if !entry.Type().IsRegular() || strings.HasPrefix(entry.Name(), ".") {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		out = append(out, Attachment{Name: entry.Name(), Size: info.Size(), Modified: info.ModTime().UTC().Format(time.RFC3339)})
+	}
+	return out, nil
+}
+
+// TrashAttachment moves an attachment to the Trash, where it can be
+// restored to the attachments folder.
+func (s Space) TrashAttachment(name string) (TrashItem, error) {
+	if _, err := s.AttachmentPath(name); err != nil {
+		return TrashItem{}, err
+	}
+	attaching.Lock()
+	defer attaching.Unlock()
+	return s.trash(attachmentsRel+"/"+name, KindAttachment)
+}
+
+// AttachmentPath is where an attachment is on disk, by its exact name as the
+// folder lists it (never trimmed: that could be another file); the
+// attachments folder is hidden, so Space paths do not reach it. An error
+// when no plain file of that name is there.
+func (s Space) AttachmentPath(name string) (string, error) {
+	if name == "" || name == "." || name == ".." || strings.HasPrefix(name, ".") || strings.ContainsAny(name, "/\\\x00") {
+		return "", refuse(ErrNotAttachment, "%q is not an attachment", name)
+	}
+	dir, err := s.attachmentsFolder()
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(dir, name)
+	if info, err := os.Lstat(path); err != nil || !info.Mode().IsRegular() {
+		return "", refuse(ErrNotAttachment, "%q is not an attachment", name)
+	}
+	return path, nil
+}
+
+// attachmentsFolder is the attachments folder, when neither it nor .bava is
+// a link: one could lead out of the Space. It may not be there yet.
+func (s Space) attachmentsFolder() (string, error) {
+	for _, dir := range []string{filepath.Join(s.Root, Dir), s.attachmentsDir()} {
+		if info, err := os.Lstat(dir); err == nil && info.Mode()&os.ModeSymlink != 0 {
+			return "", refuse(ErrThroughLink, "%s is a link", dir)
+		}
+	}
+	return s.attachmentsDir(), nil
 }

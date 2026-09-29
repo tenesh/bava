@@ -33,6 +33,52 @@ for (const theme of THEMES) {
       await dialogShot(page, 'trash', 'with-items', theme);
     });
 
+    test('the Media dialog', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await page.getByRole('button', { name: 'Open Media' }).click();
+      const dialog = openDialog(page);
+      await expect(dialog.locator('.media-item')).toHaveCount(9);
+      // Which pages use each file is read from the pages: Unused follows.
+      await expect(dialog.locator('.media-item').filter({ hasText: 'Unused' })).toHaveCount(2);
+      await expect(dialog.locator('.media-item img').first()).toHaveJSProperty('complete', true);
+      await dialogShot(page, 'media', 'grid', theme);
+      await dialog.locator('[data-name="logo.png"]').click();
+      await expect(dialog.locator('.media-used-by button')).toHaveText(['Media']);
+      await dialogShot(page, 'media', 'chosen', theme);
+      await dialog.getByText('List', { exact: true }).click();
+      await dialog.getByText('Unused', { exact: true }).click();
+      await expect(dialog.locator('.media-item')).toHaveCount(2);
+      await dialogShot(page, 'media', 'unused-list', theme);
+    });
+
+    test('deleting a file pages use asks first', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await page.getByRole('button', { name: 'Open Media' }).click();
+      await expect(openDialog(page).locator('.media-item').filter({ hasText: 'Unused' })).toHaveCount(2);
+      await openDialog(page).locator('[data-name="logo.png"]').click();
+      await openDialog(page).getByRole('button', { name: 'Delete', exact: true }).click();
+      await expect(page.getByText('Delete “logo.png”?')).toBeVisible();
+      await expect(page).toHaveScreenshot(shot('dialogs', 'media', 'confirm-delete', theme));
+    });
+
+    test('unused files moved to the Trash, and listed there', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await page.getByRole('button', { name: 'Open Media' }).click();
+      await expect(openDialog(page).locator('.media-item').filter({ hasText: 'Unused' })).toHaveCount(2);
+      await page.getByRole('button', { name: 'Move unused to Trash' }).click();
+      await expect(page.getByText('Move 2 unused files to the Trash?')).toBeVisible();
+      await page.getByRole('button', { name: 'Move unused to Trash' }).last().click();
+      await expect(openDialog(page).locator('.media-item')).toHaveCount(7);
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog', { name: 'Media' })).toBeHidden();
+      await menu(page, 'space.trash');
+      await expect(openDialog(page).locator('li.item')).toHaveCount(4);
+      await dialogShot(page, 'trash', 'with-attachments', theme);
+    });
+
     test('the Trash, empty', async ({ page }) => {
       await openApp(page, theme);
       await openSpace(page);
@@ -93,6 +139,8 @@ for (const theme of THEMES) {
       await openPage(page, 'Engineering', 'Engineering/Architecture.md');
       await menu(page, 'insert.diagram');
       await expect(openDialog(page)).toBeVisible();
+      // The dialog opens with the code in focus: pictured once it is there.
+      await expect(openDialog(page).locator('.cm-content')).toBeFocused();
       // The editor follows the theme: its gutter and current line are no
       // lighter than the page in dark, no darker in light.
       const shades = await page.evaluate(() => {

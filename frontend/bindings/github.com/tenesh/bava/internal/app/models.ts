@@ -12,6 +12,14 @@ import * as space$0 from "../space/models.js";
 import * as store$0 from "../store/models.js";
 
 /**
+ * AttachmentList is the Space's attachments, by name.
+ */
+export interface AttachmentList {
+    "attachments": space$0.Attachment[] | null;
+    "error": string;
+}
+
+/**
  * CardDetails are a web card's saved details: the page's title and
  * description, and its icon and picture as attachment names ("" when none).
  */
@@ -50,6 +58,11 @@ export interface IndexPage {
     "name": string;
     "path": string;
     "text": string;
+
+    /**
+     * Unreadable: the page could not be read, so its text is not known.
+     */
+    "unreadable": boolean;
 }
 
 /**
@@ -130,7 +143,8 @@ export interface OpenResult {
 /**
  * Operation is one change to a Space. Kind is createPage, createFolder,
  * rename, move, duplicate, trash, restore, deleteForever, emptyTrash,
- * renameSpace, setPageWidth, relink, attach, attachData or renameAttachment;
+ * renameSpace, setPageWidth, relink, attach, attachData, renameAttachment
+ * or trashAttachment;
  * the other fields are what it needs.
  */
 export interface Operation {

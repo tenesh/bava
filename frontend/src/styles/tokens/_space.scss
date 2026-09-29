@@ -53,6 +53,13 @@
   --size-media-medium: 50%;
   --size-media-large: 75%;
   --size-media-notice: 120px;
+  // A Media row's picture, and the Media dialog's grid and size.
+  --size-media-thumb-row: 20px;
+  --size-media-grid-column: 148px;
+  --size-dialog-media-width: min(880px, 90vw);
+  --size-dialog-media-height: min(620px, 90vh);
+  --ratio-media-thumb: 4 / 3;
+  --size-media-detail: 240px;
   // A card: its icon, and a web card's picture beside its words.
   --size-card-icon: 20px;
   --size-card-picture: 120px;

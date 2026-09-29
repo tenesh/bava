@@ -32,4 +32,29 @@ describe('the Trash', () => {
     expect(labels).toEqual(['Restore Q3 retro', 'Delete Q3 retro']);
     unmount(app);
   });
+
+  it('shows an attachment as a Media file, by its name', async () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const app = flushSync(() =>
+      mount(TrashDialog, {
+        target,
+        props: {
+          open: true,
+          items: [{ id: 'b2', path: '.bava/attachments/logo.png', kind: 'attachment', deletedAt: 'Today', size: '1 KB' }],
+          total: '1 KB',
+          onRestore: vi.fn(),
+          onDelete: vi.fn(),
+          onEmpty: vi.fn(),
+          onOpenChange: vi.fn(),
+        } as never,
+      }),
+    );
+    await vi.waitFor(() => expect(document.querySelector('.item')).not.toBeNull());
+    const row = document.querySelector('.item')!;
+    expect(row.textContent).toContain('logo.png');
+    expect(row.textContent).toContain('Media');
+    expect(row.textContent).not.toContain('.bava');
+    unmount(app);
+  });
 });

@@ -67,6 +67,10 @@
   import SpaceSwitcher from './components/SpaceSwitcher.svelte';
   import StartScreen from './components/StartScreen.svelte';
   import TrashDialog from './components/TrashDialog.svelte';
+  import MediaSection from './components/MediaSection.svelte';
+  import MediaDialog from './components/MediaDialog.svelte';
+  import Splitter from './components/Splitter.svelte';
+  import { mediaUsage, type AttachmentFile, type MediaItem } from './files/media';
   import SpaceSettingsDialog from './components/SpaceSettingsDialog.svelte';
   import NewSpaceDialog from './components/NewSpaceDialog.svelte';
   import ConfirmDialog from './components/ConfirmDialog.svelte';
@@ -85,7 +89,7 @@
   import { createSettings } from './settings/settings.svelte';
   import { createRecents } from './files/recents.svelte';
   import { createAutosave } from './files/autosave.svelte';
-  import { createViewState } from './shell/view.svelte';
+  import { createViewState, MEDIA_SHARE } from './shell/view.svelte';
   import { createDispatcher, MENU_COMMAND_EVENT, type Command, type CommandHandlers } from './shell/commands';
   import { canvasKeyStandsDown, editTarget, fieldSelection } from './shell/edit-target';
   import {
@@ -898,10 +902,16 @@
   }
 
   async function restoreItem(id: string) {
+    const item = trashItems.find((entry) => entry.id === id);
     const result = await space.apply({ kind: 'restore', id });
     if (result.error) notify(result.error);
+    // An attachment whose name was taken meanwhile comes back numbered: pages still reach the other.
+    else if (item?.kind === 'attachment' && result.path && result.path !== item.path) {
+      notify(t('media.restoredAs').replace('{name}', result.path.slice(result.path.lastIndexOf('/') + 1)));
+    }
     await refreshTrash();
     await docPane?.refreshLinks();
+    await refreshMedia();
   }
 
   async function deleteItem(id: string) {
@@ -949,6 +959,124 @@
       insert: (names) => docPane?.insertMedia(names, at),
       notify,
     });
+    await refreshMedia();
+  }
+
+  // Media: the Space's attachments, and the pages that use each, read again
+  // when the Space opens and after anything is added, renamed or trashed.
+  let mediaList = $state.raw<MediaItem[]>([]);
+  // Whether every page was read: until then no file is called unused.
+  let mediaUsageKnown = $state.raw(false);
+  let mediaDialogOpen = $state.raw(false);
+  let mediaReads = 0;
+
+  /**
+   * The Space's attachments and what is known of their use, read afresh: the
+   * open page as it is now, saved or not. Null when the folder could not be
+   * listed.
+   */
+  async function readMediaUsage(root: string): Promise<{ files: AttachmentFile[]; usage: ReturnType<typeof mediaUsage> } | null> {
+    const listed = await SpaceService.Attachments(root);
+    if (listed.error) return null;
+    const files = listed.attachments ?? [];
+    let pages = await space.index(true);
+    const now = openRel !== null ? (docPane?.currentMarkdown() ?? null) : null;
+    if (pages && now !== null) pages = pages.map((page) => (page.path === openRel ? { ...page, text: now, unreadable: false } : page));
+    return { files, usage: mediaUsage(files, pages) };
+  }
+
+  async function refreshMedia() {
+    const root = space.root;
+    const asked = (mediaReads += 1);
+    if (!root) {
+      mediaList = [];
+      mediaUsageKnown = false;
+      return;
+    }
+    const read = await readMediaUsage(root);
+    if (asked !== mediaReads || space.root !== root) return;
+    // A folder that could not be listed keeps the list shown.
+    if (!read) {
+      notify(t('media.readFailed'));
+      return;
+    }
+    mediaList = read.usage.items;
+    mediaUsageKnown = read.usage.known;
+  }
+
+  $effect(() => {
+    void space.root;
+    untrack(() => void refreshMedia());
+  });
+
+  /** Where a Media item's picture loads from: the image, or a video's poster; null for an icon. */
+  function mediaThumb(item: MediaItem): string | null {
+    const root = space.root;
+    const name = item.kind === 'image' ? item.name : item.kind === 'video' ? item.poster : null;
+    return root && name ? `/bava-file/?${new URLSearchParams({ root, path: `.bava/attachments/${name}` })}` : null;
+  }
+
+  /**
+   * Folds or unfolds Files or Media. The side pane is laid out anew (split,
+   * or stacked with one folded), so focus goes back to the fold button.
+   */
+  async function foldSection(section: 'files' | 'media') {
+    if (section === 'files') view.toggleFilesFolded();
+    else view.toggleMediaFolded();
+    await tick();
+    document.querySelector<HTMLElement>(`.files-fold[data-section="${section}"]`)?.focus();
+  }
+
+  /** An attachment to the Trash: asked first when pages use it, which then show it missing. */
+  async function deleteMediaItem(item: MediaItem) {
+    // Asked afresh: the list shown may be older than the pages.
+    const read = space.root ? await readMediaUsage(space.root) : null;
+    const now = read?.usage.items.find((entry) => entry.name === item.name);
+    if (!read || !read.usage.known || !now || !now.unused) {
+      const pages = (now ?? item).usedBy.map((page) => page.name).join(t('list.separator'));
+      const body = read?.usage.known && pages ? t('media.confirmDelete.body').replace('{pages}', pages) : t('media.confirmDelete.unknown');
+      if (!(await confirm(t('media.confirmDelete.title').replace('{name}', item.name), body))) return;
+    }
+    const result = await space.apply({ kind: 'trashAttachment', attachment: item.name }, { refresh: false });
+    if (result.error) notify(result.error);
+    await refreshMedia();
+    if (trashOpen) await refreshTrash();
+  }
+
+  /** Every attachment no page uses, to the Trash, asked first with how many and how large. */
+  async function trashUnusedMedia() {
+    // Asked afresh, and only when every page could be read.
+    const read = space.root ? await readMediaUsage(space.root) : null;
+    if (!read || !read.usage.known) {
+      notify(t('media.usageUnknown'));
+      await refreshMedia();
+      return;
+    }
+    const unused = read.usage.items.filter((item) => item.unused);
+    if (unused.length === 0) {
+      await refreshMedia();
+      return;
+    }
+    const title = unused.length === 1 ? t('media.confirmUnused.one') : t('media.confirmUnused.title').replace('{count}', String(unused.length));
+    const size = formatBytes(unused.reduce((sum, item) => sum + item.size, 0));
+    if (!(await confirm(title, t('media.confirmUnused.body').replace('{size}', size), t('media.trashUnused')))) return;
+    for (const item of unused) {
+      const result = await space.apply({ kind: 'trashAttachment', attachment: item.name }, { refresh: false });
+      if (result.error) notify(result.error);
+    }
+    await refreshMedia();
+    if (trashOpen) await refreshTrash();
+  }
+
+  /** Files added to the Space's attachments without placing them on a page. */
+  async function addToMedia() {
+    const chosen = await FileService.ChooseMedia('file');
+    if (chosen.error) notify(chosen.error);
+    for (const path of chosen.paths ?? []) {
+      const result = await space.apply({ kind: 'attach', source: path }, { refresh: false });
+      if (result.error) notify(result.error);
+    }
+    await refreshMedia();
   }
 
   /** A paste with no text: the clipboard's image, when it holds one. */
@@ -977,6 +1105,7 @@
     }
     const folder = '.bava/attachments/';
     await relinkAfter([{ from: folder + name, to: folder + (result.name ?? next) }], openRel);
+    await refreshMedia();
   }
 
   /**
@@ -1992,6 +2121,76 @@
   });
 </script>
 
+{#snippet filesSection()}
+    <div class="files-header">
+      <button type="button" class="files-fold" data-section="files" aria-expanded={!view.filesFolded} onclick={() => foldSection('files')}>
+        <span class="files-chevron" class:folded={view.filesFolded}><ToolIcon id="chevronDown" size="sm" /></span>
+        <span class="files-title">{t('pane.files')}</span>
+      </button>
+      <button
+        type="button"
+        class="bava-icon-button files-button"
+        aria-label={t('tree.add')}
+        title={t('tree.add')}
+        aria-haspopup="menu"
+        onclick={(event) => {
+          const box = event.currentTarget.getBoundingClientRect();
+          filesMenuAt = { x: box.left, y: box.bottom };
+        }}
+      >
+        <ToolIcon id="more" size="sm" />
+      </button>
+    </div>
+    {#if !view.filesFolded}
+      <div class="side-scroll">
+      <SpaceTree
+        folders={space.folders}
+        rows={space.rows}
+        expanded={space.expanded}
+        pending={space.pending}
+        activePath={openRel}
+        unsavedPath={doc.dirty ? openRel : null}
+        {renameRequest}
+        onRenameStarted={() => (renameRequest = null)}
+        onToggle={(folder) => void space.toggle(folder)}
+        onOpen={(path) => void openPath(space.absolute(path))}
+        onRename={(path, name) => void relocate({ kind: 'rename', path, name })}
+        onCommitNew={(name) => void commitNew(name)}
+        onCancelNew={() => space.cancelNew()}
+        onMove={(path, folder, index) => void relocate({ kind: 'move', path, folder, index })}
+        onTrash={(path) => void trashPath(path)}
+        onContextMenu={(path, anchor) => (treeMenuAt = { path, anchor })}
+      />
+      </div>
+    {/if}
+{/snippet}
+
+{#snippet mediaSection()}
+  <div class="files-header">
+    <button type="button" class="files-fold" data-section="media" aria-expanded={!view.mediaFolded} onclick={() => foldSection('media')}>
+      <span class="files-chevron" class:folded={view.mediaFolded}><ToolIcon id="chevronDown" size="sm" /></span>
+      <span class="files-title">{t('pane.media')}</span>
+    </button>
+  </div>
+  {#if !view.mediaFolded}
+    <MediaSection
+      items={mediaList}
+      thumb={mediaThumb}
+      onAdd={() => void addToMedia()}
+      onOpenDialog={() => {
+        mediaDialogOpen = true;
+        void refreshMedia();
+      }}
+      onPlace={(name) => {
+        // Only into a page shown in the Document.
+        if (!doc.isOpen || openRel === null || !view.showsDocument) return;
+        docPane?.insertMedia([name]);
+        void refreshMedia();
+      }}
+    />
+  {/if}
+{/snippet}
+
 {#snippet filesSettings()}
   <FilesSection
     mode={settingsState.autosave}
@@ -2083,45 +2282,27 @@
           else if (id === 'space.settings') spaceSettingsOpen = true;
         }}
       />
-      <div class="files-header">
-        <button type="button" class="files-fold" aria-expanded={!view.filesFolded} onclick={() => view.toggleFilesFolded()}>
-          <span class="files-chevron" class:folded={view.filesFolded}><ToolIcon id="chevronDown" size="sm" /></span>
-          <span class="files-title">{t('pane.files')}</span>
-        </button>
-        <button
-          type="button"
-          class="bava-icon-button files-button"
-          aria-label={t('tree.add')}
-          title={t('tree.add')}
-          aria-haspopup="menu"
-          onclick={(event) => {
-            const box = event.currentTarget.getBoundingClientRect();
-            filesMenuAt = { x: box.left, y: box.bottom };
-          }}
-        >
-          <ToolIcon id="more" size="sm" />
-        </button>
+      <div class="side-sections">
+        {#if view.filesFolded || view.mediaFolded}
+          <div class="side-section" class:grow={!view.filesFolded}>{@render filesSection()}</div>
+          <div class="side-section" class:grow={view.filesFolded && !view.mediaFolded}>{@render mediaSection()}</div>
+        {:else}
+          <Splitter
+            orientation="vertical"
+            panels={[
+              { id: 'files', size: 100 - view.mediaShare, minSize: MEDIA_SHARE.files },
+              { id: 'media', size: view.mediaShare, minSize: MEDIA_SHARE.min },
+            ]}
+            onSizeChange={(sizes) => view.setMediaShare(sizes[1])}
+          >
+            {#snippet panel(id)}
+              <div class="side-section grow">
+                {#if id === 'files'}{@render filesSection()}{:else}{@render mediaSection()}{/if}
+              </div>
+            {/snippet}
+          </Splitter>
+        {/if}
       </div>
-      {#if !view.filesFolded}
-        <SpaceTree
-          folders={space.folders}
-          rows={space.rows}
-          expanded={space.expanded}
-          pending={space.pending}
-          activePath={openRel}
-          unsavedPath={doc.dirty ? openRel : null}
-          {renameRequest}
-          onRenameStarted={() => (renameRequest = null)}
-          onToggle={(folder) => void space.toggle(folder)}
-          onOpen={(path) => void openPath(space.absolute(path))}
-          onRename={(path, name) => void relocate({ kind: 'rename', path, name })}
-          onCommitNew={(name) => void commitNew(name)}
-          onCancelNew={() => space.cancelNew()}
-          onMove={(path, folder, index) => void relocate({ kind: 'move', path, folder, index })}
-          onTrash={(path) => void trashPath(path)}
-          onContextMenu={(path, anchor) => (treeMenuAt = { path, anchor })}
-        />
-      {/if}
     {:else if doc.path}
       <div class="not-in-space">
         <EmptyState title={t('tree.notInSpace')} body={t('tree.notInSpaceBody')} />
@@ -2337,6 +2518,28 @@
 
 <AboutDialog bind:open={aboutOpen} onOpenChange={(open) => (aboutOpen = open)} />
 
+{#if space.root}
+  <MediaDialog
+    open={mediaDialogOpen}
+    items={mediaList}
+    usageKnown={mediaUsageKnown}
+    thumb={mediaThumb}
+    onOpenChange={(open) => {
+      mediaDialogOpen = open;
+      if (open) void refreshMedia();
+    }}
+    onAdd={() => void addToMedia()}
+    onRename={(name, next) => void renameAttachment(name, next)}
+    onDelete={(item) => void deleteMediaItem(item)}
+    onReveal={(name) => void revealPath(`.bava/attachments/${name}`)}
+    onOpenPage={(path) => {
+      mediaDialogOpen = false;
+      void openPath(space.absolute(path));
+    }}
+    onTrashUnused={() => void trashUnusedMedia()}
+  />
+{/if}
+
 <TrashDialog
   bind:open={trashOpen}
   items={trashItems.map((item) => ({ ...item, size: formatBytes(item.size) }))}
@@ -2482,6 +2685,31 @@
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-text-muted);
+  }
+
+  /* Files and Media share the side pane's height, either folding away. */
+  .side-sections {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .side-section {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .side-section.grow {
+    flex: 1;
+    height: 100%;
+  }
+
+  .side-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .files-button {

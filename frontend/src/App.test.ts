@@ -31,6 +31,7 @@ vi.mock('../bindings/github.com/tenesh/bava/internal/app', () => ({
     Apply: vi.fn().mockResolvedValue({ path: '', id: '', root: '', error: '' }),
     Create: vi.fn().mockResolvedValue({ root: '/w/Beta', name: 'Beta', pageWidth: '', error: '' }),
     Index: vi.fn().mockResolvedValue({ pages: [], backlinks: [], error: '' }),
+    Attachments: vi.fn().mockResolvedValue({ attachments: [], error: '' }),
   },
   LogService: {
     Report: vi.fn().mockResolvedValue(undefined),
@@ -258,11 +259,13 @@ describe('launch', () => {
     const { target, app } = mountApp();
     menuCommand('file.openSpace');
     await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
-    const fold = target.querySelector<HTMLButtonElement>('.files-fold')!;
-    expect(fold.getAttribute('aria-expanded')).toBe('true');
-    fold.click();
+    // The side pane is laid out anew as a section folds: the button is found again.
+    const fold = () => target.querySelector<HTMLButtonElement>('.files-fold[data-section="files"]')!;
+    expect(fold().getAttribute('aria-expanded')).toBe('true');
+    fold().click();
     await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).toBeNull());
-    expect(fold.getAttribute('aria-expanded')).toBe('false');
+    expect(fold().getAttribute('aria-expanded')).toBe('false');
+    await vi.waitFor(() => expect(document.activeElement).toBe(fold()));
     menuCommand('file.new');
     await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
     localStorage.clear();
@@ -465,6 +468,66 @@ describe('launch', () => {
     await vi.waitFor(() =>
       expect(document.querySelector('[role="dialog"]:not([hidden])')?.textContent).toContain('Appearance'),
     );
+    unmount(app);
+  });
+});
+
+describe('Media: what is moved to the Trash', () => {
+  const files = [
+    { name: 'a.png', size: 10, modified: '2026-09-01T00:00:00Z' },
+    { name: 'b.png', size: 20, modified: '2026-09-01T00:00:00Z' },
+  ];
+  const click = (el: Element | undefined | null) => flushSync(() => (el as HTMLElement).click());
+  const byText = (text: string) => [...document.querySelectorAll('button')].filter((b) => b.textContent?.trim() === text);
+
+  async function openMedia(pages: { name: string; path: string; text: string; unreadable?: boolean }[]) {
+    vi.mocked(SpaceService.Attachments).mockResolvedValue({ attachments: files, error: '' } as never);
+    vi.mocked(SpaceService.Index).mockResolvedValue({ pages, error: '' } as never);
+    vi.mocked(SpaceService.Apply).mockClear();
+    const { target, app } = mountApp();
+    menuCommand('file.openSpace');
+    await vi.waitFor(() => expect(target.querySelector('button[aria-label="Open Media"]')).not.toBeNull());
+    click(target.querySelector('button[aria-label="Open Media"]'));
+    await vi.waitFor(() => expect(document.querySelectorAll('.media-dialog .media-item')).toHaveLength(2));
+    return { target, app };
+  }
+
+  const trashed = () =>
+    vi.mocked(SpaceService.Apply).mock.calls.filter(([, op]) => (op as { kind: string }).kind === 'trashAttachment').map(([, op]) => (op as { attachment: string }).attachment);
+
+  afterEach(() => {
+    vi.mocked(SpaceService.Attachments).mockResolvedValue({ attachments: [], error: '' } as never);
+    vi.mocked(SpaceService.Index).mockResolvedValue({ pages: [], backlinks: [], error: '' } as never);
+  });
+
+  it('moves only the files no page uses, after asking with how many', async () => {
+    const { app } = await openMedia([{ name: 'P', path: 'P.md', text: '![](.bava/attachments/a.png)\n' }]);
+    await vi.waitFor(() => expect(byText('Move unused to Trash')[0]?.hasAttribute('disabled')).toBe(false));
+    click(byText('Move unused to Trash')[0]);
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Move 1 unused file to the Trash?'));
+    click(byText('Move unused to Trash').at(-1));
+    await vi.waitFor(() => expect(trashed()).toEqual(['b.png']));
+    unmount(app);
+  });
+
+  it('moves nothing when a page could not be read', async () => {
+    const { app } = await openMedia([
+      { name: 'P', path: 'P.md', text: '' },
+      { name: 'Q', path: 'Q.md', text: '', unreadable: true },
+    ]);
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Not every page could be read'));
+    expect(byText('Move unused to Trash')[0]?.hasAttribute('disabled')).toBe(true);
+    expect(document.querySelectorAll('.media-dialog .media-item-meta')[0].textContent).not.toContain('Unused');
+    expect(trashed()).toEqual([]);
+    unmount(app);
+  });
+
+  it('asks before deleting a file a page uses, naming the page', async () => {
+    const { app } = await openMedia([{ name: 'Plan', path: 'Plan.md', text: '![](.bava/attachments/a.png)\n' }]);
+    click(document.querySelector('.media-dialog [data-name="a.png"]'));
+    click(byText('Delete').at(-1));
+    await vi.waitFor(() => expect(document.body.textContent).toContain('these pages will show it as missing until it is restored: Plan.'));
+    expect(trashed()).toEqual([]);
     unmount(app);
   });
 });

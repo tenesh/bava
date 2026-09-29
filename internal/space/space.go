@@ -17,6 +17,8 @@ const Dir = ".bava"
 const (
 	KindPage   = "page"
 	KindFolder = "folder"
+	// KindAttachment is a file of .bava/attachments, in the Trash.
+	KindAttachment = "attachment"
 )
 
 // PageExt is the extension of a page.

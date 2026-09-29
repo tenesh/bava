@@ -13,7 +13,7 @@
   import ToolIcon from './ToolIcon.svelte';
   import { t } from '../i18n/t';
 
-  type Item = { id: string; path: string; kind: 'page' | 'folder'; deletedAt: string; size: string };
+  type Item = { id: string; path: string; kind: 'page' | 'folder' | 'attachment'; deletedAt: string; size: string };
 
   type Props = {
     open: boolean;
@@ -32,7 +32,9 @@
   const shown = $derived(query.trim() ? items.filter((item) => item.path.toLowerCase().includes(query.trim().toLowerCase())) : items);
 
   const nameOf = (path: string) => path.split('/').pop()!.replace(/\.md$/i, '');
-  const folderOf = (path: string) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : t('trash.top'));
+  // An attachment came from Media, not from a folder anyone sees.
+  const folderOf = (path: string) =>
+    path.startsWith('.bava/attachments/') ? t('pane.media') : path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : t('trash.top');
   const when = (iso: string) => {
     const date = new Date(iso);
     return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -64,7 +66,7 @@
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
           <li class="item row" class:selected={selected === item.id} onclick={() => (selected = item.id)}>
-            <ToolIcon id={item.kind === 'folder' ? 'folder' : 'page'} size="sm" />
+            <ToolIcon id={item.kind === 'folder' ? 'folder' : item.kind === 'attachment' ? 'document' : 'page'} size="sm" />
             <span class="name">{nameOf(item.path)} <span class="meta">· {item.size}</span></span>
             <span class="meta">{folderOf(item.path)}</span>
             <span class="meta">{when(item.deletedAt)}</span>

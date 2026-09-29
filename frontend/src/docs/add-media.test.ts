@@ -197,6 +197,18 @@ describe('pasting and dropping files onto the page', () => {
     expect(onPasteImage).not.toHaveBeenCalled();
   });
 
+  it('puts an attachment dragged from Media where it lands, without copying it again', () => {
+    const { view } = open('Text\n');
+    const event = {
+      dataTransfer: { types: ['application/x-bava-attachment'], getData: (type: string) => (type === 'application/x-bava-attachment' ? 'logo.png' : '') },
+      clientX: 0,
+      clientY: 0,
+      preventDefault: vi.fn(),
+    } as unknown as DragEvent;
+    expect(view.someProp('handleDrop', (f) => f(view, event, Slice.empty, false))).toBe(true);
+    expect(editor!.markdown()).toContain('![logo](.bava/attachments/logo.png)');
+  });
+
   it('leaves dropped files to the app, which adds them where they land', () => {
     const { view } = open('Text\n');
     const event = { dataTransfer: { types: ['Files'] }, preventDefault: vi.fn() } as unknown as DragEvent;

@@ -266,10 +266,12 @@ wrong facts. When a milestone closes, update this section in the same change.
   steps (an image added through the picker, found loaded after reopening). It adds `golang.design/x/clipboard` (MIT,
   pure Go on every platform: no build dependency on Linux) for pasted
   images, and the file route at `/bava-file/` (`internal/app/files.go`).
-  **8.4.2** (online videos and cards) passes its gates locally on
-  2026-09-29, uncommitted; its smoke steps (a file card through the picker,
-  a YouTube video played, a screenshot kept after 8 s) run on CI first.
-  8.4.3, 8.5 and 8.6 follow, then 8.4a (canvas screen checks and smoke runs
+  **8.4.2** (online videos and cards) is committed, CI green; the smoke
+  screenshots show YouTube's player loading inside Bava on all three
+  platforms. **8.4.3** (the Media section and dialog) passes its gates
+  locally on 2026-09-29, uncommitted; its smoke steps (Media opened after
+  reopening, the image found used by First page) run on CI first. 8.5 and
+  8.6 follow, then 8.4a (canvas screen checks and smoke runs
   with complex scenes, before 8.5), then Milestone 15 (export, import and
   search). The roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **The Document** (`frontend/src/docs/`): a ProseMirror editor over the

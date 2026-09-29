@@ -63,7 +63,8 @@ type SpaceList struct {
 
 // Operation is one change to a Space. Kind is createPage, createFolder,
 // rename, move, duplicate, trash, restore, deleteForever, emptyTrash,
-// renameSpace, setPageWidth, relink, attach, attachData or renameAttachment;
+// renameSpace, setPageWidth, relink, attach, attachData, renameAttachment
+// or trashAttachment;
 // the other fields are what it needs.
 type Operation struct {
 	Kind   string `json:"kind"`
@@ -121,6 +122,8 @@ type IndexPage struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
 	Text string `json:"text"`
+	// Unreadable: the page could not be read, so its text is not known.
+	Unreadable bool `json:"unreadable"`
 }
 
 // TrashList is the Space's Trash and its total size in bytes.
@@ -219,6 +222,10 @@ func (s *SpaceService) Apply(root string, op Operation) OpResult {
 		}
 	case "renameAttachment":
 		res.Name, err = sp.RenameAttachment(op.Attachment, op.Name)
+	case "trashAttachment":
+		var item space.TrashItem
+		item, err = sp.TrashAttachment(op.Attachment)
+		res.ID, res.Path = item.ID, item.Path
 	case "relink":
 		for _, edit := range op.Edits {
 			if sp.WriteIfUnchanged(edit.Path, edit.Before, edit.After) != nil {
@@ -250,8 +257,11 @@ func (s *SpaceService) Index(root string, withText bool) SpaceIndex {
 	for _, page := range pages {
 		entry := IndexPage{Name: page.Name, Path: page.Path}
 		if withText {
-			// A page that cannot be read has no links to read.
-			entry.Text, _ = sp.ReadPage(page.Path)
+			// A page that cannot be read says so: its links are not known,
+			// which is not the same as having none.
+			var err error
+			entry.Text, err = sp.ReadPage(page.Path)
+			entry.Unreadable = err != nil
 		}
 		index.Pages = append(index.Pages, entry)
 	}
@@ -316,7 +326,13 @@ func (s *SpaceService) Reveal(root, path string) Problem {
 		return problem(err)
 	}
 	target, selectFile := sp.Root, false
-	if path != "" {
+	if name, attachment := strings.CutPrefix(path, ".bava/attachments/"); attachment {
+		abs, err := sp.AttachmentPath(name)
+		if err != nil {
+			return problem(err)
+		}
+		target, selectFile = abs, true
+	} else if path != "" {
 		abs, err := sp.Abs(path)
 		if err != nil {
 			return problem(err)
@@ -389,4 +405,24 @@ func siteName(address string) string {
 		return "site"
 	}
 	return strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.")
+}
+
+// AttachmentList is the Space's attachments, by name.
+type AttachmentList struct {
+	Attachments []space.Attachment `json:"attachments"`
+	Error       string             `json:"error"`
+}
+
+// Attachments lists the files of the Space's attachments folder, for Media.
+// Which pages use each is worked out by the page, from the pages' text.
+func (s *SpaceService) Attachments(root string) AttachmentList {
+	sp, err := space.Load(root)
+	if err != nil {
+		return AttachmentList{Attachments: []space.Attachment{}, Error: err.Error()}
+	}
+	list, err := sp.Attachments()
+	if err != nil {
+		return AttachmentList{Attachments: []space.Attachment{}, Error: err.Error()}
+	}
+	return AttachmentList{Attachments: list}
 }

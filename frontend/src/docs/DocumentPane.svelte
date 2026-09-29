@@ -157,6 +157,11 @@
     if (read.backlinksCurrent()) backlinks = findBacklinks(pages, asked);
   }
 
+  /** The open page's text as it is now, saved or not; null before a page is shown. */
+  export function currentMarkdown(): string | null {
+    return editor.markdown();
+  }
+
   /** Adds attachments as media blocks: where files were dropped (`at`, a point on screen), else at the caret. */
   export function insertMedia(names: string[], at?: { x: number; y: number }) {
     editor.insertMedia(names, at ? (editor.posAtPoint(at.x, at.y) ?? undefined) : undefined);
