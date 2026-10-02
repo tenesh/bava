@@ -61,3 +61,80 @@ export async function openPage(page: Page, folder: string, path: string) {
 
 /** The dialog that is open now. */
 export const openDialog = (page: Page) => page.locator('.bava-dialog-content').filter({ visible: true });
+
+// ---- the canvas ----------------------------------------------------------
+
+/** The pretend Space's folder, as the fixtures root it. */
+export const SPACE = '/Users/you/Documents/Acme Product';
+
+type CanvasHarness = {
+  __bava: {
+    fakes: {
+      harness: {
+        setScene(root: string, path: string, scene: { version: number; elements: unknown[] }): void;
+        scene(root: string, path: string): { version: number; elements: Record<string, unknown>[] } | undefined;
+        exports: { path: string; contentsBase64: string }[];
+      };
+    };
+  };
+};
+
+/** Puts a scene into a page of the pretend Space, before the page is opened. */
+export async function seedScene(page: Page, path: string, elements: unknown[]) {
+  await page.evaluate(
+    ([root, at, list]) => (window as unknown as CanvasHarness).__bava.fakes.harness.setScene(root, at, { version: 1, elements: list }),
+    [SPACE, path, elements] as const,
+  );
+}
+
+/** Opens a page in the Canvas view with a scene put into it first. */
+export async function openCanvas(page: Page, theme: Theme, path: string, elements: unknown[]) {
+  await openApp(page, theme);
+  await seedScene(page, path, elements);
+  const folder = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
+  await openPage(page, folder, path);
+  await menu(page, 'view.canvas');
+  await expect(canvasHost(page)).toBeVisible();
+}
+
+/** The canvas's drawing surface. */
+export const canvasHost = (page: Page) => page.locator("[data-side='canvas'] .konvajs-content");
+
+/** Saves the page, then the scene as the file now holds it. */
+export async function savedScene(page: Page, path: string) {
+  await menu(page, 'file.save');
+  await expect(page.locator('header .state')).toHaveText('saved');
+  return page.evaluate(([root, at]) => (window as unknown as CanvasHarness).__bava.fakes.harness.scene(root, at), [SPACE, path] as const);
+}
+
+/** Every export so far, its bytes as base64. */
+export const exportsSoFar = (page: Page) => page.evaluate(() => (window as unknown as CanvasHarness).__bava.fakes.harness.exports);
+
+/**
+ * Zooms from 100% by whole steps (×1.2 each, about the canvas's centre):
+ * 4 in is 207%, 8 out is 23%. Returns the zoom.
+ */
+export async function zoomSteps(page: Page, steps: number) {
+  await menu(page, 'view.actualSize');
+  for (let i = 0; i < Math.abs(steps); i += 1) await menu(page, steps > 0 ? 'view.zoomIn' : 'view.zoomOut');
+  return 1.2 ** steps;
+}
+
+/** Where a point of the scene is on screen, at a zoom reached by `zoomSteps` from a fresh page. */
+export async function onScreen(page: Page, scene: { x: number; y: number }, zoom = 1) {
+  const box = (await canvasHost(page).boundingBox())!;
+  const centre = { x: box.width / 2, y: box.height / 2 };
+  return { x: box.x + scene.x * zoom + centre.x * (1 - zoom), y: box.y + scene.y * zoom + centre.y * (1 - zoom) };
+}
+
+/**
+ * Pans, by a wheel in pixels, so a point of the scene sits just right of the
+ * tool rail, at a zoom reached by `zoomSteps` from a fresh page.
+ */
+export async function bringToCorner(page: Page, scene: { x: number; y: number }, zoom: number) {
+  const box = (await canvasHost(page).boundingBox())!;
+  const now = await onScreen(page, scene, zoom);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  // The wheel pans the other way to its delta.
+  await page.mouse.wheel(now.x - (box.x + 80), now.y - (box.y + 20));
+}

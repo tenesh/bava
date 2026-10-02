@@ -55,3 +55,45 @@ func TestTheScenarioGoesToThePage(t *testing.T) {
 		t.Errorf("Scenario = %+v", got)
 	}
 }
+
+// A scenario reads back what the app saved, and only from the scratch folder
+// it was given: never the repository or the home folder.
+func TestReadFileReadsOnlyTheScratchFolder(t *testing.T) {
+	scratch, outside := t.TempDir(), t.TempDir()
+	if err := os.MkdirAll(filepath.Join(scratch, "Smoke"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(scratch, "Smoke", "First page.md"), []byte("# First page\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(outside, "secret.md"), []byte("secret"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s := e2e.NewService(e2e.Options{Scratch: scratch, Capture: func(string) error { return nil }, Quit: func(int) {}})
+
+	if got := s.ReadFile("Smoke/First page.md"); got.Error != "" || got.Text != "# First page\n" {
+		t.Errorf("ReadFile = %+v", got)
+	}
+	for _, path := range []string{"../" + filepath.Base(outside) + "/secret.md", filepath.Join(outside, "secret.md"), "Smoke/missing.md"} {
+		if got := s.ReadFile(path); got.Error == "" || got.Text != "" {
+			t.Errorf("ReadFile(%q) = %+v, want an error", path, got)
+		}
+	}
+
+	// Nor through a link out of it, where the system allows one.
+	t.Run("a link out", func(t *testing.T) {
+		if err := os.Symlink(filepath.Join(outside, "secret.md"), filepath.Join(scratch, "Smoke", "link.md")); err != nil {
+			t.Skip("no symlinks here:", err)
+		}
+		if got := s.ReadFile("Smoke/link.md"); got.Error == "" || got.Text != "" {
+			t.Errorf("ReadFile through a link = %+v, want an error", got)
+		}
+	})
+}
+
+func TestReadFileRefusesWithNoScratchFolder(t *testing.T) {
+	s := e2e.NewService(e2e.Options{Capture: func(string) error { return nil }, Quit: func(int) {}})
+	if got := s.ReadFile("a.md"); got.Error == "" {
+		t.Errorf("ReadFile with no scratch folder = %+v", got)
+	}
+}

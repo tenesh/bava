@@ -95,7 +95,8 @@ drawing regression becomes the new expected state, exactly as with goldens.
 
 ## References are small and named by where they are
 `testdata/visual/<area>/<screen>--<state>--<theme>.png`, areas `start`,
-`shell`, `space`, `dialogs`, `settings`, `canvas`. Crop each to its screen or
+`shell`, `space`, `dialogs`, `settings`, `document`, `canvas`, `canvas-look`,
+`canvas-states`. Crop each to its screen or
 dialog at 1x; never the whole desktop. They live on `main`; source archives
 leave them out (`.gitattributes` `export-ignore`).
 
@@ -103,6 +104,31 @@ leave them out (`.gitattributes` `export-ignore`).
 The layer 2 fakes return what the real services return, error codes
 included; a test fails when the app imports a binding the fakes lack. A fake
 that drifts from its service makes screens that cannot happen.
+
+## A canvas walk seeds its scene and reads back the file
+A canvas check puts its scene into an existing page of the pretend Space
+before opening it (`seedScene`, `openCanvas`), so the Files tree and every
+other screenshot stay as they are. What the canvas does is asserted on the
+scene the page saves (`savedScene`, which waits for the exact `saved` state:
+`unsaved` contains it), not on how it looks. Scenes are data in
+`frontend/tests/visual/harness/canvas-scenes.ts`.
+
+## Headless WebKit can paint a popover as it first appeared
+After a menu's highlight moves or a picker's choice changes, the screen check
+browser can keep painting the old state although every computed style has
+changed; a resize does not repaint it. Which row is highlighted or checked is
+asserted from the page (`data-highlighted`, `data-state`), and a picture of
+it is kept only where it matches. Open submenus from the keyboard: by
+pointer, Ark holds a submenu shut while the pointer may be heading into
+another, so a resting pointer's picture depends on timing.
+
+## A smoke run checks the file it saved
+A scenario's `file` step has the host read a page back from the scratch
+folder (through `os.OpenRoot`: nothing outside it, no links out) until it
+holds the text, so a walk proves what reached the disk, not only the screen.
+`key` and `drag` steps take `modifiers` (`shift`, `alt`, `mod`: ⌘ on macOS,
+Ctrl elsewhere). A native menu accelerator is not a page key: drive its
+command with a `menu` step.
 
 ## The smoke driver never ships
 Layer 3's driver (`internal/e2e`, `frontend/src/e2e/`) exists only in a build

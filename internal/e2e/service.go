@@ -10,10 +10,12 @@ import (
 )
 
 // Options are what the service needs from its host: the scenario, where
-// screenshots and the result go, how to take a screenshot, and how to quit.
+// screenshots and the result go, the scratch folder a scenario may read back,
+// how to take a screenshot, and how to quit.
 type Options struct {
 	Scenario Scenario
 	Out      string
+	Scratch  string
 	Capture  func(path string) error
 	Quit     func(code int)
 }
@@ -51,6 +53,31 @@ func (s *Service) Shot(name string) string {
 		return fmt.Sprintf("shot %q: %v", name, err)
 	}
 	return ""
+}
+
+// FileText is a file's text as a "file" step reads it, or why it could not be.
+type FileText struct {
+	Text  string `json:"text"`
+	Error string `json:"error"`
+}
+
+// ReadFile reads a file in the scratch folder, by its path there: what the
+// app saved, for a scenario to check. Nothing outside the folder is read,
+// through a link or otherwise.
+func (s *Service) ReadFile(path string) FileText {
+	if s.options.Scratch == "" {
+		return FileText{Error: "read " + path + ": no scratch folder"}
+	}
+	root, err := os.OpenRoot(s.options.Scratch)
+	if err != nil {
+		return FileText{Error: fmt.Sprintf("read %s: %v", path, err)}
+	}
+	defer root.Close()
+	data, err := root.ReadFile(filepath.FromSlash(path))
+	if err != nil {
+		return FileText{Error: fmt.Sprintf("read %s: %v", path, err)}
+	}
+	return FileText{Text: string(data)}
 }
 
 // Done records how the run ended, PASS or FAIL with the reason, and quits

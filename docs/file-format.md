@@ -651,8 +651,8 @@ Optional on the element types listed, and absent means the default:
 | `edges` | `sharp`, `round` | `sharp` | `rect`, `diamond`, `hexagon`, `parallelogram` and `line`; the curved outlines have no corners to round |
 | `opacity` | 0 to 100 | 100 | every element |
 | `fontSize` | 16, 20, 28 or 36; on `code`, 11, 13, 16 or 20 | 20; on `code`, 13 | `text`, `code`, and a shape's, frame's or arrow's label |
-| `align` | `left`, `center`, `right` | `center` in a shape, `left` in free text | `text` and labels |
-| `verticalAlign` | `top`, `middle`, `bottom` | `middle` | labels |
+| `align` | `left`, `center`, `right` | `center` in a shape, `left` in free text and a frame's label | `text` and labels |
+| `verticalAlign` | `top`, `middle`, `bottom` | `middle`; `top` in a frame | labels |
 | `locked` | `true` | not locked | every element |
 | `arrowType` | `straight`, `elbow`, `arc` | `straight` | `arrow` |
 | `startArrowhead` | an arrowhead name | `none` | `arrow` |

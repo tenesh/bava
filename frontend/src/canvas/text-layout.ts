@@ -40,3 +40,18 @@ export function wrapLines(text: string, maxWidth: number, measure: MeasureLine):
   }
   return lines;
 }
+
+/**
+ * Where text is drawn so a word wider than its box shows whole, as
+ * `wrapLines` leaves it: the box itself when the widest line fits, else
+ * widened to that line, both ways when centred, to the right when
+ * left-aligned and to the left when right-aligned. Konva cuts any line wider
+ * than a fixed width, even with wrapping off.
+ */
+export function overflowBox(x: number, width: number, widest: number, align: string): { x: number; width: number } {
+  if (!(widest > width)) return { x, width };
+  const extra = widest - width;
+  if (align === 'left') return { x, width: widest };
+  if (align === 'right') return { x: x - extra, width: widest };
+  return { x: x - extra / 2, width: widest };
+}

@@ -1,0 +1,58 @@
+{
+  "name": "canvas",
+  "folders": ["${SCRATCH}/Smoke"],
+  "steps": [
+    { "do": "wait", "target": "header", "timeoutMs": 30000 },
+    { "do": "menu", "target": "file.openSpace" },
+    { "do": "wait", "target": "[data-path='First page.md']" },
+    { "do": "click", "target": "[data-path='First page.md']" },
+    { "do": "wait", "target": "header", "text": "First page" },
+    { "do": "menu", "target": "view.canvas" },
+    { "do": "wait", "target": "footer", "text": "Nodes 1" },
+
+    { "do": "menu", "target": "tool.rect" },
+    { "do": "drag", "target": "[data-side='canvas'] .konvajs-content", "from": [200, 360], "to": [320, 440] },
+    { "do": "menu", "target": "tool.ellipse" },
+    { "do": "drag", "target": "[data-side='canvas'] .konvajs-content", "from": [520, 340], "to": [640, 430], "modifiers": ["shift"] },
+    { "do": "wait", "target": "footer", "text": "Nodes 3" },
+    { "do": "menu", "target": "tool.arrow" },
+    { "do": "drag", "target": "[data-side='canvas'] .konvajs-content", "from": [260, 400], "to": [580, 400] },
+    { "do": "wait", "target": "footer", "text": "Nodes 4" },
+    { "do": "shot", "name": "drawn" },
+
+    { "do": "key", "text": "Escape" },
+    { "do": "drag", "target": "[data-side='canvas'] .konvajs-content", "from": [215, 372], "to": [215, 532] },
+    { "do": "shot", "name": "moved" },
+    { "do": "menu", "target": "edit.undo" },
+    { "do": "menu", "target": "edit.undo" },
+    { "do": "wait", "target": "footer", "text": "Nodes 3" },
+    { "do": "menu", "target": "edit.redo" },
+    { "do": "wait", "target": "footer", "text": "Nodes 4" },
+    { "do": "menu", "target": "edit.redo" },
+
+    { "do": "menu", "target": "insert.diagram" },
+    { "do": "wait", "target": ".bava-dialog-content .cm-content" },
+    { "do": "key", "text": "a", "target": ".bava-dialog-content .cm-content", "modifiers": ["mod"] },
+    { "do": "type", "text": "web -> db" },
+    { "do": "wait", "target": ".bava-diagram-preview svg", "text": "db", "timeoutMs": 20000 },
+    { "do": "shot", "name": "diagram" },
+    { "do": "click", "target": "text=Insert" },
+    { "do": "gone", "target": ".bava-dialog-content" },
+    { "do": "wait", "target": "footer", "text": "Nodes 7" },
+
+    { "do": "menu", "target": "file.save" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "\"type\": \"ellipse\"" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "\"startBinding\": \"" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "\"endBinding\": \"" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "\"label\": \"web\"" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "\"label\": \"db\"" },
+
+    { "do": "click", "target": "[data-path='Goal.md']" },
+    { "do": "wait", "target": "header", "text": "Goal" },
+    { "do": "click", "target": "[data-path='First page.md']" },
+    { "do": "wait", "target": "header", "text": "First page" },
+    { "do": "menu", "target": "view.canvas" },
+    { "do": "wait", "target": "footer", "text": "Nodes 7" },
+    { "do": "shot", "name": "reopened" }
+  ]
+}

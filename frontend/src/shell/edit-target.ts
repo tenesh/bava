@@ -42,9 +42,11 @@ const CONTROL_KEYS = new Set(['Enter', ' ', 'Tab', 'ArrowUp', 'ArrowDown', 'Arro
  * Whether a canvas keyboard shortcut must leave this key alone. A focused
  * control owns its activation and navigation keys (Enter and Space press a
  * button, arrows move within a menu or radio group), and a key something else
- * already handled is not the canvas's.
+ * already handled is not the canvas's. Nor is any key while a menu is open.
  */
-export function canvasKeyStandsDown(target: Element | null, key: string, defaultPrevented: boolean): boolean {
+export function canvasKeyStandsDown(target: Element | null, key: string, defaultPrevented: boolean, menuOpen = false): boolean {
   if (defaultPrevented) return true;
+  // An open menu owns the keyboard, also in the moment before it takes focus.
+  if (menuOpen) return true;
   return CONTROL_KEYS.has(key) && Boolean(target?.closest(CONTROL));
 }

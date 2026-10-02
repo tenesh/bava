@@ -56,7 +56,7 @@
   import { LabelEditor, commitLabel, commitText, editableAt, insertText, labelBox } from './canvas/label-editor';
   import { canvasLineWidth, measureFor } from './canvas/text-measure';
   import { wrapLines } from './canvas/text-layout';
-  import { applyStyle, currentProperty, currentStyle, CODE_FONT_SIZE, setProperty, type PropertyKey } from './canvas/style';
+  import { applyStyle, currentStyle, CODE_FONT_SIZE, setProperty, shownProperty, type PropertyKey } from './canvas/style';
   import SelectionToolbar from './components/SelectionToolbar.svelte';
   import { toolbarFor, type LineAction, type ToolbarControl } from './canvas/toolbar';
   import { closeLine, openLine } from './canvas/closed';
@@ -423,7 +423,7 @@
     Object.fromEntries(
       toolbar.controls
         .filter((control) => control.kind !== 'colour')
-        .map((control) => [control.id, currentProperty(published, selectedIds, control.id as PropertyKey)]),
+        .map((control) => [control.id, shownProperty(published, selectedIds, control.id as PropertyKey)]),
     ),
   );
   /**
@@ -1872,7 +1872,8 @@
         updateCursor();
         return;
       }
-      if (canvasKeyStandsDown(event.target as Element | null, event.key, event.defaultPrevented)) return;
+      const menuOpen = contextMenu !== null || filesMenuAt !== null || treeMenuAt !== null;
+      if (canvasKeyStandsDown(event.target as Element | null, event.key, event.defaultPrevented, menuOpen)) return;
       if (editTarget(event.target as Element | null, { canvasVisible: canvasShown() }) !== 'canvas') return;
       spaceHeld = true;
       updateCursor();
@@ -1923,7 +1924,8 @@
       // Canvas keys stand down while typing, inside a dialog, or with the
       // canvas hidden. Backspace must not empty a canvas nobody can see.
       // A focused control keeps its own Enter, Space, Tab and arrows.
-      if (canvasKeyStandsDown(event.target as Element | null, event.key, event.defaultPrevented)) return;
+      const menuOpen = contextMenu !== null || filesMenuAt !== null || treeMenuAt !== null;
+      if (canvasKeyStandsDown(event.target as Element | null, event.key, event.defaultPrevented, menuOpen)) return;
       const typing =
         editTarget(event.target as Element | null, { canvasVisible: canvasShown() }) !== 'canvas';
 

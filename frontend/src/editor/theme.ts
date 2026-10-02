@@ -7,6 +7,9 @@ import { EditorView } from '@codemirror/view';
 
 export const editorTheme = EditorView.theme({
   '&': { color: 'var(--color-text-primary)', backgroundColor: 'transparent' },
+  // CodeMirror marks focus with a dotted outline round the editor, which is
+  // only as tall as its text; the pane holding it shows focus instead.
+  '&.cm-focused': { outline: 'none' },
   '.cm-content': { caretColor: 'var(--color-text-primary)' },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--color-text-primary)' },
   '.cm-gutters': {

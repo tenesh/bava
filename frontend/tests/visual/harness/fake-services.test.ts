@@ -52,3 +52,28 @@ describe('the stand-in Go side', () => {
     expect(trash.items?.map((i) => i.path)).toContain('Roadmap.md');
   });
 });
+
+describe('what the canvas checks need from the stand-in', () => {
+  const root = '/Users/you/Documents/Acme Product';
+
+  it('puts a scene into a page, which then opens with it', async () => {
+    const fakes = createFakes(seedSpace());
+    fakes.harness.setScene(root, 'Roadmap.md', { version: 1, elements: [{ id: 'a', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1 }] });
+    const opened = await fakes.FileService.Open(`${root}/Roadmap.md`);
+    expect(opened.scene.elements).toHaveLength(1);
+    // The page's words stay as they were.
+    expect(opened.source).toContain('# Roadmap');
+  });
+
+  it('reads back the scene a save wrote', async () => {
+    const fakes = createFakes(seedSpace());
+    await fakes.FileService.Save(`${root}/Roadmap.md`, '# Roadmap\n', { version: 1, elements: [{ id: 'b', type: 'ellipse', x: 1, y: 2, w: 3, h: 4, z: 1 }] });
+    expect(fakes.harness.scene(root, 'Roadmap.md')?.elements).toEqual([{ id: 'b', type: 'ellipse', x: 1, y: 2, w: 3, h: 4, z: 1 }]);
+  });
+
+  it('keeps every export, with where it went and its bytes', async () => {
+    const fakes = createFakes(seedSpace());
+    await fakes.ExportService.Save('/Users/you/Documents/a.svg', btoa('<svg/>'));
+    expect(fakes.harness.exports).toEqual([{ path: '/Users/you/Documents/a.svg', contentsBase64: btoa('<svg/>') }]);
+  });
+});

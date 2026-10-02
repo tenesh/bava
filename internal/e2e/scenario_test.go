@@ -18,14 +18,20 @@ func TestParseReadsAScenario(t *testing.T) {
 			{"do": "wait", "target": "header", "text": "First page"},
 			{"do": "drag", "target": ".canvas-host", "from": [100, 100], "to": [260, 180]},
 			{"do": "pause", "timeoutMs": 500},
-			{"do": "shot", "name": "after-save"}
+			{"do": "shot", "name": "after-save"},
+			{"do": "key", "text": "g", "modifiers": ["mod", "shift"]},
+			{"do": "drag", "target": ".canvas-host", "from": [0, 0], "to": [9, 9], "modifiers": ["alt"]},
+			{"do": "file", "target": "Smoke/First page.md", "text": "type: rect"}
 		]
 	}`), map[string]string{"SCRATCH": "/tmp/run"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sc.Name != "create" || len(sc.Steps) != 7 || sc.Folders[0] != "/tmp/run" {
+	if sc.Name != "create" || len(sc.Steps) != 10 || sc.Folders[0] != "/tmp/run" {
 		t.Errorf("Parse = %+v", sc)
+	}
+	if got := sc.Steps[7].Modifiers; len(got) != 2 || got[0] != "mod" || got[1] != "shift" {
+		t.Errorf("modifiers = %v", got)
 	}
 }
 
@@ -37,6 +43,10 @@ func TestParseRefusesWhatCannotRun(t *testing.T) {
 		"drag, no points":  `{"name":"x","steps":[{"do":"drag","target":"a"}]}`,
 		"pause, no time":   `{"name":"x","steps":[{"do":"pause"}]}`,
 		"paste, no text":   `{"name":"x","steps":[{"do":"paste"}]}`,
+		"file, no text":    `{"name":"x","steps":[{"do":"file","target":"a.md"}]}`,
+		"file, no target":  `{"name":"x","steps":[{"do":"file","text":"a"}]}`,
+		"unknown modifier": `{"name":"x","steps":[{"do":"key","text":"a","modifiers":["hyper"]}]}`,
+		"click, modifiers": `{"name":"x","steps":[{"do":"click","target":"a","modifiers":["shift"]}]}`,
 		"no steps":         `{"name":"x","steps":[]}`,
 		"unset variable":   `{"name":"x","folders":["${NOPE}"],"steps":[{"do":"menu","target":"file.new"}]}`,
 	}

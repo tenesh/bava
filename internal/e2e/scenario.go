@@ -13,8 +13,10 @@ import (
 )
 
 // Step is one thing the driver does in the page. Target is a CSS selector,
-// or a menu command id for "menu"; Text is what to type, the key to press, or
-// the text a "wait" expects inside its target.
+// a menu command id for "menu", or a path in the scratch folder for "file";
+// Text is what to type, the key to press, or the text a "wait" expects inside
+// its target or a "file" in the file. Modifiers are the keys a "key" or
+// "drag" holds: shift, alt, and mod (⌘ on macOS, Ctrl elsewhere).
 type Step struct {
 	Do        string    `json:"do"`
 	Target    string    `json:"target,omitempty"`
@@ -23,6 +25,7 @@ type Step struct {
 	From      []float64 `json:"from,omitempty"`
 	To        []float64 `json:"to,omitempty"`
 	TimeoutMs int       `json:"timeoutMs,omitempty"`
+	Modifiers []string  `json:"modifiers,omitempty"`
 }
 
 // Scenario is a smoke walk: the folder picker's answers and the media
@@ -93,6 +96,14 @@ func Load(path string, vars map[string]string) (Scenario, error) {
 }
 
 func check(step Step) error {
+	if len(step.Modifiers) > 0 && step.Do != "key" && step.Do != "drag" {
+		return fmt.Errorf("%q takes no modifiers", step.Do)
+	}
+	for _, m := range step.Modifiers {
+		if m != "shift" && m != "alt" && m != "mod" {
+			return fmt.Errorf("unknown modifier %q", m)
+		}
+	}
 	switch step.Do {
 	case "click", "menu", "gone":
 		if step.Target == "" {
@@ -117,6 +128,10 @@ func check(step Step) error {
 	case "drag":
 		if step.Target == "" || len(step.From) != 2 || len(step.To) != 2 {
 			return errors.New(`"drag" needs a target, and from and to as [x, y]`)
+		}
+	case "file":
+		if step.Target == "" || step.Text == "" {
+			return errors.New(`"file" needs a target and the text it must hold`)
 		}
 	default:
 		return fmt.Errorf("unknown step %q", step.Do)

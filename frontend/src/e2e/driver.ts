@@ -6,20 +6,29 @@
  */
 import { Call } from '@wailsio/runtime';
 
+/** Keys held through a key or a drag: `mod` is ⌘ on macOS and Ctrl elsewhere. */
+export type Modifier = 'shift' | 'alt' | 'mod';
+
 export type Step = {
-  do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag' | 'pause' | 'paste';
-  /** What a click, wait or drag acts on; for a key, what it is pressed on (else whatever has focus). */
+  do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag' | 'pause' | 'paste' | 'file';
+  /**
+   * What a click, wait or drag acts on; for a key, what it is pressed on (else
+   * whatever has focus); for a file, its path in the scratch folder.
+   */
   target?: string;
   text?: string;
   name?: string;
   from?: [number, number];
   to?: [number, number];
   timeoutMs?: number;
+  modifiers?: Modifier[];
 };
 
 export type DriverEnv = {
   menu(id: string): void;
   shot(name: string): Promise<string>;
+  /** A file in the scratch folder, read by the host: its text, or why it could not be. */
+  readFile?(path: string): Promise<{ text: string; error: string }>;
   timeoutMs: number;
   /** Whether a found element counts as showing; the page's layout by default. */
   visible?: (el: HTMLElement) => boolean;
@@ -53,8 +62,26 @@ async function until(check: () => boolean, timeoutMs: number): Promise<boolean> 
   }
 }
 
-function pointer(el: HTMLElement, type: string, [x, y]: [number, number]) {
-  const init = { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, buttons: type === 'pointerup' ? 0 : 1, pointerId: 1, isPrimary: true };
+const onMac = () => /Mac/.test(navigator.platform);
+
+/** The event flags for the keys held. */
+function held(modifiers: Modifier[] = []) {
+  const mod = modifiers.includes('mod');
+  return { shiftKey: modifiers.includes('shift'), altKey: modifiers.includes('alt'), metaKey: mod && onMac(), ctrlKey: mod && !onMac() };
+}
+
+function pointer(el: HTMLElement, type: string, [x, y]: [number, number], modifiers?: Modifier[]) {
+  const init = {
+    bubbles: true,
+    cancelable: true,
+    clientX: x,
+    clientY: y,
+    button: 0,
+    buttons: type === 'pointerup' ? 0 : 1,
+    pointerId: 1,
+    isPrimary: true,
+    ...held(modifiers),
+  };
   const Ctor = typeof PointerEvent === 'function' ? PointerEvent : MouseEvent;
   el.dispatchEvent(new Ctor(type, init));
 }
@@ -101,11 +128,11 @@ async function type(text: string) {
 }
 
 /** A key pressed on `on` (focused first), or on whatever has focus. */
-function key(name: string, on?: HTMLElement) {
+function key(name: string, on?: HTMLElement, modifiers?: Modifier[]) {
   on?.focus();
   const el = on ?? (document.activeElement as HTMLElement | null) ?? document.body;
-  el.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true }));
-  el.dispatchEvent(new KeyboardEvent('keyup', { key: name, bubbles: true, cancelable: true }));
+  el.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true, ...held(modifiers) }));
+  el.dispatchEvent(new KeyboardEvent('keyup', { key: name, bubbles: true, cancelable: true, ...held(modifiers) }));
 }
 
 async function step(s: Step, env: DriverEnv): Promise<string> {
@@ -123,12 +150,12 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
       return '';
     case 'key': {
       if (!s.target) {
-        key(s.text!);
+        key(s.text!, undefined, s.modifiers);
         return '';
       }
       let el: HTMLElement | undefined;
       if (!(await until(() => (el = candidates(s.target!).find(visible)) !== undefined, timeout))) return 'not found';
-      key(s.text!, el!.closest<HTMLElement>('button, a[href], input, select, textarea, [tabindex]') ?? el!);
+      key(s.text!, el!.closest<HTMLElement>('button, a[href], input, select, textarea, [tabindex]') ?? el!, s.modifiers);
       return '';
     }
     case 'menu':
@@ -165,13 +192,26 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
       if (!el) return 'not found';
       const box = el.getBoundingClientRect();
       const at = ([x, y]: [number, number]): [number, number] => [box.left + x, box.top + y];
-      pointer(el, 'pointerdown', at(s.from!));
+      pointer(el, 'pointerdown', at(s.from!), s.modifiers);
       for (let i = 1; i <= 8; i += 1) {
         const f = i / 8;
-        pointer(el, 'pointermove', at([s.from![0] + (s.to![0] - s.from![0]) * f, s.from![1] + (s.to![1] - s.from![1]) * f]));
+        pointer(el, 'pointermove', at([s.from![0] + (s.to![0] - s.from![0]) * f, s.from![1] + (s.to![1] - s.from![1]) * f]), s.modifiers);
       }
-      pointer(el, 'pointerup', at(s.to!));
+      pointer(el, 'pointerup', at(s.to!), s.modifiers);
       return '';
+    }
+    // A saved file, read back until it holds the text: a save lands a moment
+    // after it is asked for.
+    case 'file': {
+      if (!env.readFile) return 'no way to read files';
+      const end = Date.now() + timeout;
+      for (;;) {
+        const last = await env.readFile(s.target!);
+        if (last.error) return last.error;
+        if (last.text.includes(s.text!)) return '';
+        if (Date.now() > end) return `never held "${s.text}"`;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
     }
   }
 }
@@ -197,6 +237,7 @@ export async function start(): Promise<void> {
         data: { id },
       }),
     shot: async (name) => (await Call.ByName(`${SERVICE}.Shot`, name)) as string,
+    readFile: async (path) => (await Call.ByName(`${SERVICE}.ReadFile`, path)) as { text: string; error: string },
     timeoutMs: 10_000,
   }).catch((error: unknown) => `the driver failed: ${String(error)}`);
   await Call.ByName(`${SERVICE}.Done`, failure);

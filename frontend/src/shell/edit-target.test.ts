@@ -72,6 +72,15 @@ describe('canvasKeyStandsDown', () => {
     expect(canvasKeyStandsDown(button, 'Backspace', false)).toBe(false);
   });
 
+  // A menu takes focus a moment after it opens; a key pressed in between
+  // would otherwise move the selection under it.
+  it('stands down for every key while a menu is open', () => {
+    for (const key of ['ArrowDown', 'Enter', 'Backspace', 'r']) {
+      expect(canvasKeyStandsDown(document.body, key, false, true), key).toBe(true);
+    }
+    expect(canvasKeyStandsDown(document.body, 'ArrowDown', false, false)).toBe(false);
+  });
+
   it('stands down for a key something else already handled', () => {
     expect(canvasKeyStandsDown(document.body, 'Enter', true)).toBe(true);
     expect(canvasKeyStandsDown(document.body, 'Enter', false)).toBe(false);
