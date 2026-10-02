@@ -24,5 +24,8 @@ describe('MediaViewer', () => {
     content.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     unmount(app);
+    // The dialog's deferred work (focus, closing) runs before the test ends,
+    // so nothing it logs outlives the test on a slow machine.
+    await new Promise((resolve) => setTimeout(resolve, 50));
   });
 });
