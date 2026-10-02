@@ -8,7 +8,8 @@ import type { PropertyKey, PropertyValue } from './style';
 /**
  * What each property means when the key is absent, as `docs/file-format.md`
  * records it. `align` has no single default (centred in a shape, left in free
- * text) and is always written.
+ * text and a frame's label) and is always written; `verticalAlign` is the
+ * labels' default, a frame's being top (`defaultFor`).
  */
 export const PROPERTY_DEFAULTS: Partial<Record<PropertyKey, PropertyValue>> = {
   strokeWidth: 2,

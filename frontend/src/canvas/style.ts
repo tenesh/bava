@@ -11,6 +11,7 @@ import { anchorFor, BINDING_REACH_MIN, drawnPoints } from './binding';
 import { angleOfElement } from './rotate';
 import { tidy } from './resize';
 import { CODE_FONT_SIZE, PROPERTY_DEFAULTS } from './style-defaults';
+import { defaultAlign, defaultVerticalAlign } from './paint';
 
 export type StyleKey = 'fill' | 'stroke' | 'color';
 
@@ -284,11 +285,12 @@ export function applyProperty(
 }
 
 /**
- * What a control should show for `key`: the value every applicable element
- * shares, `null` where they all use the default, `mixed` where they differ, or
+ * What a picker shows as chosen for `key`: the value every applicable element
+ * has in effect, its own or its default (of its own kind: a code block's size
+ * is 13), so the default shows as chosen; `mixed` where they differ, or
  * `unavailable` when nothing selected takes the key.
  */
-export function currentProperty(
+export function shownProperty(
   scene: SceneData,
   ids: ElementId[],
   key: PropertyKey,
@@ -296,12 +298,14 @@ export function currentProperty(
   const selected = new Set(ids);
   const values = scene.elements
     .filter((e) => selected.has(e.id) && propertyKeysFor(e.type).includes(key))
-    // A line's kind is Line.
-    .map((e) => (key === 'arrowType' && e.type === 'line' ? 'line' : ((e as unknown as Record<string, PropertyValue | undefined>)[key] ?? null)));
+    .map((e) =>
+      key === 'arrowType' && e.type === 'line'
+        ? 'line'
+        : ((e as unknown as Record<string, PropertyValue | undefined>)[key] ?? shownDefault(key, e.type) ?? null),
+    );
   if (values.length === 0) return 'unavailable';
   return values.every((value) => value === values[0]) ? values[0] : 'mixed';
 }
-
 
 export { PROPERTY_DEFAULTS } from './style-defaults';
 
@@ -320,9 +324,22 @@ export function setProperty(
   applyProperty(history, ids, key, value, adjust);
 }
 
-/** What an absent key means on an element of `type`: a code block's size is 13. */
+/**
+ * What an absent key shows as on an element of `type`: its default, and for
+ * `align`, which is always written and so has none, where the drawing puts it.
+ */
+function shownDefault(key: PropertyKey, type: string): PropertyValue | undefined {
+  if (key === 'align') return defaultAlign(type);
+  return defaultFor(key, type);
+}
+
+/**
+ * What an absent key means on an element of `type`: a code block's size is
+ * 13, and a frame's label sits at the top.
+ */
 export function defaultFor(key: PropertyKey, type: string): PropertyValue | undefined {
   if (key === 'fontSize' && type === 'code') return CODE_FONT_SIZE;
+  if (key === 'verticalAlign') return defaultVerticalAlign(type);
   return PROPERTY_DEFAULTS[key];
 }
 

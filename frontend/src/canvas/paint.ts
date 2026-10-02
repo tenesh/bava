@@ -80,7 +80,6 @@ export function dashFor(style: string | undefined, width: number): number[] {
 export function paintFor(element: SceneElement, read: ReadVariable): Paint {
   const style = resolveStyle(element as { fill?: string; stroke?: string; color?: string }, read);
   const props = element as SceneElement & StyleProps;
-  const isFrame = element.type === 'frame';
   // Absent means the file format's default, pen strokes included: a file
   // means the same whatever the theme, and picking the default clears the key.
   const strokeWidth = props.strokeWidth ?? DEFAULT_STROKE_WIDTH;
@@ -99,10 +98,10 @@ export function paintFor(element: SceneElement, read: ReadVariable): Paint {
       family: read('--font-ui').trim(),
       size: props.fontSize ?? DEFAULT_FONT_SIZE,
       lineHeight: number(read, '--leading-tight'),
-      align: props.align ?? (element.type === 'text' || isFrame ? 'left' : 'center'),
+      align: props.align ?? defaultAlign(element.type),
       // Free text starts at the top of its box, as Konva draws it; a shape's
       // label is centred in the shape, and a frame's sits at its corner.
-      verticalAlign: props.verticalAlign ?? (isFrame || element.type === 'text' ? 'top' : 'middle'),
+      verticalAlign: props.verticalAlign ?? defaultVerticalAlign(element.type),
       colour: style.text,
     },
   };
@@ -154,4 +153,14 @@ export function paintFor(element: SceneElement, read: ReadVariable): Paint {
       break;
   }
   return paint;
+}
+
+/** Where text sits across its box when the file says nothing: left in free text and a frame's label, centred elsewhere. */
+export function defaultAlign(type: string): TextPaint['align'] {
+  return type === 'text' || type === 'frame' ? 'left' : 'center';
+}
+
+/** Where text sits down its box when the file says nothing: at the top of free text and a frame, in the middle elsewhere. */
+export function defaultVerticalAlign(type: string): TextPaint['verticalAlign'] {
+  return type === 'text' || type === 'frame' ? 'top' : 'middle';
 }

@@ -104,7 +104,7 @@
   {/if}
 
   {#each split.shown as control, index (control.id)}
-    {#if index === 0 || startsGroup(split.shown, index)}
+    {#if (index === 0 && colours) || startsGroup(split.shown, index)}
       <span class="divider" aria-hidden="true"></span>
     {/if}
     {#if control.kind === 'slider'}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createHistory } from './history';
-import { applyProperty, applyStyle, copyStyle, currentProperty, currentStyle, pasteStyle, propertyKeysFor, setProperty, styleKeysFor } from './style';
+import { applyProperty, applyStyle, copyStyle, currentStyle, pasteStyle, propertyKeysFor, setProperty, shownProperty, styleKeysFor } from './style';
 import type { SceneData } from './scene';
 
 const scene = (): SceneData => ({
@@ -132,15 +132,6 @@ describe('style properties', () => {
     applyProperty(history, ['r'], 'opacity', null);
     expect('opacity' in history.current.elements[0]).toBe(false);
   });
-
-  it('reports what the selection shows: shared, default or mixed', () => {
-    const history = createHistory(scene());
-    applyProperty(history, ['r'], 'strokeWidth', 4);
-    expect(currentProperty(history.current, ['r'], 'strokeWidth')).toBe(4);
-    expect(currentProperty(history.current, ['e'], 'strokeWidth')).toBeNull();
-    expect(currentProperty(history.current, ['r', 'e'], 'strokeWidth')).toBe('mixed');
-    expect(currentProperty(history.current, ['t'], 'strokeWidth')).toBe('unavailable');
-  });
 });
 
 // Absent means the default (docs/file-format.md), so choosing the default
@@ -239,7 +230,7 @@ describe('turning a line into an arrow and back', () => {
 
   it('shows a line as Line in the kind picker', () => {
     const scene = { elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 1, h: 1, z: 1, points: [0, 0, 1, 1] }] } as never;
-    expect(currentProperty(scene, ['l'], 'arrowType')).toBe('line');
+    expect(shownProperty(scene, ['l'], 'arrowType')).toBe('line');
   });
 });
 
@@ -321,5 +312,71 @@ describe('a size that is valid in both scales', () => {
     const copied = copyStyle({ id: 's', type: 'text', x: 0, y: 0, w: 1, h: 1, z: 1, text: 'x', fontSize: 16 } as never);
     pasteStyle(history, ['c'], copied);
     expect(history.current.elements[0]).toMatchObject({ fontSize: 11 });
+  });
+});
+
+// A picker shows what is in effect: an element on the default shows the
+// default as chosen, not nothing.
+describe('what a picker shows as chosen', () => {
+  const plain = (): SceneData => ({
+    elements: [
+      { id: 'a', type: 'rect', x: 0, y: 0, w: 1, h: 1, z: 1 } as never,
+      { id: 'b', type: 'ellipse', x: 0, y: 0, w: 1, h: 1, z: 2, strokeWidth: 4 } as never,
+      { id: 'k', type: 'code', x: 0, y: 0, w: 1, h: 1, z: 3, code: '', measuredWidth: 1, measuredHeight: 1 } as never,
+      { id: 'l', type: 'line', x: 0, y: 0, w: 1, h: 1, z: 4, points: [0, 0, 1, 1] } as never,
+    ],
+  });
+
+  it('is the default where the element sets nothing', () => {
+    expect(shownProperty(plain(), ['a'], 'strokeWidth')).toBe(2);
+    expect(shownProperty(plain(), ['a'], 'strokeStyle')).toBe('solid');
+    expect(shownProperty(plain(), ['a'], 'opacity')).toBe(100);
+  });
+
+  it('is the default of the element’s own kind: a code block’s size is 13', () => {
+    expect(shownProperty(plain(), ['k'], 'fontSize')).toBe(13);
+  });
+
+  it('is what the element sets, mixed where the selection differs, and a line’s kind is Line', () => {
+    expect(shownProperty(plain(), ['b'], 'strokeWidth')).toBe(4);
+    expect(shownProperty(plain(), ['a', 'b'], 'strokeWidth')).toBe('mixed');
+    expect(shownProperty(plain(), ['l'], 'arrowType')).toBe('line');
+  });
+
+  // A file may leave `align` out: centred in a shape, left in free text and
+  // a frame's label (docs/file-format.md).
+  it('shows a shape’s label centred and free text left when the file says nothing', () => {
+    const scene = {
+      elements: [
+        { id: 'r', type: 'rect', x: 0, y: 0, w: 1, h: 1, z: 1 },
+        { id: 't', type: 'text', x: 0, y: 0, w: 1, h: 1, z: 2, text: 'a', measuredWidth: 1, measuredHeight: 1 },
+        { id: 'f', type: 'frame', x: 0, y: 0, w: 1, h: 1, z: 3 },
+      ],
+    } as never;
+    expect(shownProperty(scene, ['r'], 'align')).toBe('center');
+    expect(shownProperty(scene, ['t'], 'align')).toBe('left');
+    expect(shownProperty(scene, ['f'], 'align')).toBe('left');
+    expect(shownProperty(scene, ['r'], 'verticalAlign')).toBe('middle');
+    expect(shownProperty(scene, ['f'], 'verticalAlign')).toBe('top');
+  });
+
+  it('is unavailable when nothing selected takes the key', () => {
+    expect(shownProperty(plain(), ['l'], 'fontSize')).toBe('unavailable');
+  });
+});
+
+// A frame's label sits at the top when the file says nothing: choosing Middle
+// writes it, choosing Top clears it, and the picker shows what was chosen.
+describe('a frame label’s vertical alignment', () => {
+  const framed = (): SceneData => ({ elements: [{ id: 'f', type: 'frame', x: 0, y: 0, w: 100, h: 80, z: 1 } as never] });
+
+  it('writes Middle and shows it; Top is the default and clears the key', () => {
+    const history = createHistory(framed());
+    setProperty(history, ['f'], 'verticalAlign', 'middle');
+    expect(history.current.elements[0]).toMatchObject({ verticalAlign: 'middle' });
+    expect(shownProperty(history.current, ['f'], 'verticalAlign')).toBe('middle');
+    setProperty(history, ['f'], 'verticalAlign', 'top');
+    expect('verticalAlign' in history.current.elements[0]).toBe(false);
+    expect(shownProperty(history.current, ['f'], 'verticalAlign')).toBe('top');
   });
 });

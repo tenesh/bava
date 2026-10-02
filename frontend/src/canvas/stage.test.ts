@@ -370,6 +370,28 @@ describe('CanvasStage', () => {
     stage.destroy();
   });
 
+  // A faded shape draws through an off-screen copy the stage's size, and
+  // WebKit refuses to draw a copy with no size: the page would fail to open.
+  it('keeps its last size while its pane is hidden', () => {
+    const stage = mounted();
+    stage.resize(1024, 700);
+    stage.resize(0, 0);
+    expect(stage.size()).toEqual({ width: 1024, height: 700 });
+    stage.resize(1024, 0);
+    expect(stage.size()).toEqual({ width: 1024, height: 700 });
+    stage.destroy();
+  });
+
+  it('is never sized to nothing, mounted in a hidden pane', () => {
+    const el = host();
+    Object.defineProperty(el, 'clientWidth', { value: 0 });
+    Object.defineProperty(el, 'clientHeight', { value: 0 });
+    const stage = new CanvasStage({ read: themeA });
+    stage.mount(el);
+    expect(stage.size()).toEqual({ width: 1, height: 1 });
+    stage.destroy();
+  });
+
   it('draws every line of a multi-line text whose box holds them', () => {
     const stage = new CanvasStage({ read: reader({ '--leading-tight': '1.2' }) });
     stage.mount(host());
@@ -392,6 +414,26 @@ describe('CanvasStage', () => {
     expect(label.verticalAlign()).toBe('top');
     expect(label.x()).toBe(6);
     expect(label.y()).toBe(6);
+    stage.destroy();
+  });
+
+  // Konva cuts a line wider than a fixed width, even with wrapping off; the
+  // rule (and the exporter) draws a word too wide for its box whole.
+  it('draws a label word wider than its shape whole', () => {
+    const stage = new CanvasStage({ read: reader({ '--size-label-inset': '2px' }) });
+    stage.mount(host());
+    stage.render(one({ type: 'rect', x: 0, y: 0, w: 8, h: 40, label: 'orange' }));
+    const label = stage.labelFor('e1') as Konva.Text & { textArr: { text: string }[] };
+    expect(label.textArr.map((line) => line.text)).toEqual(['orange']);
+    stage.destroy();
+  });
+
+  it('draws a free text word wider than its box whole', () => {
+    const stage = new CanvasStage({ read: themeA });
+    stage.mount(host());
+    stage.render(one({ type: 'text', x: 0, y: 0, w: 10, h: 24, text: 'overflowing', measuredWidth: 10, measuredHeight: 24 }));
+    const body = stage.bodyFor('e1') as Konva.Text & { textArr: { text: string }[] };
+    expect(body.textArr.map((line) => line.text)).toEqual(['overflowing']);
     stage.destroy();
   });
 });

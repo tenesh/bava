@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { wrapLines } from './text-layout';
+import { overflowBox, wrapLines } from './text-layout';
 
 // Six units per character, so the arithmetic in the expectations is obvious.
 const width = (line: string) => line.length * 6;
@@ -31,5 +31,22 @@ describe('breaking text into lines', () => {
 
   it('keeps an empty line rather than dropping it', () => {
     expect(wrapLines('one\n\ntwo', 100, width)).toEqual(['one', '', 'two']);
+  });
+});
+
+// A word wider than its box is drawn whole and overflows: centred text both
+// ways, left-aligned text to the right, right-aligned text to the left.
+describe('the box a word wider than its box is drawn in', () => {
+  it('is the box itself when every line fits', () => {
+    expect(overflowBox(10, 100, 80, 'center')).toEqual({ x: 10, width: 100 });
+  });
+
+  it('grows both ways when centred', () => {
+    expect(overflowBox(10, 100, 140, 'center')).toEqual({ x: -10, width: 140 });
+  });
+
+  it('grows to the right when left-aligned, and to the left when right-aligned', () => {
+    expect(overflowBox(10, 100, 140, 'left')).toEqual({ x: 10, width: 140 });
+    expect(overflowBox(10, 100, 140, 'right')).toEqual({ x: -30, width: 140 });
   });
 });

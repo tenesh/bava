@@ -156,6 +156,51 @@ describe('the smoke driver', () => {
     expect(seen[0]).toBe('pointerdown 10,20');
     expect(seen.at(-1)).toBe('pointerup 110,70');
   });
+
+  // Shift squares a shape, Alt pins an arrow's end, Cmd/Ctrl frees it: a
+  // scenario holds them as a person does, through the whole key or drag.
+  it('presses a key with the modifiers it names, ⌘ or Ctrl for mod', async () => {
+    document.body.innerHTML = '<div tabindex="0" id="canvas"></div>';
+    const seen: KeyboardEvent[] = [];
+    document.querySelector('#canvas')!.addEventListener('keydown', (event) => seen.push(event as KeyboardEvent));
+    expect(await runScenario([{ do: 'key', text: 'g', target: '#canvas', modifiers: ['shift', 'mod'] }], env())).toBe('');
+    expect(seen[0].shiftKey).toBe(true);
+    expect(seen[0].metaKey || seen[0].ctrlKey).toBe(true);
+    expect(seen[0].altKey).toBe(false);
+  });
+
+  it('drags with the modifiers it names held throughout', async () => {
+    document.body.innerHTML = '<div class="canvas-host"></div>';
+    const host = document.querySelector<HTMLElement>('.canvas-host')!;
+    const seen: MouseEvent[] = [];
+    for (const type of ['pointerdown', 'pointermove', 'pointerup']) host.addEventListener(type, (event) => seen.push(event as MouseEvent));
+    expect(await runScenario([{ do: 'drag', target: '.canvas-host', from: [0, 0], to: [50, 50], modifiers: ['alt'] }], env())).toBe('');
+    expect(seen.length).toBeGreaterThan(2);
+    expect(seen.every((event) => event.altKey && !event.shiftKey)).toBe(true);
+  });
+
+  // The saved page, read back by the host from the scratch folder: what the
+  // walk did has to be in the file, not only on the screen.
+  it('reads a saved file back and passes once it holds the text', async () => {
+    const reads: string[] = [];
+    const answers = ['', 'type: rect'];
+    const e = {
+      ...env(),
+      readFile: vi.fn(async (path: string) => {
+        reads.push(path);
+        return { text: answers.shift() ?? 'type: rect', error: '' };
+      }),
+    };
+    expect(await runScenario([{ do: 'file', target: 'Smoke/First page.md', text: 'type: rect' }], e)).toBe('');
+    expect(reads[0]).toBe('Smoke/First page.md');
+  });
+
+  it('fails a file step whose file never holds the text, or cannot be read', async () => {
+    const holds = { ...env(), readFile: vi.fn(async () => ({ text: 'nothing here', error: '' })) };
+    expect(await runScenario([{ do: 'file', target: 'a.md', text: 'type: rect' }], holds)).toMatch(/never held "type: rect"/);
+    const unreadable = { ...env(), readFile: vi.fn(async () => ({ text: '', error: 'outside the scratch folder' })) };
+    expect(await runScenario([{ do: 'file', target: '../a.md', text: 'x' }], unreadable)).toMatch(/outside the scratch folder/);
+  });
 });
 
 // The driver ships only in a smoke test build: the app loads it behind the

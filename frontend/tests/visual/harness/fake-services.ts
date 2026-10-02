@@ -4,7 +4,7 @@
  * answer over a folder, refusals and their codes included. Nothing here
  * touches a disk or the network.
  */
-import { PARENT, SPACE_ROOT, seedSpace, type FakeSpace } from './fixtures';
+import { PARENT, SPACE_ROOT, seedSpace, type FakePage, type FakeSpace } from './fixtures';
 import { linkName } from '../../../src/docs/links';
 
 type Op = { kind: string; path: string; folder: string; name: string; index: number; id: string; width: string; attachment?: string; edits?: { path: string; before: string; after: string }[] };
@@ -200,6 +200,22 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     }
   }
 
+  // What the walks reach past the app: scenes put into pages before they
+  // open, scenes read back after a save, and every export kept.
+  const exports: { path: string; contentsBase64: string }[] = [];
+  const harness = {
+    exports,
+    setScene(root: string, path: string, scene: FakePage['scene']) {
+      const space = spaceOf(root);
+      if (!space || !(path in space.pages)) throw new Error(`no page ${path}`);
+      space.pages[path] = { ...space.pages[path], scene: structuredClone(scene) };
+    },
+    scene(root: string, path: string): FakePage['scene'] | undefined {
+      const scene = spaceOf(root)?.pages[path]?.scene;
+      return scene ? structuredClone(scene) : undefined;
+    },
+  };
+
   function pageAt(absolute: string) {
     for (const space of spaces.values()) {
       if (absolute.startsWith(space.root + '/')) {
@@ -214,6 +230,7 @@ export function createFakes(first: FakeSpace = seedSpace()) {
   const info = (space: FakeSpace) => ({ root: space.root, name: baseOf(space.root), pageWidth: space.pageWidth, error: '', code: '' });
 
   return {
+    harness,
     SpaceService: {
       async Open(dir: string) {
         const space = spaceOf(dir);
@@ -319,17 +336,21 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       },
     },
     RenderService: {
-      async Render(_source: string, _opts: unknown) {
+      async Render(source: string, _opts: unknown) {
+        // The dialog's starting code lays out as nothing, so it opens with
+        // Insert off as pictured; anything typed lays out as the one box.
+        const typed = source.trim() !== 'a -> b';
         return {
           svg: '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="120"><rect x="10" y="10" width="100" height="50" rx="4" fill="#fff" stroke="#8b8b83"/><text x="60" y="40" text-anchor="middle" font-size="13">api</text></svg>',
           errors: [],
           nodeMap: {},
-          layout: { shapes: [], connections: [] },
+          layout: { shapes: typed ? [{ id: 'api', type: 'rectangle', x: 10, y: 10, w: 100, h: 50, label: 'api' }] : [], connections: [] },
         };
       },
     },
     ExportService: {
-      async Save(_path: string, _contentsBase64: string) {
+      async Save(path: string, contentsBase64: string) {
+        exports.push({ path, contentsBase64 });
         return '';
       },
     },

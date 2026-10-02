@@ -252,7 +252,7 @@ Catch yourself thinking any of these and stop. The thought is the signal.
 
 ## Current repo state
 
-Facts that affect the gates, **verified 2026-09-27**. This is the only place
+Facts that affect the gates, **verified 2026-10-03**. This is the only place
 volatile facts live: `CLAUDE.md` and `.ai/rules/` state intent and settled
 decisions; this section states what is true in the tree today. Re-verify
 before trusting any line; every session that trusts a stale line starts from
@@ -268,12 +268,14 @@ wrong facts. When a milestone closes, update this section in the same change.
   images, and the file route at `/bava-file/` (`internal/app/files.go`).
   **8.4.2** (online videos and cards) is committed, CI green; the smoke
   screenshots show YouTube's player loading inside Bava on all three
-  platforms. **8.4.3** (the Media section and dialog) passes its gates
-  locally on 2026-09-29, uncommitted; its smoke steps (Media opened after
-  reopening, the image found used by First page) run on CI first. 8.5 and
-  8.6 follow, then 8.4a (canvas screen checks and smoke runs
-  with complex scenes, before 8.5), then Milestone 15 (export, import and
-  search). The roadmap (`.claude/plan/roadmap.md`) holds the sequence.
+  platforms. **8.4.3** (the Media section and dialog) and its follow-ups
+  (first frames, YouTube in the browser, paste a link on its line, click-away
+  everywhere) are committed, CI green. **8.4a** (canvas testing) passes its
+  gates locally on 2026-10-03, uncommitted: the canvas screen checks
+  (`canvas-look`, `canvas-states`, `canvas-actions`) and a `canvas` smoke
+  scenario, which runs on CI first (it could not be run from this machine's
+  shell). 8.5 and 8.6 follow, then Milestone 15 (export, import and search).
+  The roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **The Document** (`frontend/src/docs/`): a ProseMirror editor over the
   page's Markdown, with markdown-it pinned to the copy prosemirror-markdown
   uses (one copy, matching types). What it cannot edit is kept byte for byte.
@@ -287,7 +289,9 @@ wrong facts. When a milestone closes, update this section in the same change.
   status bar per side, dot grid). Each plan under `.claude/work/plans/` has an
   "As built" section with its deviations and review outcome.
 - **Owed by a human at a running window, in both themes** (tests cannot see
-  these): the 6.x canvas plans' Verification sections; 8.1's keyboard pass
+  these): the canvas checks 8.4a keeps at the window (its As built lists
+  each, with the reason; the rest of the 6.x and 7 Verification sections are
+  now checks); 8.1's keyboard pass
   (SpaceTree, SpaceSwitcher, StartScreen, the Space dialogs, SectionTabs);
   8.2's keyboard pass (the `/` menu, bubble, block handle, find bar, page
   menu) and typing into a page and saving it at a real window;

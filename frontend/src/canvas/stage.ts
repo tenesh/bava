@@ -20,8 +20,8 @@ import type { SceneData, SceneElement, ElementId } from './scene';
 import type { ArrowProps, StyleProps } from './scene';
 import { isShapeType } from './scene';
 import { drawOutline, isOutlineShape, type OutlineShape, type PathSink } from './shapes';
-import { DEFAULT_STROKE_WIDTH, paintFor, ROUND_SHARE } from './paint';
-import { wrapLines } from './text-layout';
+import { DEFAULT_STROKE_WIDTH, defaultAlign, defaultVerticalAlign, paintFor, ROUND_SHARE } from './paint';
+import { overflowBox, wrapLines } from './text-layout';
 import { smoothPoints } from './curves';
 import { bindingsOf, drawnPoints, isDetached, type Point } from './binding';
 import { tensionOf } from './hit';
@@ -202,8 +202,10 @@ export class CanvasStage {
   mount(host: HTMLDivElement): void {
     this.#stage = new Konva.Stage({
       container: host,
-      width: host.clientWidth,
-      height: host.clientHeight,
+      // Never nothing: a faded shape draws through an off-screen copy the
+      // stage's size, and WebKit throws drawing a copy with no size.
+      width: Math.max(1, host.clientWidth),
+      height: Math.max(1, host.clientHeight),
     });
     // Not listening: all input is DOM events through the pointer handler, so a
     // hit canvas redrawn every frame and read on every mouse move buys nothing.
@@ -920,8 +922,12 @@ export class CanvasStage {
     return this.#stage ? { x: this.#stage.x(), y: this.#stage.y() } : { x: 0, y: 0 };
   }
 
-  /** Match the host element's size, when the window or a pane changes. */
+  /**
+   * Match the host element's size, when the window or a pane changes. A
+   * hidden pane has no size; the stage keeps its last one (see `mount`).
+   */
   resize(width: number, height: number): void {
+    if (width <= 0 || height <= 0) return;
     this.#stage?.size({ width, height });
     this.#gridLayer?.batchDraw();
   }
@@ -1132,7 +1138,12 @@ export class CanvasStage {
     if (body instanceof Konva.Text && element.type === 'text') {
       // Broken here, not by Konva: the exporter cannot see inside Konva's
       // wrapping, so both renderers break through `text-layout.ts` instead.
-      body.text(wrapLines(element.text, element.w, this.#lineWidth(element, read)).join('\n'));
+      const measure = this.#lineWidth(element, read);
+      const lines = wrapLines(element.text, element.w, measure);
+      body.text(lines.join('\n'));
+      const box = overflowBox(0, element.w, widestOf(lines, measure), paintFor(element, read).font.align);
+      body.x(box.x);
+      body.width(box.width);
     }
 
     // A shape's label is centred in it; a frame's sits at its top-left corner;
@@ -1148,11 +1159,12 @@ export class CanvasStage {
       const isFrame = element.type === 'frame';
       const isArrow = element.type === 'arrow';
       const props = element as SceneElement & StyleProps;
-      entry.label.text(
-        wrapLines(label, Math.max(0, element.w - inset * 2), this.#lineWidth(element, read)).join('\n'),
-      );
-      entry.label.align(props.align ?? (isFrame ? 'left' : 'center'));
-      entry.label.verticalAlign(props.verticalAlign ?? (isFrame ? 'top' : 'middle'));
+      const measure = this.#lineWidth(element, read);
+      const lines = wrapLines(label, Math.max(0, element.w - inset * 2), measure);
+      entry.label.text(lines.join('\n'));
+      const align = props.align ?? defaultAlign(element.type);
+      entry.label.align(align);
+      entry.label.verticalAlign(props.verticalAlign ?? defaultVerticalAlign(element.type));
       if (isArrow) {
         // Centred on the middle point (or where it was slid), in the group's
         // own space, and wrapped as Excalidraw wraps it: the exporter does the
@@ -1187,9 +1199,10 @@ export class CanvasStage {
         entry.label.rotation(0);
         entry.label.offsetX(0);
         entry.label.offsetY(0);
-        entry.label.x(inset);
+        const box = overflowBox(inset, Math.max(0, element.w - inset * 2), widestOf(lines, measure), align);
+        entry.label.x(box.x);
         entry.label.y(isFrame ? inset : 0);
-        entry.label.width(Math.max(0, element.w - inset * 2));
+        entry.label.width(box.width);
         entry.label.height(isFrame ? Math.max(0, element.h - inset * 2) : element.h);
       }
     } else if (entry.label) {
@@ -1416,4 +1429,9 @@ const NO_SINK = { moveTo: () => {}, lineTo: () => {}, bezierCurveTo: () => {}, c
 
 function boundsToRect(box: { x: number; y: number; w: number; h: number }) {
   return { x: box.x, y: box.y, width: box.w, height: box.h };
+}
+
+/** The widest of some lines, rounded up so Konva's own measure never finds it a hair too wide. */
+function widestOf(lines: string[], measure: (line: string) => number): number {
+  return Math.ceil(Math.max(0, ...lines.map(measure)));
 }

@@ -111,6 +111,24 @@ describe('SelectionToolbar controls', () => {
     unmount(app);
   });
 
+  // A divider separates; with no colours before the first control there is
+  // nothing to separate it from.
+  it('starts with a control, not a divider, when there are no colours', () => {
+    const { app, target } = renderControls({
+      styles: { fill: 'unavailable', stroke: 'unavailable', color: 'unavailable' },
+      controls: (controls as { kind: string }[]).filter((control) => control.kind !== 'colour'),
+    });
+    expect(target.querySelector('.toolbar')!.firstElementChild!.classList.contains('divider')).toBe(false);
+    unmount(app);
+  });
+
+  it('divides the colours from the first control after them', () => {
+    const { app, target } = renderControls();
+    const children = [...target.querySelector('.toolbar')!.children];
+    expect(children[1].classList.contains('divider')).toBe(true);
+    unmount(app);
+  });
+
   // Leaving the row is only half of it: what left has to arrive somewhere, or
   // the control is simply gone at a narrow window.
   it('moves what does not fit into More, and hands More what left', () => {

@@ -169,6 +169,12 @@
     background: var(--color-surface-raised);
   }
 
+  /* Focus shows as a text field's does: the ring inside the pane's edge. */
+  .editor:focus-within {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+    outline-offset: calc(var(--focus-ring-width) * -1);
+  }
+
   .editor :global(.cm-gutters) {
     border: 0;
     background: transparent;
