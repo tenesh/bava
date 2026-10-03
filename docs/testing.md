@@ -164,10 +164,11 @@ elsewhere.
 
 | Surface | Covered | Where |
 |---|---|---|
-| Splash | Not covered | |
+| Every component in `src/components`, alone, in each state it shows: rest, hovered, focused from the keyboard, pressed, checked, disabled, open, empty, an error, loading, long text | Covered, both themes; `harness/gallery.test.ts` fails on a component with no demo or no picture | `gallery` (the page `harness/gallery.html`, one demo per component in `harness/gallery/demos/`) |
+| Splash | Covered at launch, its settings held so it stays (the backstop's clock stands still), and alone | `shell`, `gallery` |
 | Start screen, with and without recent Spaces | Covered; nothing covers the window at launch | `start`, `start-actions` |
-| Shell: Both, Document, Canvas, no page | Partly: no splitter drag, no status notice | `shell` |
-| Space tree: Files, a folder open, folded, naming a page, Media, switcher, Add menu | Partly: no row right-click menu, no rename of an existing row, no drag and drop | `space`; renaming in `document-actions` |
+| Shell: Both, Document, Canvas, no page, a page in no Space, Files hidden with the AI pane shown, the split between Files and Media dragged and let go | Covered; the Document and Canvas sides and the side pane have no splitter (their widths are fixed), so there is nothing else to drag | `shell` |
+| Space tree: Files, a folder open, folded, naming a page, Media, switcher with and without recent Spaces, Add menu, the right-click menu on a page, a folder and below the rows, renaming a row and a name taken, a page dragged into a folder and between two rows, and dropped | Covered | `space`; renaming in `document-actions` |
 | Document: text, headings, marks, lists, to-dos, quote, coloured paragraph, divider, code | Covered | `document` (`page--everything`) |
 | Document: callouts, toggles, contents, code block, equations, footnotes | Covered | `document` (`block--*`) |
 | Document: images and a video at each width, shape and alignment, a missing image | Covered | `document` (`media--*`) |
@@ -176,16 +177,18 @@ elsewhere.
 | Document: date chips, links between pages, Linked from | Covered | `document` |
 | Document: locked page, widths, find | Covered | `document` |
 | Document floating UI: / and @ menus, emoji, bubble, block, page, language, media, card and table menus, equation field, calendar, link card, full screen | Covered | `document`; closing in `floating-actions` |
-| Document: the link field (⌘K) and a caption field | Not covered as pictures; closing is | `floating-actions` |
+| Document: the link field (⌘K) and a caption field | Covered over a page: the link field over a word, and over a link with its address and Remove link, an image's and a video's caption field, a file card's name field; alone in the gallery, empty, linked and as a caption; closing is checked | `document-blocks`, `gallery`, `floating-actions` |
+| Every block and inline type of `docs/schema.ts`, each on a page of its own: at rest, hovered with its handle, selected, being edited (a word under the formatting bubble, or its field: equation, code caption, caption, file name, link), emptied, and unable to draw (bad TeX, a missing video, file or page) | Covered, both themes; a block of text is never selected whole, so it is pictured being edited instead; `harness/document-blocks.test.ts` fails on a schema type with no picture in a state and no reason given | `document-blocks` (subjects and reasons in `harness/document-blocks.ts`) |
 | Canvas elements: every shape, colour, style, arrow and head, frames and groups, turned, a diagram, many | Covered at 100% and 200% | `canvas-look` |
+| Every canvas element kind (each shape; a line open, bent, round and closed; a straight, arc and elbow arrow; a stroke; text; code with and without a language; a frame; a group) at rest, selected, a handle hovered, locked, turned, with a label too long for it, being edited, under the eraser, and an arrow with a detached end | Covered, both themes; a hovered handle and an edited label also at 200%; a locked element cannot be selected, so locked is pictured as Select All selecting none and the Unlock All menu; `harness/canvas-elements.test.ts` fails on an element type of `canvas/scene.ts` with no pictures in a state and no reason given | `canvas-elements` (kinds and states in `harness/canvas-scenes.ts`) |
 | Canvas states: each kind selected, all selected, marquee, rotating, points, snapping, arrow ends | Covered | `canvas-states` |
-| Canvas controls: every picker, More, right-click menu and its submenus, insert panel | Covered; submenus in dark only | `canvas-states` |
-| Canvas: a label or code being edited, the eraser, an empty canvas, the zoom menu, tooltips, a detached binding | Not covered | |
-| Dialogs: New Space, Space settings, Trash, Media, confirmations, Shortcuts, About, Export, Diagram from Code | Partly: no validation errors, no D2 error, one export state, no Media rename | `dialogs`, `canvas-states` |
-| Unexpected error dialog | Partly: with details only | `dialogs` |
-| A pane that failed to draw | Not covered | |
-| Settings, each tab | Partly: defaults only | `settings` |
-| Status notices | Not covered | |
+| Canvas controls: every picker, More, right-click menu and its submenus, insert panel, the toolbar of each kind, a tooltip on a tool and on a toolbar button | Covered; submenus in dark only, as headless WebKit paints a light menu's moved highlight late, so light's are checked by hand | `canvas-states` |
+| Canvas: an empty canvas, with the tool rail and the zoom buttons | Covered; the zoom buttons open no menu | `canvas-states` |
+| Dialogs: New Space (empty, ready, a name taken, a name no folder can have), Space settings (default, changed, the name emptied, a name taken), Trash (items, attachments, empty, searched, nothing matching), Media (and renaming, a name taken), every confirmation (delete for good, delete a file pages use, Empty Trash, unsaved changes, a file changed on disk), Shortcuts, About, Export (at rest, at 1× and 3×, no background, dark, something selected, only selected), Diagram from Code (empty, code D2 cannot read) | Covered; a name Go refuses in New Space or Media is told under the name, in the dialog, which stays open; one Space settings refuses is told in the status bar, as the dialog closes, so that is what is pictured for it; Escape while renaming in Media leaves the rename, not the dialog | `dialogs`, `dialogs-actions`, `canvas-states`, `gallery` |
+| Unexpected error dialog: an error from Go, a failure the page left unhandled, the last session closed unexpectedly with and without its log, the window reloaded | Covered; a second error goes to the status bar (`shell`, `notice--another-error`) | `dialogs`, `gallery` |
+| A pane that failed to draw | Covered: the Files pane in the window, made to fail by a listing it cannot draw, and the boundary alone; the Document and Canvas panes wear the same boundary and are not made to fail | `shell`, `gallery` |
+| Settings, each tab | Covered at the defaults and with every control changed: following the system and narrow pages, autosave after a delay and when focus leaves, a delay held at its shortest, each canvas setting turned, verbose logging | `settings` |
+| Status notices: every message the status bar shows (another error, a name Go refuses, settings that could not be read, a setting that could not be saved) and autosave paused for a change on disk and for a failed save | Covered | `shell` (`notice--*`) |
 
 The smoke runs follow one chain on one scratch folder. `create` makes the
 Space, writes a page with a link, maths, code, an image, a file card, an

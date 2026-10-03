@@ -5,7 +5,7 @@
    */
   import Icon from './Icon.svelte';
   import { iconSizeVar, type IconSize } from './icon';
-  import { LUCIDE_ICONS, PARALLELOGRAM_PATH, type IconId } from './tool-icons';
+  import { DRAWN_ICONS, LUCIDE_ICONS, type IconId } from './tool-icons';
 
   type Props = {
     id: IconId;
@@ -14,15 +14,16 @@
 
   let { id, size = 'md' }: Props = $props();
 
-  const Lucide = $derived(id === 'parallelogram' ? null : LUCIDE_ICONS[id]);
+  const drawn = $derived(DRAWN_ICONS[id]);
+  const Lucide = $derived(drawn ? null : LUCIDE_ICONS[id as keyof typeof LUCIDE_ICONS]);
 </script>
 
 {#if Lucide}
   <span class="tool-icon" style="--icon-size: {iconSizeVar(size)}">
     <Lucide aria-hidden="true" />
   </span>
-{:else}
-  <Icon path={PARALLELOGRAM_PATH} {size} />
+{:else if drawn}
+  <Icon path={drawn.stroke} fill={drawn.fill} {size} />
 {/if}
 
 <style>

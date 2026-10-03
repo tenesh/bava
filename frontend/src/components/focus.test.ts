@@ -26,6 +26,10 @@ function componentFiles(): string[] {
 // rule.
 const SHARED_FOCUS = /bava-control-trigger|bava-button|bava-icon-button/;
 
+// Ark marks keyboard focus on the part it draws (`data-focus-visible`) where
+// the focused element itself is hidden: a switch's or a segment's input.
+const FOCUS_RULE = /:focus|\[data-focus-visible\]/;
+
 /** Elements a keyboard can land on. */
 const INTERACTIVE = /<button|<input|<a\s|role="radio"|role="button"|SegmentGroup\.Item|Splitter\.ResizeTrigger/;
 
@@ -35,7 +39,7 @@ describe('focus treatment', () => {
     for (const file of componentFiles()) {
       const source = readFileSync(file, 'utf8');
       if (!INTERACTIVE.test(source)) continue;
-      if (!source.includes(':focus') && !SHARED_FOCUS.test(source)) missing.push(file);
+      if (!FOCUS_RULE.test(source) && !SHARED_FOCUS.test(source)) missing.push(file);
     }
     expect(missing).toEqual([]);
   });
@@ -44,7 +48,7 @@ describe('focus treatment', () => {
     const wrong: string[] = [];
     for (const file of componentFiles()) {
       const source = readFileSync(file, 'utf8');
-      if (!source.includes(':focus')) continue;
+      if (!FOCUS_RULE.test(source)) continue;
       if (!source.includes('--color-focus-ring')) wrong.push(file);
     }
     expect(wrong).toEqual([]);

@@ -33,18 +33,18 @@ const HEADS: PropertyOption[] = [
   { value: 'arrow', labelKey: 'option.arrow', icon: 'headArrow' },
   { value: 'bar', labelKey: 'option.bar', icon: 'headBar' },
   { value: 'triangle', labelKey: 'option.triangle', icon: 'headTriangle' },
-  { value: 'triangle-outline', labelKey: 'option.triangle-outline', icon: 'headTriangle' },
+  { value: 'triangle-outline', labelKey: 'option.triangle-outline', icon: 'headTriangleOutline' },
   { value: 'circle', labelKey: 'option.circle', icon: 'headCircle' },
-  { value: 'circle-outline', labelKey: 'option.circle-outline', icon: 'headCircle' },
+  { value: 'circle-outline', labelKey: 'option.circle-outline', icon: 'headCircleOutline' },
   { value: 'diamond', labelKey: 'option.diamond', icon: 'headDiamond' },
-  { value: 'diamond-outline', labelKey: 'option.diamond-outline', icon: 'headDiamond' },
+  { value: 'diamond-outline', labelKey: 'option.diamond-outline', icon: 'headDiamondOutline' },
   // The entity-relation heads, behind More as Excalidraw's.
-  { value: 'one', labelKey: 'option.one', icon: 'headBar', more: true },
+  { value: 'one', labelKey: 'option.one', icon: 'headOne', more: true },
   { value: 'many', labelKey: 'option.many', icon: 'headMany', more: true },
-  { value: 'oneOrMany', labelKey: 'option.oneOrMany', icon: 'headMany', more: true },
+  { value: 'oneOrMany', labelKey: 'option.oneOrMany', icon: 'headOneOrMany', more: true },
   { value: 'exactlyOne', labelKey: 'option.exactlyOne', icon: 'headExactlyOne', more: true },
-  { value: 'zeroOrOne', labelKey: 'option.zeroOrOne', icon: 'headZero', more: true },
-  { value: 'zeroOrMany', labelKey: 'option.zeroOrMany', icon: 'headZero', more: true },
+  { value: 'zeroOrOne', labelKey: 'option.zeroOrOne', icon: 'headZeroOrOne', more: true },
+  { value: 'zeroOrMany', labelKey: 'option.zeroOrMany', icon: 'headZeroOrMany', more: true },
 ];
 
 export const PROPERTY_OPTIONS: Record<PropertyKey, PropertyControl> = {
@@ -70,7 +70,7 @@ export const PROPERTY_OPTIONS: Record<PropertyKey, PropertyControl> = {
     options: [
       { value: 'solid', labelKey: 'option.solid', icon: 'strokeWidth' },
       { value: 'dashed', labelKey: 'option.dashed', icon: 'strokeStyle' },
-      { value: 'dotted', labelKey: 'option.dotted', icon: 'headCircle' },
+      { value: 'dotted', labelKey: 'option.dotted', icon: 'dotted' },
     ],
   },
   edges: {
@@ -130,8 +130,8 @@ export const PROPERTY_OPTIONS: Record<PropertyKey, PropertyControl> = {
       { value: 'along', labelKey: 'option.along', icon: 'labelAlong' },
     ],
   },
-  startArrowhead: { labelKey: 'style.startArrowhead', icon: 'headCircle', options: HEADS },
-  endArrowhead: { labelKey: 'style.endArrowhead', icon: 'headArrow', options: HEADS },
+  startArrowhead: { labelKey: 'style.startArrowhead', icon: 'headStart', options: HEADS },
+  endArrowhead: { labelKey: 'style.endArrowhead', icon: 'headEnd', options: HEADS },
 };
 
 /** A code block's sizes: code is set smaller than text. */

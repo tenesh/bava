@@ -207,3 +207,247 @@ export const box = (id: string, x: number, y: number, extra: Record<string, unkn
 
 /** Every scene by name, for the walks to go through. */
 export const SCENES = { shapes, colours, styles, arrows, heads, containers, turned, diagram, many } as const;
+
+// ---- every element in every state ------------------------------------------------
+
+/**
+ * Every kind of element the canvas draws, by the name its pictures carry, and
+ * the element type it is (`src/canvas/scene.ts`). A line and an arrow come in
+ * the forms that draw differently.
+ */
+export const ELEMENT_KINDS = {
+  rect: 'rect',
+  ellipse: 'ellipse',
+  diamond: 'diamond',
+  cylinder: 'cylinder',
+  hexagon: 'hexagon',
+  parallelogram: 'parallelogram',
+  document: 'document',
+  person: 'person',
+  cloud: 'cloud',
+  'line-open': 'line',
+  'line-bent': 'line',
+  'line-round': 'line',
+  'line-closed': 'line',
+  'arrow-straight': 'arrow',
+  'arrow-arc': 'arrow',
+  'arrow-elbow': 'arrow',
+  stroke: 'stroke',
+  text: 'text',
+  code: 'code',
+  'code-plain': 'code',
+  frame: 'frame',
+  group: 'group',
+} as const;
+
+export type Kind = keyof typeof ELEMENT_KINDS;
+
+/** The kinds pictured together, a row of five at most to a line. */
+export const FAMILIES = {
+  shapes: ['rect', 'ellipse', 'diamond', 'cylinder', 'hexagon', 'parallelogram', 'document', 'person', 'cloud'],
+  lines: ['line-open', 'line-bent', 'line-round', 'line-closed'],
+  arrows: ['arrow-straight', 'arrow-arc', 'arrow-elbow'],
+  others: ['stroke', 'text', 'code', 'code-plain', 'frame', 'group'],
+} as const satisfies Record<string, readonly Kind[]>;
+
+export type Family = keyof typeof FAMILIES;
+
+/** The family a kind is pictured with. */
+export const familyOf = (kind: Kind): Family =>
+  (Object.keys(FAMILIES) as Family[]).find((family) => (FAMILIES[family] as readonly Kind[]).includes(kind))!;
+
+/**
+ * The states every element is pictured in: at rest; selected; with a handle
+ * hovered; locked; turned; with a label too long for it; its text being
+ * edited; with an end bound to an element that is gone; under the eraser.
+ */
+export const ELEMENT_STATES = ['rest', 'selected', 'handle', 'locked', 'turned', 'long', 'editing', 'detached', 'erasing'] as const;
+
+export type ElementState = (typeof ELEMENT_STATES)[number];
+
+const NOT_AN_ARROW = 'only an arrow binds to another element';
+
+/**
+ * What a state leaves out, by kind or by element type, each with why it
+ * cannot be shown. Everything else is pictured in it.
+ */
+export const LEFT_OUT: Record<ElementState, Record<string, string>> = {
+  rest: {},
+  selected: {},
+  handle: {},
+  locked: {},
+  turned: { 'arrow-elbow': 'an elbow arrow cannot turn: its segments stay level and upright' },
+  long: {
+    line: 'a line carries no label',
+    stroke: 'a stroke carries no label',
+    group: 'a group draws no label of its own',
+  },
+  editing: {
+    line: 'a double-click on a line edits its points, pictured in canvas-states',
+    stroke: 'a stroke has no text to edit',
+    group: 'a double-click on a group types into the shape under the pointer, pictured as that shape',
+  },
+  detached: Object.fromEntries(
+    [...new Set(Object.values(ELEMENT_KINDS))].filter((type) => type !== 'arrow').map((type) => [type, NOT_AN_ARROW]),
+  ),
+  erasing: {},
+};
+
+/** The kinds pictured again at about 200% (four steps in), where a handle or an edited label shows its detail. */
+export const AT_200 = {
+  handle: ['rect', 'line-open', 'arrow-straight', 'arrow-arc', 'arrow-elbow'],
+  editing: ['rect', 'arrow-straight', 'text', 'code', 'frame'],
+} as const satisfies Partial<Record<ElementState, readonly Kind[]>>;
+
+/** The kinds a state pictures, in family order. */
+export const pictured = (state: ElementState, among: readonly Kind[] = Object.keys(ELEMENT_KINDS) as Kind[]): Kind[] =>
+  among.filter((kind) => !(kind in LEFT_OUT[state]) && !(ELEMENT_KINDS[kind] in LEFT_OUT[state]));
+
+export type Point = { x: number; y: number };
+export type Box = { x: number; y: number; w: number; h: number };
+
+/**
+ * One kind's place in a scene of kinds: the part of the canvas pictured for
+ * it, a point on it that selects it, a handle on it and the cursor that
+ * handle shows, and a point a double-click there edits it at. In scene units.
+ */
+export type Cell = { box: Box; click: Point; handle: Point; cursor: string; edit: Point };
+
+/** How the kinds are set up: all locked, all turned, with long labels, or bound to an element that is gone. */
+export type Variant = { locked?: boolean; turned?: boolean; long?: boolean; detached?: boolean };
+
+const CELL = { w: 180, h: 180 };
+const COLUMNS = 5;
+/** With long labels, wider cells, fewer to a row: an arrow's label runs past its ends. */
+const LONG_CELL = { w: 220, h: 180 };
+const LONG_COLUMNS = 4;
+/** Room past the last cell for a long label run out of it. */
+const LONG_SPILL = 100;
+/** The angle the turned kinds are at. */
+const TURN = 30;
+/** How far a bent line's box stands clear of its points, on screen (`--size-bent-box-padding`). */
+const BENT_PADDING = 10;
+
+const LONG = {
+  shape: 'A label far too long for its shape, Supercalifragilistic',
+  arrow: 'A label far too long for its arrow',
+  frame: 'A frame label far too long for its frame',
+  text: 'Free text that wraps, Unbreakablewords',
+  code: 'const value = computeTheThing(argumentOne, argumentTwo);',
+};
+
+/** A point turned clockwise by `degrees` about `centre`, as the canvas turns an element. */
+function turnPoint(point: Point, centre: Point, degrees: number): Point {
+  const a = (degrees * Math.PI) / 180;
+  const dx = point.x - centre.x;
+  const dy = point.y - centre.y;
+  return { x: centre.x + dx * Math.cos(a) - dy * Math.sin(a), y: centre.y + dx * Math.sin(a) + dy * Math.cos(a) };
+}
+
+const centreOf = (e: { x: number; y: number; w: number; h: number }): Point => ({ x: e.x + e.w / 2, y: e.y + e.h / 2 });
+
+/** An element turned about `centre`: its box moved round it, and its angle. */
+function turnedAbout(e: El, centre: Point): El {
+  const own = turnPoint(centreOf(e), centre, TURN);
+  return { ...e, x: own.x - e.w / 2, y: own.y - e.h / 2, angle: TURN };
+}
+
+/** An element with the next z, where it is given. */
+const put = (props: Omit<El, 'z'>): El => ({ ...props, z: (z += 1) }) as El;
+
+/**
+ * One kind, its body's top-left at `b` (a cell's room for its handles
+ * around it): its elements, and its cell's points relative to nothing turned.
+ */
+function kindAt(kind: Kind, b: Point, v: Variant): { elements: El[]; click: Point; handle: Point; cursor: string; edit: Point } {
+  const p = (dx: number, dy: number) => ({ x: b.x + dx, y: b.y + dy });
+  const resize = { handle: p(120, 80), cursor: 'nwse-resize' };
+  const shape = (type: string) => {
+    const e = put({ id: kind, type, x: b.x, y: b.y, w: 120, h: 80, label: v.long ? LONG.shape : 'Label' });
+    return { elements: [e], click: p(60, 40), edit: p(60, 40), ...resize };
+  };
+  const arrow = (extra: Record<string, unknown>, h: number, points: number[]) =>
+    put({ id: kind, type: 'arrow', x: b.x, y: b.y + (h === 0 ? 40 : 0), w: 120, h, points, label: v.long ? LONG.arrow : 'Label', ...(v.detached ? { startBinding: 'gone' } : {}), ...extra });
+  switch (kind) {
+    case 'line-open':
+      return { elements: [put({ id: kind, type: 'line', x: b.x, y: b.y, w: 120, h: 80, points: [0, 80, 120, 0] })], click: p(60, 40), handle: p(120, 0), cursor: 'pointer', edit: p(60, 40) };
+    case 'line-bent':
+    case 'line-round': {
+      const e = put({ id: kind, type: 'line', x: b.x, y: b.y, w: 120, h: 80, points: [0, 80, 40, 0, 80, 80, 120, 0], ...(kind === 'line-round' ? { edges: 'round' } : {}) });
+      return { elements: [e], click: p(40, 0), handle: p(120 + BENT_PADDING, 80 + BENT_PADDING), cursor: 'nwse-resize', edit: p(40, 0) };
+    }
+    case 'line-closed': {
+      const e = put({ id: kind, type: 'line', x: b.x, y: b.y, w: 120, h: 80, points: [0, 80, 60, 0, 120, 80, 0, 80], closed: true, fill: 'green', stroke: 'green' });
+      return { elements: [e], click: p(60, 0), handle: p(120 + BENT_PADDING, 80 + BENT_PADDING), cursor: 'nwse-resize', edit: p(60, 0) };
+    }
+    case 'arrow-straight':
+      return { elements: [arrow({}, 0, [0, 0, 120, 0])], click: p(25, 40), handle: p(120, 40), cursor: 'pointer', edit: p(25, 40) };
+    case 'arrow-arc':
+      // Curved through its three points; the click on its rising side.
+      return { elements: [arrow({ arrowType: 'arc' }, 80, [0, 80, 60, 0, 120, 80])], click: p(20, 53), handle: p(120, 80), cursor: 'pointer', edit: p(20, 53) };
+    case 'arrow-elbow':
+      // Along, then down, as the canvas routes it; the handle on the first
+      // segment's middle, clear of the label halfway along the whole path.
+      return { elements: [arrow({ arrowType: 'elbow' }, 80, [0, 0, 120, 0, 120, 80])], click: p(120, 50), handle: p(60, 0), cursor: 'pointer', edit: p(120, 50) };
+    case 'stroke': {
+      const e = put({ id: kind, type: 'stroke', x: b.x, y: b.y, w: 120, h: 80, points: [0, 40, 20, 15, 40, 55, 60, 20, 80, 60, 100, 25, 120, 45] });
+      return { elements: [e], click: p(40, 55), edit: p(40, 55), ...resize };
+    }
+    case 'text': {
+      const [w, h] = v.long ? [120, 84] : [86, 28];
+      const e = put({ id: kind, type: 'text', x: b.x + (120 - w) / 2, y: b.y + (80 - h) / 2, w, h, text: v.long ? LONG.text : 'Free text', measuredWidth: w, measuredHeight: h });
+      const corner = { x: e.x + w, y: e.y + h };
+      return { elements: [e], click: p(60, 40), handle: corner, cursor: 'nwse-resize', edit: p(60, 40) };
+    }
+    case 'code':
+    case 'code-plain': {
+      const code = v.long ? LONG.code : kind === 'code' ? 'fmt.Println("hi")' : 'plain text';
+      const e = put({ id: kind, type: 'code', x: b.x - 15, y: b.y + 10, w: 150, h: v.long ? 90 : 50, code, ...(kind === 'code' ? { language: 'go' } : {}), measuredWidth: 150, measuredHeight: v.long ? 90 : 50 });
+      return { elements: [e], click: { x: e.x + 75, y: e.y + 25 }, handle: { x: e.x + e.w, y: e.y + e.h }, cursor: 'nwse-resize', edit: { x: e.x + 75, y: e.y + 25 } };
+    }
+    case 'frame': {
+      const frame = put({ id: kind, type: 'frame', x: b.x - 10, y: b.y - 20, w: 140, h: 120, label: v.long ? LONG.frame : 'Frame' });
+      const child = put({ id: `${kind}-child`, type: 'rect', x: b.x + 20, y: b.y + 25, w: 80, h: 50, label: 'Inside', frame: kind });
+      return { elements: [frame, child], click: { x: frame.x + 22, y: frame.y + 14 }, handle: { x: frame.x + 140, y: frame.y + 120 }, cursor: 'nwse-resize', edit: { x: frame.x + 10, y: frame.y + 110 } };
+    }
+    case 'group': {
+      const one = put({ id: `${kind}-one`, type: 'ellipse', x: b.x - 5, y: b.y + 10, w: 60, h: 60 });
+      const two = put({ id: `${kind}-two`, type: 'diamond', x: b.x + 65, y: b.y + 10, w: 60, h: 60 });
+      const group = put({ id: kind, type: 'group', x: b.x - 5, y: b.y + 10, w: 130, h: 60, children: [one.id, two.id] });
+      return { elements: [one, two, group], click: p(25, 40), handle: p(125, 70), cursor: 'nwse-resize', edit: p(25, 40) };
+    }
+    default:
+      return shape(kind);
+  }
+}
+
+/**
+ * The kinds given, in rows of five cells (four, wider, with long labels),
+ * each cell with room round its element for the selection's handles, its
+ * element's middle 90 below the cell's top, set up as `variant` says. Returns
+ * the elements, each kind's cell, and the box round them all.
+ */
+export function elementScene(kinds: readonly Kind[], variant: Variant = {}): { elements: El[]; cells: Partial<Record<Kind, Cell>>; box: Box } {
+  const elements: El[] = [];
+  const cells: Partial<Record<Kind, Cell>> = {};
+  const [cell, columns] = variant.long ? [LONG_CELL, LONG_COLUMNS] : [CELL, COLUMNS];
+  kinds.forEach((kind, i) => {
+    const box = { x: LEFT + 20 + (i % columns) * cell.w, y: 30 + Math.floor(i / columns) * cell.h, ...cell };
+    const made = kindAt(kind, { x: box.x + (cell.w - 120) / 2, y: box.y + 50 }, variant);
+    let own = made.elements.map((e) => (variant.locked ? { ...e, locked: true } : e));
+    let { click, edit } = made;
+    if (variant.turned && !(kind in LEFT_OUT.turned)) {
+      // Turned about the element's own centre; a frame's or a group's members with it.
+      const whole = own.find((e) => e.id === kind)!;
+      const centre = centreOf(whole);
+      own = own.map((e) => turnedAbout(e, centre));
+      click = turnPoint(click, centre, TURN);
+      edit = turnPoint(edit, centre, TURN);
+    }
+    elements.push(...own);
+    cells[kind] = { box, click, edit, handle: made.handle, cursor: made.cursor };
+  });
+  const rows = Math.ceil(kinds.length / columns);
+  const across = Math.min(kinds.length, columns) * cell.w + (variant.long ? LONG_SPILL : 0);
+  return { elements, cells, box: { x: LEFT + 20, y: 30, w: across, h: rows * cell.h } };
+}

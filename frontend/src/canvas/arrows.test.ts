@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { drawHead, headDash, labelField, labelLayout, labelSpot, labelWrapWidth, headAt, routePoints, labelPoint, positionAlong } from './arrows';
+import { drawHead, headDash, headReach, labelField, labelLayout, labelSpot, labelWrapWidth, headAt, routePoints, labelPoint, positionAlong } from './arrows';
 
 const from = [0, 0, 100, 60];
 
@@ -296,5 +296,21 @@ describe("the field for an arrow's label, along and turned", () => {
     // A quarter along, (50, 0), turned a quarter about (100, 0): (100, -50).
     expect(field.x + field.w / 2).toBeCloseTo(100, 5);
     expect(field.y + field.h / 2).toBeCloseTo(-50, 5);
+  });
+});
+
+describe('headReach', () => {
+  it('is nothing for no head', () => {
+    expect(headReach('none', 200)).toBe(0);
+  });
+
+  it('is the head\'s size, capped at half its segment', () => {
+    expect(headReach('arrow', 200)).toBe(25);
+    expect(headReach('arrow', 30)).toBe(15);
+  });
+
+  it('counts the whole of a head drawn twice its size back', () => {
+    expect(headReach('diamond', 200)).toBe(24);
+    expect(headReach('zeroOrMany', 200)).toBe(30);
   });
 });

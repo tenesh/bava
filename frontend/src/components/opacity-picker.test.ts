@@ -37,3 +37,14 @@ describe('OpacityPicker', () => {
     expect(document.querySelector('[role="slider"]')?.getAttribute('aria-valuenow')).toBe('100');
   });
 });
+
+// Two of the same picker on one page must not share an id, or one's popover
+// anchors to the other's button.
+describe('OpacityPicker ids', () => {
+  it('gives each picker its own trigger id', () => {
+    const first = setup();
+    const second = setup();
+    expect(first.trigger.id).not.toBe('');
+    expect(first.trigger.id).not.toBe(second.trigger.id);
+  });
+});

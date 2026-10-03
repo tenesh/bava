@@ -82,3 +82,14 @@ describe("OptionPicker's More row", () => {
     await vi.waitFor(() => expect(items()).toBe(heads.options.length));
   });
 });
+
+// Two of the same picker on one page must not share an id, or one's popover
+// anchors to the other's button.
+describe('OptionPicker ids', () => {
+  it('gives each picker its own trigger id', () => {
+    const first = setup();
+    const second = setup();
+    expect(first.trigger.id).not.toBe('');
+    expect(first.trigger.id).not.toBe(second.trigger.id);
+  });
+});

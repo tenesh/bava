@@ -112,7 +112,12 @@
     outline-offset: var(--focus-ring-width);
   }
 
+  /*
+   * Rows keep their inner padding for the hover fill, and the list sits out
+   * by that much, so its heading, tiles and dates line up with the buttons.
+   */
   .recents {
+    margin-inline: calc(var(--space-3) * -1);
     display: flex;
     flex-direction: column;
     gap: var(--size-row-gap);
@@ -193,7 +198,6 @@
 
   .note {
     margin: 0;
-    padding: 0 var(--space-3);
     font-size: var(--text-meta);
     color: var(--color-text-muted);
   }

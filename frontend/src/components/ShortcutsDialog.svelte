@@ -44,22 +44,26 @@
    * One size whatever the groups hold, spanning the body edge to edge; its
    * height leaves room for the header (its padding, close button and rule).
    * Groups flow down three columns, as a menu's shortcuts read in order.
+   * The space between groups is each group's own bottom padding: a heading's
+   * top margin is dropped at some column breaks and kept at others, which
+   * started the columns at different heights.
    */
   .shortcuts {
     box-sizing: border-box;
     height: 100%;
-    padding: var(--space-2) var(--space-6) var(--space-5);
+    padding: var(--space-5) var(--space-6) var(--space-2);
     overflow-y: auto;
     column-count: 3;
     column-gap: var(--space-7);
   }
 
   .group {
+    padding-bottom: var(--space-3);
     break-inside: avoid;
   }
 
   .heading {
-    margin: var(--space-3) 0 var(--space-1);
+    margin: 0 0 var(--space-1);
     font-size: var(--text-label);
     font-weight: var(--weight-semibold);
     letter-spacing: var(--tracking-label);

@@ -13,6 +13,7 @@ import { HANDLES, type Handle } from './resize';
 import { canRotate } from './rotate';
 import type { SceneElement } from './scene';
 import { drawnPoints, fixedOf, spotOn, type Point } from './binding';
+import { endSegment, headReach, LABEL_CLEARANCE } from './arrows';
 
 /**
  * `padded`: the box stands clear of what it holds by `--size-bent-box-padding`
@@ -116,3 +117,106 @@ export function focusSpots(arrow: SceneElement, elements: SceneElement[], apart:
   return out;
 }
 
+
+type Box = { x: number; y: number; w: number; h: number };
+
+/**
+ * How much longer the stretch towards the start must be than the one towards
+ * the end before the handle goes that way: half a canvas unit, so two
+ * stretches that differ only by rounding count as even and the handle keeps
+ * to the end's side rather than flipping between them.
+ */
+const EVEN_WITHIN = 0.5;
+
+/**
+ * Where a handle at `at` on a labelled arrow is drawn and pressed: where it
+ * is, unless the label's box grown by `clear` covers it; then where the drawn
+ * `path` comes out of that box on the side with more line showing (the end's
+ * side when they are even), so the label stays readable and a press on it
+ * slides it. The spot keeps `ends[0]` from the path's start and `ends[1]`
+ * from its end: room for what stands there, a head and its handle. Null when
+ * neither side has such a spot, as when the label covers the whole line.
+ * `clear` is the line's gap round the label and the handle's radius, so the
+ * handle sits on the line where it shows again. The stage draws by this and
+ * the pointer presses by it.
+ */
+export function besideLabel(at: Point, path: number[], label: Box | null, clear: number, ends: [number, number] = [0, 0]): Point | null {
+  if (!label) return at;
+  const box = grown(label, clear);
+  const inside = (p: Point) => p.x > box.x && p.x < box.x + box.w && p.y > box.y && p.y < box.y + box.h;
+  const count = path.length / 2;
+  if (!inside(at) || count < 2) return at;
+  const pointAt = (i: number): Point => ({ x: path[i * 2], y: path[i * 2 + 1] });
+
+  // Where `at` is on the path: the nearest point of the nearest segment.
+  let segment = 0;
+  let from = pointAt(0);
+  let nearest = Infinity;
+  for (let i = 0; i < count - 1; i += 1) {
+    const a = pointAt(i);
+    const b = pointAt(i + 1);
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const length = dx * dx + dy * dy;
+    const t = length === 0 ? 0 : Math.max(0, Math.min(1, ((at.x - a.x) * dx + (at.y - a.y) * dy) / length));
+    const on = { x: a.x + t * dx, y: a.y + t * dy };
+    const distance = Math.hypot(at.x - on.x, at.y - on.y);
+    if (distance < nearest) {
+      nearest = distance;
+      segment = i;
+      from = on;
+    }
+  }
+
+  /** Where the run from `a`, inside the box, to `b` leaves it, or null when `b` is inside too. */
+  const leaving = (a: Point, b: Point): Point | null => {
+    if (inside(b)) return null;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    let t = 1;
+    if (dx > 0) t = Math.min(t, (box.x + box.w - a.x) / dx);
+    if (dx < 0) t = Math.min(t, (box.x - a.x) / dx);
+    if (dy > 0) t = Math.min(t, (box.y + box.h - a.y) / dy);
+    if (dy < 0) t = Math.min(t, (box.y - a.y) / dy);
+    t = Math.max(0, t);
+    return { x: a.x + t * dx, y: a.y + t * dy };
+  };
+
+  const apart = (p: Point, q: Point) => Math.hypot(p.x - q.x, p.y - q.y);
+  /** Where the path leaves the box going one way from `from`, and how much line shows past it. */
+  const leave = (step: 1 | -1): { at: Point; rest: number } | null => {
+    let a = from;
+    for (let i = step === 1 ? segment + 1 : segment; i >= 0 && i < count; i += step) {
+      const out = leaving(a, pointAt(i));
+      if (out) {
+        let rest = apart(out, pointAt(i));
+        for (let j = i; j + step >= 0 && j + step < count; j += step) rest += apart(pointAt(j), pointAt(j + step));
+        return { at: out, rest };
+      }
+      a = pointAt(i);
+    }
+    return null;
+  };
+
+  const first = pointAt(0);
+  const last = pointAt(count - 1);
+  const towardsEnd = leave(1);
+  const towardsStart = leave(-1);
+  // Within EVEN_WITHIN the two stretches are even, and the end's side wins.
+  const spots = [towardsEnd, towardsStart].filter((spot) => spot !== null);
+  if (towardsEnd && towardsStart && towardsStart.rest > towardsEnd.rest + EVEN_WITHIN) spots.reverse();
+  const room = spots.find((spot) => apart(spot.at, first) >= ends[0] && apart(spot.at, last) >= ends[1]);
+  return room ? room.at : null;
+}
+
+/**
+ * How far a handle beside an arrow's label keeps from the arrow's start and
+ * its end (`besideLabel`'s `ends`): past the end's head, or its handle where
+ * the head is smaller, then the gap and the handle's own `radius`. `path` is
+ * the drawn route.
+ */
+export function labelSpotEnds(element: SceneElement, path: number[], radius: number): [number, number] {
+  const heads = element as { startArrowhead?: string; endArrowhead?: string };
+  const keep = (kind: string, side: 'start' | 'end') => Math.max(headReach(kind, endSegment(path, side)), radius) + LABEL_CLEARANCE + radius;
+  return [keep(heads.startArrowhead ?? 'none', 'start'), keep(heads.endArrowhead ?? 'arrow', 'end')];
+}

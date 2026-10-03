@@ -26,45 +26,84 @@
 }
 
 // The editor that opens over a code block (canvas/code/editor.ts). It sits on
-// the block it is editing, so what the user types is where the code is.
+// the block it is editing, so what the user types is where the code is, and it
+// looks as the block is drawn: Geist Mono at the block's size and leading, the
+// canvas's syntax colours, the same padding.
+//
+// It has no panel border of its own. The block drawn underneath shows its
+// border, its corners and the language named on its top edge; the editor's
+// panel covers only what is inside them, starting below the name.
 .bava-code-editor {
+  // Set inline per editor: the canvas zoom, and the zoom times the block's
+  // size over the code token.
+  --bava-code-zoom: 1;
+  --bava-code-scale: 1;
+  // Clear of the drawn border on every side.
+  --bava-code-edge: calc(var(--border-width) * var(--bava-code-zoom));
+  --bava-code-top: var(--bava-code-edge);
+
   position: absolute;
   z-index: var(--z-floating);
   box-sizing: border-box;
   overflow: hidden;
-  border: var(--border-width) solid var(--color-selection-handle);
-  border-radius: var(--radius-md);
-  background: var(--color-code-surface);
+  padding: var(--bava-code-top) var(--bava-code-edge) var(--bava-code-edge);
+  background: transparent;
+  font-size: calc(var(--text-code) * var(--bava-code-scale));
 
   // Plain descendant selectors: this is a global stylesheet, not a Svelte
   // component, so `:global()` would reach the browser verbatim and the rule
   // would be dropped.
   transform-origin: center;
 
-  // Lines wrap where the block wraps them (`canvas/code/wrap.ts`): no inset
-  // of CodeMirror's own, and long words broken anywhere rather than spilling.
-  .cm-line {
-    padding: 0;
-    overflow-wrap: anywhere;
+  // A named block's language sits across its top edge, half of it inside:
+  // the panel starts below it, so the name stays in view.
+  &.bava-code-editor--named {
+    --bava-code-top: calc(var(--text-code-language) * var(--leading-tight) / 2 * var(--bava-code-zoom));
   }
 
+  // Each rule below names `.cm-editor` too: CodeMirror's base theme is
+  // injected after this sheet with two classes, and would win a tie.
   .cm-editor {
     height: 100%;
-    font-family: var(--font-mono);
-    // Relative to the wrapper, which carries the canvas zoom.
+    border-radius: calc((var(--radius-md) - var(--border-width)) * var(--bava-code-zoom));
+    background: var(--color-code-surface);
+    // Relative to the wrapper, which carries the size.
     font-size: 1em;
     color: var(--syntax-plain);
   }
 
-  .cm-content {
-    padding: var(--size-code-padding);
+  .cm-editor .cm-scroller {
+    font-family: var(--font-mono);
+    line-height: var(--leading-code);
+  }
+
+  // The block's padding, less the part of it the panel already starts in.
+  .cm-editor .cm-content {
+    padding: calc(var(--size-code-padding) * var(--bava-code-zoom) - var(--bava-code-top))
+      calc(var(--size-code-padding) * var(--bava-code-zoom) - var(--bava-code-edge))
+      calc(var(--size-code-padding) * var(--bava-code-zoom) - var(--bava-code-edge));
+  }
+
+  // Lines wrap where the block wraps them (`canvas/code/wrap.ts`): no inset
+  // of CodeMirror's own, and long words broken anywhere rather than spilling.
+  .cm-editor .cm-line {
+    padding: 0;
+    overflow-wrap: anywhere;
   }
 
   .cm-editor.cm-focused {
     outline: none;
   }
 
-  .cm-gutters {
+  .cm-editor .cm-gutters {
     display: none;
+  }
+
+  // The kinds `canvas/code/highlight.ts` marks, in the colours the stage
+  // draws them in.
+  @each $kind in keyword, string, number, comment, name, type, operator, punctuation {
+    .syntax-#{$kind} {
+      color: var(--syntax-#{$kind});
+    }
   }
 }

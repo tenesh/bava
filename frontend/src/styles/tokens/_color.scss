@@ -44,6 +44,10 @@ $l-control-active: rgba(20, 20, 18, 0.1);
 $l-accent-hover: #285e90;
 $l-accent-active: #22517d;
 $l-danger-active: rgba(179, 39, 28, 0.14);
+// A field's placeholder: quieter than what is typed in it.
+$l-placeholder: #8a8a83;
+// The chosen segment of a segmented control: raised off its sunken track.
+$l-segment-chosen: #ffffff;
 $l-ok: #4a7c59;
 $l-backdrop: rgba(20, 20, 18, 0.45);
 $l-canvas-bg: #efefec;
@@ -81,6 +85,9 @@ $d-control-active: rgba(255, 255, 255, 0.11);
 $d-accent-hover: #93b9e1;
 $d-accent-active: #a8c7e8;
 $d-danger-active: rgba(229, 122, 109, 0.22);
+$d-placeholder: #71746f;
+// Lighter than a hovered or pressed segment's wash, so the choice stays clear.
+$d-segment-chosen: #33363c;
 $d-ok: #8fb89a;
 $d-backdrop: rgba(10, 11, 12, 0.58);
 $d-canvas-bg: #131416;
@@ -144,6 +151,8 @@ $d-diagram-edge: #7f857f;
 $d-diagram-edge-label: #8b8f8a;
 
 :root {
+  // The browser's own controls (a number field's spinner) follow the theme.
+  color-scheme: light;
   --color-surface: #{$l-surface};
   --color-surface-raised: #{$l-surface-raised};
   --color-surface-sunken: #{$l-surface-sunken};
@@ -172,6 +181,8 @@ $d-diagram-edge-label: #8b8f8a;
   --color-control-active: #{$l-control-active};
   --color-accent-hover: #{$l-accent-hover};
   --color-accent-active: #{$l-accent-active};
+  --color-placeholder: #{$l-placeholder};
+  --color-segment-chosen: #{$l-segment-chosen};
   --color-ok: #{$l-ok};
   --color-backdrop: #{$l-backdrop};
   --color-canvas-bg: #{$l-canvas-bg};
@@ -209,6 +220,7 @@ $d-diagram-edge-label: #8b8f8a;
 }
 
 :root[data-theme='dark'] {
+  color-scheme: dark;
   --color-surface: #{$d-surface};
   --color-surface-raised: #{$d-surface-raised};
   --color-surface-sunken: #{$d-surface-sunken};
@@ -237,6 +249,8 @@ $d-diagram-edge-label: #8b8f8a;
   --color-control-active: #{$d-control-active};
   --color-accent-hover: #{$d-accent-hover};
   --color-accent-active: #{$d-accent-active};
+  --color-placeholder: #{$d-placeholder};
+  --color-segment-chosen: #{$d-segment-chosen};
   --color-ok: #{$d-ok};
   --color-backdrop: #{$d-backdrop};
   --color-canvas-bg: #{$d-canvas-bg};

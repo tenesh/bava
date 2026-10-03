@@ -106,7 +106,8 @@
     aria-label={t('insert.search')}
   >
     {#each insert.entries as entry, index (entry.id)}
-      {#if entry.kind === 'category'}
+      {#if !insert.grid}
+        <!-- A list reads as rows: a category, and an item that sits beside the categories. -->
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div
           id={optionId(index)}
@@ -120,9 +121,13 @@
           <span class="row-icon"><ToolIcon id={entry.icon} /></span>
           <span class="text">
             <span class="name">{t(entry.labelKey)}</span>
-            <span class="description">{t(entry.descriptionKey)}</span>
+            {#if entry.kind === 'category'}
+              <span class="description">{t(entry.descriptionKey)}</span>
+            {/if}
           </span>
-          <span class="chevron"><ToolIcon id="chevron" size="sm" /></span>
+          {#if entry.kind === 'category'}
+            <span class="chevron"><ToolIcon id="chevron" size="sm" /></span>
+          {/if}
         </div>
       {:else}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -306,7 +311,9 @@
     color: var(--color-text-muted);
   }
 
+  /* In a grid the message spans every column rather than wrapping in one. */
   .empty {
+    grid-column: 1 / -1;
     margin: 0;
     padding: var(--space-3) 0;
     font-size: var(--text-meta);

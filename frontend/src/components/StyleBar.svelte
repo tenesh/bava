@@ -10,6 +10,7 @@
   import { Popover, Portal, RadioGroup } from '@ark-ui/svelte';
   import Tooltip from './Tooltip.svelte';
   import { portalRoot } from './portal-root';
+  import { createPressModality } from './press-modality.svelte';
   import { SWATCHES, isLiteralColour, isSwatch } from '../canvas/palette';
   import type { StyleKey } from '../canvas/style';
   import { t } from '../i18n/t';
@@ -25,7 +26,11 @@
 
   let { fill, stroke, color, onApply }: Props = $props();
 
+  const modality = createPressModality();
+
   const DEFAULT = 'default';
+  // Ids unique to this bar: a second bar on the page must not share them.
+  const uid = $props.id();
 
   const pickers = $derived(
     (
@@ -39,9 +44,18 @@
 
   const swatchName = (swatch: string) => t(`swatch.${swatch}` as 'swatch.blue');
 
-  /** The chip shown on a trigger: the current swatch, the default, or mixed. */
-  function chip(current: Current, part: string): string {
-    if (current === 'mixed' || current === 'unavailable') return 'transparent';
+  /** The swatch checked in a picker: none for mixed or a colour of the user's own. */
+  function checked(current: Current): string | null {
+    if (current === 'mixed' || current === 'unavailable' || isLiteralColour(current)) return null;
+    return isSwatch(current) ? current : DEFAULT;
+  }
+
+  /**
+   * The chip shown on a trigger: the current swatch or the default. Mixed
+   * gives nothing, leaving the chip's hatch to show.
+   */
+  function chip(current: Current, part: string): string | undefined {
+    if (current === 'mixed' || current === 'unavailable') return undefined;
     // A colour the user picked is shown as picked.
     if (isLiteralColour(current)) return current;
     // An unknown name (from a newer Bava) draws as the default on the canvas;
@@ -52,7 +66,7 @@
 
 <div class="bar" role="group" aria-label={t('style.toolbar')}>
   {#each pickers as picker (picker.key)}
-    {@const triggerId = `bava-style-${picker.key}-trigger`}
+    {@const triggerId = `bava-style-${picker.key}-trigger-${uid}`}
     <!--
       One chip, two machines: the popover opens the swatches and the tooltip
       names it. Both are told the same trigger id, and the popover's props are
@@ -83,7 +97,10 @@
           <Popover.Content class="bava-style-popover">
             <RadioGroup.Root
               class="bava-swatches"
-              value={picker.current === 'mixed' ? null : isSwatch(picker.current) ? picker.current : DEFAULT}
+              data-pointer={modality.byPointer ? '' : undefined}
+              onpointerdown={modality.onpointerdown}
+              onkeydown={modality.onkeydown}
+              value={checked(picker.current)}
               onValueChange={(details) =>
                 details.value && onApply(picker.key, details.value === DEFAULT ? null : details.value)}
               aria-label={picker.label}
@@ -162,7 +179,9 @@
     outline-offset: calc(var(--focus-halo-width) * -1);
   }
 
-  :global(.bava-swatch[data-focus-visible] .bava-swatch-control) {
+  /* Keyboard focus only: Ark marks a press as focus-visible too, so not
+     after a press (`press-modality.svelte.ts`). */
+  :global(.bava-swatches:not([data-pointer]) .bava-swatch[data-focus-visible] .bava-swatch-control) {
     outline: var(--focus-ring-width) solid var(--color-focus-ring);
     outline-offset: var(--focus-halo-width);
   }

@@ -64,11 +64,12 @@
     onkeydown={keydown}
   />
   <span class="position" aria-live="polite">{query ? position : ''}</span>
+  <!-- A chevron is half the height of its box: at the small size an enabled one read as disabled. -->
   <button type="button" class="bava-icon-button" aria-label={t('find.previous')} title={t('find.previous')} disabled={count === 0} onclick={onPrevious}>
-    <ToolIcon id="chevronUp" size="sm" />
+    <ToolIcon id="chevronUp" />
   </button>
   <button type="button" class="bava-icon-button" aria-label={t('find.next')} title={t('find.next')} disabled={count === 0} onclick={onNext}>
-    <ToolIcon id="chevronDown" size="sm" />
+    <ToolIcon id="chevronDown" />
   </button>
   <input
     bind:this={replaceField}

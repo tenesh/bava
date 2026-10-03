@@ -213,6 +213,14 @@ Typed inside a line: `$x^2$` makes an inline equation.
 | Drag a row | Onto a folder's middle: move it in. Between rows: put it there, as the line shows |
 | `⌘N` / `Ctrl+N` | New page beside the open one, named in the tree first |
 
+## In the Media dialog
+
+| Key | Action |
+|---|---|
+| `Enter` in the rename field | Rename the file; a name that cannot be used is shown under the field, which stays open |
+| `Esc` in the rename field | Leave the rename, keeping the old name; the dialog stays open |
+| `Esc` again | Close the dialog |
+
 ## On the canvas
 
 | Gesture | Action |

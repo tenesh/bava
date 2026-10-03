@@ -109,6 +109,13 @@ describe('token emission', () => {
     expect(block(':root[data-theme=dark]')).toContain('--color-mark-tile: transparent');
   });
 
+  // The browser draws its own controls (a number field's spinner, a
+  // scrollbar) light unless told the page is dark.
+  it('tells the browser which theme its own controls draw in', () => {
+    expect(block(':root')).toContain('color-scheme: light');
+    expect(block(':root[data-theme=dark]')).toContain('color-scheme: dark');
+  });
+
   // Fading the tile on a light ground makes a mid-grey ground, which the brand
   // forbids. Only the bare dark-theme mark fades.
   it('fades the empty-state mark only where it has no tile', () => {

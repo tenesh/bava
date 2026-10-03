@@ -68,48 +68,7 @@
 </Menu.Root>
 
 <style>
-  :global(.bava-menu) {
-    z-index: var(--z-portal);
-    display: flex;
-    flex-direction: column;
-    min-width: var(--size-menu-min);
-    padding: var(--space-1);
-    background: var(--color-surface-overlay);
-    border: var(--border-width) solid var(--color-border-subtle);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-floating);
-    outline: none;
-  }
-
-  :global(.bava-menu[hidden]) {
-    display: none;
-  }
-
-  :global(.bava-menu-item) {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    height: var(--size-row-lg);
-    padding: 0 var(--space-2);
-    border-radius: var(--radius-md);
-    font-size: var(--text-control);
-    color: var(--color-text-primary);
-    cursor: default;
-  }
-
-  /*
-   * The pointer's item and the keyboard's are one: Ark marks either as
-   * highlighted, so the fill is the focus indication too.
-   */
-  :global(.bava-menu-item[data-highlighted]) {
-    background: var(--color-selection);
-    outline: none;
-  }
-
-  :global(.bava-menu-label) {
-    flex: 1;
-  }
-
+  /* The menu, its items and separators are styled in `styles/menus.scss`. */
   .keys {
     font-family: var(--font-mono);
     font-size: var(--text-menu-keys);
@@ -119,12 +78,5 @@
   .chevron {
     display: flex;
     color: var(--color-text-muted);
-  }
-
-  :global(.bava-menu-separator) {
-    height: var(--border-width);
-    margin: var(--space-1) 0;
-    border: 0;
-    background: var(--color-border-subtle);
   }
 </style>

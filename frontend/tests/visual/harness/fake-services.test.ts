@@ -33,6 +33,21 @@ describe('the stand-in Go side', () => {
     expect((await fakes.SpaceService.Open('/nowhere')).code).toBe('notSpace');
   });
 
+  it('renames a Media file keeping its type, and refuses a name another file has', async () => {
+    const f = createFakes(seedSpace());
+    const root = '/Users/you/Documents/Acme Product';
+    const op = { path: '', folder: '', index: -1, id: '', width: '', kind: 'renameAttachment' };
+    expect((await f.SpaceService.Apply(root, { ...op, attachment: 'logo.png', name: 'landscape' })).code).toBe('exists');
+    const renamed = await f.SpaceService.Apply(root, { ...op, attachment: 'logo.png', name: 'mark' });
+    expect(renamed).toMatchObject({ name: 'mark.png', error: '' });
+  });
+
+  it('answers code with a map left open as D2 does: a diagnostic on its line, and nothing drawn', async () => {
+    const result = await fakes.RenderService.Render('a -> b\nb: {\n', {});
+    expect(result.svg).toBe('');
+    expect(result.errors).toEqual([{ message: 'maps must be terminated with }', from: 10, to: 12, line: 2 }]);
+  });
+
   it('makes a page that the next listing shows, and opens it', async () => {
     const f = createFakes(seedSpace());
     const root = '/Users/you/Documents/Acme Product';
@@ -50,6 +65,36 @@ describe('the stand-in Go side', () => {
     await f.SpaceService.Apply(root, { path: 'Roadmap.md', folder: '', name: '', index: -1, id: '', width: '', kind: 'trash' });
     const trash = await f.SpaceService.Trash(root);
     expect(trash.items?.map((i) => i.path)).toContain('Roadmap.md');
+  });
+});
+
+describe('what the app checks need from the stand-in', () => {
+  const root = '/Users/you/Documents/Acme Product';
+
+  it('fails as a walk asks: a change on disk, a save, a setting', async () => {
+    const f = createFakes(seedSpace());
+    Object.assign(f.harness.faults, { changedOnDisk: true, saveFails: true, settingsSaveFails: true });
+    expect(await f.FileService.ChangedOnDisk(`${root}/Roadmap.md`, null)).toBe(true);
+    await expect(f.FileService.Save(`${root}/Roadmap.md`, '', { version: 1, elements: [] })).rejects.toThrow();
+    expect(await f.FileService.SaveSettings(await f.FileService.Settings())).not.toBe('');
+  });
+
+  it('opens the page kept in no Space, once Open File is to answer it', async () => {
+    const f = createFakes(seedSpace());
+    expect((await f.FileService.ChooseFileToOpen()).path).toBe('');
+    f.harness.fileToOpen = '/Users/you/Documents/Notes.md';
+    const chosen = await f.FileService.ChooseFileToOpen();
+    expect((await f.FileService.Open(chosen.path)).source).toContain('# Notes');
+  });
+});
+
+describe('what the Document checks need from the stand-in', () => {
+  it('puts words into a page, which then opens with them', async () => {
+    const root = '/Users/you/Documents/Acme Product';
+    const fakes = createFakes(seedSpace());
+    fakes.harness.setSource(root, 'Marketing/Press release.md', '# Press\n');
+    const opened = await fakes.FileService.Open(`${root}/Marketing/Press release.md`);
+    expect(opened.source).toBe('# Press\n');
   });
 });
 

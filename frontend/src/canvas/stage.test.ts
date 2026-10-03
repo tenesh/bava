@@ -676,6 +676,22 @@ describe('an arrow whose target has gone', () => {
     expect(markers[0].getAbsolutePosition()).toEqual({ x: 200, y: 30 });
   });
 
+  // The end's handle sits on the marker while the arrow is selected, so the
+  // handle itself carries the mark.
+  it('marks the loose end\'s handle while the arrow is selected', () => {
+    const stage = newStage({ read });
+    stage.mount(host());
+    stage.render(bound(false));
+    stage.setSelection(['arrow']);
+    const [start, end] = stage.endpointHandles();
+    expect(start.stroke()).toBe('dodgerblue');
+    expect(end.stroke()).toBe('crimson');
+
+    stage.render(bound(true));
+    stage.setSelection(['arrow']);
+    expect(stage.endpointHandles()[1].stroke()).toBe('dodgerblue');
+  });
+
   it('takes the mark away when the target comes back', () => {
     const stage = newStage({ read });
     stage.mount(host());
@@ -913,6 +929,28 @@ describe('an element being edited', () => {
     expect(stage.labelFor('e1')!.visible()).toBe(false);
   });
 
+  // The code editor covers the block; handles round it would be half under it.
+  it('shows no outline or handles on a code block while its editor is open', () => {
+    const stage = mounted();
+    stage.render(one({ type: 'code', x: 0, y: 0, w: 200, h: 60, code: 'x', measuredWidth: 200, measuredHeight: 60 }));
+    stage.setSelection(['e1']);
+    stage.setEditing('e1');
+    expect(stage.selectionOutline()).toBeNull();
+    expect(stage.selectionHandleCount()).toBe(0);
+    stage.setEditing(null);
+    expect(stage.selectionOutline()).not.toBeNull();
+    expect(stage.selectionHandleCount()).toBe(5);
+  });
+
+  it('keeps the outline and handles on a shape whose label is typed into', () => {
+    const stage = mounted();
+    stage.render(one({ type: 'rect', x: 0, y: 0, w: 100, h: 50, label: 'A' }));
+    stage.setSelection(['e1']);
+    stage.setEditing('e1');
+    expect(stage.selectionOutline()).not.toBeNull();
+    expect(stage.selectionHandleCount()).toBe(8);
+  });
+
   it('hides a text element body while edited', () => {
     const stage = mounted();
     stage.render(one({ type: 'text', x: 0, y: 0, w: 40, h: 24, text: 'hi', measuredWidth: 40, measuredHeight: 24 }));
@@ -1098,15 +1136,55 @@ describe('the handles of a turned line', () => {
   });
 });
 
-// The middle keeps precedence over the label.
-describe('the middle handle under a label', () => {
-  it('is drawn, since a press on it bends the arrow', () => {
-    const read = reader({ '--color-selection-handle': 'dodgerblue', '--size-selection-handle': '8px', '--size-bend-min-segment': '40px', '--text-body': '16px', '--leading-tight': '1.2' });
+// A handle the label covers is drawn where the line comes out from under it,
+// so the label stays readable; the pointer presses it there.
+describe('the handles under a label', () => {
+  const read = reader({
+    '--color-selection-handle': 'dodgerblue',
+    '--size-selection-handle': '8px',
+    '--size-point-handle': '10px',
+    '--size-bend-min-segment': '40px',
+    '--text-body': '16px',
+    '--leading-tight': '1.2',
+  });
+  const clear = (handle: Konva.Circle, box: { x: number; y: number; w: number; h: number }) =>
+    handle.x() + handle.radius() <= box.x || handle.x() - handle.radius() >= box.x + box.w ||
+    handle.y() + handle.radius() <= box.y || handle.y() - handle.radius() >= box.y + box.h;
+
+  it('draws a straight arrow\'s middle beside its label, on the line', () => {
     const stage = newStage({ read });
     stage.mount(host());
     stage.render(one({ type: 'arrow', x: 0, y: 0, w: 200, h: 0, points: [0, 0, 200, 0], label: 'sends' }));
     stage.setSelection(['e1']);
-    expect(stage.middleHandles()).toHaveLength(1);
+    const box = stage.labelBounds('e1')!;
+    const [middle] = stage.middleHandles();
+    expect(middle).toBeDefined();
+    expect(clear(middle, box)).toBe(true);
+    expect(middle.y()).toBeCloseTo(0);
+    expect(middle.x()).toBeGreaterThan(box.x + box.w);
+  });
+
+  it('offers no middle on an arrow its label leaves no room beside, clear of its head', () => {
+    const stage = newStage({ read });
+    stage.mount(host());
+    // jsdom measures a character as one unit: the label spans 21 to 69,
+    // leaving 11 showing at each end, short of the head and the start's handle.
+    stage.render(one({ type: 'arrow', x: 0, y: 0, w: 90, h: 0, points: [0, 0, 90, 0], label: 'a label over most of a short arrow, near its end' }));
+    stage.setSelection(['e1']);
+    expect(stage.labelBounds('e1')).not.toBeNull();
+    expect(stage.endpointHandles()).toHaveLength(2);
+    expect(stage.middleHandles()).toEqual([]);
+  });
+
+  it('draws an arc\'s middle point beside its label', () => {
+    const stage = newStage({ read });
+    stage.mount(host());
+    stage.render(one({ type: 'arrow', arrowType: 'arc', x: 0, y: -40, w: 200, h: 40, points: [0, 40, 100, 0, 200, 40], label: 'sends' }));
+    stage.setSelection(['e1']);
+    const box = stage.labelBounds('e1')!;
+    const points = stage.endpointHandles();
+    expect(points).toHaveLength(3);
+    expect(clear(points[1], box)).toBe(true);
   });
 });
 
@@ -1298,6 +1376,27 @@ describe("a code block's language on the canvas", () => {
     expect(hole[2]).toBeGreaterThan(8);
     stage.render(one({ type: 'code', x: 0, y: 0, w: 200, h: 60, code: 'x', measuredWidth: 200, measuredHeight: 60 }));
     expect(stage.codeLanguage('e1')).toBeNull();
+  });
+
+  it('breaks the selection outline behind the language, where the border breaks', () => {
+    const stage = newStage({ read });
+    stage.mount(host());
+    stage.render(one({ type: 'code', x: 30, y: 40, w: 200, h: 60, code: 'x', language: 'go', measuredWidth: 200, measuredHeight: 60 }));
+    stage.setSelection(['e1']);
+    const rects: number[][] = [];
+    const holder = stage.selectionOutline()!.getParent() as Konva.Group;
+    holder.clipFunc()!({ rect: (...args: number[]) => rects.push(args) } as never, undefined as never);
+    // The border's hole, moved to where the block is.
+    expect(rects[1][0]).toBe(30 + 12 - 4);
+    expect(rects[1][2]).toBeGreaterThan(8);
+  });
+
+  it('leaves the selection outline whole on a block with no language', () => {
+    const stage = newStage({ read });
+    stage.mount(host());
+    stage.render(one({ type: 'code', x: 30, y: 40, w: 200, h: 60, code: 'x', measuredWidth: 200, measuredHeight: 60 }));
+    stage.setSelection(['e1']);
+    expect((stage.selectionOutline()!.getParent() as Konva.Group).clipFunc()).toBeFalsy();
   });
 });
 

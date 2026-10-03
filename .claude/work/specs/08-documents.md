@@ -171,8 +171,10 @@ which GitHub and most viewers also fold. For a toggle heading, the file
 format decides between marking the heading (so it stays a heading
 elsewhere) and letting every heading fold, with the fold state kept outside
 the file as a convenience, as Obsidian does. In the Document, a fold is the
-HTML `<details>` element drawn by ProseMirror; elsewhere in the app, Ark UI's
-Collapsible and Accordion.
+HTML `<details>` element drawn by ProseMirror. Nothing else in the app uses
+Ark UI's Collapsible or Accordion: the side pane's Files and Media fold from
+their headers' own buttons (`aria-expanded`), and `Disclosure`, the wrapper
+once kept for Collapsible, was removed unused.
 
 ### 15. Block colours, from Bava's palette (2026-09-27)
 

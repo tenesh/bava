@@ -87,8 +87,38 @@ describe('typing in a code block', () => {
     });
     // The language's support is in the editor's state, so `const` is a keyword
     // rather than plain text.
-    expect(document.querySelector('.cm-content')!.innerHTML).toContain('ͼ');
+    expect(document.querySelector('.cm-content .syntax-keyword')?.textContent).toBe('const');
     editor.destroy();
+  });
+
+  // Typing must not recolour the code: each stretch carries the kind the
+  // canvas draws it in, which the stylesheet colours from the same tokens.
+  it('colours each stretch as the canvas draws it', async () => {
+    const editor = tracked(new CodeEditor(host()));
+    await editor.open({
+      code: 'package main\n\nvar s = "hi" // note',
+      language: 'go',
+      rect: { x: 0, y: 0, width: 200, height: 60 },
+      onCommit: vi.fn(),
+    });
+    const content = document.querySelector('.cm-content')!;
+    expect(content.querySelector('.syntax-string')?.textContent).toBe('"hi"');
+    expect(content.querySelector('.syntax-comment')?.textContent).toBe('// note');
+    expect(content.querySelector('.syntax-keyword')?.textContent).toBe('package');
+    editor.destroy();
+  });
+
+  // The language is named on the block's top edge; the editor leaves it showing.
+  it('marks a named language, so the stylesheet keeps its tag in view', async () => {
+    const named = tracked(new CodeEditor(host()));
+    await named.open({ code: 'x', language: 'go', rect: { x: 0, y: 0, width: 100, height: 40 }, onCommit: vi.fn() });
+    expect(document.querySelector('.bava-code-editor')!.classList.contains('bava-code-editor--named')).toBe(true);
+    named.destroy();
+
+    const plain = tracked(new CodeEditor(host()));
+    await plain.open({ code: 'x', rect: { x: 0, y: 0, width: 100, height: 40 }, onCommit: vi.fn() });
+    expect(document.querySelector('.bava-code-editor')!.classList.contains('bava-code-editor--named')).toBe(false);
+    plain.destroy();
   });
 });
 
@@ -157,8 +187,10 @@ describe('an editor on a rotated block', () => {
     });
     const wrapper = document.querySelector('.bava-code-editor') as HTMLElement;
     expect(wrapper.style.transform).toContain('rotate(30deg)');
-    // The typed text has to match the block under it at any zoom.
-    expect(wrapper.style.fontSize).not.toBe('');
+    // The typed text has to match the block under it at any zoom: the
+    // stylesheet scales the code size and the padding by these.
+    expect(wrapper.style.getPropertyValue('--bava-code-zoom')).toBe('2');
+    expect(wrapper.style.getPropertyValue('--bava-code-scale')).toBe('2');
     editor.destroy();
   });
 });
@@ -301,7 +333,9 @@ describe("the editor over a block at another size", () => {
     const editor = tracked(new CodeEditor(host()));
     await editor.open({ code: 'x', zoom: 2, fontScale: 1.5, rect: { x: 0, y: 0, width: 100, height: 40 }, onCommit: vi.fn() });
     const wrapper = document.querySelector('.bava-code-editor') as HTMLElement;
-    expect(wrapper.style.fontSize).toBe('3em');
+    // The code token times both, so it does not depend on the host's size.
+    expect(wrapper.style.getPropertyValue('--bava-code-scale')).toBe('3');
+    expect(wrapper.style.getPropertyValue('--bava-code-zoom')).toBe('2');
     editor.destroy();
   });
 });

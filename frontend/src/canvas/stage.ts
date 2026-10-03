@@ -34,7 +34,7 @@ import { canvasLineWidth } from './text-measure';
 import { LABEL_CLEARANCE, drawHead, endSegment, headAt, headDash, labelCorners, labelLayout, middlesAlong, pathOf } from './arrows';
 import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
 import { handleCentre, rotateHandleCentre } from './resize';
-import { chromeFor, elbowSegmentHandles, focusSpots, grown, offersMiddles } from './selection-chrome';
+import { besideLabel, chromeFor, elbowSegmentHandles, focusSpots, grown, labelSpotEnds, offersMiddles } from './selection-chrome';
 import { angleOfElement, centreOf, selectionFrame } from './rotate';
 import type { Guide } from './snapping';
 import { gridDots } from './grid';
@@ -563,7 +563,10 @@ export class CanvasStage {
 
   #drawSelection(read: ReadVariable): void {
     if (!this.#overlay) return;
-    this.#outline?.destroy();
+    // A code block's outline sits in a group that breaks it behind the tag.
+    const holder = this.#outline?.getParent();
+    if (holder && holder !== this.#overlay) holder.destroy();
+    else this.#outline?.destroy();
     this.#handles.forEach((handle) => handle.destroy());
     this.#rotate?.destroy();
     this.#endpoints.forEach((end) => end.destroy());
@@ -614,15 +617,34 @@ export class CanvasStage {
     const scale = 1 / this.#zoom;
     // What this selection shows, decided with the pointer (`selection-chrome.ts`).
     // A line in point editing shows its points alone, as Excalidraw's editor.
+    // A code block whose editor is open shows none: the editor covers it.
     const editingThis = selected.length === 1 && this.#pointEditing?.id === selected[0].id;
-    const chrome = chromeFor(selected, this.#pointEditing?.id ?? null);
+    const codeEditing = selected.length === 1 && selected[0].type === 'code' && this.#editing === selected[0].id;
+    const chrome = chromeFor(selected, this.#pointEditing?.id ?? (codeEditing ? this.#editing : null));
     const tight = bounds;
     if (chrome.padded) bounds = grown(tight, number(read, '--size-bent-box-padding') * scale);
     if (chrome.box) {
-      this.#outline = turn(
-        new Konva.Rect({ ...boundsToRect(bounds), stroke: colour, strokeWidth: scale }),
-      ) as Konva.Rect;
-      this.#overlay.add(this.#outline);
+      this.#outline = new Konva.Rect({ ...boundsToRect(bounds), stroke: colour, strokeWidth: scale });
+      // One code block naming its language: the outline breaks behind the
+      // name, as its border does, so it does not run through the name.
+      const gap = selected.length === 1 && selected[0].type === 'code' ? this.#languageTag(selected[0], read)?.gap : undefined;
+      if (gap) {
+        const at = { x: bounds.x + gap.x, y: bounds.y + gap.y };
+        const clip = new Konva.Group({
+          listening: false,
+          clipFunc: (context) => {
+            context.rect(-CLIP_EXTENT, -CLIP_EXTENT, CLIP_EXTENT * 2, CLIP_EXTENT * 2);
+            context.rect(at.x, at.y, gap.w, gap.h);
+            return ['evenodd'];
+          },
+        });
+        clip.add(this.#outline);
+        turn(clip);
+        this.#overlay.add(clip);
+      } else {
+        turn(this.#outline);
+        this.#overlay.add(this.#outline);
+      }
     }
 
     const size = number(read, '--size-selection-handle') * scale;
@@ -663,19 +685,35 @@ export class CanvasStage {
       const chosen = new Set(editingThis ? this.#pointEditing!.selected : []);
       const elbow = (linear as SceneElement & ArrowProps).arrowType === 'elbow' && linear.type === 'arrow';
       const count = drawn.length >= 4 ? drawn.length / 2 : 0;
+      // A handle the label covers is drawn where the line comes out from
+      // under it, clear of the heads, as the pointer presses it
+      // (`besideLabel`); a point with no such spot stays where it is.
+      const label = linear.type === 'arrow' ? this.labelBounds(linear.id) : null;
+      const path = label ? pathOf(drawn, (linear as SceneElement & ArrowProps).arrowType) : [];
+      const ends = label ? labelSpotEnds(linear, path, pointRadius) : undefined;
+      const beside = (at: { x: number; y: number }) => besideLabel(at, path, label, LABEL_CLEARANCE + pointRadius, ends);
+      // An end whose shape is gone carries the detached mark on its handle,
+      // which would otherwise hide the marker drawn there.
+      const { start: startId, end: endId } = bindingsOf(linear);
+      const gone = (id?: string) => id !== undefined && !this.#last.elements.some((e) => e.id === id);
+      const danger = read('--color-danger').trim();
       for (let i = 0; i < count; i += 1) {
         if (elbow && i !== 0 && i !== count - 1) continue;
+        const isEnd = i === 0 || i === count - 1;
+        const detached = linear.type === 'arrow' && ((i === 0 && gone(startId)) || (i === count - 1 && gone(endId)));
         // A point on top of the one before it is drawn larger and hollow, so
         // both show (Excalidraw's `interactiveScene.ts:268-289`, `:1120-1127`).
         const overlapping = i > 0 && Math.hypot(drawn[i * 2] - drawn[i * 2 - 2], drawn[i * 2 + 1] - drawn[i * 2 - 1]) <= number(read, '--size-point-overlap') * scale;
         const radius = editingThis ? editRadius : pointRadius;
+        const point = { x: drawn[i * 2], y: drawn[i * 2 + 1] };
+        const at = isEnd ? point : (beside(point) ?? point);
         const handle = new Konva.Circle({
-          x: drawn[i * 2],
-          y: drawn[i * 2 + 1],
+          x: at.x,
+          y: at.y,
           radius: overlapping ? radius * (editingThis ? 1.5 : 2) : radius,
           fill: chosen.has(i) ? colour : surface,
           fillEnabled: !overlapping || chosen.has(i),
-          stroke: colour,
+          stroke: detached ? danger : colour,
           strokeWidth: scale,
         });
         this.#endpoints.push(handle);
@@ -687,13 +725,16 @@ export class CanvasStage {
         count >= 2 && offersMiddles(linear, editingThis)
           ? middlesAlong(drawn, (linear as SceneElement & ArrowProps).arrowType, tensionOf(linear))
           : [];
-      // A middle is offered under the label too: a press on it bends.
+      // A middle under the label is offered beside it, a press there bends;
+      // with no room beside it, not at all.
       middles.forEach((middle, i) => {
         const [x1, y1, x2, y2] = drawn.slice(i * 2, i * 2 + 4);
         if (Math.hypot(x2 - x1, y2 - y1) < shortest) return;
+        const at = beside(middle);
+        if (!at) return;
         const handle = new Konva.Circle({
-          x: middle.x,
-          y: middle.y,
+          x: at.x,
+          y: at.y,
           radius: pointRadius,
           fill: colour,
           opacity: MIDDLE_HANDLE_OPACITY,
@@ -998,7 +1039,8 @@ export class CanvasStage {
 
   /**
    * Hide an element's text while an editor draws it, or show it again with
-   * null. A label is hidden; free text's body is its text, so the body is.
+   * null. A label is hidden; free text's body is its text, so the body is. A
+   * code block's editor covers the block, so it loses its outline and handles.
    */
   setEditing(id: ElementId | null): void {
     const previous = this.#editing;
@@ -1008,6 +1050,7 @@ export class CanvasStage {
       if (entry) this.#showText(entry, each!);
     }
     this.#layer?.batchDraw();
+    this.#drawSelection(cached(this.#read));
   }
 
   #showText(entry: Entry, id: ElementId): void {
@@ -1231,15 +1274,7 @@ export class CanvasStage {
     const paint = paintFor(element, read);
     const size = number(read, '--text-code-language');
     const family = read('--font-mono').trim() || paint.font.family;
-    const tag =
-      element.type === 'code'
-        ? languageTag(element, canvasLineWidth(`${size}px ${family}`), {
-            size,
-            lineHeight: number(read, '--leading-tight'),
-            inset: number(read, '--size-code-language-inset'),
-            clearance: number(read, '--size-code-language-clearance'),
-          })
-        : null;
+    const tag = element.type === 'code' ? this.#languageTag(element, read) : null;
     if (!tag) {
       entry.tag?.destroy();
       entry.tag = null;
@@ -1275,6 +1310,18 @@ export class CanvasStage {
       fontSize: size,
       lineHeight: number(read, '--leading-tight'),
       fill: read('--color-text-muted').trim(),
+    });
+  }
+
+  /** Where a code block's language is named, and its border broken, or null for none. */
+  #languageTag(element: SceneElement, read: ReadVariable) {
+    const size = number(read, '--text-code-language');
+    const family = read('--font-mono').trim() || paintFor(element, read).font.family;
+    return languageTag(element, canvasLineWidth(`${size}px ${family}`), {
+      size,
+      lineHeight: number(read, '--leading-tight'),
+      inset: number(read, '--size-code-language-inset'),
+      clearance: number(read, '--size-code-language-clearance'),
     });
   }
 

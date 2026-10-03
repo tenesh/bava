@@ -82,7 +82,7 @@
   import AboutDialog from './components/AboutDialog.svelte';
   import ErrorDialog from './components/ErrorDialog.svelte';
   import { installErrorHandlers, report } from './ipc/log';
-  import { createErrorPolicy, type GoError, type GoNotice } from './shell/errors.svelte';
+  import { bodyKeyFor, createErrorPolicy, type GoError, type GoNotice } from './shell/errors.svelte';
   import FilesSection from './settings/FilesSection.svelte';
   import AdvancedSection from './settings/AdvancedSection.svelte';
   import CanvasSection from './settings/CanvasSection.svelte';
@@ -237,11 +237,15 @@
         return { width: size.width * viewport.zoom, height: Math.max(size.height, element.h) * viewport.zoom };
       },
       onCommit: (code) => {
+        canvas.setEditing(null);
         commitCode(history, element.id, code, codeMetrics(element));
         commit();
         void highlightBlocks(history.current);
       },
     });
+    // After `open`, which first closes an editor already open (and so clears
+    // what is marked edited): the block loses its outline and handles.
+    canvas.setEditing(element.id);
   }
 
   // Diagram from code: its own render client, so previewing a diagram being
@@ -378,10 +382,10 @@
 
   const errors = createErrorPolicy({ notify: () => notify(t('error.another')), translate: t });
 
-  const errorText = {
-    unexpected: { title: t('error.unexpected.title'), body: t('error.unexpected.body') },
-    unexpectedExit: { title: t('error.unexpectedExit.title'), body: t('error.unexpectedExit.body') },
-    webviewReloaded: { title: t('error.webviewReloaded.title'), body: t('error.webviewReloaded.body') },
+  const errorTitle = {
+    unexpected: t('error.unexpected.title'),
+    unexpectedExit: t('error.unexpectedExit.title'),
+    webviewReloaded: t('error.webviewReloaded.title'),
   };
 
   async function copyText(text: string, confirmation: string) {
@@ -538,6 +542,16 @@
     published = history.current;
   }
 
+  /**
+   * A save asked for by hand that Go refused (it answered, and wrote nothing)
+   * says why in the status bar; otherwise the page stays unsaved with no word.
+   * Autosave calls the document directly and pauses with its own notice.
+   */
+  function toldIfRefused<T extends { conflict: boolean; saved: boolean }>(outcome: T): T {
+    if (!outcome.saved && !outcome.conflict && doc.error) notify(doc.error);
+    return outcome;
+  }
+
   const fileActions = createFileActions({
     document: {
       get path() {
@@ -551,8 +565,8 @@
         if (!result.error) loadScene(result.scene.elements ?? []);
         return result;
       },
-      save: (scene, options) => doc.save(scene, options),
-      saveAs: (path, scene) => doc.saveAs(path, scene),
+      save: async (scene, options) => toldIfRefused(await doc.save(scene, options)),
+      saveAs: async (path, scene) => toldIfRefused(await doc.saveAs(path, scene)),
       close: () => {
         doc.close();
         loadScene([]);
@@ -688,14 +702,22 @@
     else if (chosen.path) newSpaceLocation = chosen.path;
   }
 
-  async function createNewSpace(name: string) {
-    const made = await space.create(newSpaceLocation, name);
-    if (made.error) {
-      notify(made.error);
-      return;
+  /**
+   * Makes the Space; a refusal goes back to the dialog, which shows it beside
+   * the name. The dialog awaits this, so a call that fails outright answers
+   * the same way rather than rejecting.
+   */
+  async function createNewSpace(name: string): Promise<string | null> {
+    try {
+      const made = await space.create(newSpaceLocation, name);
+      if (made.error) return made.error;
+      newSpaceOpen = false;
+      await openSpace(made.root);
+      return null;
+    } catch (error) {
+      void report(error, 'new-space');
+      return t('space.newFailed');
     }
-    newSpaceOpen = false;
-    await openSpace(made.root);
   }
 
   async function chooseSpace() {
@@ -1096,16 +1118,23 @@
     return result.error ? null : (result.name ?? null);
   }
 
-  /** Renames an attachment, and every page's images and videos follow it. */
-  async function renameAttachment(name: string, next: string) {
-    const result = await space.apply({ kind: 'renameAttachment', attachment: name, name: next }, { refresh: false });
-    if (result.error) {
-      notify(result.error);
-      return;
+  /**
+   * Renames an attachment, and every page's images and videos follow it.
+   * Answers with Go's refusal, for the caller to show where it was asked; a
+   * call that fails outright answers the same way rather than rejecting.
+   */
+  async function renameAttachment(name: string, next: string): Promise<string | null> {
+    try {
+      const result = await space.apply({ kind: 'renameAttachment', attachment: name, name: next }, { refresh: false });
+      if (result.error) return result.error;
+      const folder = '.bava/attachments/';
+      await relinkAfter([{ from: folder + name, to: folder + (result.name ?? next) }], openRel);
+      await refreshMedia();
+      return null;
+    } catch (error) {
+      void report(error, 'rename-attachment');
+      return t('media.renameFailed');
     }
-    const folder = '.bava/attachments/';
-    await relinkAfter([{ from: folder + name, to: folder + (result.name ?? next) }], openRel);
-    await refreshMedia();
   }
 
   /**
@@ -2161,6 +2190,7 @@
         activePath={openRel}
         unsavedPath={doc.dirty ? openRel : null}
         {renameRequest}
+        menuPath={treeMenuAt?.path ?? null}
         onRenameStarted={() => (renameRequest = null)}
         onToggle={(folder) => void space.toggle(folder)}
         onOpen={(path) => void openPath(space.absolute(path))}
@@ -2351,7 +2381,10 @@
       }}
       onPasteImage={() => void pasteImage()}
       onReplaceMedia={replaceMedia}
-      onRenameAttachment={(name, next) => void renameAttachment(name, next)}
+      onRenameAttachment={(name, next) =>
+        void renameAttachment(name, next).then((refusal) => {
+          if (refusal) notify(refusal);
+        })}
       onRevealFile={(path) => void revealPath(path)}
       onAttachPoster={async (data, name) => {
         const result = await space.apply({ kind: 'attachData', data, name }, { refresh: false });
@@ -2516,8 +2549,8 @@
 {#if errors.current}
   <ErrorDialog
     open
-    title={errorText[errors.current.kind].title}
-    body={errorText[errors.current.kind].body}
+    title={errorTitle[errors.current.kind]}
+    body={t(bodyKeyFor(errors.current))}
     details={errors.current.details}
     onCopyDetails={(details) => void copyText(details, t('error.detailsCopied'))}
     onOpenLogs={() => void openLogsFolder()}
@@ -2539,7 +2572,7 @@
       if (open) void refreshMedia();
     }}
     onAdd={() => void addToMedia()}
-    onRename={(name, next) => void renameAttachment(name, next)}
+    onRename={(name, next) => renameAttachment(name, next)}
     onDelete={(item) => void deleteMediaItem(item)}
     onReveal={(name) => void revealPath(`.bava/attachments/${name}`)}
     onOpenPage={(path) => {
@@ -2576,7 +2609,7 @@
   bind:open={newSpaceOpen}
   location={newSpaceLocation}
   onChooseLocation={() => void chooseNewSpaceLocation()}
-  onCreate={(name) => void createNewSpace(name)}
+  onCreate={(name) => createNewSpace(name)}
   onOpenChange={(open) => (newSpaceOpen = open)}
 />
 

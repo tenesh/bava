@@ -21,7 +21,9 @@
   const STEP = 10;
 
   const label = t('style.opacity');
-  const triggerId = 'bava-opacity-trigger';
+  // Unique to this picker: a second one on the page must not share it.
+  const uid = $props.id();
+  const triggerId = `bava-opacity-trigger-${uid}`;
   const value = $derived(typeof current === 'number' ? current : 100);
 </script>
 

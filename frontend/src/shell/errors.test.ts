@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createErrorPolicy as create } from './errors.svelte';
+import { bodyKeyFor, createErrorPolicy as create } from './errors.svelte';
 
 // Keys stand in for the translated text, so the tests read what is chosen.
 const translate = (key: string) => `<${key}>`;
@@ -33,6 +33,15 @@ describe('error policy', () => {
     expect(errors.current?.details).toBe('<error.previousLog>: 2026-09-17T10-00-00-7.log');
   });
 
+  // Its body already says what happened, and there is no id or log to hand
+  // over: a details box would repeat the body with an empty label.
+  it('a reloaded-window notice opens with no details', () => {
+    const errors = createErrorPolicy({ notify: vi.fn() });
+    errors.notice({ kind: 'webviewReloaded', session: '' });
+    expect(errors.current?.kind).toBe('webviewReloaded');
+    expect(errors.current?.details).toBe('');
+  });
+
   it('shows queued notices one after another', () => {
     const errors = createErrorPolicy({ notify: vi.fn() });
     errors.notice({ kind: 'unexpectedExit', session: 'a.log' });
@@ -55,5 +64,11 @@ describe('error policy', () => {
     const errors = createErrorPolicy({ notify: vi.fn() });
     errors.unexpected(new SyntaxError('Unexpected token near SECRET-TEXT'));
     expect(errors.current?.details).not.toContain('SECRET-TEXT');
+  });
+
+  // The body points at the details below; with none, it must not.
+  it('speaks of the details only when there are some', () => {
+    expect(bodyKeyFor({ kind: 'unexpected', details: '<error.id>: a1b2c3d4' })).toBe('error.unexpected.body');
+    expect(bodyKeyFor({ kind: 'unexpected', details: '' })).toBe('error.unexpected.bodyPlain');
   });
 });

@@ -63,9 +63,21 @@
     padding: 0;
     border: 0;
     appearance: none;
+    position: relative;
     width: var(--border-width);
     background: var(--color-border-subtle);
     cursor: col-resize;
+  }
+
+  /* The line stays one hairline; the pointer finds it a few pixels either side. */
+  :global(.bava-splitter-handle)::before {
+    content: '';
+    position: absolute;
+    inset: 0 calc(var(--size-splitter-reach) * -1);
+  }
+
+  :global(.bava-splitter[data-orientation='vertical'] > .bava-splitter-handle)::before {
+    inset: calc(var(--size-splitter-reach) * -1) 0;
   }
 
   :global(.bava-splitter[data-orientation='vertical']) {

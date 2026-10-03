@@ -9,10 +9,10 @@ const EMOJIS = [
   { emoji: '🚀', name: 'rocket', group: 'travel_places' },
 ];
 
-async function setup() {
+async function setup(emojis = EMOJIS) {
   const props = {
     at: { left: 10, top: 40, bottom: 60 },
-    emojis: EMOJIS,
+    emojis,
     groupLabel: (slug: string) => `Group ${slug}`,
     onPick: vi.fn(),
     onClose: vi.fn(),
@@ -45,5 +45,15 @@ describe('EmojiPicker', () => {
     expect(props.onPick).toHaveBeenCalledWith('🚀');
     search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(props.onClose).toHaveBeenCalled();
+  });
+});
+
+// The emoji load after the picker opens; until then it says so rather than
+// standing empty.
+describe('EmojiPicker while the emoji load', () => {
+  it('shows that it is loading', async () => {
+    await setup([]);
+    const bar = document.querySelector('.emoji-picker [role="progressbar"]');
+    expect(bar?.getAttribute('aria-label') ?? bar?.textContent).toContain('Loading emoji');
   });
 });

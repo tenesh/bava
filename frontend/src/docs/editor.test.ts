@@ -380,6 +380,41 @@ describe('the selection', () => {
     view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 5)));
     expect(editor!.activeMarks()).toEqual(expect.objectContaining({ bold: true, italic: false }));
   });
+
+  it('says when the selection has a text colour or a highlight', () => {
+    open('Some words here\n');
+    const view = editor!.view!;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 5)));
+    expect(editor!.activeMarks()).toEqual(expect.objectContaining({ textColor: false, highlight: false }));
+    commands.textColor('red')(view.state, view.dispatch);
+    commands.highlight('yellow')(view.state, view.dispatch);
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 5)));
+    expect(editor!.activeMarks()).toEqual(expect.objectContaining({ textColor: true, highlight: true }));
+  });
+
+  it('gives the address the selected text links to, and none for plain text', () => {
+    open('[Docs](https://example.com/docs) and plain\n');
+    const view = editor!.view!;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 5)));
+    expect(editor!.selectionLink()).toBe('https://example.com/docs');
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2, 4)));
+    expect(editor!.selectionLink()).toBe('https://example.com/docs');
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 10, 15)));
+    expect(editor!.selectionLink()).toBeNull();
+  });
+
+  it('offers every mark in a line that takes them, and none in a toggle summary', () => {
+    open('Plain words\n\n<details>\n<summary>Summary</summary>\n\nInside.\n\n</details>\n');
+    const view = editor!.view!;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 6)));
+    expect(Object.values(editor!.offeredMarks()).every(Boolean)).toBe(true);
+    let at = -1;
+    view.state.doc.descendants((node, pos) => {
+      if (at < 0 && node.type.name === 'toggle_summary') at = pos + 1;
+    });
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, at, at + 4)));
+    expect(Object.values(editor!.offeredMarks()).some(Boolean)).toBe(false);
+  });
 });
 
 describe('what the caret is in, for Turn into', () => {

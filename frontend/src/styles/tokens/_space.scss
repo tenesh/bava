@@ -112,6 +112,10 @@
   // apart on screen, rather than drawing thousands.
   --size-canvas-grid-min: 12px;
 
+  // The narrowest a page's folder is cut to in its breadcrumb: a few letters
+  // and an ellipsis.
+  --size-crumb-min: 52px;
+
   // Space between a label and its shape's edge.
   --size-label-inset: 6px;
   // A selection handle's side on screen, whatever the zoom.
@@ -140,6 +144,9 @@
   // line showing where a dragged row will land.
   --size-tree-indent: 14px;
   --size-tree-drop-line: 2px;
+  // How far a pane splitter's handle answers the pointer on each side of its
+  // drawn line.
+  --size-splitter-reach: 3px;
   // Snapping to objects, Excalidraw's values: the reach,
   // 8 px on screen at any zoom; a guide line's width; the cross at each
   // aligned point, 2 px each way (this is end to end); and a spacing

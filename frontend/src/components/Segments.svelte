@@ -6,6 +6,7 @@
    * buttons with `role="radio"` has neither.
    */
   import { SegmentGroup } from '@ark-ui/svelte';
+  import { createPressModality } from './press-modality.svelte';
 
   type Props = {
     value: T;
@@ -16,6 +17,8 @@
   };
 
   let { value, options, label, onValueChange }: Props = $props();
+
+  const modality = createPressModality();
 </script>
 
 <SegmentGroup.Root
@@ -23,6 +26,9 @@
   onValueChange={(details) => details.value && onValueChange(details.value as T)}
   class="bava-segments"
   aria-label={label}
+  data-pointer={modality.byPointer ? '' : undefined}
+  onpointerdown={modality.onpointerdown}
+  onkeydown={modality.onkeydown}
 >
   {#each options as option (option.value)}
     <SegmentGroup.Item value={option.value} class="bava-segment">
@@ -65,12 +71,14 @@
   }
 
   :global(.bava-segment[data-state='checked']) {
-    background: var(--color-surface-raised);
+    background: var(--color-segment-chosen);
     color: var(--color-text-primary);
     box-shadow: var(--shadow-raised);
   }
 
-  :global(.bava-segment:focus-within) {
+  /* Keyboard focus only: Ark marks a press as focus-visible too, so not
+     after a press (`press-modality.svelte.ts`). */
+  :global(.bava-segments:not([data-pointer]) .bava-segment[data-focus-visible]) {
     outline: var(--focus-ring-width) solid var(--color-focus-ring);
     outline-offset: calc(var(--focus-halo-width) * -1);
   }

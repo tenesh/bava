@@ -45,6 +45,19 @@ function open(markdown: string, present: string[] = []) {
 }
 
 describe('an image in the page', () => {
+  it('asks for its caption under itself, where the caption shows', () => {
+    const { host } = open('![Logo](.bava/attachments/logo.png)\n\n<!-- bava: caption="The logo" -->\n![Mark](.bava/attachments/mark.png)\n');
+    const [bare, captioned] = host.querySelectorAll('figure.media');
+    bare.querySelector<HTMLElement>('.media-frame')!.getBoundingClientRect = () => new DOMRect(120, 40, 300, 200);
+    captioned.querySelector<HTMLElement>('.media-frame')!.getBoundingClientRect = () => new DOMRect(120, 300, 300, 200);
+    captioned.querySelector<HTMLElement>('figcaption')!.getBoundingClientRect = () => new DOMRect(240, 504, 60, 16);
+    const view = editor!.view!;
+    const second = view.state.doc.firstChild!.nodeSize;
+    // With no caption yet, the field takes the caption's place under the frame.
+    expect(editor!.fieldAt(0)).toEqual({ left: 120, top: 240 });
+    expect(editor!.fieldAt(second)).toEqual({ left: 120, top: 504 });
+  });
+
   it('is drawn from the file route with its settings and caption', () => {
     const { host } = open('<!-- bava: width=small ratio=4:3 align=left caption="The logo" -->\n![Logo](.bava/attachments/logo.png)\n');
     const figure = host.querySelector('figure.media')!;

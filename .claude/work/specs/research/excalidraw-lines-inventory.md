@@ -58,7 +58,7 @@ would change the file format (`docs/file-format.md`).
 | S5 | Middle handle hidden on a short segment | under 4 × 10 = 40 screen px, measured along the curve on a round one (`element/src/linearElementEditor.ts:935-974`) | `styles/tokens/_space.scss:44`, `canvas/pointer.ts:1316-1325` | same | |
 | S6 | Point looks | selected points filled; a point lying on its neighbour drawn 1.5 to 2 times larger (`excalidraw/renderer/interactiveScene.ts:268-289`, `:1120-1127`) | selected filled (`canvas/stage.ts:457`); no enlargement | built 06.14 | |
 | S7 | Hover highlight of a point or middle | a translucent 10 px disc under the hovered handle (`excalidraw/renderer/interactiveScene.ts:163-216`, `:1756-1769`) | none | built 06.14 | |
-| S8 | Middle handle under the label | the middle keeps precedence, so a labelled arrow can still be bent at its middle (`element/src/linearElementEditor.ts:1154-1168`, `App.tsx:8473-8485`) | the middle is hidden and the label wins (`canvas/stage.ts:470-476`, `canvas/pointer.ts:362-365`) | built 06.14 | Opposite precedence |
+| S8 | Middle handle under the label | the middle keeps precedence, so a labelled arrow can still be bent at its middle (`element/src/linearElementEditor.ts:1154-1168`, `App.tsx:8473-8485`) | the middle is hidden and the label wins (`canvas/stage.ts:470-476`, `canvas/pointer.ts:362-365`) | built 06.14; changed 2026-10-04 | Bava now draws the middle beside the label (docs/decisions.md, 2026-10-04) |
 | S9 | Focus point indicator and drag | a selected two-point bound arrow (not elbow) shows each end's anchor as a small disc with a dashed line to the end, radius `10/1.5/1.5` (`element/src/binding.ts:119`, `excalidraw/renderer/interactiveScene.ts:1215-1360`, `:1771-1787`, `element/src/arrows/focus.ts:37-100`); dragging it moves the anchor, or onto another shape, without moving the end; Alt makes it inside (`element/src/arrows/focus.ts:211-340`, `App.tsx:10774-10784`) | none | built 06.14 | No file change: the anchor is already stored |
 | S10 | Cursors | pointer over a point, middle or focus handle; grab over an arrow label, grabbing while dragging it; move over the element (withheld over a bound elbow); crosshair-style tool cursor (`App.tsx:8430-8555`, `App.tsx:8322-8366`, `excalidraw/components/App.arrowText.ts:296`) | no canvas cursor is ever set: nothing in `frontend/src` assigns one to the canvas | built 06.14 | Also resize cursors on box handles |
 | S11 | Cursor while drawing by clicks | pointer in the confirm zone and over the loop-closing point (`App.tsx:8062`, `:8074`, `:8103-8105`) | none | built 06.14 | |
@@ -248,7 +248,7 @@ would change the file format (`docs/file-format.md`).
 - S3 partly: an elbow shows no segment handles.
 - S6 partly: overlapping points are not enlarged.
 - S7 missing: hover highlight under a point or middle.
-- S8 partly: the label, not the middle handle, wins where they overlap.
+- S8 differs: the middle handle sits beside the label, never on it (docs/decisions.md, 2026-10-04).
 - S9 missing: focus point indicators and dragging them.
 - S10 missing: canvas cursors of every kind.
 - S11 missing: cursor feedback while drawing by clicks.

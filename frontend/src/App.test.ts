@@ -206,6 +206,56 @@ describe('launch', () => {
     await vi.waitFor(() => expect(SpaceService.Open).toHaveBeenCalledWith('/w/Beta'));
   });
 
+  // The dialog is modal: a refusal in the status bar sat behind its backdrop.
+  it('New Space shows a name Go refuses in the dialog, which stays open', async () => {
+    vi.mocked(SpaceService.Create).mockResolvedValueOnce({ root: '', name: '', pageWidth: '', error: 'A folder named Beta is already there.' } as never);
+    const { target } = render(App);
+    menuCommand('file.openSpace');
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
+    target.querySelector<HTMLElement>('.bava-space-switcher')!.click();
+    const item = () =>
+      [...document.querySelectorAll<HTMLElement>('.bava-menu[data-state="open"] .bava-menu-item')].find((el) => el.textContent?.trim() === 'New Space');
+    await vi.waitFor(() => expect(item()).toBeDefined());
+    item()!.click();
+    const field = () => document.querySelector<HTMLInputElement>('#new-space-name');
+    await vi.waitFor(() => expect(field()).not.toBeNull());
+    const button = (label: string) => [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)!;
+    button('Choose').click();
+    await vi.waitFor(() => expect(document.querySelector('.bava-dialog-content .path')?.textContent).toBe('/w/Acme'));
+    field()!.value = 'Beta';
+    field()!.dispatchEvent(new Event('input', { bubbles: true }));
+    flushSync();
+    button('Create').click();
+    await vi.waitFor(() => expect(document.querySelector('.bava-dialog-content [role="alert"]')?.textContent).toBe('A folder named Beta is already there.'));
+    expect(field()).not.toBeNull();
+    expect(target.querySelector('.status [role="status"]')).toBeNull();
+    expect(SpaceService.Open).not.toHaveBeenCalledWith('');
+  });
+
+  // A call that fails outright is answered in the dialog too, never left to reject.
+  it('New Space shows a failure to make the folder in the dialog, which stays open', async () => {
+    vi.mocked(SpaceService.Create).mockRejectedValueOnce(new Error('binding gone'));
+    const { target } = render(App);
+    menuCommand('file.openSpace');
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
+    target.querySelector<HTMLElement>('.bava-space-switcher')!.click();
+    const item = () =>
+      [...document.querySelectorAll<HTMLElement>('.bava-menu[data-state="open"] .bava-menu-item')].find((el) => el.textContent?.trim() === 'New Space');
+    await vi.waitFor(() => expect(item()).toBeDefined());
+    item()!.click();
+    const field = () => document.querySelector<HTMLInputElement>('#new-space-name');
+    await vi.waitFor(() => expect(field()).not.toBeNull());
+    const button = (label: string) => [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)!;
+    button('Choose').click();
+    await vi.waitFor(() => expect(document.querySelector('.bava-dialog-content .path')?.textContent).toBe('/w/Acme'));
+    field()!.value = 'Beta';
+    field()!.dispatchEvent(new Event('input', { bubbles: true }));
+    flushSync();
+    button('Create').click();
+    await vi.waitFor(() => expect(document.querySelector('.bava-dialog-content [role="alert"]')?.textContent).toBe('The Space could not be made.'));
+    expect(field()).not.toBeNull();
+  });
+
   // The Files section folds under its header, and a new page unfolds it.
   it('folds the Files section, and unfolds it for a new page', async () => {
     const { target } = render(App);
@@ -245,6 +295,24 @@ describe('launch', () => {
     menuCommand('file.save');
     const { FileService } = await import('../bindings/github.com/tenesh/bava/internal/app');
     await vi.waitFor(() => expect(FileService.Save).toHaveBeenCalledWith('/w/Acme/Roadmap.md', '', { version: 1, elements: [] }));
+  });
+
+  // Go answered and wrote nothing: the page stays unsaved, and says why.
+  it('says in the status bar why a save was refused', async () => {
+    const { FileService } = await import('../bindings/github.com/tenesh/bava/internal/app');
+    vi.mocked(FileService.Save).mockResolvedValueOnce({ path: '', stamp: { size: 0, modifiedUnixNano: '0' }, error: 'Roadmap.md could not be written.' } as never);
+    const { target } = render(App);
+    menuCommand('file.openSpace');
+    await vi.waitFor(() => expect(target.querySelector('[data-path="Roadmap.md"]')).not.toBeNull());
+    target.querySelector<HTMLElement>('[data-path="Roadmap.md"]')!.click();
+    await vi.waitFor(() => expect(target.querySelector('.bava-doc h1')?.textContent).toBe('Hello'));
+    (target.querySelector('.bava-doc') as HTMLElement).focus();
+    menuCommand('edit.selectAll');
+    menuCommand('edit.delete');
+    await vi.waitFor(() => expect(target.querySelector('header')?.textContent).toContain('unsaved'));
+    menuCommand('file.save');
+    await vi.waitFor(() => expect(target.querySelector('.status [role="status"]')?.textContent).toBe('Roadmap.md could not be written.'));
+    expect(target.querySelector('header')?.textContent).toContain('unsaved');
   });
 
   // ⌘F finds in the page.

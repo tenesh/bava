@@ -9,7 +9,7 @@
  * Pure, so the stage and the exporter draw the same runs and a test needs no
  * canvas (`.ai/rules/canvas.md`).
  */
-import { highlightTree, tagHighlighter, tags } from '@lezer/highlight';
+import { highlightTree, tagHighlighter, tags, type Highlighter } from '@lezer/highlight';
 import type { Parser } from '@lezer/common';
 // One definition: a tab drawn as a different width here than it is measured
 // as would put every stored size subtly wrong.
@@ -77,6 +77,21 @@ const HIGHLIGHTER = tagHighlighter([
 const kindOf = (classes: string): RunKind => {
   const first = classes.split(' ')[0] as RunKind;
   return (RUN_KINDS as readonly string[]).includes(first) ? first : 'plain';
+};
+
+/**
+ * The same folding for an editor that colours in place: each stretch gets the
+ * class `syntax-<kind>`, the stylesheet colours it from the `--syntax-*` token,
+ * and so typed code is the colour the canvas draws it. Plain is left
+ * unmarked and takes the editor's own colour, which is `--syntax-plain`.
+ */
+export const KIND_HIGHLIGHTER: Highlighter = {
+  style: (tagList) => {
+    const classes = HIGHLIGHTER.style(tagList);
+    if (!classes) return null;
+    const kind = kindOf(classes);
+    return kind === 'plain' ? null : `syntax-${kind}`;
+  },
 };
 
 /**

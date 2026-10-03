@@ -8,9 +8,8 @@
    * Presentational: it reports a command id and, for the menus, where the
    * button is.
    */
-  import { Portal } from '@ark-ui/svelte';
+  import Portal from './Portal.svelte';
   import ToolIcon from './ToolIcon.svelte';
-  import { portalRoot } from './portal-root';
   import { t } from '../i18n/t';
   import type { MessageKey } from '../i18n/messages';
   import type { IconId } from './tool-icons';
@@ -23,6 +22,8 @@
     onCommand: (command: Command, anchor: { x: number; y: number }) => void;
     /** Whether the block can turn into another; without, the Turn into button is left out. */
     turnable?: boolean;
+    /** A command marked false here is left out: a mark the selected line cannot take. */
+    offered?: Partial<Record<Command, boolean>>;
     /** Each new value after it appears puts focus on its first button. */
     focus?: number;
     /** Escape from a button: focus goes back to the page. */
@@ -31,7 +32,7 @@
     onBlur?: () => void;
   };
 
-  let { at, active, onCommand, turnable = true, focus = 0, onLeave, onBlur }: Props = $props();
+  let { at, active, onCommand, turnable = true, offered = {}, focus = 0, onLeave, onBlur }: Props = $props();
 
   // Bound once the portal has placed the toolbar.
   let toolbar: HTMLDivElement | undefined = $state();
@@ -73,7 +74,7 @@
   ];
 </script>
 
-<Portal container={portalRoot()}>
+<Portal>
   <div
     bind:this={toolbar}
     class="bubble"
@@ -87,7 +88,7 @@
     style:left={`${at.left}px`}
     style:top={`calc(${at.top}px - var(--size-row-lg) - var(--space-3))`}
   >
-    {#each buttons.filter((b) => turnable || b.id !== 'turnInto') as button (button.id)}
+    {#each buttons.filter((b) => (turnable || b.id !== 'turnInto') && offered[b.id] !== false) as button (button.id)}
       <button
         type="button"
         class="bava-icon-button"

@@ -111,3 +111,71 @@ describe('MediaDialog', () => {
     expect(all.map((el) => el.tabIndex)).toEqual([-1, 0, -1, -1]);
   });
 });
+
+describe('MediaDialog renaming', () => {
+  async function renameField(dialog: HTMLElement) {
+    click(dialog.querySelector('[data-name="old.png"]')!);
+    click(button(dialog, 'Rename'));
+    return dialog.querySelector<HTMLInputElement>('input.media-rename')!;
+  }
+
+  function press(field: HTMLInputElement, key: string) {
+    flushSync(() => field.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })));
+  }
+
+  // Ark listens for Escape on the whole page before the field hears it, so
+  // the field's own handler alone could not stop the dialog closing.
+  it('leaves the rename on Escape and keeps the dialog open', async () => {
+    const { dialog, props } = await setup();
+    const field = await renameField(dialog);
+    press(field, 'Escape');
+    expect(dialog.querySelector('input.media-rename')).toBeNull();
+    expect(props.onOpenChange).not.toHaveBeenCalled();
+    expect(document.querySelector('.bava-dialog-content')!.getAttribute('data-state')).toBe('open');
+  });
+
+  it('still closes on Escape when nothing is being renamed', async () => {
+    const { props } = await setup();
+    const search = document.querySelector<HTMLInputElement>('.media-dialog .search')!;
+    flushSync(() => search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })));
+    expect(props.onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  // The dialog is modal: a refusal told only in the status bar sat behind it.
+  it('says why a name is refused under the field, keeping the field and the keyboard there', async () => {
+    const { dialog, props } = await setup();
+    props.onRename.mockResolvedValue('A file named older.png is already there.');
+    const field = await renameField(dialog);
+    field.value = 'older';
+    flushSync(() => field.dispatchEvent(new Event('input', { bubbles: true })));
+    press(field, 'Enter');
+    await vi.waitFor(() => expect(dialog.querySelector('[role="alert"]')?.textContent).toBe('A file named older.png is already there.'));
+    const still = dialog.querySelector<HTMLInputElement>('input.media-rename')!;
+    expect(still.value).toBe('older');
+    expect(still.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(still);
+  });
+
+  it('drops the refusal once the name changes', async () => {
+    const { dialog, props } = await setup();
+    props.onRename.mockResolvedValue('A file named older.png is already there.');
+    const field = await renameField(dialog);
+    field.value = 'older';
+    flushSync(() => field.dispatchEvent(new Event('input', { bubbles: true })));
+    press(field, 'Enter');
+    await vi.waitFor(() => expect(dialog.querySelector('[role="alert"]')).not.toBeNull());
+    field.value = 'oldest';
+    flushSync(() => field.dispatchEvent(new Event('input', { bubbles: true })));
+    expect(dialog.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('closes the field once the rename is taken', async () => {
+    const { dialog, props } = await setup();
+    props.onRename.mockResolvedValue(null);
+    const field = await renameField(dialog);
+    field.value = 'older';
+    flushSync(() => field.dispatchEvent(new Event('input', { bubbles: true })));
+    press(field, 'Enter');
+    await vi.waitFor(() => expect(dialog.querySelector('input.media-rename')).toBeNull());
+  });
+});

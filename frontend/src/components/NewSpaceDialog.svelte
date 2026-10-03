@@ -3,7 +3,9 @@
    * New Space: a name for the Space's folder, and the place to make it.
    *
    * Presentational: the caller shows the folder picker when asked, and makes
-   * the folder with the name typed.
+   * the folder with the name typed. A name it refuses comes back as the
+   * reason, shown under the field while the dialog stays open: the dialog is
+   * modal, so a word anywhere else sits behind it.
    */
   import Dialog from './Dialog.svelte';
   import { t } from '../i18n/t';
@@ -13,22 +15,31 @@
     /** The folder the new one is made in; '' until one is chosen. */
     location: string;
     onChooseLocation: () => void;
-    onCreate: (name: string) => void;
+    /** Makes the Space; answers with the reason when the name is refused. */
+    onCreate: (name: string) => Promise<string | null | undefined> | void;
     onOpenChange: (open: boolean) => void;
   };
 
   let { open = $bindable(), location, onChooseLocation, onCreate, onOpenChange }: Props = $props();
 
   let typed = $state('');
+  let refusal = $state<string | null>(null);
+  let field: HTMLInputElement | undefined = $state();
   $effect(() => {
-    if (open) typed = '';
+    if (!open) return;
+    typed = '';
+    refusal = null;
   });
 
   const ready = $derived(typed.trim() !== '' && location !== '');
 
-  function create(event: SubmitEvent) {
+  async function create(event: SubmitEvent) {
     event.preventDefault();
-    if (ready) onCreate(typed.trim());
+    if (!ready) return;
+    const reason = await onCreate(typed.trim());
+    if (!reason) return;
+    refusal = reason;
+    field?.focus();
   }
 </script>
 
@@ -36,12 +47,25 @@
   <form id="new-space-form" class="form" onsubmit={create}>
     <div class="section">
       <label class="heading" for="new-space-name">{t('space.newName')}</label>
-      <input id="new-space-name" class="field" bind:value={typed} autocomplete="off" data-autofocus />
+      <input
+        id="new-space-name"
+        class="field"
+        bind:this={field}
+        bind:value={typed}
+        oninput={() => (refusal = null)}
+        autocomplete="off"
+        aria-invalid={refusal ? 'true' : undefined}
+        aria-describedby={refusal ? 'new-space-refusal' : undefined}
+        data-autofocus
+      />
+      {#if refusal}<p id="new-space-refusal" class="refusal" role="alert">{refusal}</p>{/if}
     </div>
     <div class="section">
       <span class="heading">{t('space.newLocation')}</span>
       <div class="row">
-        <span class="path" class:empty={!location}>{location || t('space.newNoLocation')}</span>
+        <span class="path" class:empty={!location} title={location || undefined}>
+          {#if location}<bdi>{location}</bdi>{:else}{t('space.newNoLocation')}{/if}
+        </span>
         <button type="button" class="bava-button" onclick={onChooseLocation}>{t('space.newChoose')}</button>
       </div>
       <p class="hint">{t('space.newHint')}</p>
@@ -98,6 +122,11 @@
     box-shadow: 0 0 0 var(--focus-halo-width) var(--color-focus-halo);
   }
 
+  /* After focus, so a refused name shows red while the keyboard is still in it. */
+  .field[aria-invalid='true'] {
+    border-color: var(--color-danger);
+  }
+
   .path {
     flex: 1;
     min-width: 0;
@@ -109,10 +138,26 @@
     color: var(--color-text-secondary);
   }
 
+  /*
+   * A long path is cut at its start, so the folder's own name stays in
+   * sight: right to left for the cut and the ellipsis, while the path itself,
+   * isolated, still reads left to right.
+   */
+  .path:not(.empty) {
+    direction: rtl;
+    text-align: left;
+  }
+
   .path.empty {
     font-family: var(--font-ui);
     font-size: var(--text-control);
     color: var(--color-text-muted);
+  }
+
+  .refusal {
+    margin: 0;
+    font-size: var(--text-meta);
+    color: var(--color-danger);
   }
 
   .hint {

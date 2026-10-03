@@ -28,4 +28,24 @@ describe('LinkField', () => {
     document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     expect(props.onApply).toHaveBeenCalledWith('new');
   });
+
+  it('sits above the selection by default, and on what it edits when asked', async () => {
+    await setup();
+    expect(document.querySelector<HTMLElement>('.link-field')!.style.top).toContain('var(--size-row-lg)');
+    document.querySelector('.link-field')!.remove();
+    await setup({ over: true });
+    const top = document.querySelector<HTMLElement>('.link-field')!.style.top;
+    expect(top).not.toContain('var(--size-row-lg)');
+    expect(top).toContain('40px');
+  });
+
+  // A card's name has its size under it: a field no taller than the name's
+  // line leaves that whole.
+  it('over a line of a given height, is that tall, its text where the line\'s is', async () => {
+    const { field } = await setup({ over: true, at: { left: 10, top: 40, height: 20 } });
+    const form = document.querySelector<HTMLElement>('.link-field')!;
+    expect(field.style.height).toBe('20px');
+    expect(form.style.top).toBe('40px');
+    expect(form.dataset.fit).toBe('line');
+  });
 });

@@ -50,6 +50,12 @@ describe('the Files tree', () => {
     expect(names).toEqual(['Marketing', 'Launch plan', 'Roadmap']);
   });
 
+  it('marks the row its right-click menu is open for, and no other', () => {
+    const { target } = setup({ menuPath: 'Roadmap.md' });
+    const marked = [...target.querySelectorAll('[data-menu]')].map((row) => row.getAttribute('data-path'));
+    expect(marked).toEqual(['Roadmap.md']);
+  });
+
   it('marks the open page selected, with a dot while unsaved', () => {
     const { target } = setup();
     const row = target.querySelector('[data-path="Marketing/Launch plan.md"]');

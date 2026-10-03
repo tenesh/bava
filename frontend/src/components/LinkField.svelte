@@ -7,14 +7,19 @@
    *
    * Presentational: it reports what was typed; the Document acts on it.
    */
-  import { Portal } from '@ark-ui/svelte';
-  import { portalRoot } from './portal-root';
+  import Portal from './Portal.svelte';
   import { pressAway } from './press-away';
   import { t } from '../i18n/t';
 
   type Props = {
-    /** The selection's top left on screen; the field sits above it. */
-    at: { left: number; top: number };
+    /**
+     * The selection's top left on screen; the field sits above it, or on it
+     * with `over`. With `over` and a `height`, the field alone, that tall,
+     * sits on the line, its text where the line's is, and covers nothing more.
+     */
+    at: { left: number; top: number; height?: number };
+    /** Sits the field's box on `at` itself, over what it edits (a caption, a file's name). */
+    over?: boolean;
     /** The address the selection links to now, if any. */
     value: string;
     onApply: (href: string) => void;
@@ -32,7 +37,9 @@
     keepOnAway?: boolean;
   };
 
-  let { at, value, onApply, onRemove, onCancel, placeholder = t('link.placeholder'), removeLabel = t('link.remove'), keepOnAway = false }: Props = $props();
+  let { at, value, onApply, onRemove, onCancel, placeholder = t('link.placeholder'), removeLabel = t('link.remove'), keepOnAway = false, over = false }: Props = $props();
+  /** Over a line of known height: the field alone, sized to it. */
+  const line = $derived(over && at.height !== undefined);
   let form: HTMLFormElement | undefined = $state();
 
   // A press anywhere else closes it.
@@ -51,12 +58,13 @@
   });
 </script>
 
-<Portal container={portalRoot()}>
+<Portal>
   <form
     bind:this={form}
     class="link-field"
-    style:left={`${at.left}px`}
-    style:top={`calc(${at.top}px - var(--size-row-lg) - var(--space-3))`}
+    data-fit={line ? 'line' : undefined}
+    style:left={line ? `calc(${at.left}px - var(--size-field-padding) - var(--border-width))` : over ? `calc(${at.left}px - var(--space-1) - var(--border-width))` : `${at.left}px`}
+    style:top={line ? `${at.top}px` : over ? `calc(${at.top}px - var(--space-1) - var(--border-width))` : `calc(${at.top}px - var(--size-row-lg) - var(--space-3))`}
     onsubmit={(event) => {
       event.preventDefault();
       onApply(href);
@@ -66,6 +74,7 @@
       bind:this={field}
       bind:value={href}
       class="bava-field"
+      style:height={line ? `${at.height}px` : undefined}
       {placeholder}
       aria-label={placeholder}
       onkeydown={(event) => {
@@ -97,5 +106,13 @@
     border: var(--border-width) solid var(--color-border-subtle);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-floating);
+  }
+
+  /* Over a line: no frame, so nothing but the field covers what is round it. */
+  .link-field[data-fit='line'] {
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
   }
 </style>
