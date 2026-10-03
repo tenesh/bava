@@ -61,7 +61,9 @@
   }: Props = $props();
 
   let host: HTMLDivElement | undefined = $state();
-  let pane: SourcePane | undefined;
+  // State, so the diagnostics effect below runs again once the editor exists:
+  // the host is portalled and appears after the first errors are handed in.
+  let pane: SourcePane | undefined = $state.raw();
   // What is in the editor, tracked here because the editor is not reactive.
   // Seeded when it is created, from the source it was opened with.
   let typed = $state('');
@@ -97,7 +99,8 @@
   // Diagnostics reach the editor's gutter, which is imperative: pushing them
   // in an effect is the seam between the reactive shell and the editor.
   $effect(() => {
-    pane?.setDiagnostics(errors);
+    const list = errors;
+    pane?.setDiagnostics(list);
   });
 </script>
 

@@ -10,6 +10,7 @@
   import { Popover, Portal, RadioGroup } from '@ark-ui/svelte';
   import { tick } from 'svelte';
   import { portalRoot } from './portal-root';
+  import { createPressModality } from './press-modality.svelte';
   import ToolIcon from './ToolIcon.svelte';
   import Tooltip from './Tooltip.svelte';
   import type { IconId } from './tool-icons';
@@ -32,7 +33,11 @@
 
   let { label, icon, options, current, onSelect }: Props = $props();
 
-  const triggerId = $derived(`bava-option-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`);
+  const modality = createPressModality();
+
+  // Unique to this picker: two pickers with one label must not share it.
+  const uid = $props.id();
+  const triggerId = $derived(`bava-option-${label.toLowerCase().replace(/[^a-z]+/g, '-')}-${uid}`);
   const checked = $derived(current === 'mixed' || current === null ? null : String(current));
   let expanded = $state(false);
   const hasMore = $derived(options.some((option) => option.more));
@@ -78,6 +83,9 @@
       <Popover.Content class="bava-control-popover" bind:ref={list}>
         <RadioGroup.Root
           class="bava-options"
+          data-pointer={modality.byPointer ? '' : undefined}
+          onpointerdown={modality.onpointerdown}
+          onkeydown={modality.onkeydown}
           value={checked}
           onValueChange={(details) => {
             const chosen = options.find((option) => String(option.value) === details.value);
@@ -127,7 +135,9 @@
     color: var(--color-text-primary);
   }
 
-  :global(.bava-option[data-focus-visible]) {
+  /* Keyboard focus only: Ark marks a press as focus-visible too, so not
+     after a press (`press-modality.svelte.ts`). */
+  :global(.bava-options:not([data-pointer]) .bava-option[data-focus-visible]) {
     outline: var(--focus-ring-width) solid var(--color-focus-ring);
     outline-offset: calc(var(--focus-halo-width) * -1);
   }

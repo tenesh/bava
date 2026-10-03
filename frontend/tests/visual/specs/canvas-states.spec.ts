@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { row } from '../harness/canvas-scenes';
+import { elementScene, row } from '../harness/canvas-scenes';
 import {
   CANVAS_PAGE,
   THEMES,
@@ -16,12 +16,14 @@ import {
   openPage,
   popovers,
   restPointer,
+  selectTool,
   selectionToolbar,
   shot,
   shotDialog,
   shotFloating,
   shotPane,
   slug,
+  tooltips,
 } from './helpers';
 
 // What the canvas shows while something is selected, dragged or edited, and
@@ -53,6 +55,41 @@ for (const theme of THEMES) {
       await restPointer(page);
       await expect(selectionToolbar(page)).toBeVisible();
       await shotPane(canvasPane(page), shot('canvas-states', 'selected', 'arrow', theme));
+    });
+
+    test('an empty canvas, with the tool rail and the zoom buttons', async ({ page }) => {
+      await openCanvas(page, theme, CANVAS_PAGE, []);
+      await restPointer(page);
+      await expect(page.locator('footer')).toContainText('Nodes 0');
+      await expect(selectTool(page)).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator("[data-side='canvas'] .readout")).toHaveText('100%');
+      await shotPane(canvasPane(page), shot('canvas-states', 'empty', 'rest', theme));
+    });
+
+    // The kinds whose toolbar differs from those pictured selected above.
+    for (const kind of ['text', 'stroke', 'line-open', 'line-closed'] as const) {
+      test(`the toolbar of a selected ${kind}`, async ({ page }) => {
+        const scene = elementScene([kind]);
+        await openCanvas(page, theme, CANVAS_PAGE, scene.elements);
+        await clickScene(page, scene.cells[kind]!.click);
+        await restPointer(page);
+        await expect(selectionToolbar(page)).toBeVisible();
+        await shotPane(selectionToolbar(page), shot('canvas-states', 'toolbar', kind, theme));
+      });
+    }
+
+    test('a tooltip on a tool and on a toolbar button', async ({ page }) => {
+      const points = await openKinds(page, theme);
+      const tool = page.getByRole('toolbar', { name: 'Tools' }).getByRole('button', { name: 'Ellipse', exact: true });
+      await tool.hover();
+      await expect(tooltips(page)).toContainText('Ellipse');
+      await shotFloating(page, tool, tooltips(page), shot('canvas-states', 'tooltip', 'tool', theme));
+      await restPointer(page);
+      await clickScene(page, points.shape);
+      const fill = selectionToolbar(page).getByRole('button', { name: 'Fill colour', exact: true });
+      await fill.hover();
+      await expect(tooltips(page)).toHaveText('Fill colour');
+      await shotFloating(page, fill, tooltips(page), shot('canvas-states', 'tooltip', 'toolbar', theme));
     });
 
     test('everything selected, with the toolbar', async ({ page }) => {

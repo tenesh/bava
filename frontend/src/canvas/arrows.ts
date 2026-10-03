@@ -141,6 +141,28 @@ const KNOWN_HEADS = new Set([
   'one', 'many', 'oneOrMany', 'exactlyOne', 'zeroOrOne', 'zeroOrMany',
 ]);
 
+/** The heads drawn reaching `LONG_HEAD_REACH` times their size back from the tip. */
+const LONG_HEADS = new Set(['diamond', 'diamond-outline', 'zeroOrOne', 'zeroOrMany']);
+const LONG_HEAD_REACH = 2;
+
+/** The most of the last segment a head's size may take: a diamond reaches twice its size, so it takes half as much. */
+const HEAD_SHARE = 0.5;
+const DIAMOND_SHARE = 0.25;
+
+/** A head's size: its kind's own, never more than its share of a last segment `segment` long. */
+function headExtent(kind: string, segment: number): number {
+  const share = kind === 'diamond' || kind === 'diamond-outline' ? DIAMOND_SHARE : HEAD_SHARE;
+  return Math.min(headSize(kind), segment * share);
+}
+
+/** How far back from its tip a head reaches, on a last segment `segment` long. */
+export function headReach(kind: string | undefined, segment: number): number {
+  if (kind === 'none') return 0;
+  const name = kind !== undefined && KNOWN_HEADS.has(kind) ? kind : 'arrow';
+  const size = headExtent(name, segment);
+  return LONG_HEADS.has(name) ? size * LONG_HEAD_REACH : size;
+}
+
 /**
  * Draw an arrowhead into a sink, pointing along +x with its tip at the
  * origin, as Excalidraw draws it (`element/src/shape.ts:290-575`): sized by
@@ -153,8 +175,7 @@ export function drawHead(sink: PathSink, kind: string | undefined, segment: numb
   // Where a head of `as` sits, `offset` of its size back from the tip, and its
   // barbs' ends (x3, x4): Excalidraw's `getArrowheadPoints`.
   const place = (as: string, offset = 0) => {
-    const multiplier = as === 'diamond' || as === 'diamond-outline' ? 0.25 : 0.5;
-    const size = Math.min(headSize(as), segment * multiplier);
+    const size = headExtent(as, segment);
     const tip = -size * offset;
     const back = tip - size;
     const turn = (headAngle(as) * Math.PI) / 180;
@@ -207,7 +228,7 @@ export function drawHead(sink: PathSink, kind: string | undefined, segment: numb
       const { size, tip, a, b } = place(name);
       sink.moveTo(tip, 0);
       sink.lineTo(a.x, a.y);
-      sink.lineTo(tip - size * 2, 0);
+      sink.lineTo(tip - size * LONG_HEAD_REACH, 0);
       sink.lineTo(b.x, b.y);
       sink.closePath();
       return name === 'diamond' ? 'stroke' : 'surface';

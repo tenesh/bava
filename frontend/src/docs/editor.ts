@@ -14,7 +14,7 @@ import { dropCursor } from 'prosemirror-dropcursor';
 import { gapCursor } from 'prosemirror-gapcursor';
 import { closeHistory, history, redo, undo } from 'prosemirror-history';
 import { selectAll, deleteSelection } from 'prosemirror-commands';
-import { Fragment, Slice, type Mark } from 'prosemirror-model';
+import { Fragment, Slice, type Mark, type MarkType } from 'prosemirror-model';
 import type { Node } from 'prosemirror-model';
 import { EditorState, NodeSelection, Plugin, PluginKey, TextSelection, type Transaction } from 'prosemirror-state';
 import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
@@ -144,13 +144,32 @@ function withALine(doc: Node): Node {
 
 const emptyFront: FrontMatter = { lines: null, bavaAt: null, bavaLines: [], settings: {} };
 
+/** The marks the formatting bubble has a button for. */
+export type BubbleMark = 'bold' | 'italic' | 'underline' | 'strike' | 'code' | 'link' | 'textColor' | 'highlight';
+
+/** Asks `test` of each of the bubble's marks, by its button's name. */
+function mapMarks(test: (type: MarkType) => boolean): Record<BubbleMark, boolean> {
+  const m = schema.marks;
+  return {
+    bold: test(m.strong),
+    italic: test(m.em),
+    underline: test(m.underline),
+    strike: test(m.strike),
+    code: test(m.code),
+    link: test(m.link),
+    textColor: test(m.color),
+    highlight: test(m.highlight),
+  };
+}
+
 /** The empty line `/` Web link or Online video left the caret on, asking for an address, while it is still empty. */
 type AddressHint = { at: number; kind: 'weblink' | 'onlinevideo' } | null;
 const addressHintKey = new PluginKey<AddressHint>('address-hint');
 
 /**
  * "Type / for commands" on the empty line the caret is in; on the line
- * `/` Web link or Online video left it on, what to paste there instead.
+ * `/` Web link or Online video left it on, what to paste there instead; in
+ * a toggle's summary, which holds only text, what the summary is for.
  */
 function placeholder(): Plugin<AddressHint> {
   return new Plugin<AddressHint>({
@@ -175,7 +194,13 @@ function placeholder(): Plugin<AddressHint> {
         const inCell = $from.depth > 1 && ['table_cell', 'table_header'].includes($from.node(-1).type.name);
         if (!empty || !node.isTextblock || node.type.spec.code || inCell || node.content.size > 0) return null;
         const hint = addressHintKey.getState(state);
-        const words = hint && hint.at === $from.before() ? t(hint.kind === 'onlinevideo' ? 'media.pasteVideo' : 'media.pasteLink') : t('doc.placeholder');
+        // A toggle's summary takes only its title: no block goes there.
+        const words =
+          node.type === schema.nodes.toggle_summary
+            ? t('doc.togglePlaceholder')
+            : hint && hint.at === $from.before()
+              ? t(hint.kind === 'onlinevideo' ? 'media.pasteVideo' : 'media.pasteLink')
+              : t('doc.placeholder');
         return DecorationSet.create(state.doc, [Decoration.node($from.before(), $from.after(), { class: 'is-empty', 'data-placeholder': words })]);
       },
     },
@@ -739,15 +764,69 @@ export class DocEditor {
   }
 
   /** Which marks the selection carries, for the formatting bubble. */
-  activeMarks(): Record<'bold' | 'italic' | 'underline' | 'strike' | 'code' | 'link', boolean> {
+  activeMarks(): Record<BubbleMark, boolean> {
     const state = this.view?.state;
-    const has = (type: import('prosemirror-model').MarkType) => {
+    const has = (type: MarkType) => {
       if (!state) return false;
       const { from, to, empty, $from } = state.selection;
       return empty ? type.isInSet(state.storedMarks ?? $from.marks()) !== undefined : state.doc.rangeHasMark(from, to, type);
     };
-    const m = schema.marks;
-    return { bold: has(m.strong), italic: has(m.em), underline: has(m.underline), strike: has(m.strike), code: has(m.code), link: has(m.link) };
+    return mapMarks(has);
+  }
+
+  /** Which marks the selected text can take: those its lines allow, for the bubble to offer. */
+  offeredMarks(): Record<BubbleMark, boolean> {
+    const state = this.view?.state;
+    const allows = (type: MarkType) => {
+      if (!state) return false;
+      const { from, to, $from } = state.selection;
+      let allowed = $from.parent.inlineContent && $from.parent.type.allowsMarkType(type);
+      state.doc.nodesBetween(from, to, (node) => {
+        if (node.inlineContent && node.type.allowsMarkType(type)) allowed = true;
+        return !allowed;
+      });
+      return allowed;
+    };
+    return mapMarks(allows);
+  }
+
+  /** The address the selected text links to, or null when it has no link. */
+  selectionLink(): string | null {
+    const state = this.view?.state;
+    if (!state) return null;
+    const { from, to, empty, $from } = state.selection;
+    if (empty) return (schema.marks.link.isInSet(state.storedMarks ?? $from.marks())?.attrs.href as string | undefined) ?? null;
+    let href: string | null = null;
+    state.doc.nodesBetween(from, to, (node) => {
+      const mark = href === null && node.isInline ? schema.marks.link.isInSet(node.marks) : undefined;
+      if (mark) href = mark.attrs.href as string;
+      return href === null;
+    });
+    return href;
+  }
+
+  /**
+   * Where a field editing the block at `pos` sits on screen: a medium's
+   * caption under it, where the caption shows; a card's new name over its
+   * name, as tall as the name's line so the size under it stays whole. Null
+   * for any other block.
+   */
+  fieldAt(pos: number): { left: number; top: number; height?: number } | null {
+    const dom = this.view?.nodeDOM(pos);
+    if (!(dom instanceof HTMLElement)) return null;
+    const frame = dom.querySelector('.media-frame');
+    const caption = dom.querySelector<HTMLElement>('.media-caption');
+    if (frame && caption) {
+      const box = frame.getBoundingClientRect();
+      // No caption yet: the field takes its place, under the frame.
+      return { left: box.left, top: caption.hidden ? box.bottom : caption.getBoundingClientRect().top };
+    }
+    const title = dom.querySelector('.card-title');
+    if (title) {
+      const rect = title.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, height: rect.height };
+    }
+    return null;
   }
 
   /** The top-level block beside a point on screen, and where it sits. */

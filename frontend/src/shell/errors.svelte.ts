@@ -9,6 +9,8 @@
  * Expected errors (a save conflict, a file that will not open) never come
  * here: they have their own plain-language prompts.
  */
+import type { MessageKey } from '../i18n/messages';
+
 export type ErrorKind = 'unexpected' | 'unexpectedExit' | 'webviewReloaded';
 
 export type Shown = { kind: ErrorKind; details: string };
@@ -18,7 +20,16 @@ export type GoNotice = { kind: string; session: string };
 /** An error Go recovered from, as `app:error` carries it. */
 export type GoError = { id: string };
 
-export type Translate = (key: 'error.id' | 'error.kind' | 'error.previousLog' | 'error.webviewReloaded.details') => string;
+export type Translate = (key: 'error.id' | 'error.kind' | 'error.previousLog') => string;
+
+/**
+ * The sentence the dialog opens with. An unexpected error's points at the
+ * details below it, so with none it is the sentence without that.
+ */
+export function bodyKeyFor(shown: Shown): MessageKey {
+  if (shown.kind === 'unexpected') return shown.details ? 'error.unexpected.body' : 'error.unexpected.bodyPlain';
+  return shown.kind === 'unexpectedExit' ? 'error.unexpectedExit.body' : 'error.webviewReloaded.body';
+}
 
 export function createErrorPolicy(options: { notify: () => void; translate: Translate }) {
   const { translate } = options;
@@ -62,7 +73,8 @@ export function createErrorPolicy(options: { notify: () => void; translate: Tran
           details: notice.session ? `${translate('error.previousLog')}: ${notice.session}` : '',
         });
       } else if (notice.kind === 'webviewReloaded') {
-        show({ kind: 'webviewReloaded', details: translate('error.webviewReloaded.details') });
+        // The body says what happened; there is no id or log to hand over.
+        show({ kind: 'webviewReloaded', details: '' });
       }
     },
 

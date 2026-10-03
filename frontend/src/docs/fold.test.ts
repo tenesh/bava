@@ -32,6 +32,21 @@ function key(name: string) {
 const press = (el: Element) => el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
 const TOGGLE = '<details>\n<summary>Details</summary>\n\nThe secret.\n\n</details>\n';
 
+describe('an empty toggle summary', () => {
+  it('asks for the toggle, not for a command, since only text goes there', () => {
+    const { host, view } = open(TOGGLE);
+    let at = -1;
+    view.state.doc.descendants((node, pos) => {
+      if (at < 0 && node.type.name === 'toggle_summary') at = pos;
+    });
+    const summary = view.state.doc.nodeAt(at)!;
+    const tr = view.state.tr.delete(at + 1, at + 1 + summary.content.size);
+    view.dispatch(tr.setSelection(TextSelection.create(tr.doc, at + 1)));
+    const hint = host.querySelector('.toggle-summary.is-empty');
+    expect(hint?.getAttribute('data-placeholder')).toBe('Toggle');
+  });
+});
+
 describe('folding', () => {
   it('starts a toggle folded, or open when the file says so', () => {
     const { host } = open(TOGGLE + '\n<details open>\n<summary>Open</summary>\n\nShown.\n\n</details>\n');

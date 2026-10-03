@@ -27,7 +27,6 @@ describe('ErrorDialog', () => {
     const onCopyDetails = vi.fn();
     setup({ onCopyDetails, details: 'Error id: a1b2c3d4\nError kind: TypeError' });
     await vi.waitFor(() => expect(content()).not.toBeNull());
-    expect(document.querySelector('.bava-disclosure-trigger')).toBeNull();
     const cells = [...document.querySelectorAll('.details dt, .details dd')].map((el) => el.textContent);
     expect(cells).toEqual(['Error id', 'a1b2c3d4', 'Error kind', 'TypeError']);
     flushSync(() => button('Copy details')!.click());

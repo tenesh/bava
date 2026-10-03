@@ -144,6 +144,32 @@ export type SceneElement =
   | CodeElement;
 
 /**
+ * Every element type, as a record so the compiler holds it to the union: a
+ * type missing from it, or one the union does not have, fails to compile.
+ */
+const EVERY_TYPE: Record<SceneElement['type'], true> = {
+  rect: true,
+  ellipse: true,
+  diamond: true,
+  cylinder: true,
+  hexagon: true,
+  parallelogram: true,
+  document: true,
+  person: true,
+  cloud: true,
+  line: true,
+  arrow: true,
+  frame: true,
+  group: true,
+  stroke: true,
+  text: true,
+  code: true,
+};
+
+/** Every element type a scene can hold, at run time. */
+export const ELEMENT_TYPES = Object.keys(EVERY_TYPE) as SceneElement['type'][];
+
+/**
  * Omit applied across a union rather than to the union as a whole.
  *
  * A plain `Omit<SceneElement, 'id' | 'z'>` collapses to the keys every member

@@ -13,8 +13,9 @@
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, keymap, type KeyBinding } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab, redo, selectAll, undo } from '@codemirror/commands';
-import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
-import { loadLanguageSupport } from './languages';
+import { syntaxHighlighting } from '@codemirror/language';
+import { KIND_HIGHLIGHTER } from './highlight';
+import { LANGUAGES, loadLanguageSupport } from './languages';
 import { measureCode, type CodeMetrics } from './measure';
 import type { History } from '../history';
 import type { ElementId, SceneElement } from '../scene';
@@ -109,17 +110,23 @@ export class CodeEditor {
     const support = await loadLanguageSupport(request.language);
     const wrapper = document.createElement('div');
     wrapper.className = 'bava-code-editor';
+    // A language the block names on its top edge: the editor starts below the
+    // name, so it stays in view while the code is typed.
+    if (LANGUAGES.some((entry) => entry.name === request.language)) wrapper.classList.add('bava-code-editor--named');
     const zoom = request.zoom ?? 1;
     Object.assign(wrapper.style, {
       left: `${request.rect.x}px`,
       top: `${request.rect.y}px`,
       width: `${request.rect.width}px`,
       height: `${request.rect.height}px`,
-      // Turned about its centre, as the stage turns the block; and scaled with
-      // the canvas, so what is typed lines up with what is drawn.
+      // Turned about its centre, as the stage turns the block.
       transform: request.angle ? `rotate(${request.angle}deg)` : '',
-      fontSize: `${zoom * (request.fontScale ?? 1)}em`,
     });
+    // Scaled with the canvas, so what is typed lines up with what is drawn:
+    // the stylesheet sizes the code, its padding and the tag's clearance by
+    // these, from the same tokens the stage draws with.
+    wrapper.style.setProperty('--bava-code-zoom', String(zoom));
+    wrapper.style.setProperty('--bava-code-scale', String(zoom * (request.fontScale ?? 1)));
 
     let done = false;
     const commit = () => {
@@ -135,7 +142,9 @@ export class CodeEditor {
 
     const extensions: Extension[] = [
       history(),
-      syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+      // The canvas's own colouring (`highlight.ts`), so a string is the
+      // colour it is drawn in, in either theme.
+      syntaxHighlighting(KIND_HIGHLIGHTER),
       ...(support ? [support] : []),
       // Tab indents, as in any code editor, rather than moving focus away
       // (which would close the block's editor).

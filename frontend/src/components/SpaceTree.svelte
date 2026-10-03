@@ -23,6 +23,8 @@
     unsavedPath: string | null;
     /** A path to start renaming, from the right-click menu; the caller clears it. */
     renameRequest?: string | null;
+    /** The row whose right-click menu is open, marked while it is. */
+    menuPath?: string | null;
     onToggle: (folder: string) => void;
     onOpen: (path: string) => void;
     onRename: (path: string, name: string) => void;
@@ -42,6 +44,7 @@
     activePath,
     unsavedPath,
     renameRequest = null,
+    menuPath = null,
     onToggle,
     onOpen,
     onRename,
@@ -223,6 +226,7 @@
         <TreeView.BranchControl
           class="row"
           data-path={node.value}
+          data-menu={node.value === menuPath ? '' : undefined}
           data-drop={over?.path === node.value ? over.zone : undefined}
           style={`--depth: ${depthOf(node.value)}`}
           draggable="true"
@@ -243,6 +247,7 @@
       <TreeView.Item
         class="row"
         data-path={node.value}
+        data-menu={node.value === menuPath ? '' : undefined}
         data-drop={over?.path === node.value ? over.zone : undefined}
         style={`--depth: ${depthOf(node.value)}`}
         draggable={node.value === PENDING ? 'false' : 'true'}
@@ -295,7 +300,9 @@
     outline: none;
   }
 
-  :global(.space-tree .row:hover) {
+  /* Hovered, or the row a right-click menu is open for. */
+  :global(.space-tree .row:hover),
+  :global(.space-tree .row[data-menu]) {
     background: var(--color-accent-subtle);
   }
 
@@ -304,7 +311,8 @@
     color: var(--color-text-primary);
   }
 
-  :global(.space-tree .row[data-focus]) {
+  /* Keyboard focus only: Ark marks the row Tab would land on even before the tree is focused. */
+  :global(.space-tree .row:focus-visible) {
     box-shadow: inset 0 0 0 var(--focus-ring-width) var(--color-focus-ring);
   }
 

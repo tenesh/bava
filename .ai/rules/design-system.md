@@ -59,6 +59,9 @@ here.
 **No component writes a literal value.** No hex codes, no `px` outside the
 token files, no one-off shadows. If a value is needed that no token provides,
 add the token; do not inline it.
+The screen checks' harness (`frontend/tests/visual/harness/`) is exempt: it
+never ships, and a demo's cell may need an exact pixel size (a splitter's odd
+width, a handle's gutter) for its picture to stay the same.
 
 ## Stacking
 
@@ -196,25 +199,25 @@ check both before building either by hand.
 | `Segments` ✓ | A few exclusive choices, wrapping Ark's SegmentGroup. Use it rather than buttons with `role="radio"`, which lack arrow-key navigation. |
 | `ShortcutsDialog` ✓ | Shortcut groups, as the caller derives them from the menu spec; each key its own keycap (`keycaps.ts`). |
 | `StatusBar` ✓ | The Space and the page's path, then, at the far end, what is being worked on: the canvas's engine and node count, or the document's words and characters (`shell/status-context.ts` picks the side); an optional message: autosave paused, a command that failed. |
-| `PageHeader` ✓ | Above a page: its folders and name as a breadcrumb, Locked when it is, and the ⋯ page menu's button. Reports the press; the menu is a `ContextMenu` the caller opens. |
+| `PageHeader` ✓ | Above a page: its folders and name as a breadcrumb, Locked when it is, and the ⋯ page menu's button. The name keeps its room: short of it, the folders are cut to a few letters (`--size-crumb-min`), then folded into one … crumb, reached by Tab and named by the path, whose tooltip holds the path (`crumbs.ts`). Reports the press; the menu is a `ContextMenu` the caller opens. |
 | `SlashMenu` ✓ | The `/` menu's list at the caret, the `:` emoji suggestions and the `@` menu (`label` names the list): the matching items, grouped, each with an optional quiet `detail`, the active one marked; keys stay in the editor, a press reports the item. |
-| `FormatBubble` ✓ | The toolbar over selected text: turn into, bold, italic, underline, strike, code, link, text colour, highlight. Presses keep the selection (mousedown held); the menus open as `ContextMenu`s at the button. |
+| `FormatBubble` ✓ | The toolbar over selected text: turn into, bold, italic, underline, strike, code, link, text colour, highlight. Presses keep the selection (mousedown held); the menus open as `ContextMenu`s at the button. A command marked false in `offered` is left out (a mark the selected line cannot take), and Turn into without `turnable`. |
 | `BlockHandle` ✓ | Left of the hovered block: + to add a block after it, and the grip that drags it or opens its block menu. |
 | `FindBar` ✓ | Find and replace across the top of the page: the field, "n of m", previous and next, the replace field, Replace, Replace all, close. Enter and ⇧Enter step, Escape closes. |
-| `LinkField` ✓ | The link field over selected text: address, Enter to link, Remove to unlink, Escape to leave it. With `placeholder` and `removeLabel` (null for no Remove) it also takes a medium's caption, its file's new name, and a web address for `/` Web link and Online video. Enter applies it from its own key handler too, since a script's key submits no form. Its field and FindBar's share `.bava-field` in `controls.scss`. |
+| `LinkField` ✓ | The link field over selected text: address, Enter to link, Remove to unlink, Escape to leave it. With `placeholder` and `removeLabel` (null for no Remove) it also takes a medium's caption, its file's new name, and a web address for `/` Web link and Online video. Given a line's `height` with `over` (a card's name), it is the field alone, that tall, so it covers nothing under the line. Enter applies it from its own key handler too, since a script's key submits no form. Its field and FindBar's share `.bava-field` in `controls.scss`. |
 | `MediaViewer` ✓ | An image full screen over Ark's Dialog (`size="viewer"`, headless): Escape or a click outside leaves. |
 | `MediaSection` ✓ | The Space's attachments under Files: compact rows (thumbnail, name, size), search, Add files, open the dialog; a row drags into the page (`application/x-bava-attachment`), or Enter or a double-click places it at the caret; the arrows move between rows. |
 | `MediaThumb` ✓ | An attachment's picture (the image, or a video's poster) at row or grid size, else its kind's icon; a picture that will not load gives way to the icon. |
-| `MediaDialog` ✓ | The Media dialog over Ark's Dialog (`size="media"`, unmounted when closed): grid or list, filters, search, sort (each a `Segments`), a file's pages, rename, show in folder, delete, Add files, Move unused to Trash. |
+| `MediaDialog` ✓ | The Media dialog over Ark's Dialog (`size="media"`, unmounted when closed): grid or list, filters, search, sort (each a `Segments`), a file's pages, rename, show in folder, delete, Add files, Move unused to Trash. A name the caller refuses comes back from `onRename` as its reason, shown under the field with the rename kept open. Escape while renaming leaves the rename only, not the dialog. |
 | `EquationField` ✓ | The field over an equation: its TeX, the equation drawn live below by the caller's `render`, Enter to save, Shift+Enter for a new line, Escape to leave it. |
-| `EmojiPicker` ✓ | A search and every emoji under its group; a pick gives the character, Escape or a press outside closes it. The caller supplies the emoji and group names. |
+| `EmojiPicker` ✓ | A search and every emoji under its group; a pick gives the character, Escape or a press outside closes it. The caller supplies the emoji and group names; until they arrive it shows an indeterminate `Progress` bar. |
 | `LinkCard` ✓ | The card under a clicked link: its address, Open, Edit, Remove; a missing page says so and offers the one page with its name. Escape or a press outside closes it; focus stays in the page. |
 | `DatePicker` ✓ | A calendar under a date chip, over Ark's `DatePicker` (inline): the chip's month, its day chosen; a pick gives `YYYY-MM-DD`. Escape or a press outside closes it. |
-| `SpaceTree` ✓ | The Files tree of a Space, wrapping Ark's TreeView (expand, keys, typeahead, F2 rename), with drag to move and reorder added on top; a new page or folder is named in place. Rules in `files/tree.ts`. Reports actions; opens nothing itself. |
+| `SpaceTree` ✓ | The Files tree of a Space, wrapping Ark's TreeView (expand, keys, typeahead, F2 rename), with drag to move and reorder added on top; a new page or folder is named in place; the row a right-click menu is open for stays marked (`menuPath`). Rules in `files/tree.ts`. Reports actions; opens nothing itself. |
 | `SpaceSwitcher` ✓ | The Space's name atop the side pane, opening recent Spaces and Space actions; wraps Ark's Menu. |
 | `StartScreen` ✓ | Nothing open: the mark, New Space, Open Space, Open file, recent Spaces. |
 | `TrashDialog` ✓ | A Space's Trash: restore, delete, empty, search, total size. Restore and Delete show on the hovered, focused or chosen row, hidden by opacity so Tab still reaches them. |
-| `NewSpaceDialog` ✓ | New Space: the folder's name and where it is made. |
+| `NewSpaceDialog` ✓ | New Space: the folder's name and where it is made. A name the caller refuses comes back from `onCreate` as its reason, shown under the field with the dialog kept open. |
 | `SpaceSettingsDialog` ✓ | Rename the Space, its default page width, show its folder. |
 | `SectionTabs` ✓ | Sections chosen from a list on the left, one shown at a time (Settings), each with an icon, under an optional heading; wraps Ark's Tabs, vertical. |
 | `ConfirmDialog` ✓ | A question with fixed answers. Dismissing it is a cancel, never an accident. |
@@ -223,13 +226,14 @@ check both before building either by hand.
 | `ToolRail` ✓ | The canvas tool rail: grouped icon buttons, a key letter in each corner, a tooltip naming each; one panel, the tool lock (`Q`) last, behind a hairline. Layout in `canvas/rail.ts`. |
 | `InsertPanel` ✓ | Search, category rows (right chevron clear of the text), a category's tile grid, footer hint. State in `shell/insert.svelte.ts`. |
 | `SelectionToolbar` ✓ | Bottom-centre toolbar for a selection: `StyleBar` pickers, line actions (Edit points, Close or Open line; Done alone while a line is drawn by clicks), align and distribute, More. Model in `canvas/toolbar.ts`. |
-| `ContextMenu` ✓ | A menu opened at a point, wrapping Ark's Menu, with nested submenus. Used for right-click and More. Tree in `canvas/context-menu.ts`. |
+| `ContextMenu` ✓ | A menu opened at a point, wrapping Ark's Menu, with nested submenus. Used for right-click and More. Tree in `canvas/context-menu.ts`. The menu look (`.bava-menu`, `-item`, `-label`, `-separator`) is shared with `SlashMenu` and `SpaceSwitcher` and lives in `styles/menus.scss`. |
 | `Tooltip` ✓ | Names a control (and its key) on hover and keyboard focus, wrapping Ark's Tooltip. It renders the button itself, or wraps a control the caller renders through `trigger`, which avoids a button inside a button. |
-| `ToolIcon` ✓ | Interface icons by id: Lucide (ISC), plus the in-house parallelogram. |
+| `ToolIcon` ✓ | Interface icons by id: Lucide (ISC), plus the icons drawn in-house in Lucide's stroke style on its 24-unit grid (`DRAWN_ICONS` in `tool-icons.ts`: the parallelogram and the arrowhead choices). |
 | `LayoutEnginePicker` ✓ | TALA, Dagre or ELK over `Segments`, with a direction control, hidden while TALA is chosen (TALA ignores direction), when a line says TALA chooses its own direction; the one place that rule lives in the interface. In the Diagram from Code dialog, never per canvas. |
 | `EmptyState` ✓ | Repeated across file tree, canvas, search, and the no-file window. `mark` adds the faded brand mark for "nothing open yet"; `hints` lists keys beside what they do. |
 | `Splash` ✓ | The launch cover: one centred column of mark, wordmark, indeterminate `Progress` and a status line; the footer at the bottom. The caller decides when startup is over. |
 | `Progress` ✓ | Wraps Ark's Progress. `value: null` is indeterminate: use it whenever nothing reports real progress. |
+| `Portal` ✓ | Draws what it holds in the portal root by moving its element there, so the content stays in its caller's tree: drawn, redrawn and taken down with it. Ark's `Portal` mounts a separate root a tick later, which can redraw from a place its caller dropped, or mount after its caller is gone and stay. Used by the pieces that follow the page (`FormatBubble`, `LinkField`, `SlashMenu`). |
 | `Mark` ✓ | The brand mark, inlined from `src/brand/panda.svg` at one of four `--size-mark-*` sizes. |
 | `ErrorDialog` ✓ | An unexpected failure: one sentence, the details shown as labels and values (`detail-rows.ts`), Copy details, Open logs folder. Never a stack. |
 | `PanelBoundary` ✓ | `<svelte:boundary>` around each shell region; a crash shows "This panel hit a problem" and Reload panel. |
@@ -240,15 +244,14 @@ check both before building either by hand.
 | `Dialog` ✓ | Wraps Ark's Dialog. A ruled header (15px title, optional `subtitle`, `actions`, `closable` X), a padded body, and an optional ruled `footer` for the buttons. `variant="alert"` keeps a short question in one box (`align="center"` and `leading` for About). Named `size`s (`narrow`, `medium`, `wide`, and one per dialog that keeps its own size); `flush` runs the body to the edges; `headless` hides the header from sight but keeps it naming the dialog. A screen never restyles the frame from outside: add an option here instead. By default it is as wide as what it holds. |
 | `ExportDialog` ✓ | Export settings over a live preview: Only selected, Background, Dark mode, Scale, and the PNG, SVG and Copy buttons. Padding is fixed. State in `canvas/export/exporter.svelte.ts`. |
 | `Toggle` ✓ | An on/off setting, wrapping Ark's Switch; `variant="row"` puts the label first and the switch at the row's end. Disabled rather than hidden when it does not apply, so it still explains itself. |
-| `Disclosure` ✓ | A collapsed-by-default section, wrapping Ark's Collapsible. Unused for now; kept for the document's toggle blocks. |
 | `AboutDialog` ✓ | Centred: mark, title, tagline, licence, Close. No version shown yet. |
-| `Icon` ✓ | Single wrapper taking an SVG path, so icon sizing is tokenised. Lucide is bundled for interface icons, through `ToolIcon` (`tool-icons.ts`). |
+| `Icon` ✓ | Single wrapper taking an SVG path, and an optional second path drawn filled (`fill`), so icon sizing is tokenised. Lucide is bundled for interface icons, through `ToolIcon` (`tool-icons.ts`). |
 
 ✓ marks what exists. Build the rest as screens need them, not upfront: an
 unused component is an unmaintained one.
 
 **Wrapped from Ark so far**: `Dialog`, `Splitter` (the side pane's Files and Media, stacked with `orientation="vertical"`; Ark draws its handle as a button, whose own look the wrapper resets), `Tooltip`, `Progress`, SegmentGroup inside
-`Segments`, Collapsible inside `Disclosure`, Menu inside `ContextMenu`, and
+`Segments`, Menu inside `ContextMenu`, and
 Popover with RadioGroup inside `StyleBar` and `OptionPicker`, Slider inside
 `OpacityPicker`, Switch inside `Toggle`, TreeView inside `SpaceTree`, Menu
 inside `SpaceSwitcher`, and Tabs inside `SectionTabs`.

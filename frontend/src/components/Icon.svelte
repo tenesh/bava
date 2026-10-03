@@ -3,14 +3,16 @@
   import { iconSizeVar, type IconSize } from './icon';
 
   type Props = {
-    /** An SVG path `d` attribute. */
+    /** An SVG path `d` attribute, drawn as a line. */
     path: string;
+    /** A second path, filled. */
+    fill?: string;
     size?: IconSize;
     /** Omit for decorative icons; the label makes it available to a reader. */
     label?: string;
   };
 
-  let { path, size = 'md', label }: Props = $props();
+  let { path, fill, size = 'md', label }: Props = $props();
 </script>
 
 <svg
@@ -27,6 +29,7 @@
   aria-hidden={label ? undefined : 'true'}
 >
   <path d={path} />
+  {#if fill}<path d={fill} fill="currentColor" />{/if}
 </svg>
 
 <style>

@@ -175,7 +175,7 @@
       <div class="region region-ai">
         <Pane title={t('pane.ai')}>
           <PanelBoundary name={t('pane.ai')} onError={(error) => onPanelError('ai', error)}>
-            <EmptyState title={t('empty.canvas.title')} />
+            <EmptyState title={t('empty.ai.title')} body={t('empty.ai.body')} />
           </PanelBoundary>
         </Pane>
       </div>

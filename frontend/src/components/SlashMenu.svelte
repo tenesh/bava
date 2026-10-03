@@ -7,8 +7,7 @@
    *
    * Presentational: the Document editor decides what is listed and active.
    */
-  import { Portal } from '@ark-ui/svelte';
-  import { portalRoot } from './portal-root';
+  import Portal from './Portal.svelte';
   import { t } from '../i18n/t';
 
   type Props = {
@@ -35,7 +34,7 @@
   });
 </script>
 
-<Portal container={portalRoot()}>
+<Portal>
   <div
     bind:this={list}
     class="bava-menu slash-menu"

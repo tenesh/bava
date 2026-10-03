@@ -14,7 +14,7 @@ import type { Selection, Box } from './selection';
 import type { ToolId } from './tools.svelte';
 import { produce } from 'immer';
 import { createScene, isLocked, type ArrowProps, type ElementId, type SceneData, type SceneElement } from './scene';
-import { labelSpot, middlesAlong, pathOf, positionAlong } from './arrows';
+import { LABEL_CLEARANCE, labelSpot, middlesAlong, pathOf, positionAlong } from './arrows';
 import { smoothPoints } from './curves';
 import { drawnBoundsOf, duplicate, withDescendants } from './edit';
 import {
@@ -41,7 +41,7 @@ import { moveSegment, releaseSegment } from './elbow-segments';
 import { carriedWith, releaseFrames } from './containment';
 import { measureCode, MIN_RESIZE_COLUMNS, type CodeMetrics } from './code/measure';
 import { insideFilledLine, isLinear, nearElement, tensionOf } from './hit';
-import { chromeFor, elbowSegmentHandles, focusSpots, grown, offersMiddles } from './selection-chrome';
+import { besideLabel, chromeFor, elbowSegmentHandles, focusSpots, grown, labelSpotEnds, offersMiddles } from './selection-chrome';
 import type { CursorTarget } from './cursor';
 import { simplify } from './stroke';
 import { ANGLE_STEP, snapAngle, squareBox } from './constrain';
@@ -210,7 +210,12 @@ type Drag = {
    * segment, which inserts a point there (`insert`). `index` is the point's
    * position in the list.
    */
-  bend?: { id: ElementId; index: number; insert: boolean; original: SceneElement; at: Point };
+  /**
+   * `at` is where the point or middle is, which the drag moves from; `shown`
+   * is where its handle is drawn and pressed, beside the label when the label
+   * covers it (`besideLabel`).
+   */
+  bend?: { id: ElementId; index: number; insert: boolean; original: SceneElement; at: Point; shown: Point };
   /**
    * Set when the press landed on the middle of a selected elbow's segment:
    * it moves across itself and stays there (a fixed segment).
@@ -998,7 +1003,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const focus = focusAt(point);
       if (focus) return { x: point.x - focus.offset.x, y: point.y - focus.offset.y };
       const bend = bendAt(point);
-      if (bend) return bend.at;
+      if (bend) return bend.shown;
       const segment = segmentAt(point);
       if (!segment) return null;
       return elbowSegmentHandles(segment.original, segmentMin()).find((h) => h.index === segment.index)?.at ?? null;
@@ -2048,26 +2053,43 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     const found = bendable();
     if (!found || found.elbow) return null;
     const { element } = found;
-    // Where the points are drawn, a turn included: handles sit there.
+    // Where the points are drawn, a turn included: handles sit there, or
+    // beside the label where it covers them, as the stage draws them.
     const drawn = drawnPoints(element);
     const reach = pointHit();
-    const near = (x: number, y: number) => Math.hypot(point.x - x, point.y - y) <= reach;
+    const near = (at: Point) => Math.hypot(point.x - at.x, point.y - at.y) <= reach;
+    const beside = besideLabelOf(element, drawn);
     const count = drawn.length / 2;
     for (let i = 0; i < count; i += 1) {
       const isEnd = i === 0 || i === count - 1;
       if (element.type === 'arrow' && isEnd) continue;
-      if (near(drawn[i * 2], drawn[i * 2 + 1])) {
-        return { id: element.id, index: i, insert: false, original: element, at: { x: drawn[i * 2], y: drawn[i * 2 + 1] } };
-      }
+      const at = { x: drawn[i * 2], y: drawn[i * 2 + 1] };
+      const shown = isEnd ? at : (beside(at) ?? at);
+      if (near(shown)) return { id: element.id, index: i, insert: false, original: element, at, shown };
     }
     const middles = segmentMiddles(element);
     for (let i = 0; i < middles.length; i += 1) {
       const middle = middles[i];
-      if (middle && near(middle.x, middle.y)) {
-        return { id: element.id, index: i + 1, insert: true, original: element, at: middle };
-      }
+      if (!middle) continue;
+      // A new bend starts under the pointer, where its handle is drawn; a
+      // middle with no room beside the label is not offered.
+      const shown = beside(middle);
+      if (shown && near(shown)) return { id: element.id, index: i + 1, insert: true, original: element, at: shown, shown };
     }
     return null;
+  }
+
+  /**
+   * Where a handle of a labelled arrow is drawn, by the stage's rule
+   * (`besideLabel`), or null where the label leaves it no room.
+   */
+  function besideLabelOf(element: SceneElement, drawn: number[]): (at: Point) => Point | null {
+    const label = element.type === 'arrow' && 'label' in element && element.label ? (options.labelBounds?.(element.id) ?? null) : null;
+    if (!label) return (at) => at;
+    const path = pathOf(drawn, (element as SceneElement & ArrowProps).arrowType);
+    const radius = pointHandle() / 2;
+    const ends = labelSpotEnds(element, path, radius);
+    return (at) => besideLabel(at, path, label, LABEL_CLEARANCE + radius, ends);
   }
 
   /**

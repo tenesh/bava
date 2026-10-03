@@ -38,6 +38,13 @@ function open(markdown: string, files: Record<string, { size: number; modified: 
 describe('a file card', () => {
   const report = { '.bava/attachments/Q3 report.pdf': { size: 248_000, modified: '2026-09-21T09:00:00Z' } };
 
+  it('asks for a new name over its name, aligned to it and as tall as its line', () => {
+    const { host } = open('<!-- bava: card -->\n[Q3 report.pdf](.bava/attachments/Q3%20report.pdf)\n', report);
+    host.querySelector<HTMLElement>('.card')!.getBoundingClientRect = () => new DOMRect(80, 300, 500, 60);
+    host.querySelector<HTMLElement>('.card-title')!.getBoundingClientRect = () => new DOMRect(124, 312, 200, 20);
+    expect(editor!.fieldAt(0)).toStrictEqual({ left: 124, top: 312, height: 20 });
+  });
+
   it('shows its icon, name and size, read from the file', async () => {
     const { host } = open('<!-- bava: card -->\n[Q3 report.pdf](.bava/attachments/Q3%20report.pdf)\n', report);
     await settle();

@@ -65,11 +65,20 @@ describe('StyleBar chip wiring', () => {
     const { target } = setup({});
     const trigger = target.querySelector('button[aria-label="Fill colour"]') as HTMLElement;
     // One element, one id, addressable by both machines.
-    expect(trigger.id).toBe('bava-style-fill-trigger');
+    expect(trigger.id).toMatch(/^bava-style-fill-trigger/);
     expect(document.getElementById(trigger.id)).toBe(trigger);
     // The popover's own attributes survived the merge with the tooltip's.
     expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
     expect(trigger.getAttribute('aria-controls')).toMatch(/popover/);
+  });
+
+  // Two bars on one page (a gallery, a second window's toolbar) must not
+  // share an id, or one bar's popover anchors to the other's chip.
+  it('gives each bar its own trigger ids', () => {
+    const first = setup({});
+    const second = setup({});
+    const id = (target: HTMLElement) => (target.querySelector('button[aria-label="Fill colour"]') as HTMLElement).id;
+    expect(id(first.target)).not.toBe(id(second.target));
   });
 
   it('names the chip on keyboard focus too', async () => {
@@ -113,5 +122,26 @@ describe('the colour picker', () => {
     const { target } = setup({ fill: '#e03131' });
     const chip = target.querySelector('button[aria-label="Fill colour"] .chip') as HTMLElement;
     expect(chip.style.background).toContain('rgb(224, 49, 49)');
+  });
+});
+
+// A selection whose shapes differ shows the hatch, not a blank chip.
+describe('the mixed chip', () => {
+  it('leaves the hatch to its class instead of painting over it', () => {
+    const { target } = setup({ color: 'mixed' });
+    const chip = target.querySelector('button[aria-label="Text colour"] .chip') as HTMLElement;
+    expect(chip.classList.contains('mixed')).toBe(true);
+    expect(chip.style.background).toBe('');
+  });
+});
+
+// A colour of the user's own is neither Default nor a swatch.
+describe('a picked colour in its picker', () => {
+  it('checks no swatch and shows the colour in the custom field', async () => {
+    const { target } = setup({ fill: '#e03131' });
+    flushSync(() => (target.querySelector('button[aria-label="Fill colour"]') as HTMLElement).click());
+    await vi.waitFor(() => expect(document.querySelectorAll('[data-part="item"][data-scope="radio-group"]').length).toBe(9));
+    expect(document.querySelectorAll('[data-part="item"][data-scope="radio-group"][data-state="checked"]').length).toBe(0);
+    expect((document.querySelector('.bava-custom input') as HTMLInputElement).value).toBe('#e03131');
   });
 });

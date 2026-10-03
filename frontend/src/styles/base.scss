@@ -33,6 +33,13 @@ label[for] {
   cursor: not-allowed;
 }
 
+// What a field asks for, before anything is typed: one colour in every field.
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-placeholder);
+  opacity: 1;
+}
+
 body {
   font-family: var(--font-ui);
   font-size: var(--text-body);

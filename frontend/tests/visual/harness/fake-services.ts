@@ -28,8 +28,47 @@ function checkName(name: string): { name: string } | { error: string; code: stri
   return { name: trimmed };
 }
 
+/**
+ * How the Go side starts, set by a walk before the page loads
+ * (`window.__bavaBoot`): what launch reads before anything is on screen.
+ */
+export type Boot = {
+  /** The settings never answer, so the splash stays over the window. */
+  holdSettings?: boolean;
+  /** The call for the settings fails on its way to Go (Go itself falls back to the defaults). */
+  failSettings?: boolean;
+  /** Settings saved before this launch, over the defaults. */
+  settings?: Record<string, unknown>;
+  /** What Go tells the page once at launch: the last session ended unexpectedly, or the window was reloaded. */
+  notices?: { kind: string; session: string }[];
+};
+
+const boot = (): Boot => (globalThis as { __bavaBoot?: Boot }).__bavaBoot ?? {};
+
+/** The ways the Go side can fail while the app runs, switched on by a walk. */
+export type Faults = {
+  /** Another program wrote the open page since it was read. */
+  changedOnDisk: boolean;
+  /** A save's call fails on its way to Go. */
+  saveFails: boolean;
+  /** Settings cannot be written. */
+  settingsSaveFails: boolean;
+  /** A folder listed with rows the Files pane cannot draw: its folders' names cannot be written out. */
+  undrawable: string | null;
+};
+
+/** The one D2 complaint the stand-in knows: a map opened and never closed, as D2 words it. */
+function d2Errors(source: string) {
+  const opened = (source.match(/{/g) ?? []).length;
+  const closed = (source.match(/}/g) ?? []).length;
+  if (opened <= closed) return [];
+  const from = source.lastIndexOf('{');
+  return [{ message: 'maps must be terminated with }', from, to: source.length, line: source.slice(0, from).split('\n').length }];
+}
+
 export function createFakes(first: FakeSpace = seedSpace()) {
   const spaces = new Map<string, FakeSpace>([[first.root, first]]);
+  const faults: Faults = { changedOnDisk: false, saveFails: false, settingsSaveFails: false, undrawable: null };
   let settings = {
     debounceMs: 250,
     layoutEngine: 'tala',
@@ -40,6 +79,7 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     midpointSnap: true,
     objectSnap: false,
   };
+  let settingsRead = false;
   let trashIds = 100;
 
   const spaceOf = (root: string) => spaces.get(root);
@@ -134,6 +174,17 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         space.trash.unshift({ id, path: op.path, kind: isFolder(space, `\u0000trash/${id}/${op.path}`) ? 'folder' : 'page', deletedAt: '2026-09-27T12:00:00Z', size: 1024 });
         return ok({ id, path: op.path });
       }
+      case 'renameAttachment': {
+        const file = space.attachments.find((entry) => entry.name === op.attachment);
+        if (!file) return ok({ error: `"${op.attachment}" is not an attachment` });
+        const checked = checkName(op.name);
+        if ('code' in checked) return ok(checked);
+        const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '';
+        const name = checked.name.toLowerCase().endsWith(ext.toLowerCase()) ? checked.name : checked.name + ext;
+        if (name !== file.name && space.attachments.some((entry) => entry.name === name)) return ok(refusal('exists', `"${name}" already exists`));
+        file.name = name;
+        return ok({ name });
+      }
       case 'trashAttachment': {
         const at = space.attachments.findIndex((file) => file.name === op.attachment);
         if (at < 0) return ok({ error: `"${op.attachment}" is not an attachment` });
@@ -200,11 +251,20 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     }
   }
 
-  // What the walks reach past the app: scenes put into pages before they
-  // open, scenes read back after a save, and every export kept.
+  // What the walks reach past the app: words and scenes put into pages
+  // before they open, scenes read back after a save, and every export kept.
   const exports: { path: string; contentsBase64: string }[] = [];
+  // A page on its own, in no Space, and what Open File's picker answers.
+  const loose: Record<string, FakePage> = { [`${PARENT}/Notes.md`]: { source: '# Notes\n\nA page kept on its own, in no Space.\n', scene: { version: 1, elements: [] } } };
   const harness = {
     exports,
+    faults,
+    fileToOpen: '',
+    setSource(root: string, path: string, source: string) {
+      const space = spaceOf(root);
+      if (!space || !(path in space.pages)) throw new Error(`no page ${path}`);
+      space.pages[path] = { ...space.pages[path], source };
+    },
     setScene(root: string, path: string, scene: FakePage['scene']) {
       const space = spaceOf(root);
       if (!space || !(path in space.pages)) throw new Error(`no page ${path}`);
@@ -253,6 +313,19 @@ export function createFakes(first: FakeSpace = seedSpace()) {
           const path = join(folder, name);
           return { name, path, kind: isFolder(space, path) ? 'folder' : 'page' };
         });
+        // A folder whose name throws as its row writes it out: what a pane
+        // that fails to draw is shown with.
+        if (faults.undrawable === folder) {
+          for (const entry of entries) {
+            if (entry.kind !== 'folder') continue;
+            const name = entry.name;
+            (entry as { name: unknown }).name = {
+              toString(): string {
+                throw new Error(`the row for ${name} cannot be drawn`);
+              },
+            };
+          }
+        }
         return { entries, error: '', code: '' };
       },
       async Apply(root: string, op: Op) {
@@ -294,21 +367,24 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     },
     FileService: {
       async Open(path: string) {
+        if (path in loose) return { path, source: loose[path].source, diagrams: null, scene: structuredClone(loose[path].scene), stamp, error: '' };
         const found = pageAt(path);
         if (!found) return { path, source: '', diagrams: null, scene: { version: 1, elements: [] }, stamp, error: `open ${path}: no such file` };
         const page = found.space.pages[found.rel];
         return { path, source: page.source, diagrams: null, scene: structuredClone(page.scene), stamp, error: '' };
       },
       async Save(path: string, source: string, scene: FakeSpace['pages'][string]['scene']) {
+        if (faults.saveFails) throw new Error('the call to Save failed');
+        if (path in loose) loose[path] = { source, scene: structuredClone(scene) };
         const found = pageAt(path);
         if (found) found.space.pages[found.rel] = { source, scene: structuredClone(scene) };
         return { path, stamp, error: '' };
       },
       async ChangedOnDisk(_path: string, _stamp: unknown) {
-        return false;
+        return faults.changedOnDisk;
       },
       async ChooseFileToOpen() {
-        return { path: '', error: '' };
+        return { path: harness.fileToOpen, error: '' };
       },
       async ChooseFileToSave(suggestedName: string) {
         return { path: `${PARENT}/${suggestedName}`, error: '' };
@@ -328,15 +404,23 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         return '';
       },
       async Settings() {
+        const start = boot();
+        if (!settingsRead) settings = { ...settings, ...start.settings };
+        settingsRead = true;
+        if (start.holdSettings) return new Promise<never>(() => {});
+        if (start.failSettings) throw new Error('the call to Settings failed');
         return { ...settings };
       },
       async SaveSettings(next: typeof settings) {
+        if (faults.settingsSaveFails) return 'write settings: permission denied';
         settings = { ...next };
         return '';
       },
     },
     RenderService: {
       async Render(source: string, _opts: unknown) {
+        const errors = d2Errors(source);
+        if (errors.length > 0) return { svg: '', errors, nodeMap: {}, layout: { shapes: [], connections: [] } };
         // The dialog's starting code lays out as nothing, so it opens with
         // Insert off as pictured; anything typed lays out as the one box.
         const typed = source.trim() !== 'a -> b';
@@ -360,7 +444,7 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     LogService: {
       async Report(_entry: unknown) {},
       async TakeNotices() {
-        return [];
+        return boot().notices ?? [];
       },
       async Diagnostics(_userAgent: string) {
         return '';

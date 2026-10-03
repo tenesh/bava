@@ -106,6 +106,7 @@
   let bubbleFocus = $state.raw(0);
   let turnable = $state.raw(true);
   let marks = $state.raw<ReturnType<DocEditor['activeMarks']>>(editor.activeMarks());
+  let offered = $state.raw<ReturnType<DocEditor['offeredMarks']>>(editor.offeredMarks());
   let hovered = $state.raw<{ pos: number; left: number; top: number } | null>(null);
   let menu = $state.raw<{ items: MenuNode[]; anchor: { x: number; y: number }; run: (id: string) => void } | null>(null);
   let finding = $state.raw(false);
@@ -121,7 +122,7 @@
   let equation = $state.raw<{ pos: number; at: EquationAt; value: string; display: boolean } | null>(null);
   let link = $state.raw<{ left: number; top: number; value: string } | null>(null);
   // A medium's caption or its file's new name, asked for beside it.
-  let mediaField = $state.raw<{ kind: 'caption' | 'rename'; pos: number; left: number; top: number; value: string } | null>(null);
+  let mediaField = $state.raw<{ kind: 'caption' | 'rename'; pos: number; left: number; top: number; height?: number; value: string } | null>(null);
   let viewer = $state.raw<{ src: string; alt: string } | null>(null);
   let dragging: number | null = null;
 
@@ -201,6 +202,7 @@
   function refreshSelection() {
     onCounts(editor.counts());
     marks = editor.activeMarks();
+    offered = editor.offeredMarks();
     turnable = turnIntoChoices(editor.currentKind()).length > 0;
     bubble = editor.locked ? null : (editor.selectionRect() ?? (bubbleHeld ? bubble : null));
   }
@@ -216,7 +218,7 @@
       },
       onSelection: refreshSelection,
       onSlash: (info) => (slash = info),
-      onLink: openLink,
+      onLink: () => openLink(editor.selectionLink() ?? ''),
       onCopy: (text) => onCopyText(text),
       onTableMenu: (anchor) => {
         if (!editor.locked) menu = { anchor, items: tableItems(), run: runTable };
@@ -508,6 +510,11 @@
     return { target, attachment };
   }
 
+  /** Where a caption or name field for the block at `pos` sits: on what it edits, or at the menu when the block has no such place. */
+  function fieldAt(pos: number, anchor: { x: number; y: number }): { left: number; top: number; height?: number } {
+    return editor.fieldAt(pos) ?? { left: anchor.x, top: anchor.y };
+  }
+
   async function runMedia(pos: number, id: string, anchor: { x: number; y: number }) {
     const block = editor.blockInfo(pos);
     if (!block || (block.type !== 'image' && block.type !== 'video')) return;
@@ -518,8 +525,8 @@
     // takes focus opens after that frame.
     if (id === 'm:caption' || id === 'm:rename' || id === 'm:fullscreen') await new Promise((next) => requestAnimationFrame(next));
     if (setting) editor.setMediaAttrs(pos, setting);
-    else if (id === 'm:caption') mediaField = { kind: 'caption', pos, left: anchor.x, top: anchor.y, value: (attrs.caption as string | null) ?? '' };
-    else if (id === 'm:rename' && file.attachment) mediaField = { kind: 'rename', pos, left: anchor.x, top: anchor.y, value: file.attachment.replace(/\.[^.]*$/, '') };
+    else if (id === 'm:caption') mediaField = { kind: 'caption', pos, ...fieldAt(pos, anchor), value: (attrs.caption as string | null) ?? '' };
+    else if (id === 'm:rename' && file.attachment) mediaField = { kind: 'rename', pos, ...fieldAt(pos, anchor), value: file.attachment.replace(/\.[^.]*$/, '') };
     else if (id === 'm:reveal' && file.target) onRevealFile(file.target);
     else if (id === 'm:open') onOpenFile(attrs.src as string);
     else if (id === 'm:fullscreen') {
@@ -558,7 +565,7 @@
     if (id === 'c:look:link') editor.cardToLink(pos);
     else if (id === 'c:look:card' || id === 'c:look:extended') editor.setMediaAttrs(pos, { look: id.slice(7) });
     else if (id === 'c:reveal' && file.target) onRevealFile(file.target);
-    else if (id === 'c:rename' && file.attachment) mediaField = { kind: 'rename', pos, left: anchor.x, top: anchor.y, value: file.attachment.replace(/\.[^.]*$/, '') };
+    else if (id === 'c:rename' && file.attachment) mediaField = { kind: 'rename', pos, ...fieldAt(pos, anchor), value: file.attachment.replace(/\.[^.]*$/, '') };
     else if (id === 'c:replace' || id === 'c:refresh') {
       // What the card holds may move while the dialog or the site answers.
       const now = editor.follow(pos);
@@ -619,7 +626,7 @@
     if (command === 'turnInto') menu = { anchor, items: turnIntoItems(), run: runTurn };
     else if (command === 'textColor') menu = { anchor, items: colours('text', 'swatch.default'), run: (id) => editor.run(commands.textColor(id.slice(5) || null)) };
     else if (command === 'highlight') menu = { anchor, items: colours('mark', 'bubble.none'), run: (id) => editor.run(commands.highlight(id.slice(5) || null)) };
-    else if (command === 'link') openLink();
+    else if (command === 'link') openLink(editor.selectionLink() ?? '');
     else editor.run(commands[command as 'bold' | 'italic' | 'underline' | 'strike' | 'code']);
   }
 
@@ -743,10 +750,11 @@
   />
 {/if}
 
-{#if bubble && !slash && !link}
+{#if bubble && !slash && !link && (turnable || Object.values(offered).some(Boolean))}
   <FormatBubble
     at={bubble}
     active={marks}
+    {offered}
     {turnable}
     focus={bubbleFocus}
     onCommand={bubbleCommand}
@@ -863,6 +871,7 @@
   <LinkField
     at={link}
     value={link.value}
+    removeLabel={link.value ? t('link.remove') : null}
     onApply={applyLink}
     onRemove={() => applyLink('')}
     onCancel={() => {
@@ -876,6 +885,7 @@
   <LinkField
     at={mediaField}
     value={mediaField.value}
+    over
     placeholder={t(mediaField.kind === 'caption' ? 'media.captionPlaceholder' : 'media.renamePlaceholder')}
     removeLabel={mediaField.kind === 'caption' && mediaField.value ? t('media.captionRemove') : null}
     keepOnAway

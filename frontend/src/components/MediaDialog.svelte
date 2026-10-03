@@ -7,7 +7,9 @@
    * Trash.
    *
    * Presentational: the caller lists the files, runs each action, and asks
-   * first where one needs asking.
+   * first where one needs asking. A name the caller refuses comes back as the
+   * reason, shown under the rename field, which stays open: the dialog is
+   * modal, so a word anywhere else sits behind it.
    */
   import Dialog from './Dialog.svelte';
   import Segments from './Segments.svelte';
@@ -26,8 +28,11 @@
     thumb: (item: MediaItem) => string | null;
     onOpenChange: (open: boolean) => void;
     onAdd: () => void;
-    /** A file renamed: its name, and the new one without its type. */
-    onRename: (name: string, next: string) => void;
+    /**
+     * A file renamed: its name, and the new one without its type. Answers
+     * with the reason when the name is refused.
+     */
+    onRename: (name: string, next: string) => Promise<string | null | undefined> | void;
     onDelete: (item: MediaItem) => void;
     onReveal: (name: string) => void;
     /** A page that uses the file, opened by its path in the Space. */
@@ -43,6 +48,10 @@
   let search = $state('');
   let chosenName = $state<string | null>(null);
   let renaming = $state<string | null>(null);
+  let refusal = $state<string | null>(null);
+  let renameField: HTMLInputElement | undefined = $state();
+  let renameButton: HTMLButtonElement | undefined = $state();
+  let root: HTMLDivElement | undefined = $state();
 
   const shown = $derived(shownItems(items, { filter, search, sort }));
   // A file the filter or search hides is not shown beside the list either.
@@ -54,20 +63,44 @@
 
   function startRename(item: MediaItem) {
     renaming = stem(item.name);
+    refusal = null;
   }
 
-  function renameKey(event: KeyboardEvent, item: MediaItem) {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      renaming = null;
+  function stopRenaming() {
+    renaming = null;
+    refusal = null;
+  }
+
+  /**
+   * Escape while renaming leaves the rename, not the dialog. Ark listens for
+   * Escape on the document, in the capture phase, before the field hears it,
+   * and closes unless the key was already handled: the window's capture phase
+   * comes first, so the key is claimed there.
+   */
+  function escapeRename(event: KeyboardEvent) {
+    if (event.key !== 'Escape' || event.isComposing || !open || renaming === null) return;
+    if (!(event.target instanceof Node) || !root?.contains(event.target)) return;
+    event.preventDefault();
+    const hadFocus = document.activeElement === renameField;
+    stopRenaming();
+    if (hadFocus) requestAnimationFrame(() => renameButton?.focus());
+  }
+
+  async function renameKey(event: KeyboardEvent, item: MediaItem) {
+    if (event.key !== 'Enter' || renaming === null) return;
+    event.preventDefault();
+    const next = renaming.trim();
+    if (!next || next === stem(item.name)) {
+      stopRenaming();
+      return;
     }
-    if (event.key === 'Enter' && renaming !== null) {
-      event.preventDefault();
-      const next = renaming.trim();
-      renaming = null;
-      if (next && next !== stem(item.name)) onRename(item.name, next);
+    const reason = await onRename(item.name, next);
+    if (!reason) {
+      stopRenaming();
+      return;
     }
+    refusal = reason;
+    renameField?.focus();
   }
 
   /** The arrows move between items: across and down in the grid, down in the list. */
@@ -88,17 +121,19 @@
     next?.focus();
     if (next?.dataset.name) {
       chosenName = next.dataset.name;
-      renaming = null;
+      stopRenaming();
     }
   }
 </script>
+
+<svelte:window onkeydowncapture={escapeRename} />
 
 <Dialog bind:open title={t('pane.media')} subtitle={t('media.dialogSubtitle')} size="media" flush closable unmountWhenClosed {onOpenChange}>
   {#snippet actions()}
     <button type="button" class="bava-button" onclick={onAdd}>{t('media.add')}</button>
     <button type="button" class="bava-button" disabled={!usageKnown || unused === 0} onclick={onTrashUnused}>{t('media.trashUnused')}</button>
   {/snippet}
-  <div class="media-dialog">
+  <div class="media-dialog" bind:this={root}>
     <div class="bar">
       <input class="bava-field search" type="search" data-autofocus bind:value={search} placeholder={t('media.search')} aria-label={t('media.search')} />
       <Segments
@@ -152,7 +187,7 @@
               data-name={item.name}
               onclick={() => {
                 chosenName = item.name;
-                renaming = null;
+                stopRenaming();
               }}
               onkeydown={itemKey}
             >
@@ -168,7 +203,18 @@
           <MediaThumb kind={chosen.kind} src={thumb(chosen)} size="grid" />
           {#if renaming !== null}
             <!-- svelte-ignore a11y_autofocus -->
-            <input class="bava-field media-rename" bind:value={renaming} autofocus aria-label={t('media.renamePlaceholder')} onkeydown={(event) => renameKey(event, chosen)} />
+            <input
+              class="bava-field media-rename"
+              bind:this={renameField}
+              bind:value={renaming}
+              autofocus
+              aria-label={t('media.renamePlaceholder')}
+              aria-invalid={refusal ? 'true' : undefined}
+              aria-describedby={refusal ? 'media-rename-refusal' : undefined}
+              oninput={() => (refusal = null)}
+              onkeydown={(event) => void renameKey(event, chosen)}
+            />
+            {#if refusal}<p id="media-rename-refusal" class="refusal" role="alert">{refusal}</p>{/if}
           {:else}
             <p class="detail-name">{chosen.name}</p>
           {/if}
@@ -189,7 +235,7 @@
             </ul>
           {/if}
           <div class="detail-actions">
-            <button type="button" class="bava-button" onclick={() => startRename(chosen)}>{t('media.renameShort')}</button>
+            <button type="button" class="bava-button" bind:this={renameButton} onclick={() => startRename(chosen)}>{t('media.renameShort')}</button>
             <button type="button" class="bava-button" onclick={() => onReveal(chosen.name)}>{t('space.reveal')}</button>
             <button type="button" class="bava-button danger" onclick={() => onDelete(chosen)}>{t('media.delete')}</button>
           </div>
@@ -319,6 +365,17 @@
     margin: 0;
     font-weight: var(--weight-semibold);
     overflow-wrap: anywhere;
+  }
+
+  /* Over the shared field's focus colour, so a refused name stays red while the keyboard is in it. */
+  .media-rename[aria-invalid='true'] {
+    border-color: var(--color-danger);
+  }
+
+  .refusal {
+    margin: 0;
+    font-size: var(--text-meta);
+    color: var(--color-danger);
   }
 
   .detail-label {

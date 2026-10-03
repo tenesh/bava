@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { SCENES, box, kinds } from '../harness/canvas-scenes';
+import { FAMILIES, SCENES, box, elementScene, kinds, pictured } from '../harness/canvas-scenes';
 import {
   CANVAS_PAGE,
   angleOf,
@@ -7,6 +7,7 @@ import {
   clickScene,
   dragScene,
   ends,
+  eraseAcross,
   exportAs,
   luminance,
   menu,
@@ -270,6 +271,19 @@ test.describe('arranging', () => {
     await menu(page, 'edit.undo');
     expect((await saved(page)).map((element) => element.id).sort()).toEqual(['b1', 'b2', 'b3']);
   });
+
+  // The walk `canvas-elements` pictures mid-drag: what the trail faded is
+  // what the release deletes, all of it, for every kind.
+  for (const [family, members] of Object.entries(FAMILIES)) {
+    test(`the eraser across every ${family} kind deletes them all`, async ({ page }) => {
+      const scene = elementScene(pictured('erasing', members));
+      await openCanvas(page, 'light', CANVAS_PAGE, scene.elements);
+      await eraseAcross(page, scene, { x: 900, y: 600 });
+      await page.mouse.up();
+      const ids = new Set(scene.elements.map((element) => element.id));
+      expect((await saved(page)).filter((element) => ids.has(element.id))).toEqual([]);
+    });
+  }
 });
 
 test.describe('styles', () => {

@@ -84,7 +84,24 @@
     background: var(--color-accent);
   }
 
-  :global(.bava-toggle-track:has(:focus-visible)) {
+  /* A wash of ink over the off track, a step darker on the on one. */
+  :global(.bava-toggle-track[data-hover]:not([data-disabled])) {
+    background: linear-gradient(var(--color-control-active), var(--color-control-active)), var(--color-border-strong);
+  }
+
+  :global(.bava-toggle-track[data-state='checked'][data-hover]:not([data-disabled])) {
+    background: var(--color-accent-hover);
+  }
+
+  /* Disabled reads as disabled whether it is on or off. */
+  :global(.bava-toggle-track[data-disabled]) {
+    opacity: var(--opacity-disabled);
+  }
+
+  /* The hidden input takes focus, a sibling of the track, so the ring is
+     reached through the root. The browser's own :focus-visible, not Ark's
+     attribute: Ark also sets that when a press on the label clicks the input. */
+  :global(.bava-toggle:has(input:focus-visible) .bava-toggle-track) {
     outline: var(--focus-ring-width) solid var(--color-focus-ring);
     outline-offset: var(--focus-halo-width);
   }

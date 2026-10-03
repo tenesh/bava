@@ -9,6 +9,7 @@
   import { Portal } from '@ark-ui/svelte';
   import { portalRoot } from './portal-root';
   import { pressAway } from './press-away';
+  import Progress from './Progress.svelte';
   import { t } from '../i18n/t';
 
   type Item = { emoji: string; name: string; group: string };
@@ -86,6 +87,8 @@
         {:else}
           {@render grid(matches)}
         {/if}
+      {:else if emojis.length === 0}
+        <div class="loading"><Progress label={t('emoji.loading')} value={null} /></div>
       {:else}
         {#each groups as group (group.group)}
           <h3>{groupLabel(group.group)}</h3>
@@ -157,6 +160,11 @@
 
   .emoji:active {
     background: var(--color-control-active);
+  }
+
+  /* Until the emoji arrive: a bar where they will be. */
+  .loading {
+    padding: var(--space-4) var(--space-2);
   }
 
   .none {

@@ -1837,10 +1837,10 @@ describe('labels, copies and modifiers on arrows', () => {
     const handler = createPointerHandler({
       history, selection, tools: createTools(), handleSize: () => 4, labelBounds: () => ({ x: 90, y: -20, w: 20, h: 40 }),
     });
-    // On the label, clear of the middle handle, which beats it.
-    handler.down(at(100, 15));
-    handler.move(at(100, 65));
-    handler.up(at(100, 65));
+    // On the label, clear of the middle handle drawn beside it.
+    handler.down(at(100, -5));
+    handler.move(at(100, 45));
+    handler.up(at(100, 45));
     expect(history.current.elements[0]).toMatchObject({ labelPosition: 0.75 });
   });
 
@@ -1873,10 +1873,10 @@ describe('labels, copies and modifiers on arrows', () => {
     expect(selection.ids).toEqual([]);
   });
 
-  // The middle handle keeps precedence over the
-  // label it sits under (Excalidraw's `linearElementEditor.ts:1154-1168`), so
-  // a labelled arrow can still be bent; the rest of the label slides it.
-  it('gives the middle handle priority over the label that covers it', () => {
+  // A handle the label covers is drawn where the line comes out from under
+  // it (`besideLabel`), and pressed there: a labelled arrow can still be
+  // bent, and the label, all of it, slides.
+  it('presses the middle handle beside the label, and the label where the middle was', () => {
     const make = () => {
       const history = createHistory({
         elements: [{ id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, points: [0, 0, 200, 0], label: 'x' }] as never,
@@ -1884,23 +1884,63 @@ describe('labels, copies and modifiers on arrows', () => {
       const selection = createSelection();
       selection.click('a');
       const handler = createPointerHandler({
-        history, selection, tools: createTools(), handleSize: () => 4, bendMinSegment: () => 40, labelBounds: () => ({ x: 70, y: -10, w: 60, h: 20 }),
+        history, selection, tools: createTools(), handleSize: () => 4, bendMinSegment: () => 40, pointHandle: () => 10, labelBounds: () => ({ x: 70, y: -10, w: 60, h: 20 }),
       });
       return { history, handler };
     };
-    const onMiddle = make();
-    onMiddle.handler.down(at(100, 0));
-    onMiddle.handler.move(at(100, 50));
-    onMiddle.handler.up(at(100, 50));
-    expect((onMiddle.history.current.elements[0] as unknown as { points: number[] }).points).toHaveLength(6);
+    // The label's box, the line's gap round it and the handle's radius: 130 + 5 + 5.
+    const beside = make();
+    expect(beside.handler.hoveredHandle(at(140, 0))).toEqual({ x: 140, y: 0 });
+    beside.handler.down(at(140, 0));
+    beside.handler.move(at(140, 50));
+    beside.handler.up(at(140, 50));
+    expect((beside.history.current.elements[0] as unknown as { points: number[] }).points).toEqual([0, 0, 140, 50, 200, 0]);
 
     const onLabel = make();
-    onLabel.handler.down(at(75, 0));
-    onLabel.handler.move(at(125, 0));
-    onLabel.handler.up(at(125, 0));
+    expect(onLabel.handler.hoveredHandle(at(100, 0))).toBeNull();
+    onLabel.handler.down(at(100, 0));
+    onLabel.handler.move(at(150, 0));
+    onLabel.handler.up(at(150, 0));
     const arrow = onLabel.history.current.elements[0] as unknown as { points: number[]; labelPosition?: number };
     expect(arrow.points).toHaveLength(4);
     expect(arrow.labelPosition).toBe(0.75);
+  });
+
+  it('offers no middle handle on an arrow its label leaves no room beside', () => {
+    const history = createHistory({
+      elements: [{ id: 'a', type: 'arrow', x: 0, y: 0, w: 140, h: 0, z: 1, points: [0, 0, 140, 0], label: 'x' }] as never,
+    });
+    const selection = createSelection();
+    selection.click('a');
+    const handler = createPointerHandler({
+      history, selection, tools: createTools(), handleSize: () => 4, bendMinSegment: () => 40, pointHandle: () => 10, labelBounds: () => ({ x: 10, y: -10, w: 90, h: 20 }),
+    });
+    // Where the line comes out from under the label, 30 short of the head.
+    expect(handler.hoveredHandle(at(110, 0))).toBeNull();
+    handler.down(at(110, 0));
+    handler.move(at(110, 40));
+    handler.up(at(110, 40));
+    expect((history.current.elements[0] as unknown as { points: number[] }).points).toHaveLength(4);
+  });
+
+  // A real point under the label is pressed beside it and moves by the drag,
+  // from where it is, not from where its handle is drawn.
+  it('moves a bent arrow\'s middle point from its handle beside the label', () => {
+    const history = createHistory({
+      elements: [{ id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, points: [0, 0, 100, 0, 200, 0], label: 'x' }] as never,
+    });
+    const selection = createSelection();
+    selection.click('a');
+    const handler = createPointerHandler({
+      history, selection, tools: createTools(), handleSize: () => 4, pointHandle: () => 10, labelBounds: () => ({ x: 70, y: -10, w: 60, h: 20 }),
+    });
+    expect(handler.hoveredHandle(at(140, 0))).toEqual({ x: 140, y: 0 });
+    handler.down(at(140, 0));
+    handler.move(at(140, 30));
+    handler.up(at(140, 30));
+    const arrow = history.current.elements[0] as unknown as { x: number; y: number; points: number[] };
+    const drawn = arrow.points.map((v, i) => v + (i % 2 === 0 ? arrow.x : arrow.y));
+    expect(drawn).toEqual([0, 0, 100, 30, 200, 0]);
   });
 
   it('bends an arc from the middle of its curve, not of its chord', () => {

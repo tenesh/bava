@@ -8,7 +8,8 @@
  * A conflict (another program wrote the file) pauses autosave rather than
  * prompting. A dialog appearing mid-sentence because a background save found
  * a conflict is worse than no autosave. The status bar says so, and the next
- * save the user makes by hand decides the conflict and resumes it.
+ * save the user makes by hand decides the conflict and resumes it. A save
+ * that fails, or that Go refuses, pauses it the same way.
  */
 export type AutosaveMode = "off" | "afterDelay" | "onFocusChange";
 
@@ -57,6 +58,9 @@ export function createAutosave(options: AutosaveOptions) {
       try {
         const outcome = await save();
         if (outcome.conflict) pauseReason = "conflict";
+        // Refused (Go answered and wrote nothing): the next try fails the
+        // same way, so it pauses as a failed save does.
+        else if (!outcome.saved) pauseReason = "error";
       } catch {
         // Nothing awaits a timer. Pause and say so, rather than retrying into
         // the same failure on every keystroke.
@@ -77,7 +81,7 @@ export function createAutosave(options: AutosaveOptions) {
       return pauseReason !== null;
     },
 
-    /** Why autosave stopped: another program wrote the file, or a save failed. */
+    /** Why autosave stopped: another program wrote the file, or a save failed or was refused. */
     get pauseReason(): "conflict" | "error" | null {
       return pauseReason;
     },

@@ -43,3 +43,38 @@ describe('NewSpaceDialog', () => {
     expect(handlers.onChooseLocation).toHaveBeenCalled();
   });
 });
+
+// The dialog is modal, so a refusal told only in the status bar sat behind
+// its backdrop: it is told beside the name, and the dialog stays.
+describe('NewSpaceDialog refusing a name', () => {
+  const refusal = 'A folder named Acme is already there.';
+
+  async function refused() {
+    const { handlers } = setup('/Users/me/Work');
+    handlers.onCreate.mockResolvedValue(refusal);
+    await vi.waitFor(() => expect(field()).not.toBeNull());
+    type('Acme');
+    button('Create').click();
+    await vi.waitFor(() => expect(document.querySelector('[role="alert"]')?.textContent).toBe(refusal));
+    return handlers;
+  }
+
+  it('says why under the name and stays open', async () => {
+    const handlers = await refused();
+    expect(handlers.onOpenChange).not.toHaveBeenCalledWith(false);
+    expect(field().getAttribute('aria-invalid')).toBe('true');
+    expect(field().getAttribute('aria-describedby')).toBe(document.querySelector('[role="alert"]')!.id);
+  });
+
+  it('puts the keyboard back in the name', async () => {
+    await refused();
+    expect(document.activeElement).toBe(field());
+  });
+
+  it('drops the refusal once the name changes', async () => {
+    await refused();
+    type('Acme 2');
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+    expect(field().hasAttribute('aria-invalid')).toBe(false);
+  });
+});

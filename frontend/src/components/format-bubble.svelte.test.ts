@@ -66,6 +66,14 @@ describe('FormatBubble from the keyboard', () => {
     expect(document.querySelector('[aria-label="Turn into"]')).toBeNull();
   });
 
+  it('leaves out the marks the line cannot take', async () => {
+    render(FormatBubble, { at: { left: 0, top: 0 }, active: {}, offered: { bold: false, link: false }, onCommand: vi.fn() });
+    await vi.waitFor(() => expect(document.querySelector('[role="toolbar"] button')).not.toBeNull());
+    expect(document.querySelector('[aria-label="Bold"]')).toBeNull();
+    expect(document.querySelector('[aria-label="Link"]')).toBeNull();
+    expect(document.querySelector('[aria-label="Italic"]')).not.toBeNull();
+  });
+
   it('gives focus back on Escape', async () => {
     const { props, buttons } = setup();
     await placed(buttons);

@@ -132,12 +132,17 @@ describe('autosave', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
-  it('keeps going after a save that failed for another reason', async () => {
+  // Go answered and wrote nothing: retrying on every edit would fail the same
+  // way, with the page left "unsaved" and nothing said.
+  it('pauses, as for a failed save, when the save is refused', async () => {
     const { save, edit, autosave } = setup('afterDelay');
     save.mockResolvedValueOnce({ conflict: false, saved: false });
     edit();
     await vi.advanceTimersByTimeAsync(1000);
-    expect(autosave.paused).toBe(false);
+    expect(autosave.pauseReason).toBe('error');
+    edit();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(save).toHaveBeenCalledTimes(1);
   });
 });
 
