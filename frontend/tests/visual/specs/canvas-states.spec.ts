@@ -15,7 +15,6 @@ import {
   openKinds,
   openPage,
   popovers,
-  restOffCanvas,
   restPointer,
   selectionToolbar,
   shot,
@@ -35,10 +34,25 @@ for (const theme of THEMES) {
       for (const [kind, point] of Object.entries(points)) {
         await page.keyboard.press('Escape');
         await clickScene(page, point);
-        await restOffCanvas(page);
+        await restPointer(page);
         await expect(selectionToolbar(page)).toBeVisible();
         await shotPane(canvasPane(page), shot('canvas-states', 'selected', kind, theme));
       }
+    });
+
+    // A hover disc goes when the pointer leaves the canvas, even straight
+    // from the handle it was drawn on: the picture is the arrow selected with
+    // nothing hovered.
+    test('a handle hovered as the pointer leaves the canvas is not left drawn', async ({ page }) => {
+      const points = await openKinds(page, theme);
+      // The arrow's middle: the click selects it and leaves the pointer on its middle handle.
+      await clickScene(page, points.arrow);
+      await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+      // Out of the canvas in one move, with no move over empty canvas between.
+      await page.mouse.move(0, 0);
+      await restPointer(page);
+      await expect(selectionToolbar(page)).toBeVisible();
+      await shotPane(canvasPane(page), shot('canvas-states', 'selected', 'arrow', theme));
     });
 
     test('everything selected, with the toolbar', async ({ page }) => {
@@ -47,7 +61,7 @@ for (const theme of THEMES) {
       await openPage(page, CANVAS_PAGE);
       await menu(page, 'view.canvas');
       await menu(page, 'edit.selectAll');
-      await restOffCanvas(page);
+      await restPointer(page);
       // Nodes counts what is on the canvas: three shapes and an arrow.
       await expect(page.locator('footer')).toContainText('Nodes 4');
       await expect(selectionToolbar(page)).toBeVisible();
@@ -59,7 +73,7 @@ for (const theme of THEMES) {
       await dragScene(page, { x: 70, y: 30 }, { x: 480, y: 160 }, { hold: true });
       await shotPane(canvasPane(page), shot('canvas-states', 'marquee', 'dragging', theme));
       await page.mouse.up();
-      await restOffCanvas(page);
+      await restPointer(page);
       await expect(selectionToolbar(page)).toBeVisible();
       await shotPane(canvasPane(page), shot('canvas-states', 'selected', 'several', theme));
     });
@@ -79,7 +93,7 @@ for (const theme of THEMES) {
       await menu(page, 'canvas.editPoints');
       // The bend at the top of the line.
       await clickScene(page, { x: 580, y: 60 });
-      await restOffCanvas(page);
+      await restPointer(page);
       // In point editing, the toolbar no longer offers it.
       await expect(selectionToolbar(page).getByRole('button', { name: 'Edit points' })).toHaveCount(0);
       await shotPane(canvasPane(page), shot('canvas-states', 'points', 'editing', theme));
