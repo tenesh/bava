@@ -1,5 +1,7 @@
 # Brand: decisions
 
+> Historical: implemented (or superseded); kept as the record.
+
 From the Claude Design brand handover (v3), received 2026-09-17. The design
 folders outside the repo are temporary; **the repo holds the only copies the
 product depends on**:

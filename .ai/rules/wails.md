@@ -9,10 +9,11 @@ like alpha or v2 is wrong here.
 The pinned beta tag is in `go.mod`. Wails cuts near-nightly betas, so `@latest`
 today and `@latest` next week are different builds. Never float the version.
 
-## Vendored docs win
-`docs/wails-v3/` is pinned to our version. Context7 serves whatever is current
-upstream, which may be ahead of us. When they disagree, the vendored copy is
-right.
+## No vendored docs
+The Wails docs are not vendored: there is no `docs/wails-v3/`. Use Context7
+or the upstream docs, and remember both serve whatever is current, which may
+be ahead of the pinned beta. When they disagree with the code, read the pinned
+module's source (`go list -m -f '{{.Dir}}' github.com/wailsapp/wails/v3`).
 
 ## Desktop only
 `build/android/` and `build/ios/` were stripped from the template
@@ -26,7 +27,7 @@ command that compiles the root package (`go vet`, `go test ./... .`,
 `go build`) fails with:
 
 ```
-main.go:17:12: pattern all:frontend/dist: no matching files found
+main.go:<line>:12: pattern all:frontend/dist: no matching files found
 ```
 
 It looks like a Go problem and is not. Run the frontend build first. This hides
@@ -52,8 +53,11 @@ The webviews differ (WKWebView, WebView2, WebKitGTK), and so do the build
 toolchains. Never report "builds on all platforms" without a CI matrix result.
 
 ## Keep the native surface thin
-File I/O, window management, menus, and the D2 pipeline. Everything else lives
-in the frontend. The thinner this layer, the cheaper a shell swap would be if
+File I/O, Spaces (`internal/space`), window management, menus, the D2
+pipeline, logs, the clipboard image (`FileService.ClipboardImage`), and the
+one web fetch Bava makes, a web card's details on the user's paste or Refresh
+(`internal/web`, `SpaceService.FetchCard`). Everything else lives in the
+frontend. The thinner this layer, the cheaper a shell swap would be if
 the beta churn ever becomes untenable.
 
 ## Menu role items need a running application
@@ -94,10 +98,12 @@ On Linux it clears and rebuilds GMenu without marshalling to the main thread.
 Call it only when the menu's structure changed, inside `application.InvokeSync`.
 `SetChecked` and `SetEnabled` reach native items on their own.
 
-## Not yet verified at a running window
-Every menu path passes its tests, but none has been exercised in a running
-webview on macOS, Windows or Linux. Until someone has, treat a report that a
-menu item or shortcut does nothing as a plausible bug, not user error.
+## Native menus are not verified on Windows or Linux
+The menus have been seen at a running window on macOS. CI's smoke runs drive
+menu commands on all three platforms, but they dispatch `menu:command` in the
+page and never press a native menu item or accelerator. Until someone has on
+Windows and Linux, treat a report there that a menu item or shortcut does
+nothing as a plausible bug, not user error.
 
 ## A stale Assets.car silently keeps the template icon
 `Info.plist`'s `CFBundleIconName` resolves through `Assets.car`, which wins
@@ -114,7 +120,7 @@ square). Run it once per platform and pass an empty filename for the other
 output: an empty `-windowsfilename ""` skips that platform.
 
 ## The macOS title bar draws over the page
-`MacTitleBarHiddenInset` sets `FullSizeContent`, so the traffic lights sit on
+`MacTitleBarHidden` sets `FullSizeContent`, so the traffic lights sit on
 top of the webview's top-left corner. Nothing in Wails reserves that space; the
 title bar does, through `--size-titlebar-inset-start`, set only under
 `:root[data-platform='darwin']`.

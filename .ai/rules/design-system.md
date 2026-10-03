@@ -22,6 +22,7 @@ under `:root[data-theme="dark"]`, and the app sets `data-theme` on `<html>`.
 | `_elevation.scss` | shadows and overlay layering |
 | `_motion.scss` | durations and easings |
 | `_z.scss` | named stacking levels; see Stacking below |
+| `_swatches.scss` | the shape swatches, `--swatch-<name>-fill`, `-stroke`, `-text`, in both themes; see Inventory |
 
 **Colour tokens are semantic, never literal.** `--color-surface-raised`, not
 `--color-gray-100`. `--color-border-subtle`, not `--color-gray-300`. Literal
@@ -50,10 +51,6 @@ Two are additions rather than design values, both evidenced by usage rather
 than invented: **`text-prose`** (document body copy, softer than
 `text-primary`) and **`focus-halo`** (the halo the design's focus recipe
 describes in prose but never names).
-
-**No hover or pressed tokens exist yet.** The mockups contain no such states:
-checked, rather than assumed. They arrive with the first component that needs
-one, which is what this file already says to do.
 
 **Shape colours are not tokens.** The swatches in the design's colour picker
 are content a user chooses per element; they live in the scene file, not
@@ -164,7 +161,6 @@ change how components and their tests are written:
 - **Popups unmount when closed** (`lazyMount unmountOnExit`). Ark closes
   content with `hidden`, and any `display` rule on the content overrides it:
   the shape menu sat open over the window controls that way.
-
 - **Presentational only.** No IPC calls, no file access, no D2 knowledge, no
   product logic inside `components/`. A component receives props and emits
   events.
@@ -230,9 +226,7 @@ check both before building either by hand.
 | `ContextMenu` ✓ | A menu opened at a point, wrapping Ark's Menu, with nested submenus. Used for right-click and More. Tree in `canvas/context-menu.ts`. |
 | `Tooltip` ✓ | Names a control (and its key) on hover and keyboard focus, wrapping Ark's Tooltip. It renders the button itself, or wraps a control the caller renders through `trigger`, which avoids a button inside a button. |
 | `ToolIcon` ✓ | Interface icons by id: Lucide (ISC), plus the in-house parallelogram. |
-| `Toolbar` | Contextual: changes with the current selection. |
-| `LayoutEnginePicker` ✓ | TALA, Dagre or ELK over `Segments`, with a direction control, hidden while TALA is chosen (TALA ignores direction), when a line says TALA chooses its own direction; the one place that rule lives in the interface. In the Diagram from Code dialog; per `diagram` element when that element exists, never per canvas. |
-| `ErrorList` | D2 compiler diagnostics, click-to-jump to source line. |
+| `LayoutEnginePicker` ✓ | TALA, Dagre or ELK over `Segments`, with a direction control, hidden while TALA is chosen (TALA ignores direction), when a line says TALA chooses its own direction; the one place that rule lives in the interface. In the Diagram from Code dialog, never per canvas. |
 | `EmptyState` ✓ | Repeated across file tree, canvas, search, and the no-file window. `mark` adds the faded brand mark for "nothing open yet"; `hints` lists keys beside what they do. |
 | `Splash` ✓ | The launch cover: one centred column of mark, wordmark, indeterminate `Progress` and a status line; the footer at the bottom. The caller decides when startup is over. |
 | `Progress` ✓ | Wraps Ark's Progress. `value: null` is indeterminate: use it whenever nothing reports real progress. |
@@ -248,7 +242,7 @@ check both before building either by hand.
 | `Toggle` ✓ | An on/off setting, wrapping Ark's Switch; `variant="row"` puts the label first and the switch at the row's end. Disabled rather than hidden when it does not apply, so it still explains itself. |
 | `Disclosure` ✓ | A collapsed-by-default section, wrapping Ark's Collapsible. Unused for now; kept for the document's toggle blocks. |
 | `AboutDialog` ✓ | Centred: mark, title, tagline, licence, Close. No version shown yet. |
-| `Icon` ✓ | Single sprite wrapper so icon sizing is tokenised. No set is bundled until Milestone 9. |
+| `Icon` ✓ | Single wrapper taking an SVG path, so icon sizing is tokenised. Lucide is bundled for interface icons, through `ToolIcon` (`tool-icons.ts`). |
 
 ✓ marks what exists. Build the rest as screens need them, not upfront: an
 unused component is an unmaintained one.
@@ -288,11 +282,13 @@ The wordmark is lowercase `bava` in Geist Medium (`--text-wordmark`,
 ## Theme and the diagram
 
 Scene elements are drawn by the frontend and take their colours from tokens
-like everything else. **`diagram` elements are the exception**: their SVG is
-rendered in Go and does **not** inherit CSS. The active theme's colour tokens
-are passed to `Render` as options and applied by D2's theme system. **A theme
-change must update both**: chrome via CSS custom properties, every diagram
-element via a re-render.
+like everything else, and so does a diagram inserted from code: it arrives as
+ordinary shapes in Bava's own style. The one D2 SVG left is the Diagram from
+Code dialog's preview, rendered in Go, which does **not** inherit CSS.
+`Render` accepts the theme's colours (`opts.theme`), but the frontend never
+sends them (`ipc/render.svelte.ts` sends only the engine and direction), so
+the preview draws in D2's own colours and a theme change does not re-render
+it.
 
 The mapping lives in `internal/render/theme.go`, and D2's palette has a trap in
 it: the neutrals `N1`–`N7` carry **text and canvas**, while the `B` and `A`
@@ -303,11 +299,9 @@ whichever shape type happens to use it: a cylinder nested in a container, or a
 person shape, long after the theme looked right on a rectangle. That one was
 caught by looking at a golden, not by a passing test.
 
-Consequence: adding a colour token that the diagram uses means updating the
-Go-side theme mapping in the same change. Tokens the chrome alone uses do not.
-
-Watch for the canvas lagging the chrome by one render on theme toggle; that
-is the symptom of the two paths being updated in the wrong order.
+Consequence: if the preview is themed, adding a colour token the diagram uses
+means updating the Go-side theme mapping in the same change. Tokens the
+chrome alone uses do not.
 
 ## Adding a component
 
@@ -319,13 +313,16 @@ is the symptom of the two paths being updated in the wrong order.
 5. Keyboard and focus states before visual polish.
 6. Check both themes.
 7. Add it to the inventory table above in the same change.
+
 ## `:global()` belongs to Svelte, not to stylesheets
+
 In a `.svelte` component it scopes a rule outward. In a plain stylesheet under
 `styles/`, sass emits it verbatim and the browser drops the whole rule: four
 code-editor rules were dead that way. Use plain descendant selectors there;
 `no-literals.test.ts` compiles the stylesheet and fails on `:global`.
 
 ## Everything that floats closes on a press elsewhere
+
 A menu, picker, field, card or dialog closes when the pointer goes down
 anywhere outside it: on the page's own text, or outside the page. Ark's
 pieces do this themselves; a hand-built one uses `pressAway`
@@ -333,7 +330,7 @@ pieces do this themselves; a hand-built one uses `pressAway`
 (the page, for the menus that follow typing). What a press elsewhere does
 to what was typed is chosen per field: a link field changes nothing, as
 Escape does; a caption, a name or an equation keeps what was typed. The
-walk in `tests/visual/specs/click-away.spec.ts` checks each; a new floating
+walk in `frontend/tests/visual/specs/click-away.spec.ts` checks each; a new floating
 piece gets a row there. The Find bar is the one exception: it stays until
 closed, as a browser's does.
 

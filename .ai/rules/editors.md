@@ -35,8 +35,7 @@ component per block.
 - **Code in the page is page text, not an editor inside the page.** A code
   block is ProseMirror text coloured by decorations from the canvas code
   blocks' own parsers (`canvas/code/highlight.ts` `toRanges`), so undo is one
-  history and focus never moves between editors. The section below on an
-  embedded CodeMirror applies only if a diagram block is built.
+  history and focus never moves between editors.
 - **Folding is not page content.** Which toggles are folded lives in
   decorations (`docs/fold.ts`) and in `localStorage` per page, inside
   try/catch; a fold must never be an attribute, or folding would mark the
@@ -130,28 +129,9 @@ component per block.
   menu can focus itself in the frame an item is chosen, taking focus back
   from whatever the item opened.
 
-## The diagram block
-A diagram is a custom ProseMirror node type whose NodeView hosts a CodeMirror
-instance holding the D2 source, plus a container for the rendered SVG.
-
-**Read ProseMirror's own embedded code-editor example before changing this
-seam.** It solves three things that are non-obvious and easy to get subtly
-wrong:
-
-- **Escaping the inner editor.** Arrow-up on CodeMirror's first line must move
-  the cursor into the ProseMirror doc above, not sit there. Wired via
-  CodeMirror keymap handlers dispatching ProseMirror selection transactions.
-- **Undo across the boundary.** Two independent history plugins make Ctrl+Z
-  unpredictable. CodeMirror changes are forwarded as ProseMirror transactions
-  so there is one history.
-- **Focus tracking.** Which editor is active, so toolbars and menus reflect
-  the right context.
-
-Budget real time here. It is the fiddliest part of the frontend and plausible-
-looking wrong implementations are easy to produce.
-
 ## Compiler errors
-D2 diagnostics come back from `Render` with positions. Surface them through
-`@codemirror/lint` in the source pane and in `ErrorList`. Clicking a
-diagnostic jumps to the line; that mapping comes from the render response,
-never from re-parsing in the frontend.
+D2 diagnostics come back from `Render` with positions, in the Diagram from
+Code dialog. `editor/diagnostics.ts` maps them onto `@codemirror/lint` in the
+dialog's source pane, and the dialog lists them under the preview by line.
+The positions come from the render response, never from re-parsing in the
+frontend.

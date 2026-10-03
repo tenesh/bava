@@ -12,31 +12,17 @@ that happens the instinct is to blame the webview; it is this.
 Data flows in, events flow out. **No reactive state holds geometry.**
 
 ## The scene is the source of truth for position
-Every element carries its own `x, y, w, h, z`. Nothing computes them. The one
-exception is the interior of a `diagram` element, where the D2 layout engine
-decides where nodes sit, and that interior is opaque to the scene except
-through the bounds the render response returns.
+Every element carries its own `x, y, w, h, z`. Nothing computes them. A
+diagram from D2 is laid out once, by Diagram from Code, and converted into
+ordinary elements; after that no layout engine moves anything.
 
-## Bindings resolve through node ids, never coordinates
-An arrow bound into a diagram stores `{element, node, side}`. `node` is a D2
-absolute id from `nodeMap`, derived from source text and stable across
-re-layout. Storing a coordinate instead would break on the next render.
-
-Endpoints are recomputed on every render: node rect in diagram-local space,
-transformed by the diagram element's position and scale.
-
-**A broken binding is never silently dropped.** If the node disappears from the
-source, the arrow stays, freezes at its last position, and is marked detached.
-The user drew it; it is not ours to delete.
-
-## Diagram elements are rasterised into the stage
-Not kept as live SVG DOM. A DOM layer inside a canvas stage fights z-order and
-transforms, and the node bounds from the render response give hit-testing
-everything it needs. A click inside a diagram resolves against the bounds index
-to a node id, the same key used for bindings and jump-to-source.
+## A broken binding is never silently dropped
+A binding is the target element's id. If the target is deleted, the arrow
+stays, its end freezes at its last position, and it is marked detached. The
+user drew it; it is not ours to delete.
 
 ## Canvas text is measured in the frontend, and the measurement is stored
-Text inside a D2 diagram is measured in Go, as before. Canvas text cannot be:
+D2 measures its own text in Go when it lays out a diagram. Canvas text cannot be:
 the frontend owns that layout.
 
 The old hazard has not gone away: WebKitGTK and WebView2 disagree on glyph
@@ -47,15 +33,19 @@ dimensions are written into the file**, so reopening a scene restores the
 layout instead of re-deriving it.
 
 ## Stale responses must be dropped
-Render requests for diagram elements are debounced 250ms and tagged with an
-incrementing id. Responses whose id is not the latest are discarded. Without
-this, a slow render can land after a faster later one and the diagram flickers
-between states, a symptom that looks like a layout bug and is not.
+Render requests from the Diagram from Code preview are debounced 250ms and
+tagged with an incrementing id. Responses whose id is not the latest are
+discarded. Without this, a slow render can land after a faster later one and
+the preview flickers between states, a symptom that looks like a layout bug
+and is not.
 
-## Undo is one history
-Scene mutations, diagram source edits and AI edits all enter through the same
-transaction path. Two histories make Ctrl+Z unpredictable, and the first thing
-a user does after a change they dislike is press Ctrl+Z.
+## The canvas has one history
+Every canvas change (a drag, a tool, an inserted diagram, and AI edits when
+they come) enters through `history.mutate`. Each editor (the page, a code
+block's editor, Diagram from Code's source) keeps its own history, and ⌘Z goes
+to whichever holds focus (`shell/edit-target.ts`; see `editors.md`). Two
+histories behind one focus make Ctrl+Z unpredictable, and the first thing a
+user does after a change they dislike is press Ctrl+Z.
 
 ## Konva needs a 2D context, which jsdom does not have
 Canvas tests run under jsdom with `vitest-canvas-mock` (pure JS), wired in
@@ -127,25 +117,24 @@ deletes them and their outermost groups in one step. A group is hit only
 through its children, never its own box.
 
 ## Canvas shortcuts are scoped to the canvas
-Arrange, align, distribute, flip, duplicate and copy/paste styles are
-`scope: "canvas"` in the menu spec: page shortcuts that act only when the
-canvas is the edit target. ⌘] indents in the source editor, ⇧H types a capital.
-
+Bring Forward, Send Backward, Flip, Duplicate, Edit Points, Lock and Snap to
+Objects are `scope: "canvas"` in the menu spec: page shortcuts that act only
+when the canvas is the edit target. Align, distribute and copy/paste styles
+have no shortcut. Elsewhere the key keeps its meaning: ⇧H types a capital.
 
 ## A locked element is skipped by everything that selects
 `locked: true` removes an element from `elementsAt`, the marquee, Select All
 and `erasableAlong`, so no edit can reach it: commands act on the selection,
 and it can never be in one. It still draws and still exports. The only way
-back is Unlock All (`⌥⇧⌘L`, or right-click on empty canvas), which clears the
-flag on every locked element in one step.
+back is Unlock All (the Canvas menu, or right-click on empty canvas; it has no
+shortcut), which clears the flag on every locked element in one step.
 
 ## Sizes are tokens; shapes of curves are constants
 A length that appears on screen is a `--size-*` or `--radius-*` token, read
 through `number(read, …)`. A dimensionless ratio that describes a curve's shape
-(`ROUND_SHARE`, `LINE_TENSION`, `ARC_BOW`, `ARC_STEPS`) stays a named constant
-beside the drawing code: it does not scale with the theme and nothing outside
-that file can use it.
-
+(`ROUND_SHARE` and `LINE_TENSION` in `paint.ts`, `SEGMENT_SAMPLES` in
+`curves.ts`, `CORNER_STEPS` in `arrows.ts`) stays a named constant beside the
+drawing code: it does not scale with the theme.
 
 ## A rotated element is tested where it is drawn
 `angle` turns an element about its own centre; `x`, `y`, `w` and `h` stay the
@@ -204,8 +193,9 @@ element's position at the press, so every one of them shifts by the delta
 exactly once however the selection was expanded.
 
 The trap it leaves: any future edit that walks members and *then* expands
-groups would apply a delta twice. `carriedWith` is the one expansion, and it
-de-duplicates by id; add a second one and this is what breaks.
+groups would apply a delta twice. `withContents` (below) is the one
+expansion, and it de-duplicates by id; add a second one and this is what
+breaks.
 
 ## Conversion is pure, and what it makes is ordinary
 `canvas/import/` turns a D2 layout into elements: geometry in, elements out,
@@ -259,8 +249,8 @@ click in the empty space clears. Deciding at the press made Shift-click unable
 to remove and made a drag from inside a selection drop it.
 
 ## Frames and groups go wherever their owner goes, through one walk
-`withContents` in `edit.ts` (and `carriedWith`, its form over scene data)
-expands groups to their children and frames to their contents, all the way
+`withContents` in `edit.ts` (`carriedWith` in `containment.ts` is the same
+walk over scene data, not a second one) expands groups to their children and frames to their contents, all the way
 down. Every command that moves, mirrors, copies or restacks uses it; a command
 using `withDescendants` alone leaves a frame's contents behind, which is how
 align, flip, duplicate and Bring to Front each shipped broken. The one

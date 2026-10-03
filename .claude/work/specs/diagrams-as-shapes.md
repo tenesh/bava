@@ -1,5 +1,7 @@
 # Diagrams become free shapes: decisions
 
+> Historical: implemented (or superseded); kept as the record.
+
 Opened 2026-09-17. Changes the diagram model in
 `.claude/work/specs/canvas-architecture.md`, and with it Milestones 6 and 7,
 `docs/file-format.md` and `docs/ipc.md`. Those are rewritten once the open

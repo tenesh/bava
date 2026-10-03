@@ -1,5 +1,7 @@
 # Launch: decisions
 
+> Historical: implemented (or superseded); kept as the record.
+
 From the brand handover's sheets 4a/4b (launch window) and 4c (no file open),
 reviewed 2026-09-17. The sheets are reference; these decisions are the spec.
 

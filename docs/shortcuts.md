@@ -23,9 +23,10 @@ kinds, all declared in `spec.json`:
   `⌘,` `⌘=` `⌘-` are real menu accelerators instead (`nativeOn`), since AppKit
   matches them correctly.
 - **Canvas-scoped shortcuts** (`scope: "canvas"`: Bring Forward, Send
-  Backward, Flip, Duplicate and Lock) act only while the canvas has the
-  keyboard. Anywhere else the key keeps its own meaning: `⌘]` indents in the
-  source editor, and `⇧H` types a capital H.
+  Backward, Flip, Duplicate, Edit Points, Lock and Snap to Objects) act only
+  while the canvas has the keyboard. Anywhere else the key keeps its own
+  meaning: `⌘]` indents in Diagram from Code's source editor, and `⇧H` types a
+  capital H.
 - **Hints** (single keys, and `⌫` for Delete) are never bound: a native
   accelerator on a bare key would steal it from every text field. The canvas
   handles them itself, only while no text field has focus.
@@ -81,11 +82,10 @@ Shortcuts) lists the rest.
 | Canvas | Snap to Objects | `⌥S` | `Alt+S` |
 
 Undo, Redo, Cut, Copy, Paste, Select All and Delete go wherever focus is: the
-source editor with focus (the document's, or the one in Diagram from Code), a
-code block's editor, a text field, or the canvas; and nowhere while a dialog
-without an editor has focus or the canvas is hidden. Every editor drops its
-own bindings for keys the menu owns, the window's items included, so a key
-press has one meaning.
+source editor in Diagram from Code, a code block's editor, the page, a text
+field, or the canvas; and nowhere while a dialog without an editor has focus
+or the canvas is hidden. Every editor drops its own bindings for keys the
+menu owns, the window's items included, so a key press has one meaning.
 
 ## Bound by native roles
 
@@ -109,7 +109,7 @@ no menu item takes them. A test in `spec_test.go` fails if the menu takes one.
 ## Canvas keys
 
 Not in the menu. Active while the canvas has focus, ignored while a text field
-or the source editor has it.
+or Diagram from Code's source editor has it.
 
 | Key | Action |
 |---|---|
@@ -256,7 +256,7 @@ took. Shapes, strokes, moves and resizes draw live while you drag.
 The shapes without a key (diamond, cylinder, hexagon, parallelogram, document,
 person, cloud) are in the insert panel (the rail's +) and in Canvas ▸ Tools.
 
-## Not yet implemented
+## Caveats
 
 - The Delete hint shows `⌫` on every platform; Windows and Linux users read it
   as Backspace, which is what it does.

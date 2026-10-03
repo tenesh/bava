@@ -3,10 +3,10 @@
 What Bava writes to disk, and the rules that keep it readable for longer than
 Bava exists.
 
-**Status:** specified 2026-09-17, ahead of the code that writes it. Milestone 5
-implements the canvas half; the `diagram` element and the document half are
-specified here so that a file written today survives being opened by the
-version that adds them.
+**Status:** specified 2026-09-17, ahead of the code that writes it. Both
+halves are built: the canvas block and the document (below). There is no
+`diagram` element: Diagram from Code converts D2 into ordinary shapes and
+arrows, and keeps no source.
 
 ## The shape
 
@@ -36,8 +36,8 @@ More prose.
 Three parts, in this order:
 
 1. **Prose**: ordinary Markdown. What every other editor sees first.
-2. **Diagram blocks**: fenced `d2`, with an `id` in the info string. Readable
-   and reviewable anywhere, and valid D2 that other tools can compile.
+2. **Diagram blocks**, if the user wrote any: fenced `d2`, part of the prose
+   and kept as written. No element refers to them.
 3. **The canvas block**: one fenced `bava-canvas` block, last in the file.
 
 ### Why one file rather than a sidecar
@@ -54,8 +54,7 @@ actions, and every Markdown tool preserves a fenced block whose language it
 does not recognise.
 
 This holds with Spaces (below). A Space's `.bava/` folder keeps what belongs
-to the Space as a whole (page order, the Trash, and from Milestone 8.4
-attachments), never a page's text or canvas. The one thing that can be
+to the Space as a whole (page order, the Trash and attachments), never a page's text or canvas. The one thing that can be
 separated from a page copied on its own is its attachments: a trade-off
 accepted knowingly (`.claude/work/specs/08-documents.md`, decision 10),
 never silent (a missing attachment says so), and covered by exporting the
@@ -531,22 +530,10 @@ editor should reach the end of the writing before they reach the data.
 Minified JSON is one enormous line, and one enormous line makes every git diff
 useless. Readability of the *diff* is what matters here, not of the JSON.
 
-### Diagram source stays readable
-> **Superseded 2026-09-17** (`.claude/work/specs/diagrams-as-shapes.md`): D2
-> now generates a diagram once and it is converted into ordinary shapes, so no
-> element references a `d2` block. Milestone 6.6 rewrites this section. Fenced
-> `d2` blocks a person writes in prose are still kept as they are.
-
-A `diagram` element's D2 lives in its own fenced `d2` block in the prose, not
-escaped into a JSON string. The canvas block references it by the `id` in the
-fence info string, and stores only placement:
-
-```json
-{ "id": "e7", "type": "diagram", "block": "write-path", "x": 320, "y": 80, "w": 400, "h": 260, "z": 3 }
-```
-
-This is what keeps the promise that deleting Bava leaves the diagrams
-reviewable in any editor.
+### Fenced `d2` blocks are prose
+A fenced `d2` block a person writes in the prose is kept exactly as written.
+No element refers to it: a diagram inserted with Diagram from Code is
+ordinary shapes and arrows, and its D2 source is not kept.
 
 ### Unknown keys and unknown element types are preserved
 A file written by a newer Bava must survive being opened, edited and saved by
@@ -570,14 +557,14 @@ scene differently on another machine. The stored measurement is authoritative;
 it is recomputed only when the text itself changes.
 
 ### Bindings reference ids, never coordinates
-An arrow bound to a node inside a diagram stores the node's D2 absolute id.
-Ids come from source text and survive re-layout; coordinates do not. A binding
+An arrow attached to an element stores that element's `id` in `startBinding`
+or `endBinding`. Ids survive a move; coordinates do not. A binding
 whose target no longer exists is kept, marked detached, and never silently
 deleted: the user drew it.
 
 ### Ids are stable within a file
 An element's `id` is unique within its file and does not change once written.
-Bindings and diagram-block references depend on it.
+Bindings and frame membership depend on it.
 
 ## Elements
 
@@ -823,8 +810,7 @@ the folder, so a teammate who opens the same folder sees the same order.
   ones, by name; a listed name that no longer exists is left out, and dropped
   from the file on the next write. Absent means every folder is by name.
 - `pageWidth`: `narrow`, `wide` or `full`, the Space's default for its pages.
-  Absent means the user's own app setting (arriving with the document
-  editor; until then, absent changes nothing).
+  Absent means the user's own app setting.
 - **Unknown keys are kept** through every write, as elsewhere.
 - Written whole and atomically, like a page.
 
@@ -889,9 +875,9 @@ the whole Space.
 
 ## `.d2` files
 
-A standalone `.d2` file is exactly what it looks like: D2 source, nothing else.
-Bava opens it and shows the diagram. It has no canvas and no prose, and Bava
-writes nothing extra into it; another tool's `.d2` file goes home unchanged.
+**Not built.** Bava does not open a standalone `.d2` file as a diagram, and a
+Space's file list leaves `.d2` files out. Bava writes nothing into one, so
+another tool's `.d2` file is left unchanged.
 
 ## Round-trip tests are mandatory
 

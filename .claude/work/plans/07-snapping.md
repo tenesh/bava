@@ -5,7 +5,7 @@ Excalidraw's object snapping (edges, centres and equal spacing, with guides).
 
 **Specs:**
 - `.claude/plan/roadmap.md`, Milestone 7 (scope and exit criterion).
-- `.claude/work/specs/excalidraw-object-snapping.md` (Excalidraw at `5db42c3`:
+- `.claude/work/specs/research/excalidraw-object-snapping.md` (Excalidraw at `5db42c3`:
   rules, values, and the design for Bava this plan follows).
 - The user's answers (2026-09-27): off by default; Alt+S toggles it; every
   element snaps by its box ("use the box rule"), a departure from Excalidraw.
@@ -191,7 +191,7 @@ A grid; distance labels on guides; snapping lines, arrows, points or
 rotation; snapping to D2 diagram nodes inside a diagram element; guides in
 exports.
 
-## Verification at the window (owed by a human)
+## Verification at the window (checked by the user; mapped in 08.4a)
 With snapping off, drag with ⌘ held: shapes snap, guides show. Turn it on
 with Alt+S (the menu tick follows): drag, resize and draw rectangles against
 others, see edge, centre and equal-spacing guides; hold ⌘ to move freely.

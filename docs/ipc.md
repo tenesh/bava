@@ -1,12 +1,17 @@
 # IPC
 
-The frontend reaches Go through exactly one bound method. Every method here is
-API that must survive a Wails beta upgrade, so the surface stays small on
+The frontend reaches Go through six bound services, registered in `main.go`:
+`RenderService`, `FileService`, `SpaceService`, `ExportService`,
+`MenuService` and `LogService`, about thirty methods in all. Every method here
+is API that must survive a Wails beta upgrade, so the surface stays small on
 purpose.
 
-**Scope:** this surface renders `diagram` elements (the blocks that hold D2
-source) and nothing else. The canvas scene is drawn in the frontend and never
-round-trips through Go.
+**Scope of Render:** it serves Diagram from Code, and nothing else. It returns
+a preview SVG for the dialog and the layout the frontend converts into
+ordinary canvas shapes and arrows (`frontend/src/canvas/import/convert.ts`).
+The D2 source is not kept. The canvas scene is drawn in the frontend and never
+round-trips through Go. Exports are drawn in the frontend too
+(`frontend/src/canvas/export/`); `ExportService` only writes the result.
 
 ## Render
 
@@ -24,6 +29,7 @@ Registered as `RenderService` in `main.go`; generated bindings land in
 | `source` | string | D2 source text |
 | `opts.engine` | string | `tala` (default when empty), `dagre`, or `elk` |
 | `opts.direction` | string | `down`, `right`, `up`, `left`, or empty for none. Appended as a top-level `direction` only when the source sets none, so the code wins and diagnostics keep their lines. TALA ignores it. An unknown value is a returned error. |
+| `opts.theme` | object, optional | The diagram colours. Absent renders D2's own defaults, which is what the goldens expect. The frontend never sends it: it sends only `engine` and `direction`. |
 
 An unrecognised engine is a **returned error**, not a diagnostic: it is a bug
 in the caller, not a problem with the diagram. `direction` is deliberately not
@@ -36,23 +42,18 @@ type Result = {
   svg: string;                      // no XML declaration; empty on failure
   errors: Diagnostic[] | null;      // compile diagnostics
   nodeMap: Record<string, Span> | null;
+  layout: Layout;                   // geometry to build shapes from; empty on failure
 };
 
 type Diagnostic = { message: string; from: number; to: number; line: number };
 
-type Span = {
-  from: number; to: number; line: number;   // where in the source
-  x: number; y: number; w: number; h: number; // where in the rendered diagram
-};
+type Span = { from: number; to: number; line: number }; // where in the source
 ```
 
-The geometry half of `Span` is added in Milestone 6 and is not yet implemented;
-this document describes the contract the canvas is built against.
-
 **Errors are data, not exceptions.** Source that does not compile returns a
-successful call with `errors` populated and `svg` empty. The frontend keeps the
-last good diagram on screen; users type through invalid states constantly, and
-blanking the canvas on every half-finished line would be unusable. A returned
+successful call with `errors` populated and `svg` empty. The dialog keeps the
+last good preview on screen; users type through invalid states constantly, and
+blanking the preview on every half-finished line would be unusable. A returned
 `error` means the request itself was malformed.
 
 **Positions.** `from` and `to` are offsets in **UTF-16 code units** (the
@@ -63,18 +64,12 @@ of it. `line` is **1-indexed**; D2 reports 0-indexed lines and the conversion
 happens once, in Go. A position reaching the frontend 0-indexed, or measured in
 bytes, is a bug.
 
-**`nodeMap`** maps an SVG element id to both where the node was declared in the
-source and where it sits in the rendered diagram.
+**`nodeMap`** maps an SVG element id to where the node was declared in the
+source. It carries no geometry: that is in `layout`.
 
-Keyed by SVG id so click-on-node is a direct lookup; a diagnostic highlighting
-its shape is a reverse scan, which is cheap at the diagram sizes this canvas
-supports. Where an object is referenced several times, the span points at the
-**earliest** reference, which is the declaration.
-
-`x, y, w, h` are in **diagram-local** coordinates. A canvas arrow bound to a
-node resolves its endpoint by transforming that rect by the diagram element's
-own position and scale. The id is the anchor, never the coordinates: ids come
-from source text and survive re-layout, coordinates do not.
+Keyed by SVG id so click-on-node is a direct lookup. Where an object is
+referenced several times, the span points at the **earliest** reference, which
+is the declaration. The render client carries it; no screen reads it today.
 
 ### Debounce and staleness
 
@@ -83,18 +78,17 @@ Owned by the frontend client in `frontend/src/ipc/render.svelte.ts`:
 - 250ms of quiet before a request is issued.
 - Every request carries an incrementing id; responses whose id is not the
   latest are discarded. Without this a slow TALA render can land after a faster
-  later one and the diagram flickers between states, a symptom that looks like
+  later one and the preview flickers between states, a symptom that looks like
   a layout bug and is not.
 
 ### Rendering details fixed at the boundary
 
-- `NoXMLTag` is set: the canvas injects the string into a div it owns, where an
-  XML declaration is invalid.
+- `NoXMLTag` is set: the preview injects the string into a div it owns, where
+  an XML declaration is invalid.
 - `OmitVersion` is set: D2 stamps a build-time version that does not track the
   module version (it reports `v0.8.1-HEAD` while running v0.9.0), so recording
   it in a golden file would commit a false fact.
-- `Salt` is unset. It changes generated ids deterministically and is reserved
-  for giving each embedded diagram its own id namespace in Milestone 5.
+- `Salt` is unset. It changes generated ids deterministically.
 
 ### Layout
 
@@ -133,6 +127,31 @@ them beyond handing the parse to `internal/format`.
 | `ClipboardImage()` | the clipboard's image as PNG in base64, or empty when it holds none; read for a paste, since the webview hands the page text only |
 
 Opening a page allows its folder for the file route below.
+
+**A scene crosses the bridge whole.** `format.Scene` and `format.Element`
+implement their own JSON encoding, so every key an element has, known or not,
+reaches the frontend and comes back to be saved (fixed in Milestone 6: a plain
+decode dropped points, text and unknown keys). As a result Wails types `Scene`
+as `any` in the generated TypeScript; the frontend's own scene types in
+`canvas/scene.ts` describe it.
+
+**Errors are data.** A missing file, a permission denial, a malformed
+canvas block (all things the user can act on) come back in `error` rather
+than as a failed call. A returned error means the request itself was malformed.
+
+**A malformed canvas block still returns the prose.** Losing a whole document
+to one bad trailing block is the worst outcome available.
+
+**`stamp` is size and modification time**, taken when a file is read and passed
+back to `ChangedOnDisk`. Enough to notice another program writing the file, and
+cheap enough to check whenever the window regains focus. A content hash would
+be exact and would mean re-reading every open file on every focus change.
+The modification time, in nanoseconds, crosses as a decimal string
+(`modifiedUnixNano: "1790444150393195667"`): as a JSON number its 19 digits
+were rounded in JavaScript, and every file looked changed on disk (06.17).
+
+**Cancelling a dialog is not an error.** An empty path means the user changed
+their mind, which is a normal outcome and is not reported as a failure.
 
 ### `files:dropped` (Go → frontend)
 
@@ -224,32 +243,6 @@ silently created.
 **It is not part of `FileService`.** An export is a copy, not the user's
 document: nothing here touches the open file, its stamp or its history.
 
-**A scene crosses the bridge whole.** `format.Scene` and `format.Element`
-implement their own JSON encoding, so every key an element has, known or not,
-reaches the frontend and comes back to be saved (fixed in Milestone 6: a plain
-decode dropped points, text and unknown keys). As a result Wails types `Scene`
-as `any` in the generated TypeScript; the frontend's own scene types in
-`canvas/scene.ts` describe it.
-
-**Errors are data here too.** A missing file, a permission denial, a malformed
-canvas block (all things the user can act on) come back in `error` rather
-than as a failed call. A returned error means the request itself was malformed.
-
-**A malformed canvas block still returns the prose.** Losing a whole document
-to one bad trailing block is the worst outcome available.
-
-**`stamp` is size and modification time**, taken when a file is read and passed
-back to `ChangedOnDisk`. Enough to notice another program writing the file, and
-cheap enough to check whenever the window regains focus. A content hash would
-be exact and would mean re-reading every open file on every focus change.
-The modification time, in nanoseconds, crosses as a decimal string
-(`modifiedUnixNano: "1790444150393195667"`): as a JSON number its 19 digits
-were rounded in JavaScript, and every file looked changed on disk (06.17).
-
-**Cancelling a dialog is not an error.** An empty path means the user changed
-their mind, which is a normal outcome and is not reported as a failure.
-
-
 ## Menu
 
 Added in Milestone 5.6. The native menu bar is declared in
@@ -291,8 +284,13 @@ never guesses:
 | `showsFiles`, `showsAI` | pane checkboxes |
 | `theme` | Appearance radio |
 | `tool` | Tools radio |
-| `hasSelection` | enables Group, Ungroup, Bring to Front, Send to Back |
-| `objectSnap` | ticks Canvas ▸ Snap to Objects (Milestone 7) |
+| `hasSelection` | enables Group, Ungroup, Arrange, Flip, Duplicate, Align, Distribute, Copy Styles, Copy as, Export Selection and Lock |
+| `canPasteStyles` | with `hasSelection`, enables Paste Styles |
+| `hasLocked` | enables Unlock All |
+| `hasDocument` | enables Export |
+| `showsCanvas` | with `hasDocument`, enables File ▸ Diagram from Code |
+| `hasSpace` | enables New Folder, Trash and Space Settings |
+| `objectSnap` | ticks Canvas ▸ Snap to Objects |
 | `recents` | rebuilds Open Recent; empty shows a disabled placeholder |
 
 Checks and enabled state are set on the native items directly. The menu is
@@ -308,8 +306,8 @@ after `application.New`.
 ## LogService
 
 Added in Milestone 5.8. The frontend's way into Bava's own log. Nothing here
-leaves the machine: there is no upload, and Report Issue… stays hidden until
-Milestone 16 confirms the public tracker.
+leaves the machine: there is no upload, and Report Issue stays hidden until
+the public tracker exists.
 
 | Method | Returns |
 |---|---|

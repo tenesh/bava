@@ -1,5 +1,7 @@
 # Canvas rail, insert panel and selection toolbar: decisions
 
+> Historical: implemented (or superseded); kept as the record.
+
 Decided with the user on 2026-09-17 and 2026-09-18, from the user's Eraser
 screenshots (reference only; nothing reads them) and review of the running
 window. The screenshots are not vendored: they are another product's UI.

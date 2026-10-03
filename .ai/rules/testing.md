@@ -21,16 +21,29 @@ Golden SVGs are compared byte-for-byte, which only works because
 would make every golden fail on Windows for no real reason.
 
 ## What gets a failing test first
-Behavior: the compile/layout/render pipeline, file I/O, IPC handlers, parsing.
-Write the test from the spec, watch it fail, then implement.
+This file is the one home for this table. A red-first cycle proves something
+only for behaviour; for declarative scaffolding it proves nothing.
 
-Not scaffolding: migrations, config, bindings skeletons. Implement, then pin
-the outcome with a contract test.
+| Kind of work | Approach |
+|---|---|
+| Compile/layout/render pipeline, file I/O, IPC handlers, parsing | Failing Go test first. Write it from the spec, watch it fail, then implement. |
+| File format: reading, writing, round-tripping | Failing test first, always. Format bugs corrupt user data silently and are unrecoverable once shipped. |
+| Diagram output | Golden file. Add the fixture, watch it fail, implement, then open the generated SVG and look at it before keeping the golden. |
+| Wails bindings, config, build scripts, migrations | Implement, then pin the outcome with a contract test. |
+| Design system components | Build against `design-system.md`; `npm run check`, `npm run lint`, a screen check and a keyboard pass (tab order, Escape, arrow keys) before done. |
+| Anything drawn: a style, token, layout, string, new screen or dialog | A screen check (below). |
+| Canvas interaction, editor wiring | Tests where real logic exists: coordinate maths, staleness, debounce, selection state. Not for markup. |
+
+## The gates
+Go tests are table-driven, run with `go test ./...`. Frontend work is done
+only when `npm run check`, `npm run lint` and `npm test` all pass, judged by
+exit code.
 
 ## Test quality
 One behavior per test, named for the behavior. Before writing a test, name the
 production change that would make it fail. If you cannot, the test asserts
 nothing. Assert on real behavior, never on mock behavior.
+
 ## A test that opens a file must close it, even when it is about not closing
 Windows cannot delete a file another handle still has open, so `t.TempDir`'s
 cleanup fails the test after every assertion has passed. A test that
