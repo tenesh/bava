@@ -445,17 +445,6 @@ export async function dragScene(page: Page, from: Point, to: Point, options: { m
   for (const key of options.modifiers ?? []) await page.keyboard.up(key);
 }
 
-/**
- * The pointer moved off the canvas by way of its empty right edge. Left in
- * one jump from a handle the canvas has just drawn under it, the canvas can
- * keep that handle drawn hovered; a move over empty canvas first clears it.
- */
-export async function restOffCanvas(page: Page) {
-  const box = (await canvasHost(page).boundingBox())!;
-  await page.mouse.move(box.x + box.width - 24, box.y + box.height / 2);
-  await restPointer(page);
-}
-
 /** The canvas's selection toolbar. */
 export const selectionToolbar = (page: Page) => page.getByRole('toolbar', { name: 'Selection' });
 

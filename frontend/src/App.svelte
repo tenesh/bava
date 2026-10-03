@@ -1882,6 +1882,13 @@
     const releaseSpace = () => (spaceHeld = false);
     diagramHost.addEventListener('pointerdown', onDown);
     diagramHost.addEventListener('pointermove', onMove);
+    // Leaving the canvas, nothing on it is hovered any more: without this the
+    // disc drawn by the last move inside (on a handle) stays until the next.
+    const onLeave = () => {
+      drawHover.cancel();
+      canvas.setHoverHandle(null);
+    };
+    diagramHost.addEventListener('pointerleave', onLeave);
     diagramHost.addEventListener('pointerup', onUp);
     diagramHost.addEventListener('wheel', onWheel, { passive: false });
     diagramHost.addEventListener('dblclick', onDoubleClick);
@@ -2045,6 +2052,7 @@
       autosave.destroy();
       diagramHost.removeEventListener('pointerdown', onDown);
       diagramHost.removeEventListener('pointermove', onMove);
+      diagramHost.removeEventListener('pointerleave', onLeave);
       diagramHost.removeEventListener('pointerup', onUp);
       diagramHost.removeEventListener('wheel', onWheel);
       diagramHost.removeEventListener('dblclick', onDoubleClick);
