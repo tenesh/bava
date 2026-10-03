@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DocEditor } from './editor';
+import { openEditor } from './test-editor';
 import { filterItems, SLASH_ITEMS, slashKey } from './slash';
-import { atTextEnd } from './test-caret';
 
 describe('the / menu\'s items', () => {
   it('offers each kind of block once, in three groups', () => {
@@ -48,21 +48,12 @@ describe('the / menu\'s items', () => {
 });
 
 let editor: DocEditor | null = null;
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
 
 function open(markdown: string) {
-  const host = document.createElement('div');
-  document.body.append(host);
   const onSlash = vi.fn();
-  editor = new DocEditor();
-  editor.mount(host, { onChange: vi.fn(), onSlash });
-  editor.setPage(markdown);
-  const view = editor.view!;
-  view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)));
+  const opened = openEditor(markdown, { caretAtEnd: true, onSlash });
+  editor = opened.editor;
+  const { view } = opened;
   return { onSlash, view };
 }
 

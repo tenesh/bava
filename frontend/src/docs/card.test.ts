@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { NodeSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
+import { openEditor, settle } from './test-editor';
 import { fileLook } from './card';
 
 describe('what a file card says of its file', () => {
@@ -17,18 +18,8 @@ describe('what a file card says of its file', () => {
 
 let editor: DocEditor | null = null;
 
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
-
-const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
-
 /** Opens a page whose files the app answers for: `files` by their path in the Space. */
 function open(markdown: string, files: Record<string, { size: number; modified: string }> = {}) {
-  const host = document.createElement('div');
-  document.body.append(host);
   const options = {
     onChange: vi.fn(),
     onOpenFile: vi.fn(),
@@ -37,9 +28,9 @@ function open(markdown: string, files: Record<string, { size: number; modified: 
       return file ? { exists: true, size: file.size, modified: file.modified, error: '' } : { exists: false, size: 0, modified: '', error: '' };
     }),
   };
-  editor = new DocEditor();
-  editor.mount(host, options);
-  editor.setPage(markdown);
+  const opened = openEditor(markdown, options);
+  editor = opened.editor;
+  const { host } = opened;
   editor.setMediaPlace({ root: '/Space', here: 'Page.md' });
   return { ...options, host, view: editor.view! };
 }

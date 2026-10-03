@@ -19,5 +19,9 @@ export default defineConfig({
     // platforms, and a native module there is a maintenance bill for nothing:
     // the tests assert scene patching, not pixels.
     setupFiles: ['vitest-canvas-mock', './src/test-setup.ts'],
+    // Spies and stubbed globals put things back after every test, so no test
+    // inherits another's.
+    restoreMocks: true,
+    unstubGlobals: true,
   },
 });

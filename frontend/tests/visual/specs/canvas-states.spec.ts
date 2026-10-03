@@ -1,48 +1,32 @@
-import { expect, test, type Page } from '@playwright/test';
-import { kinds, row } from '../harness/canvas-scenes';
-import { THEMES, menu, onScreen, openCanvas, openDialog, shot, type Theme } from './helpers';
+import { expect, test } from '@playwright/test';
+import { row } from '../harness/canvas-scenes';
+import {
+  CANVAS_PAGE,
+  THEMES,
+  canvasPane,
+  clickScene,
+  dragScene,
+  menu,
+  menus,
+  onScreen,
+  openCanvas,
+  openApp,
+  openDialog,
+  openKinds,
+  openPage,
+  popovers,
+  restOffCanvas,
+  restPointer,
+  selectionToolbar,
+  shot,
+  shotDialog,
+  shotFloating,
+  shotPane,
+  slug,
+} from './helpers';
 
 // What the canvas shows while something is selected, dragged or edited, and
 // every picker, menu and dialog it opens, in both themes.
-
-const PAGE = 'Engineering/Architecture.md';
-const pane = (page: Page) => page.locator("[data-side='canvas']");
-const toolbar = (page: Page) => page.getByRole('toolbar', { name: 'Selection' });
-const visibleMenus = (page: Page) => page.locator('.bava-menu').filter({ visible: true });
-
-/** A point of the scene on screen, at actual size. */
-const at = (page: Page, point: { x: number; y: number }) => onScreen(page, point, 1);
-
-async function click(page: Page, point: { x: number; y: number }, options: { button?: 'right' } = {}) {
-  const screen = await at(page, point);
-  await page.mouse.click(screen.x, screen.y, options);
-}
-
-/** The pointer parked on empty canvas, so nothing shows as hovered. */
-async function rest(page: Page) {
-  const screen = await at(page, { x: 950, y: 480 });
-  await page.mouse.move(screen.x, screen.y);
-}
-
-const popovers = (page: Page) => page.locator('.bava-control-popover, .bava-style-popover').filter({ visible: true });
-
-/** A drag in steps, held before the release for a picture of it under way. */
-async function dragTo(page: Page, from: { x: number; y: number }, to: { x: number; y: number }) {
-  const a = await at(page, from);
-  const b = await at(page, to);
-  await page.mouse.move(a.x, a.y);
-  await page.mouse.down();
-  await page.mouse.move(b.x, b.y, { steps: 8 });
-}
-
-/** A short name for a control's label, for the reference's file name. */
-const slug = (label: string) => label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-
-async function openKinds(page: Page, theme: Theme) {
-  const scene = kinds();
-  await openCanvas(page, theme, PAGE, scene.elements);
-  return scene.click;
-}
 
 for (const theme of THEMES) {
   test.describe(`the canvas's states, ${theme}`, () => {
@@ -50,47 +34,63 @@ for (const theme of THEMES) {
       const points = await openKinds(page, theme);
       for (const [kind, point] of Object.entries(points)) {
         await page.keyboard.press('Escape');
-        await click(page, point);
-        await rest(page);
-        await expect(toolbar(page)).toBeVisible();
-        await expect(pane(page)).toHaveScreenshot(shot('canvas-states', 'selected', kind, theme));
+        await clickScene(page, point);
+        await restOffCanvas(page);
+        await expect(selectionToolbar(page)).toBeVisible();
+        await shotPane(canvasPane(page), shot('canvas-states', 'selected', kind, theme));
       }
+    });
+
+    test('everything selected, with the toolbar', async ({ page }) => {
+      // The page's own scene, as its file holds it.
+      await openApp(page, theme);
+      await openPage(page, CANVAS_PAGE);
+      await menu(page, 'view.canvas');
+      await menu(page, 'edit.selectAll');
+      await restOffCanvas(page);
+      // Nodes counts what is on the canvas: three shapes and an arrow.
+      await expect(page.locator('footer')).toContainText('Nodes 4');
+      await expect(selectionToolbar(page)).toBeVisible();
+      await shotPane(canvasPane(page), shot('canvas-states', 'selected', 'all', theme));
     });
 
     test('a marquee, then several selected', async ({ page }) => {
       await openKinds(page, theme);
-      await dragTo(page, { x: 70, y: 30 }, { x: 480, y: 160 });
-      await expect(pane(page)).toHaveScreenshot(shot('canvas-states', 'marquee', 'dragging', theme));
+      await dragScene(page, { x: 70, y: 30 }, { x: 480, y: 160 }, { hold: true });
+      await shotPane(canvasPane(page), shot('canvas-states', 'marquee', 'dragging', theme));
       await page.mouse.up();
-      await expect(pane(page)).toHaveScreenshot(shot('canvas-states', 'selected', 'several', theme));
+      await restOffCanvas(page);
+      await expect(selectionToolbar(page)).toBeVisible();
+      await shotPane(canvasPane(page), shot('canvas-states', 'selected', 'several', theme));
     });
 
     test('rotating a shape', async ({ page }) => {
       const points = await openKinds(page, theme);
-      await click(page, points.shape);
+      await clickScene(page, points.shape);
       // The rotate handle: above the top edge's middle, by the rotate gap.
-      await dragTo(page, { x: 170, y: 60 - 16 }, { x: 300, y: 60 });
-      await expect(pane(page)).toHaveScreenshot(shot('canvas-states', 'rotating', 'dragging', theme));
+      await dragScene(page, { x: 170, y: 60 - 16 }, { x: 300, y: 60 }, { hold: true });
+      await shotPane(canvasPane(page), shot('canvas-states', 'rotating', 'dragging', theme));
       await page.mouse.up();
     });
 
     test('editing a line’s points, one selected', async ({ page }) => {
       const points = await openKinds(page, theme);
-      await click(page, points.bent);
+      await clickScene(page, points.bent);
       await menu(page, 'canvas.editPoints');
       // The bend at the top of the line.
-      await click(page, { x: 580, y: 60 });
-      await rest(page);
-      await expect(pane(page)).toHaveScreenshot(shot('canvas-states', 'points', 'editing', theme));
+      await clickScene(page, { x: 580, y: 60 });
+      await restOffCanvas(page);
+      // In point editing, the toolbar no longer offers it.
+      await expect(selectionToolbar(page).getByRole('button', { name: 'Edit points' })).toHaveCount(0);
+      await shotPane(canvasPane(page), shot('canvas-states', 'points', 'editing', theme));
     });
 
     test('snap guides while a ⌘ or Ctrl drag lines a box up', async ({ page }) => {
-      await openCanvas(page, theme, PAGE, row());
-      await page.keyboard.down('Control');
+      await openCanvas(page, theme, CANVAS_PAGE, row());
       // The third box, dragged to sit level with the others, as far from the
       // second as the second is from the first.
-      await dragTo(page, { x: 580, y: 200 }, { x: 560, y: 141 });
-      await expect(pane(page)).toHaveScreenshot(shot('canvas-states', 'snapping', 'dragging', theme));
+      await dragScene(page, { x: 580, y: 200 }, { x: 560, y: 141 }, { modifiers: ['Control'], hold: true });
+      await shotPane(canvasPane(page), shot('canvas-states', 'snapping', 'dragging', theme));
       await page.mouse.up();
       await page.keyboard.up('Control');
     });
@@ -98,33 +98,33 @@ for (const theme of THEMES) {
     test('an arrow’s end over a shape', async ({ page }) => {
       await openKinds(page, theme);
       await page.keyboard.press('a');
-      await dragTo(page, { x: 70, y: 420 }, { x: 205, y: 128 });
-      await expect(pane(page)).toHaveScreenshot(shot('canvas-states', 'arrow-end', 'over-shape', theme));
+      await dragScene(page, { x: 70, y: 420 }, { x: 205, y: 128 }, { hold: true });
+      await shotPane(canvasPane(page), shot('canvas-states', 'arrow-end', 'over-shape', theme));
       // Just outside, near the middle of the bottom edge: the dot it snaps to.
-      const near = await at(page, { x: 170, y: 150 });
+      const near = await onScreen(page, { x: 170, y: 150 });
       await page.mouse.move(near.x, near.y, { steps: 4 });
-      await expect(pane(page)).toHaveScreenshot(shot('canvas-states', 'arrow-end', 'near-middle', theme));
+      await shotPane(canvasPane(page), shot('canvas-states', 'arrow-end', 'near-middle', theme));
       await page.mouse.up();
     });
 
     for (const kind of ['shape', 'arrow'] as const) {
       test(`every picker of a selected ${kind}`, async ({ page }) => {
         const points = await openKinds(page, theme);
-        await click(page, points[kind]);
-        await rest(page);
-        const triggers = toolbar(page).locator('.bava-style-trigger, .bava-control-trigger');
+        await clickScene(page, points[kind]);
+        const triggers = selectionToolbar(page).locator('.bava-style-trigger, .bava-control-trigger');
         const count = await triggers.count();
         expect(count).toBeGreaterThan(0);
         for (let i = 0; i < count; i += 1) {
           const label = (await triggers.nth(i).getAttribute('aria-label')) ?? `picker-${i}`;
           await triggers.nth(i).click();
           await expect(popovers(page)).toBeVisible();
+          await restPointer(page);
           // What is in effect shows as chosen, a default too. Read from the
           // page: headless WebKit can leave a popover painted as it first
           // appeared after its rows' state has changed.
           const options = popovers(page).locator('.bava-option');
           if ((await options.count()) > 0) await expect(options.and(page.locator('[data-state="checked"]'))).toHaveCount(1);
-          await expect(page).toHaveScreenshot(shot('canvas-states', `picker-${kind}`, slug(label), theme));
+          await shotFloating(page, triggers.nth(i), popovers(page), shot('canvas-states', `picker-${kind}`, slug(label), theme));
           await page.keyboard.press('Escape');
           await expect(popovers(page)).toHaveCount(0);
         }
@@ -133,18 +133,24 @@ for (const theme of THEMES) {
 
     test('the toolbar’s More menu', async ({ page }) => {
       const points = await openKinds(page, theme);
-      await click(page, points.shape);
-      await toolbar(page).getByRole('button', { name: 'More actions' }).click();
-      await expect(visibleMenus(page)).toBeVisible();
-      await expect(page).toHaveScreenshot(shot('canvas-states', 'more', 'open', theme));
+      await clickScene(page, points.shape);
+      const more = selectionToolbar(page).getByRole('button', { name: 'More actions' });
+      await more.click();
+      await expect(menus(page)).toHaveCount(1);
+      await restPointer(page);
+      // Opened by a click: no row is highlighted until the pointer or a key moves to one.
+      await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
+      await shotFloating(page, more, menus(page), shot('canvas-states', 'more', 'open', theme));
     });
 
     test('the right-click menu and each submenu', async ({ page }) => {
       const points = await openKinds(page, theme);
-      await click(page, points.shape, { button: 'right' });
-      await expect(visibleMenus(page)).toBeVisible();
-      await expect(page).toHaveScreenshot(shot('canvas-states', 'context-menu', 'open', theme));
-      const labels = await visibleMenus(page).first().locator('[data-part="trigger-item"]').allInnerTexts();
+      await clickScene(page, points.shape, { button: 'right' });
+      await expect(menus(page)).toHaveCount(1);
+      await restPointer(page);
+      await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
+      await shotFloating(page, null, menus(page), shot('canvas-states', 'context-menu', 'open', theme));
+      const labels = await menus(page).first().locator('[data-part="trigger-item"]').allInnerTexts();
       expect(labels.length).toBeGreaterThan(0);
       // Each from a fresh menu, opened from the keyboard: by pointer, Ark
       // holds a submenu shut a moment while the pointer may be heading into
@@ -156,12 +162,15 @@ for (const theme of THEMES) {
       // by hand.
       for (const label of labels.map((text) => text.trim())) {
         await page.keyboard.press('Escape');
-        await expect(visibleMenus(page)).toHaveCount(0);
-        await click(page, points.shape, { button: 'right' });
-        const trigger = visibleMenus(page).first().locator('[data-part="trigger-item"]', { hasText: label });
-        await expect(visibleMenus(page)).toBeVisible();
+        await expect(menus(page)).toHaveCount(0);
+        await clickScene(page, points.shape, { button: 'right' });
+        await restPointer(page);
+        const trigger = menus(page).first().locator('[data-part="trigger-item"]', { hasText: label });
+        await expect(menus(page)).toBeVisible();
         // Down a row at a time, each step waiting for the highlight to move.
-        const highlighted = visibleMenus(page).first().locator('[data-highlighted]');
+        const highlighted = menus(page).first().locator('[data-highlighted]');
+        // Pressed again while the menu has not yet taken focus: it takes it a
+        // moment after it shows, and a key before then goes to the canvas.
         await expect(async () => {
           await page.keyboard.press('Home');
           await expect(highlighted).toHaveCount(1, { timeout: 500 });
@@ -171,31 +180,33 @@ for (const theme of THEMES) {
           await page.keyboard.press('ArrowDown');
           await expect(highlighted).not.toHaveText(before);
         }
-        // Pressed again if the menu was not yet ready for it, as a person would.
-        await expect(async () => {
-          await page.keyboard.press('ArrowRight');
-          await expect(visibleMenus(page)).toHaveCount(2, { timeout: 500 });
-        }).toPass({ timeout: 5000 });
+        await page.keyboard.press('ArrowRight');
+        await expect(menus(page)).toHaveCount(2);
         await expect(trigger).toHaveAttribute('data-highlighted', '');
-        if (theme === 'dark') await expect(page).toHaveScreenshot(shot('canvas-states', 'context-menu', slug(label), theme));
+        if (theme === 'dark') await shotFloating(page, null, menus(page), shot('canvas-states', 'context-menu', slug(label), theme));
       }
     });
 
     test('the insert panel, searching', async ({ page }) => {
       await openKinds(page, theme);
-      await page.getByRole('toolbar', { name: 'Tools' }).getByRole('button', { name: 'Insert', exact: true }).click();
+      // By what it is, not its name: once the panel opens it becomes Close.
+      const insert = page.getByRole('toolbar', { name: 'Tools' }).locator('[data-insert-trigger]');
+      await insert.click();
       const panel = page.getByRole('dialog', { name: 'Insert item' });
       await expect(panel).toBeVisible();
       await page.keyboard.type('cyl');
-      await expect(page).toHaveScreenshot(shot('canvas-states', 'insert', 'searching', theme));
+      await restPointer(page);
+      await expect(panel.getByRole('combobox')).toHaveValue('cyl');
+      await expect(panel.getByRole('option', { name: /cylinder/i }).first()).toBeVisible();
+      await shotFloating(page, insert, panel, shot('canvas-states', 'insert', 'searching', theme));
     });
 
     test('exporting a selection', async ({ page }) => {
       const points = await openKinds(page, theme);
-      await click(page, points.shape);
+      await clickScene(page, points.shape);
       await menu(page, 'canvas.exportSelection');
-      await expect(openDialog(page)).toBeVisible();
-      await expect(page).toHaveScreenshot(shot('canvas-states', 'export', 'selection', theme));
+      await expect(openDialog(page).locator('.bava-export-preview svg')).toBeVisible();
+      await shotDialog(page, shot('canvas-states', 'export', 'selection', theme));
     });
 
     for (const engine of ['Dagre', 'ELK']) {
@@ -204,11 +215,13 @@ for (const theme of THEMES) {
         await menu(page, 'insert.diagram');
         await expect(openDialog(page).locator('.cm-content')).toBeFocused();
         await openDialog(page).getByText(engine, { exact: true }).click();
+        await expect(openDialog(page).getByRole('radio', { name: engine })).toBeChecked();
         await expect(openDialog(page).getByRole('radiogroup', { name: 'Direction' })).toBeVisible();
         await openDialog(page).locator('.cm-content').focus();
+        await restPointer(page);
         // The preview, once the code has been laid out with the engine.
         await expect(openDialog(page).locator('.bava-diagram-preview svg')).toBeVisible();
-        await expect(page).toHaveScreenshot(shot('canvas-states', 'diagram', engine.toLowerCase(), theme));
+        await shotDialog(page, shot('canvas-states', 'diagram', engine.toLowerCase(), theme));
       });
     }
   });

@@ -2,6 +2,7 @@ package web_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -106,37 +107,53 @@ func TestPicturesThatAreNotPicturesOrTooBigAreLeftOut(t *testing.T) {
 
 func TestWhatCannotBeFetchedIsAnError(t *testing.T) {
 	srv, _ := site(t, "", map[string]http.HandlerFunc{
-		"/slow": func(w http.ResponseWriter, r *http.Request) {
-			select {
-			case <-time.After(3 * time.Second):
-			case <-r.Context().Done():
-			}
-		},
 		"/loop": func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/loop", http.StatusFound) },
-		"/huge": func(w http.ResponseWriter, _ *http.Request) {
-			w.Header().Set("Content-Type", "text/html")
-			_, _ = w.Write([]byte("<html><head><!--" + strings.Repeat("x", 2<<20) + "--><title>Too far</title></head>"))
-		},
 		"/file": func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/pdf")
 			_, _ = w.Write([]byte("%PDF"))
 		},
 	})
-	// Bava's own limit ends a fetch, not the caller's.
+	cases := map[string]string{
+		"a redirect loop":    srv.URL + "/loop",
+		"a file, not a page": srv.URL + "/file",
+		"a page not there":   srv.URL + "/missing",
+		"another scheme":     "ftp://example.com/x",
+		"a file on the disk": "file:///etc/passwd",
+		"not an address":     "not an address",
+	}
+	for name, address := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got, err := web.Fetch(context.Background(), address, true); err == nil {
+				t.Errorf("%s gave details %+v", address, got)
+			}
+		})
+	}
+}
+
+// Bava's own limit ends a fetch, not the caller's.
+func TestFetchEndsAtItsOwnTimeout(t *testing.T) {
+	srv, _ := site(t, "", map[string]http.HandlerFunc{
+		// Never answers; returns once the fetch gives up.
+		"/slow": func(_ http.ResponseWriter, r *http.Request) { <-r.Context().Done() },
+	})
 	was := web.Timeout
-	web.Timeout = 300 * time.Millisecond
-	started := time.Now()
+	web.Timeout = 50 * time.Millisecond
+	t.Cleanup(func() { web.Timeout = was })
+
 	_, err := web.Fetch(context.Background(), srv.URL+"/slow", true)
-	web.Timeout = was
-	if err == nil || time.Since(started) > 2*time.Second {
-		t.Errorf("a site that never answered: %v after %s", err, time.Since(started))
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("a site that never answered: %v, want the deadline", err)
 	}
-	for _, address := range []string{srv.URL + "/loop", srv.URL + "/file", srv.URL + "/missing", "ftp://example.com/x", "file:///etc/passwd", "not an address"} {
-		if _, err := web.Fetch(context.Background(), address, true); err == nil {
-			t.Errorf("%s gave details", address)
-		}
-	}
-	// Only the page's first megabyte is read: a title past it is never seen.
+}
+
+// Only the page's first megabyte is read: a title past it is never seen.
+func TestOnlyThePagesFirstMegabyteIsRead(t *testing.T) {
+	srv, _ := site(t, "", map[string]http.HandlerFunc{
+		"/huge": func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = w.Write([]byte("<html><head><!--" + strings.Repeat("x", 2<<20) + "--><title>Too far</title></head>"))
+		},
+	})
 	if got, err := web.Fetch(context.Background(), srv.URL+"/huge", true); err != nil || got.Title != "" {
 		t.Errorf("huge page = %+v, %v", got, err)
 	}
@@ -156,8 +173,7 @@ func TestAPublicPageCannotReachThePrivateNetwork(t *testing.T) {
 	srv, _ := site(t, `<head><title>T</title><meta property="og:image" content="/pic.png"><link rel="icon" href="/icon.png"></head>`, map[string]http.HandlerFunc{
 		"/away": func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/post", http.StatusFound) },
 	})
-	restore := web.TreatAsPublic(srv.URL)
-	defer restore()
+	web.TreatAsPublic(t, srv.URL)
 	if _, err := web.Fetch(context.Background(), srv.URL+"/post", true); err == nil {
 		t.Error("a page counted as public reached a loopback address")
 	}

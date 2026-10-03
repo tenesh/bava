@@ -1,34 +1,24 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { flushSync, mount, unmount } from 'svelte';
+import { describe, expect, it, vi } from 'vitest';
+import { flushSync } from 'svelte';
+import { render } from '../test/render';
 import ExportDialog from './ExportDialog.svelte';
 
-afterEach(() => {
-  document.body.innerHTML = '';
-});
-
 // Ark portals the content out of the component tree; every query waits for it.
-async function render(props: Record<string, unknown> = {}) {
-  const target = document.createElement('div');
-  document.body.append(target);
+async function setup(props: Record<string, unknown> = {}) {
   const onExport = vi.fn();
   const onCopy = vi.fn();
   const onSettings = vi.fn();
-  const app = flushSync(() =>
-    mount(ExportDialog, {
-      target,
-      props: {
-        open: true,
-        hasSelection: true,
-        settings: { onlySelected: false, background: true, dark: false, scale: 2 },
-        preview: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
-        onExport,
-        onCopy,
-        onSettings,
-        ...props,
-      } as never,
-    }),
-  );
+  const { app } = render(ExportDialog, {
+    open: true,
+    hasSelection: true,
+    settings: { onlySelected: false, background: true, dark: false, scale: 2 },
+    preview: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+    onExport,
+    onCopy,
+    onSettings,
+    ...props,
+  } as never);
   await vi.waitFor(() => {
     if (props.open === false) return;
     expect(document.querySelector('.bava-export-preview')).not.toBeNull();
@@ -42,54 +32,48 @@ async function render(props: Record<string, unknown> = {}) {
 
 describe('ExportDialog', () => {
   it('offers the two formats and copying, reporting which was asked for', async () => {
-    const { app, button, onExport, onCopy } = await render();
+    const { button, onExport, onCopy } = await setup();
     button('PNG')!.click();
     expect(onExport).toHaveBeenCalledWith('png');
     button('SVG')!.click();
     expect(onExport).toHaveBeenCalledWith('svg');
     button('Copy to clipboard')!.click();
     expect(onCopy).toHaveBeenCalled();
-    unmount(app);
   });
 
   it('reports each setting as it is changed', async () => {
-    const { app, toggle, onSettings } = await render();
+    const { toggle, onSettings } = await setup();
     flushSync(() => toggle('Background')!.click());
     expect(onSettings).toHaveBeenCalledWith({ background: false });
     flushSync(() => toggle('Dark mode')!.click());
     expect(onSettings).toHaveBeenCalledWith({ dark: true });
-    unmount(app);
   });
 
   // Ticking "only selected" with nothing selected would export an empty
   // picture, so the control stays visible and explains itself instead.
   it('disables Only selected when nothing is selected', async () => {
-    const { app, toggle } = await render({ hasSelection: false });
+    const { toggle } = await setup({ hasSelection: false });
     expect(toggle('Only selected')!.disabled).toBe(true);
-    unmount(app);
   });
 
   it('shows the preview it is handed', async () => {
-    const { app } = await render();
-    const preview = document.querySelector('.bava-export-preview')!;
-    expect(preview.innerHTML).toContain('<svg');
-    unmount(app);
+    const preview = '<svg xmlns="http://www.w3.org/2000/svg"><rect id="handed-in" width="4"></rect></svg>';
+    await setup({ preview });
+    expect(document.querySelector('.bava-export-preview')!.innerHTML).toBe(preview);
   });
 
   it('shows the scale it is set to', async () => {
-    const { app } = await render();
+    await setup();
     const checked = [...document.querySelectorAll('[data-part="item"][data-state="checked"]')];
     expect(checked.map((el) => el.textContent?.trim())).toContain('2×');
-    unmount(app);
   });
 
   // The wrapper keeps the content mounted and marks it closed, so a reopen
   // does not rebuild the preview; what matters is that it is hidden.
   it('is hidden when it is closed', async () => {
-    const { app } = await render({ open: false });
+    await setup({ open: false });
     const content = document.querySelector('.bava-dialog-content')!;
     expect(content.getAttribute('data-state')).toBe('closed');
     expect(content.hasAttribute('hidden')).toBe(true);
-    unmount(app);
   });
 });

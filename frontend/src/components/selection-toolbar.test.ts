@@ -1,70 +1,57 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { flushSync, mount, unmount } from 'svelte';
+import { describe, expect, it, vi } from 'vitest';
+import { render } from '../test/render';
 import SelectionToolbar from './SelectionToolbar.svelte';
 import { overflowMenu, type MenuNode } from '../canvas/context-menu';
 
 const ids = (nodes: MenuNode[]): string[] =>
-  nodes.map((node) => (node.kind === 'separator' ? '—' : node.kind === 'submenu' ? `${node.id}▸` : node.id));
+  nodes.map((node) => (node.kind === 'separator' ? '---' : node.kind === 'submenu' ? `${node.id}▸` : node.id));
 
-afterEach(() => {
-  document.body.innerHTML = '';
-});
-
-function render(props: Record<string, unknown>) {
-  const target = document.createElement('div');
-  document.body.append(target);
+function setup(props: Record<string, unknown>) {
   const onApply = vi.fn();
   const onCommand = vi.fn();
   const onMore = vi.fn();
-  const app = flushSync(() =>
-    mount(SelectionToolbar, {
-      target,
-      props: {
-        styles: { fill: null, stroke: 'blue', color: 'unavailable' },
-        align: false,
-        distribute: false,
-        onApply,
-        onCommand,
-        onMore,
-        ...props,
-      } as never,
-    }),
-  );
+  const { target, app } = render(SelectionToolbar, {
+    styles: { fill: null, stroke: 'blue', color: 'unavailable' },
+    align: false,
+    distribute: false,
+    onApply,
+    onCommand,
+    onMore,
+    ...props,
+  } as never);
   const button = (name: string) => [...target.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === name);
   return { app, target, button, onApply, onCommand, onMore };
 }
 
 describe('SelectionToolbar', () => {
   it('shows the colour pickers that apply and More, without align for one unit', () => {
-    const { app, button } = render({});
+    const { button } = setup({});
     expect(button('Fill colour')).toBeDefined();
     expect(button('Border colour')).toBeDefined();
     expect(button('Text colour')).toBeUndefined();
     expect(button('Align left')).toBeUndefined();
     expect(button('More actions')).toBeDefined();
-    unmount(app);
   });
 
-  it('shows align buttons for two units and distribute for three, reporting the command', () => {
-    const two = render({ align: true });
+  it('shows align buttons for two units, reporting the command', () => {
+    const two = setup({ align: true });
     expect(two.button('Distribute horizontally')).toBeUndefined();
     two.button('Align left')!.click();
     expect(two.onCommand).toHaveBeenCalledWith('canvas.alignLeft');
-    unmount(two.app);
+  });
 
-    const three = render({ align: true, distribute: true });
+  it('shows distribute buttons for three units, reporting the command', () => {
+    const three = setup({ align: true, distribute: true });
     three.button('Distribute vertically')!.click();
     expect(three.onCommand).toHaveBeenCalledWith('canvas.distributeVertical');
-    unmount(three.app);
   });
 
   it('reports More with where it is, so the menu can open there', () => {
-    const { app, button, onMore } = render({});
+    const { button, onMore } = setup({});
     button('More actions')!.click();
     // Where it sits, and what did not fit into the row.
     expect(onMore).toHaveBeenCalledWith(expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }), []);
-    unmount(app);
   });
 });
 
@@ -80,60 +67,50 @@ describe('SelectionToolbar controls', () => {
   ] as never;
 
   function renderControls(props: Record<string, unknown> = {}) {
-    const target = document.createElement('div');
-    document.body.append(target);
     const onProperty = vi.fn();
-    const app = flushSync(() =>
-      mount(SelectionToolbar, {
-        target,
-        props: {
-          styles: { fill: null, stroke: 'unavailable', color: 'unavailable' },
-          controls,
-          properties: { strokeWidth: null, strokeStyle: null, opacity: null, fontSize: null },
-          align: false,
-          distribute: false,
-          onApply: vi.fn(),
-          onProperty,
-          onCommand: vi.fn(),
-          onMore: vi.fn(),
-          ...props,
-        } as never,
-      }),
-    );
+    const { target, app } = render(SelectionToolbar, {
+      styles: { fill: null, stroke: 'unavailable', color: 'unavailable' },
+      controls,
+      properties: { strokeWidth: null, strokeStyle: null, opacity: null, fontSize: null },
+      align: false,
+      distribute: false,
+      onApply: vi.fn(),
+      onProperty,
+      onCommand: vi.fn(),
+      onMore: vi.fn(),
+      ...props,
+    } as never);
     const buttons = () => [...target.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'));
     return { app, target, buttons, onProperty };
   }
 
   it('draws a control for each the model gives, grouped with dividers', () => {
-    const { app, target, buttons } = renderControls();
+    const { target, buttons } = renderControls();
     expect(buttons()).toEqual(expect.arrayContaining(['Fill colour', 'Stroke width', 'Line style', 'Opacity', 'Text size']));
     expect(target.querySelectorAll('.divider').length).toBeGreaterThan(0);
-    unmount(app);
   });
 
   // A divider separates; with no colours before the first control there is
   // nothing to separate it from.
   it('starts with a control, not a divider, when there are no colours', () => {
-    const { app, target } = renderControls({
+    const { target } = renderControls({
       styles: { fill: 'unavailable', stroke: 'unavailable', color: 'unavailable' },
       controls: (controls as { kind: string }[]).filter((control) => control.kind !== 'colour'),
     });
     expect(target.querySelector('.toolbar')!.firstElementChild!.classList.contains('divider')).toBe(false);
-    unmount(app);
   });
 
   it('divides the colours from the first control after them', () => {
-    const { app, target } = renderControls();
+    const { target } = renderControls();
     const children = [...target.querySelector('.toolbar')!.children];
     expect(children[1].classList.contains('divider')).toBe(true);
-    unmount(app);
   });
 
   // Leaving the row is only half of it: what left has to arrive somewhere, or
   // the control is simply gone at a narrow window.
   it('moves what does not fit into More, and hands More what left', () => {
     const onMore = vi.fn();
-    const { app, target, buttons } = renderControls({ capacity: 3, onMore });
+    const { target, buttons } = renderControls({ capacity: 3, onMore });
     const shown = buttons();
     expect(shown).toContain('Fill colour');
     expect(shown).not.toContain('Text size');
@@ -146,7 +123,6 @@ describe('SelectionToolbar controls', () => {
     expect(overflow.map((control) => control.id)).toContain('fontSize');
     // And the menu that opens offers it, so the control is still reachable.
     expect(ids(overflowMenu(overflow as never))).toContain('property:fontSize▸');
-    unmount(app);
   });
 });
 
@@ -154,11 +130,10 @@ describe('SelectionToolbar controls', () => {
 describe("SelectionToolbar's line actions", () => {
   it('shows each one it is given and reports it when pressed', () => {
     const onLine = vi.fn();
-    const { app, button } = render({ lineActions: ['finishLine', 'closeLine'], onLine });
+    const { button } = setup({ lineActions: ['finishLine', 'closeLine'], onLine });
     button('Done')!.click();
     button('Close line')!.click();
     expect(onLine.mock.calls.map((call) => call[0])).toEqual(['finishLine', 'closeLine']);
     expect(button('Edit points')).toBeUndefined();
-    unmount(app);
   });
 });

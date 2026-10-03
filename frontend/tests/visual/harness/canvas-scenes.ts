@@ -192,5 +192,18 @@ export function row(): El[] {
   ];
 }
 
+/** A box for a walk that places its own, its id and label the same; where it is given, not moved clear of the rail. */
+export const box = (id: string, x: number, y: number, extra: Record<string, unknown> = {}) => ({
+  id,
+  type: 'rect',
+  x,
+  y,
+  w: 120,
+  h: 80,
+  z: Number(id.replace(/\D/g, '') || 1),
+  label: id,
+  ...extra,
+});
+
 /** Every scene by name, for the walks to go through. */
 export const SCENES = { shapes, colours, styles, arrows, heads, containers, turned, diagram, many } as const;

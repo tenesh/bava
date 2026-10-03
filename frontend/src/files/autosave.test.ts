@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAutosave, type AutosaveMode } from './autosave.svelte';
 
 function setup(mode: AutosaveMode, over: { path?: string | null; conflict?: boolean } = {}) {
@@ -22,7 +22,6 @@ function setup(mode: AutosaveMode, over: { path?: string | null; conflict?: bool
 
 describe('autosave', () => {
   beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
 
   it('TestAfterDelaySavesOnceAfterTheLastChange', async () => {
     const { save, edit } = setup('afterDelay');
@@ -147,7 +146,6 @@ describe('autosave', () => {
 // already writing, and holds off any later save until it is released.
 describe('settling autosave before a file moves', () => {
   beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
 
   it('cancels a save that is waiting', async () => {
     const { save, edit, autosave } = setup('afterDelay');

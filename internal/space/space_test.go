@@ -9,27 +9,18 @@ import (
 	"testing"
 
 	"github.com/tenesh/bava/internal/space"
+	"github.com/tenesh/bava/internal/testutil"
 )
 
 // newSpace makes a folder with the given files ("a/b.md", "dir/") and opens it.
 func newSpace(t *testing.T, paths ...string) space.Space {
 	t.Helper()
 	root := t.TempDir()
+	files := map[string]string{}
 	for _, p := range paths {
-		full := filepath.Join(root, filepath.FromSlash(p))
-		if strings.HasSuffix(p, "/") {
-			if err := os.MkdirAll(full, 0o755); err != nil {
-				t.Fatal(err)
-			}
-			continue
-		}
-		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(full, []byte("# "+p+"\n"), 0o644); err != nil {
-			t.Fatal(err)
-		}
+		files[p] = "# " + p + "\n"
 	}
+	testutil.WriteTree(t, root, files)
 	s, err := space.Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -60,9 +51,9 @@ func TestOpenMakesTheSpaceFileAndRefusesAFile(t *testing.T) {
 	if !exists(s.Root, ".bava/space.json") {
 		t.Error("Open did not create .bava/space.json")
 	}
-	file := filepath.Join(t.TempDir(), "page.md")
-	_ = os.WriteFile(file, []byte("x"), 0o644)
-	if _, err := space.Open(file); err == nil {
+	dir := t.TempDir()
+	testutil.WriteTree(t, dir, map[string]string{"page.md": "x"})
+	if _, err := space.Open(filepath.Join(dir, "page.md")); err == nil {
 		t.Error("Open accepted a file")
 	}
 }
@@ -213,9 +204,7 @@ func TestOperationsAreRefused(t *testing.T) {
 // changed) may land on an existing name.
 func TestRenameNeverReplacesAnotherFile(t *testing.T) {
 	s := newSpace(t, "a.md")
-	if err := os.WriteFile(filepath.Join(s.Root, "A.md"), []byte("other"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testutil.WriteTree(t, s.Root, map[string]string{"A.md": "other"})
 	entries, _ := os.ReadDir(s.Root)
 	caseSensitive := 0
 	for _, e := range entries {

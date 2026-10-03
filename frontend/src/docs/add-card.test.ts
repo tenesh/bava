@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { NodeSelection, TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
+import { openEditor, settle } from './test-editor';
 import { atTextEnd } from './test-caret';
 
 for (const name of ['getClientRects', 'getBoundingClientRect'] as const) {
@@ -12,30 +13,19 @@ for (const name of ['getClientRects', 'getBoundingClientRect'] as const) {
 
 let editor: DocEditor | null = null;
 
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
-
 type Details = { title: string; description: string; icon: string; image: string } | null;
 
 function open(markdown: string, details: Details = null) {
-  const host = document.createElement('div');
-  document.body.append(host);
   let answer: (value: Details) => void = () => {};
   const fetchCard = vi.fn(() => new Promise<Details>((resolve) => (answer = resolve)));
   const options = { onChange: vi.fn(), fetchCard, fileDetails: async () => ({ exists: true, size: 1, modified: '2026-09-21T00:00:00Z', error: '' }) };
-  editor = new DocEditor();
-  editor.mount(host, options);
-  editor.setPage(markdown);
+  const opened = openEditor(markdown, options);
+  editor = opened.editor;
   editor.setSpacePages('Page.md', []);
   const view = editor.view!;
   view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)));
   return { ...options, view, arrive: () => answer(details) };
 }
-
-const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 /** Moves the caret onto the empty line the page ends with. */
 function toEndLine() {

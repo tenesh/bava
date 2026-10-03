@@ -108,7 +108,7 @@ func TestNoticesAreTakenOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer session.Close()
+	t.Cleanup(func() { _ = session.Close() })
 
 	service := app.NewLogService(app.LogServiceOptions{Session: session})
 	notices := service.TakeNotices()

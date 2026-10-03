@@ -38,7 +38,6 @@ describe('createReporter', () => {
     await report(new Error('two'), 'x');
     expect(send).toHaveBeenCalledTimes(2);
     expect(consoleError).toHaveBeenCalledTimes(1);
-    consoleError.mockRestore();
   });
 });
 

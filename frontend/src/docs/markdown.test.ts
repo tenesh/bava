@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readdirSync, readFileSync } from 'node:fs';
 import MarkdownIt from 'markdown-it';
 import { parsePage, writePage } from './markdown';
 import { schema } from './schema';
@@ -697,19 +698,22 @@ describe('front matter edges', () => {
   });
 });
 
-// Real pages: the project's own Markdown, full of tables, code and lists.
-describe('real Markdown', async () => {
-  const { readFileSync } = await import('node:fs');
-  const { globSync } = await import('node:fs');
-  const files = globSync('../{docs,.claude,.ai}/**/*.md');
+// Real pages: a fixed copy of the project's own Markdown, full of tables,
+// code and lists, kept beside this test so what it reads never changes under it.
+describe('real Markdown', () => {
+  const corpus = new URL('./__fixtures__/pages/', import.meta.url);
+  const files = readdirSync(corpus).filter((name) => name.endsWith('.md'));
+  const read = (name: string) => readFileSync(new URL(name, corpus), 'utf8');
 
-  it('finds real pages to read', () => {
-    expect(files.length).toBeGreaterThan(10);
+  it('reads pages that hold headings, both kinds of list, code and tables', () => {
+    const kinds = new Set<string>();
+    for (const file of files) parsePage(read(file)).doc.descendants((node) => void kinds.add(node.type.name));
+    expect([...kinds]).toEqual(expect.arrayContaining(['heading', 'bullet_list', 'ordered_list', 'code_block', 'table']));
   });
 
   // What it shows includes every code block's code, character for character.
   it.each(files)('%s: a save keeps what it shows, and a second changes nothing', (file) => {
-    keepsMeaning(readFileSync(file, 'utf8'));
+    keepsMeaning(read(file));
   });
 });
 

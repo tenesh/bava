@@ -2,12 +2,20 @@
 import { describe, expect, it } from 'vitest';
 import { EditorView } from '@codemirror/view';
 import { SourcePane } from './source-pane';
+import { onTeardown } from '../test/render';
+
+/** A pane the shared teardown destroys when the test ends. */
+function newPane(): SourcePane {
+  const pane = new SourcePane();
+  onTeardown(() => pane.destroy());
+  return pane;
+}
 
 // The native menu owns Cmd+Z, so the editor's keymap never sees it. If these
 // do nothing, undo in the source editor silently stops working.
 describe('SourcePane edit commands', () => {
   function mounted(isReserved?: (binding: { key?: string }) => boolean) {
-    const pane = new SourcePane();
+    const pane = newPane();
     const host = document.createElement('div');
     document.body.append(host);
     pane.mount(host, { doc: 'a -> b', onChange: () => {}, isReserved });
@@ -25,7 +33,6 @@ describe('SourcePane edit commands', () => {
     expect(pane.doc).toBe('a -> b');
     pane.redo();
     expect(pane.doc).toBe('a -> b\nb -> c');
-    pane.destroy();
   });
 
   it('selects the whole document', () => {
@@ -33,7 +40,6 @@ describe('SourcePane edit commands', () => {
     pane.selectAll();
     expect(view.state.selection.main.from).toBe(0);
     expect(view.state.selection.main.to).toBe(6);
-    pane.destroy();
   });
 
   it('copies and replaces the selection as one undoable step', () => {
@@ -44,7 +50,6 @@ describe('SourcePane edit commands', () => {
     expect(pane.doc).toBe('x -> b');
     pane.undo();
     expect(pane.doc).toBe('a -> b');
-    pane.destroy();
   });
 
   it('drops key bindings the menu reserves', () => {
@@ -53,11 +58,10 @@ describe('SourcePane edit commands', () => {
     const event = new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', keyCode: 90, ctrlKey: true, bubbles: true, cancelable: true });
     view.contentDOM.dispatchEvent(event);
     expect(pane.doc).toBe('a -> b!');
-    pane.destroy();
   });
 
   it('does nothing before it is mounted', () => {
-    const pane = new SourcePane();
+    const pane = newPane();
     expect(() => {
       pane.undo();
       pane.redo();
@@ -71,8 +75,8 @@ describe('SourcePane edit commands', () => {
 // dialog's): Paste in the dialog went into the document's pane, unseen.
 describe('the pane an element is in', () => {
   it('is the pane whose editor contains it, not another', () => {
-    const first = new SourcePane();
-    const second = new SourcePane();
+    const first = newPane();
+    const second = newPane();
     const a = document.createElement('div');
     const b = document.createElement('div');
     document.body.append(a, b);
@@ -83,12 +87,10 @@ describe('the pane an element is in', () => {
     SourcePane.containing(inside)!.replaceSelection('pasted ');
     expect(second.doc).toContain('pasted');
     expect(first.doc).toBe('one');
-    first.destroy();
-    second.destroy();
   });
 
   it('is none for an element outside every pane, or after the pane is destroyed', () => {
-    const pane = new SourcePane();
+    const pane = newPane();
     const host = document.createElement('div');
     document.body.append(host);
     pane.mount(host, { doc: 'x', onChange: () => {} });

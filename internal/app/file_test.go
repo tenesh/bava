@@ -1,13 +1,13 @@
 package app_test
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/tenesh/bava/internal/app"
+	"github.com/tenesh/bava/internal/config"
 	"github.com/tenesh/bava/internal/format"
 )
 
@@ -88,20 +88,47 @@ func TestChangedOnDiskNoticesAnotherWriter(t *testing.T) {
 	}
 }
 
-// TypeScript consumes these names, and a Go field rename would compile and
-// break the frontend.
-func TestFileResultJSONFieldNames(t *testing.T) {
-	assertKeys(t, "OpenResult", mustMarshal(t, app.OpenResult{}),
-		[]string{"diagrams", "error", "path", "scene", "source", "stamp"})
-	assertKeys(t, "SaveResult", mustMarshal(t, app.SaveResult{}),
-		[]string{"error", "path", "stamp"})
+// configIn points the platform's config folder into a temporary one, so the
+// user's own settings are never read or written.
+func configIn(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	// os.UserConfigDir reads HOME on macOS, XDG_CONFIG_HOME on Linux and
+	// AppData on Windows.
+	t.Setenv("HOME", dir)
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	t.Setenv("AppData", dir)
+	path, err := config.Path()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rel, err := filepath.Rel(dir, path); err != nil || strings.HasPrefix(rel, "..") {
+		t.Fatalf("settings would live at %s, outside the test's folder", path)
+	}
+	return path
 }
 
-func mustMarshal(t *testing.T, value any) []byte {
-	t.Helper()
-	b, err := json.Marshal(value)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
+func TestSettingsSavedAreTheSettingsRead(t *testing.T) {
+	path := configIn(t)
+	service := app.NewFileService(app.FileServiceOptions{})
+	want := config.Defaults()
+	want.Autosave = config.AutosaveAfterDelay
+	want.PageWidth = "narrow"
+
+	if msg := service.SaveSettings(want); msg != "" {
+		t.Fatal(msg)
 	}
-	return b
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("no settings file: %v", err)
+	}
+	if got := service.Settings(); got != want {
+		t.Errorf("Settings = %+v, want %+v", got, want)
+	}
+}
+
+func TestSettingsWithNoFileAreTheDefaults(t *testing.T) {
+	configIn(t)
+	if got := app.NewFileService(app.FileServiceOptions{}).Settings(); got != config.Defaults() {
+		t.Errorf("Settings = %+v, want the defaults", got)
+	}
 }

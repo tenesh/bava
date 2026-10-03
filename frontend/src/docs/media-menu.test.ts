@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { NodeSelection } from 'prosemirror-state';
 import type { MenuNode } from '../canvas/context-menu';
 import { DocEditor } from './editor';
+import { openEditor } from './test-editor';
 import { commands } from './commands';
 import { cardMenuItems, mediaMenuItems, mediaSetting, posterName } from './media-menu';
 
@@ -66,18 +67,9 @@ describe("the media's menu", () => {
 
 let editor: DocEditor | null = null;
 
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
-
 function open(markdown: string) {
-  const host = document.createElement('div');
-  document.body.append(host);
-  editor = new DocEditor();
-  editor.mount(host, { onChange: vi.fn(), probeFile: async () => true });
-  editor.setPage(markdown);
+  const opened = openEditor(markdown, { probeFile: async () => true });
+  editor = opened.editor;
   return editor.view!;
 }
 

@@ -35,14 +35,11 @@ only for behaviour; for declarative scaffolding it proves nothing.
 | Canvas interaction, editor wiring | Tests where real logic exists: coordinate maths, staleness, debounce, selection state. Not for markup. |
 
 ## The gates
-Go tests are table-driven, run with `go test ./...`. Frontend work is done
-only when `npm run check`, `npm run lint` and `npm test` all pass, judged by
-exit code.
-
-## Test quality
-One behavior per test, named for the behavior. Before writing a test, name the
-production change that would make it fail. If you cannot, the test asserts
-nothing. Assert on real behavior, never on mock behavior.
+`go test ./internal/... .`, and for frontend work `npm run check`,
+`npm run lint` and `npm test`, all judged by exit code. How every test is
+written (names, structure, shared helpers, teardown, pictures) is the
+standard in `docs/testing.md` ("The standard"); a test that departs from it
+is fixed, not copied.
 
 ## A test that opens a file must close it, even when it is about not closing
 Windows cannot delete a file another handle still has open, so `t.TempDir`'s
@@ -107,10 +104,10 @@ so the user sees them too. Regenerating because the check went red is how a
 drawing regression becomes the new expected state, exactly as with goldens.
 
 ## References are small and named by where they are
-`testdata/visual/<area>/<screen>--<state>--<theme>.png`, areas `start`,
-`shell`, `space`, `dialogs`, `settings`, `document`, `canvas`, `canvas-look`,
-`canvas-states`. Crop each to its screen or
-dialog at 1x; never the whole desktop. They live on `main`; source archives
+`testdata/visual/<area>/<screen>--<state>--<theme>.png`, one area per
+`specs/<area>.spec.ts` (the list is the coverage table in
+`docs/testing.md`). Crop each to what it pictures at 1x; only `start` and
+`shell` picture the whole window. They live on `main`; source archives
 leave them out (`.gitattributes` `export-ignore`).
 
 ## The stand-in answers as Go does

@@ -1,7 +1,6 @@
 package app_test
 
 import (
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/tenesh/bava/internal/app"
+	"github.com/tenesh/bava/internal/testutil"
 )
 
 // Pinned rather than asserted for correctness: the point is that a later edit
@@ -66,15 +66,12 @@ func TestMacTitleBarIsStandardAndMatchesTheBar(t *testing.T) {
 	}
 	// The page draws the bar from the --size-titlebar token; the window's
 	// draggable strip must follow it if the token changes.
-	tokens, err := os.ReadFile("../../frontend/src/styles/tokens/_space.scss")
-	if err != nil {
-		t.Fatal(err)
-	}
-	match := regexp.MustCompile(`--size-titlebar:\s*(\d+)px;`).FindSubmatch(tokens)
+	tokens := testutil.ReadRepoFile(t, "frontend/src/styles/tokens/_space.scss")
+	match := regexp.MustCompile(`--size-titlebar:\s*(\d+)px;`).FindStringSubmatch(tokens)
 	if match == nil {
 		t.Fatal("--size-titlebar not found in _space.scss")
 	}
-	if want, _ := strconv.Atoi(string(match[1])); app.TitleBarHeight != want {
+	if want, _ := strconv.Atoi(match[1]); app.TitleBarHeight != want {
 		t.Errorf("TitleBarHeight = %d, want --size-titlebar's %d", app.TitleBarHeight, want)
 	}
 }

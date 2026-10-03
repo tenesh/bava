@@ -1,19 +1,10 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { flushSync, mount, unmount } from 'svelte';
+import { describe, expect, it, vi } from 'vitest';
+import { flushSync } from 'svelte';
+import { render } from '../test/render';
 import FormatBubble from './FormatBubble.svelte';
 
-let mounted: ReturnType<typeof mount> | undefined;
-
-afterEach(() => {
-  if (mounted) unmount(mounted);
-  mounted = undefined;
-  document.body.innerHTML = '';
-});
-
-function render(focus = 0) {
-  const target = document.createElement('div');
-  document.body.append(target);
+function setup(focus = 0) {
   const props = $state({
     at: { left: 10, top: 40 },
     active: {},
@@ -22,7 +13,7 @@ function render(focus = 0) {
     onLeave: vi.fn(),
     onBlur: vi.fn(),
   });
-  mounted = flushSync(() => mount(FormatBubble, { target, props }));
+  render(FormatBubble, props);
   const buttons = () => [...document.querySelectorAll<HTMLButtonElement>('[role="toolbar"] button')];
   return { props, buttons };
 }
@@ -34,7 +25,7 @@ async function placed(buttons: () => HTMLButtonElement[]) {
 
 describe('FormatBubble from the keyboard', () => {
   it('takes focus on its first button when asked, and not before', async () => {
-    const { props, buttons } = render();
+    const { props, buttons } = setup();
     await placed(buttons);
     expect(document.activeElement).not.toBe(buttons()[0]);
     flushSync(() => (props.focus = 1));
@@ -43,13 +34,13 @@ describe('FormatBubble from the keyboard', () => {
 
   // Shown again after a command, it must not take focus back from the page.
   it('takes no focus when it appears with a request already made', async () => {
-    const { buttons } = render(3);
+    const { buttons } = setup(3);
     await placed(buttons);
     expect(document.activeElement).not.toBe(buttons()[0]);
   });
 
   it('moves between its buttons with the arrow keys, wrapping at the ends', async () => {
-    const { props, buttons } = render();
+    const { props, buttons } = setup();
     await placed(buttons);
     flushSync(() => (props.focus = 1));
     buttons()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
@@ -60,7 +51,7 @@ describe('FormatBubble from the keyboard', () => {
   });
 
   it('says when focus leaves it for somewhere else', async () => {
-    const { props, buttons } = render();
+    const { props, buttons } = setup();
     await placed(buttons);
     const outside = document.createElement('button');
     document.body.append(outside);
@@ -70,17 +61,13 @@ describe('FormatBubble from the keyboard', () => {
   });
 
   it('leaves out Turn into for a block that cannot turn into another', async () => {
-    const target = document.createElement('div');
-    document.body.append(target);
-    mounted = flushSync(() =>
-      mount(FormatBubble, { target, props: { at: { left: 0, top: 0 }, active: {}, turnable: false, onCommand: vi.fn() } }),
-    );
+    render(FormatBubble, { at: { left: 0, top: 0 }, active: {}, turnable: false, onCommand: vi.fn() });
     await vi.waitFor(() => expect(document.querySelector('[role="toolbar"] button')).not.toBeNull());
     expect(document.querySelector('[aria-label="Turn into"]')).toBeNull();
   });
 
   it('gives focus back on Escape', async () => {
-    const { props, buttons } = render();
+    const { props, buttons } = setup();
     await placed(buttons);
     flushSync(() => (props.focus = 1));
     buttons()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));

@@ -1,17 +1,12 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { flushSync, mount, unmount } from 'svelte';
+import { describe, expect, it, vi } from 'vitest';
+import { flushSync } from 'svelte';
+import { render } from '../test/render';
 import NewSpaceDialog from './NewSpaceDialog.svelte';
 
-afterEach(() => {
-  document.body.innerHTML = '';
-});
-
-function render(location: string) {
-  const target = document.createElement('div');
-  document.body.append(target);
+function setup(location: string) {
   const handlers = { onChooseLocation: vi.fn(), onCreate: vi.fn(), onOpenChange: vi.fn() };
-  const app = flushSync(() => mount(NewSpaceDialog, { target, props: { open: true, location, ...handlers } }));
+  const { app } = render(NewSpaceDialog, { open: true, location, ...handlers });
   return { app, handlers };
 }
 
@@ -24,28 +19,27 @@ function type(value: string) {
   flushSync();
 }
 
-describe('the New Space dialog', () => {
-  it('asks for a name and a place, and creates only with both', async () => {
-    const { app } = render('');
+describe('NewSpaceDialog', () => {
+  it('cannot create without a place', async () => {
+    setup('');
     await vi.waitFor(() => expect(field()).not.toBeNull());
     type('Acme');
     expect(button('Create').hasAttribute('disabled')).toBe(true);
-    unmount(app);
-    document.body.innerHTML = '';
-    const again = render('/Users/me/Work');
+  });
+
+  it('creates with a name and a place, the name trimmed', async () => {
+    const again = setup('/Users/me/Work');
     await vi.waitFor(() => expect(field()).not.toBeNull());
     type('  Acme  ');
     button('Create').click();
     expect(again.handlers.onCreate).toHaveBeenCalledWith('Acme');
-    unmount(again.app);
   });
 
   it('shows where the folder will be made, and lets the user choose', async () => {
-    const { app, handlers } = render('/Users/me/Work');
+    const { handlers } = setup('/Users/me/Work');
     await vi.waitFor(() => expect(field()).not.toBeNull());
     expect(document.body.textContent).toContain('/Users/me/Work');
     button('Choose').click();
     expect(handlers.onChooseLocation).toHaveBeenCalled();
-    unmount(app);
   });
 });

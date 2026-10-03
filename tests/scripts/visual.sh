@@ -28,7 +28,7 @@ results="$repo/frontend/tests/visual/.results"
 # The package volume mounts over frontend/node_modules, which a fresh checkout
 # (CI) does not have; Docker cannot make it inside the read-only repo.
 mkdir -p "$results" "$repo/testdata/visual" "$repo/frontend/node_modules"
-rm -rf "$results/output"
+rm -rf "$results/output" "$results/orphans.txt"
 
 mounts=(
   -v "$repo:/repo:ro"
@@ -37,5 +37,11 @@ mounts=(
 )
 [[ -n "$update" ]] && mounts+=(-v "$repo/testdata/visual:/repo/testdata/visual")
 
+status=0
 docker run --rm --network none --ipc host "${mounts[@]}" -w /repo/frontend "$image" \
-  npx playwright test -c tests/visual/playwright.config.ts $update "$@"
+  npx playwright test -c tests/visual/playwright.config.ts $update "$@" || status=$?
+
+# The references a full run never compared (the reporter in
+# frontend/tests/visual/harness/orphans.ts writes the list).
+[[ -f "$results/orphans.txt" ]] && cat "$results/orphans.txt"
+exit "$status"

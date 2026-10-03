@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { NodeSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
+import { openEditor, settle } from './test-editor';
 import { mediaRelinkAddress, mediaUrl, mediaView } from './media';
 
 describe('where a media block is loaded from', () => {
@@ -32,26 +33,16 @@ describe('where a media block is loaded from', () => {
 
 let editor: DocEditor | null = null;
 
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
-
 /** Opens a page whose files the probe answers: `present` lists the paths the route has. */
 function open(markdown: string, present: string[] = []) {
-  const host = document.createElement('div');
-  document.body.append(host);
   const probe = vi.fn(async (url: string) => present.includes(new URL(url, 'http://app').searchParams.get('path') ?? ''));
   const options = { onChange: vi.fn(), probeFile: probe };
-  editor = new DocEditor();
-  editor.mount(host, options);
-  editor.setPage(markdown);
+  const opened = openEditor(markdown, options);
+  editor = opened.editor;
+  const { host } = opened;
   editor.setMediaPlace({ root: '/Space', here: 'Page.md' });
   return { ...options, view: editor.view!, host };
 }
-
-const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('an image in the page', () => {
   it('is drawn from the file route with its settings and caption', () => {
@@ -259,11 +250,9 @@ describe('an online video in the page', () => {
 
   it('opens in the browser instead, from a site that will not play inside Bava', () => {
     const onOpenFile = vi.fn();
-    const host = document.createElement('div');
-    document.body.append(host);
-    editor = new DocEditor();
-    editor.mount(host, { onChange: vi.fn(), onOpenFile, playsInPage: () => false });
-    editor.setPage(page);
+    const opened = openEditor(page, { onOpenFile, playsInPage: () => false });
+    editor = opened.editor;
+    const { host } = opened;
     host.querySelector<HTMLButtonElement>('button.media-play')!.click();
     expect(host.querySelector('iframe')).toBeNull();
     expect(onOpenFile).toHaveBeenCalledWith('https://www.youtube.com/watch?v=abc123');

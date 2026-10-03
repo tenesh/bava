@@ -1,19 +1,14 @@
-// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { iconSizeVar, type IconSize } from './icon';
+import { iconSizeVar } from './icon';
 
-describe('Icon sizing', () => {
+describe('iconSizeVar', () => {
   // Sizes are a string union, not a number: a component that takes `size={17}`
   // has left the token scale behind and nothing will notice.
-  it('maps every size to a token', () => {
-    const sizes: IconSize[] = ['sm', 'md', 'lg'];
-    for (const size of sizes) {
-      expect(iconSizeVar(size)).toMatch(/^var\(--/);
-    }
-  });
-
-  it('gives distinct sizes distinct tokens', () => {
-    const seen = new Set([iconSizeVar('sm'), iconSizeVar('md'), iconSizeVar('lg')]);
-    expect(seen.size).toBe(3);
+  it.each([
+    ['sm', 'var(--space-3)'],
+    ['md', 'var(--space-4)'],
+    ['lg', 'var(--space-5)'],
+  ] as const)('maps %s to its spacing token', (size, token) => {
+    expect(iconSizeVar(size)).toBe(token);
   });
 });

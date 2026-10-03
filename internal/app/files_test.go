@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/tenesh/bava/internal/app"
+	"github.com/tenesh/bava/internal/testutil"
 )
 
 // served asks the file route for a file, as the page does.
@@ -28,22 +29,13 @@ func served(t *testing.T, folders *app.OpenedFolders, root, path string, header 
 	return rec
 }
 
-func writeFile(t *testing.T, root, rel, content string) {
-	t.Helper()
-	full := filepath.Join(root, filepath.FromSlash(rel))
-	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestFileRouteServesImagesAndVideosFromAnOpenedFolder(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, root, ".bava/attachments/logo.png", "png bytes")
-	writeFile(t, root, "images/photo.jpg", "jpg bytes")
-	writeFile(t, root, ".bava/attachments/demo.mp4", "0123456789")
+	testutil.WriteTree(t, root, map[string]string{
+		".bava/attachments/logo.png": "png bytes",
+		"images/photo.jpg":           "jpg bytes",
+		".bava/attachments/demo.mp4": "0123456789",
+	})
 	folders := app.NewOpenedFolders()
 	folders.Allow(root)
 
@@ -65,16 +57,18 @@ func TestFileRouteServesImagesAndVideosFromAnOpenedFolder(t *testing.T) {
 
 func TestFileRouteRefusesAnythingElse(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, root, "notes.md", "text")
-	writeFile(t, root, ".bava/space.json", "{}")
-	writeFile(t, root, ".hidden/a.png", "png")
-	writeFile(t, root, "ok.png", "png")
-	writeFile(t, root, ".bava/trash/x.png", "png")
-	writeFile(t, root, ".bava/x.png", "png")
-	writeFile(t, root, ".bava/attachments/sub/x.png", "png")
-	writeFile(t, root, ".bava/attachments/.x.png", "png")
+	testutil.WriteTree(t, root, map[string]string{
+		"notes.md":                    "text",
+		".bava/space.json":            "{}",
+		".hidden/a.png":               "png",
+		"ok.png":                      "png",
+		".bava/trash/x.png":           "png",
+		".bava/x.png":                 "png",
+		".bava/attachments/sub/x.png": "png",
+		".bava/attachments/.x.png":    "png",
+	})
 	elsewhere := t.TempDir()
-	writeFile(t, elsewhere, "secret.png", "png")
+	testutil.WriteTree(t, elsewhere, map[string]string{"secret.png": "png"})
 	folders := app.NewOpenedFolders()
 	folders.Allow(root)
 
@@ -105,9 +99,11 @@ func TestFileRouteRefusesAnythingElse(t *testing.T) {
 		cases["through a linked folder"] = [2]string{root, "linked/secret.png"}
 	}
 	for name, c := range cases {
-		if rec := served(t, folders, c[0], c[1], nil); rec.Code != http.StatusNotFound {
-			t.Errorf("%s: %d", name, rec.Code)
-		}
+		t.Run(name, func(t *testing.T) {
+			if rec := served(t, folders, c[0], c[1], nil); rec.Code != http.StatusNotFound {
+				t.Errorf("served %d", rec.Code)
+			}
+		})
 	}
 }
 
@@ -128,7 +124,7 @@ func TestOpeningASpaceOrAPageAllowsItsFolder(t *testing.T) {
 		t.Error("an opened Space is not allowed")
 	}
 	dir := t.TempDir()
-	writeFile(t, dir, "page.md", "# Page\n")
+	testutil.WriteTree(t, dir, map[string]string{"page.md": "# Page\n"})
 	app.NewFileService(app.FileServiceOptions{Folders: folders}).Open(filepath.Join(dir, "page.md"))
 	if !folders.Allowed(dir) {
 		t.Error("an opened page's folder is not allowed")
@@ -179,7 +175,7 @@ func TestChooseMediaCancelledIsNoFiles(t *testing.T) {
 // An SVG is only ever an image: never run as a page of its own.
 func TestFileRouteServesFilesThatCannotRunAsAPage(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, root, "a.svg", "<svg/>")
+	testutil.WriteTree(t, root, map[string]string{"a.svg": "<svg/>"})
 	folders := app.NewOpenedFolders()
 	folders.Allow(root)
 	rec := served(t, folders, root, "a.svg", nil)
@@ -190,7 +186,7 @@ func TestFileRouteServesFilesThatCannotRunAsAPage(t *testing.T) {
 
 func TestFileDetailsAreReadFromTheFile(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, root, ".bava/attachments/Q3 report.pdf", "12345")
+	testutil.WriteTree(t, root, map[string]string{".bava/attachments/Q3 report.pdf": "12345"})
 	folders := app.NewOpenedFolders()
 	folders.Allow(root)
 	s := app.NewFileService(app.FileServiceOptions{Folders: folders})
@@ -213,9 +209,11 @@ func TestFileDetailsAreReadFromTheFile(t *testing.T) {
 
 func TestOpenFileOpensADocumentButOnlyShowsAProgram(t *testing.T) {
 	root := t.TempDir()
+	files := map[string]string{}
 	for _, name := range []string{"notes.pdf", "setup.exe", "run.sh", "Tool.app/x", "folder/y", "run", "page.hta", "script.js", "setup.exe.", "flow.workflow", "Tool.app/Contents/MacOS/Tool"} {
-		writeFile(t, root, name, "x")
+		files[name] = "x"
 	}
+	testutil.WriteTree(t, root, files)
 	folders := app.NewOpenedFolders()
 	folders.Allow(root)
 	var opened, revealed []string
@@ -248,7 +246,7 @@ func TestOpenFileAndFileDetailsNeverGoThroughALink(t *testing.T) {
 		t.Skip("links need privileges on Windows")
 	}
 	root, elsewhere := t.TempDir(), t.TempDir()
-	writeFile(t, elsewhere, "doc.pdf", "outside")
+	testutil.WriteTree(t, elsewhere, map[string]string{"doc.pdf": "outside"})
 	if err := os.Symlink(elsewhere, filepath.Join(root, "linked")); err != nil {
 		t.Fatal(err)
 	}
@@ -266,7 +264,7 @@ func TestOpenFileAndFileDetailsNeverGoThroughALink(t *testing.T) {
 
 func TestFileRouteServesASitesIcon(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, root, ".bava/attachments/example.com icon.ico", "ico")
+	testutil.WriteTree(t, root, map[string]string{".bava/attachments/example.com icon.ico": "ico"})
 	folders := app.NewOpenedFolders()
 	folders.Allow(root)
 	if rec := served(t, folders, root, ".bava/attachments/example.com icon.ico", nil); rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "image/x-icon" {

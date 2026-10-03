@@ -227,7 +227,7 @@ describe('syntax colours', () => {
 // token missing from the stylesheet reads as 0, and 0 turns each feature off
 // without a word.
 describe('the canvas distances the pointer uses', () => {
-  const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+  const css = compile(fileURLToPath(new URL('./index.scss', import.meta.url)), { style: 'expanded' }).css;
   it.each(['--size-point-handle', '--size-point-hit', '--size-bend-insert', '--size-min-linear', '--size-bend-min-segment', '--size-elbow-margin', '--size-line-confirm', '--size-point-handle-editing', '--size-snap-dot', '--size-bent-box-padding', '--size-point-hover', '--size-focus-point', '--size-point-overlap', '--size-label-drag', '--size-code-language-inset', '--size-code-language-clearance'])(
     '%s has a non-zero length',
     (name) => {
@@ -242,7 +242,7 @@ describe('the canvas distances the pointer uses', () => {
 // (`App.tsx:6808-6816`), rounded to a whole pixel.
 describe('how near a line counts as on it', () => {
   it("is Excalidraw's 6.8 screen px, rounded to 7", () => {
-    const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+    const css = compile(fileURLToPath(new URL('./index.scss', import.meta.url)), { style: 'expanded' }).css;
     expect(css).toMatch(/--size-hit-tolerance:\s*7px/);
   });
 });
@@ -250,7 +250,7 @@ describe('how near a line counts as on it', () => {
 // The attach highlight's colour in both themes, and its pulse,
 // stilled under reduced motion.
 describe('the attach highlight tokens', () => {
-  const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+  const css = compile(fileURLToPath(new URL('./index.scss', import.meta.url)), { style: 'expanded' }).css;
   it('has a colour in each theme', () => {
     expect((css.match(/--color-binding-highlight:/g) ?? []).length).toBe(2);
   });
@@ -262,7 +262,7 @@ describe('the attach highlight tokens', () => {
 
 // Snapping to objects, Excalidraw's values.
 describe('the snapping tokens', () => {
-  const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+  const css = compile(fileURLToPath(new URL('./index.scss', import.meta.url)), { style: 'expanded' }).css;
   it.each([
     ['--size-snap-distance', 8],
     ['--size-snap-guide', 1],
@@ -279,7 +279,7 @@ describe('the snapping tokens', () => {
 
 // The Files tree.
 describe('the Files tree tokens', () => {
-  const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+  const css = compile(fileURLToPath(new URL('./index.scss', import.meta.url)), { style: 'expanded' }).css;
   it.each([
     ['--size-tree-indent', 14],
     ['--size-tree-drop-line', 2],
@@ -293,7 +293,7 @@ describe('the Files tree tokens', () => {
 
 // The mockups' shared values: dialog chrome, fields, the side pane, the dot grid.
 describe('the mockup tokens', () => {
-  const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+  const css = compile(fileURLToPath(new URL('./index.scss', import.meta.url)), { style: 'expanded' }).css;
   it.each([
     ['--text-title', 15],
     ['--radius-xl', 8],
@@ -383,7 +383,7 @@ describe('the mockup tokens', () => {
 
 // The launch splash, as the mockup draws it.
 describe('the splash tokens', () => {
-  const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+  const css = compile(fileURLToPath(new URL('./index.scss', import.meta.url)), { style: 'expanded' }).css;
   it.each([
     ['--size-progress-splash', 220],
     ['--size-progress-splash-thickness', 4],
@@ -397,7 +397,7 @@ describe('the splash tokens', () => {
 
 // The Document: its type scale and page widths, as the mockups draw them.
 describe('the document tokens', () => {
-  const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+  const css = compile(fileURLToPath(new URL('./index.scss', import.meta.url)), { style: 'expanded' }).css;
   it.each([
     ['--text-doc-body', 15],
     ['--text-doc-h1', 32],

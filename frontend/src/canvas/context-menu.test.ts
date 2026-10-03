@@ -3,7 +3,7 @@ import { COMMAND_IDS } from '../shell/commands';
 import { atPoint, contextMenuFor, contextSelection, overflowMenu, parseOverflowId, type MenuNode } from './context-menu';
 
 const ids = (nodes: MenuNode[]): string[] =>
-  nodes.flatMap((n) => (n.kind === 'separator' ? ['—'] : n.kind === 'submenu' ? [`${n.id}▸`, ...ids(n.items).map((i) => `  ${i}`)] : [n.id]));
+  nodes.flatMap((n) => (n.kind === 'separator' ? ['---'] : n.kind === 'submenu' ? [`${n.id}▸`, ...ids(n.items).map((i) => `  ${i}`)] : [n.id]));
 
 const base = { units: 1, canGroup: false, canUngroup: false, canPaste: true, canPasteStyles: true, hasLocked: false };
 
@@ -11,18 +11,18 @@ describe('the right-click menu', () => {
   it('lists the groups for one element, with no align, in order', () => {
     expect(ids(contextMenuFor(base))).toEqual([
       'edit.cut', 'edit.copy', 'edit.paste',
-      '—',
+      '---',
       'canvas.copyAs▸', '  canvas.copyPng', '  canvas.copySvg',
       'canvas.exportSelection',
-      '—',
+      '---',
       'canvas.copyStyles', 'canvas.pasteStyles',
-      '—',
+      '---',
       'canvas.arrange▸',
       '  canvas.bringToFront', '  canvas.bringForward', '  canvas.sendBackward', '  canvas.sendToBack',
       'canvas.flip▸', '  canvas.flipHorizontal', '  canvas.flipVertical',
-      '—',
+      '---',
       'canvas.duplicate', 'canvas.lock',
-      '—',
+      '---',
       'edit.delete',
     ]);
   });
@@ -50,7 +50,7 @@ describe('the right-click menu', () => {
   it('offers only commands the app handles', () => {
     const offered = ids(contextMenuFor({ ...base, units: 3, canGroup: true, canUngroup: true, hasLocked: true }))
       .map((id) => id.replace(/^\s+/, '').replace(/▸$/, ''))
-      .filter((id) => id !== '—');
+      .filter((id) => id !== '---');
     const known = new Set<string>(COMMAND_IDS);
     // A submenu is a container, not a command, so it is not in the list.
     const containers = new Set(['canvas.arrange', 'canvas.align', 'canvas.flip', 'canvas.copyAs']);
@@ -136,7 +136,7 @@ describe('controls that overflow the toolbar row', () => {
       { id: 'fill', group: 'colour', kind: 'colour' },
     ]);
     expect(ids(nodes)).toEqual([
-      '—',
+      '---',
       'property:edges▸', '  property:edges:sharp', '  property:edges:round',
       'property:opacity▸', '  property:opacity:100', '  property:opacity:75', '  property:opacity:50', '  property:opacity:25',
       'style:fill▸', '  style:fill:', '  style:fill:gray', '  style:fill:blue', '  style:fill:green',

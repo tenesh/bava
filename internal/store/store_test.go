@@ -1,6 +1,7 @@
 package store_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -151,5 +152,57 @@ func TestSaveKeepsTheFilesPermissions(t *testing.T) {
 		if got := info.Mode().Perm(); got != want {
 			t.Errorf("%s: mode %v; want %v", filepath.Base(path), got, want)
 		}
+	}
+}
+
+func TestSaveFromWritesWhatTheReaderHolds(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "clip.mp4")
+	want := strings.Repeat("frame ", 50_000)
+
+	if err := store.SaveFrom(path, strings.NewReader(want)); err != nil {
+		t.Fatalf("SaveFrom: %v", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != want {
+		t.Errorf("saved %d bytes, want %d", len(got), len(want))
+	}
+}
+
+// failingReader gives some bytes, then fails, as a source that goes away
+// part way through does.
+type failingReader struct{ given bool }
+
+func (r *failingReader) Read(p []byte) (int, error) {
+	if r.given {
+		return 0, errors.New("source went away")
+	}
+	r.given = true
+	return copy(p, "partial"), nil
+}
+
+// A source that fails part way leaves the previous file whole and no
+// temporary file behind.
+func TestSaveFromThatFailsKeepsThePreviousFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "clip.mp4")
+	if err := store.Save(path, "previous\n"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.SaveFrom(path, &failingReader{}); err == nil {
+		t.Fatal("a failed read was saved")
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "previous\n" {
+		t.Errorf("file = %q, want the previous content", got)
+	}
+	if entries, _ := os.ReadDir(dir); len(entries) != 1 {
+		t.Errorf("folder holds %d entries, want just the file", len(entries))
 	}
 }

@@ -216,11 +216,19 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
   }
 }
 
-/** Runs the steps in order; returns '' when all pass, else which step failed and why. */
+/**
+ * Runs the steps in order; returns '' when all pass, else which step failed
+ * and why. A failed step first has the window pictured as it found it,
+ * `failure` among the run's screenshots; a picture that cannot be taken
+ * leaves the report as it is.
+ */
 export async function runScenario(steps: Step[], env: DriverEnv): Promise<string> {
   for (const [index, s] of steps.entries()) {
     const failure = await step(s, env);
-    if (failure) return `step ${index + 1} (${s.do}${s.target ? ` ${s.target}` : ''}): ${failure}`;
+    if (failure) {
+      await env.shot('failure').catch(() => '');
+      return `step ${index + 1} (${s.do}${s.target ? ` ${s.target}` : ''}): ${failure}`;
+    }
     // Let the app settle between steps, as a person's pace would.
     await new Promise((resolve) => setTimeout(resolve, 50));
   }

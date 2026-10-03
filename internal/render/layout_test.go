@@ -3,21 +3,16 @@ package render_test
 import (
 	"context"
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/tenesh/bava/internal/render"
+	"github.com/tenesh/bava/internal/testutil"
 )
 
 func containersSource(t *testing.T) string {
 	t.Helper()
-	source, err := os.ReadFile(filepath.Join("..", "..", "testdata", "golden", "containers.d2"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(source)
+	return testutil.ReadRepoFile(t, "testdata/golden/containers.d2")
 }
 
 // The canvas builds shapes from this geometry, so every node and every edge

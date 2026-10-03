@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { TextSelection } from 'prosemirror-state';
 import { Slice } from 'prosemirror-model';
 import { DocEditor } from './editor';
+import { openEditor } from './test-editor';
 import { addMedia, type AddMediaDeps } from './add-media';
 import { SLASH_ITEMS } from './slash';
 import { atTextEnd } from './test-caret';
@@ -73,12 +74,9 @@ describe('adding images and videos to a page', () => {
 
 describe('the / menu', () => {
   it('offers Image and Video, which ask the app for files', () => {
-    const host = document.createElement('div');
-    document.body.append(host);
     const onChooseMedia = vi.fn();
-    editor = new DocEditor();
-    editor.mount(host, { onChange: vi.fn(), onChooseMedia });
-    editor.setPage('Text\n');
+    const opened = openEditor('Text\n', { onChooseMedia });
+    editor = opened.editor;
     const view = editor.view!;
     for (const kind of ['image', 'video', 'file']) {
       view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)).insertText(' /'));
@@ -91,19 +89,10 @@ describe('the / menu', () => {
 
 let editor: DocEditor | null = null;
 
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
-
 function open(markdown: string, here = 'Page.md') {
-  const host = document.createElement('div');
-  document.body.append(host);
   const options = { onChange: vi.fn(), onPasteImage: vi.fn(), probeFile: async () => true };
-  editor = new DocEditor();
-  editor.mount(host, options);
-  editor.setPage(markdown);
+  const opened = openEditor(markdown, options);
+  editor = opened.editor;
   editor.setSpacePages(here, []);
   return { ...options, view: editor.view! };
 }

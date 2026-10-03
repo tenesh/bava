@@ -36,6 +36,8 @@
     { "do": "wait", "target": ".bava-doc a[href='Goal.md']", "text": "Goal" },
     { "do": "menu", "target": "view.canvas" },
     { "do": "wait", "target": "footer", "text": "Nodes 1" },
-    { "do": "shot", "name": "reopened" }
+    { "do": "shot", "name": "reopened" },
+
+    { "do": "file", "target": "Smoke/First page.md", "text": "See [Goal](Goal.md)" }
   ]
 }

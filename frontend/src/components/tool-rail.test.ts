@@ -1,24 +1,14 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { flushSync, mount, unmount } from 'svelte';
+import { describe, expect, it, vi } from 'vitest';
+import { flushSync } from 'svelte';
+import { render } from '../test/render';
 import ToolRail from './ToolRail.svelte';
-import RailHarness from './fixtures/RailHarness.svelte';
+import RailHarness from './__fixtures__/RailHarness.svelte';
 
-afterEach(() => {
-  document.body.innerHTML = '';
-});
-
-function render(props: Partial<{ active: string; insertOpen: boolean }> = {}) {
-  const target = document.createElement('div');
-  document.body.append(target);
+function setup(props: Partial<{ active: string; insertOpen: boolean }> = {}) {
   const onSelect = vi.fn();
   const onInsert = vi.fn();
-  const app = flushSync(() =>
-    mount(ToolRail, {
-      target,
-      props: { active: 'select', insertOpen: false, onSelect, onInsert, ...props } as never,
-    }),
-  );
+  const { target, app } = render(ToolRail, { active: 'select', insertOpen: false, onSelect, onInsert, ...props } as never);
   const buttons = [...target.querySelectorAll('button')];
   const named = (name: string) => buttons.find((b) => b.getAttribute('aria-label') === name)!;
   return { app, target, buttons, named, onSelect, onInsert };
@@ -26,50 +16,46 @@ function render(props: Partial<{ active: string; insertOpen: boolean }> = {}) {
 
 describe('ToolRail', () => {
   it('renders a named, keyed icon button per tool, in a vertical toolbar', () => {
-    const { app, target, buttons, named } = render();
+    const { target, buttons, named } = setup();
     expect(target.querySelector('[role="toolbar"]')?.getAttribute('aria-orientation')).toBe('vertical');
     // Insert, seven common tools, frame, code, the eraser and the tool lock.
     expect(buttons).toHaveLength(12);
     expect(named('Rectangle').querySelector('.key')?.textContent).toBe('R');
     expect(named('Rectangle').querySelector('svg')).not.toBeNull();
-    unmount(app);
   });
 
   it('reports the tool clicked, and presses the active one', () => {
-    const { app, named, onSelect } = render({ active: 'ellipse' });
+    const { named, onSelect } = setup({ active: 'ellipse' });
     expect(named('Ellipse').getAttribute('aria-pressed')).toBe('true');
     expect(named('Rectangle').getAttribute('aria-pressed')).toBe('false');
     named('Eraser').click();
     expect(onSelect).toHaveBeenCalledWith('eraser');
-    unmount(app);
   });
 
   it('presses nothing for a shape chosen from the insert panel', () => {
-    const { app, buttons } = render({ active: 'cloud' });
+    const { buttons } = setup({ active: 'cloud' });
     expect(buttons.filter((b) => b.getAttribute('aria-pressed') === 'true')).toHaveLength(0);
-    unmount(app);
   });
 
-  it('opens insert, which shows close while open', () => {
-    const closed = render();
+  it('opens insert', () => {
+    const closed = setup();
     closed.named('Insert').click();
     expect(closed.onInsert).toHaveBeenCalled();
-    unmount(closed.app);
+  });
 
-    const open = render({ insertOpen: true });
+  it('shows close while insert is open', () => {
+    const open = setup({ insertOpen: true });
     expect(open.named('Close insert panel')).toBeDefined();
     expect(open.named('Close insert panel').getAttribute('aria-expanded')).toBe('true');
-    unmount(open.app);
   });
 
   it('moves focus with the arrow keys', () => {
-    const { app, buttons } = render();
+    const { buttons } = setup();
     buttons[1].focus();
     buttons[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
     expect(document.activeElement).toBe(buttons[2]);
     buttons[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
     expect(document.activeElement).toBe(buttons[1]);
-    unmount(app);
   });
 });
 
@@ -77,29 +63,23 @@ describe('ToolRail focus', () => {
   // Closing the insert panel returns focus to +, from inside the rail rather
   // than by the page searching for the rail's markup.
   it('focuses + when the insert panel closes', () => {
-    const target = document.createElement('div');
-    document.body.append(target);
-    const harness = flushSync(() => mount(RailHarness, { target })) as unknown as { setOpen(open: boolean): void };
+    const harness = render(RailHarness).app as unknown as { setOpen(open: boolean): void };
     flushSync(() => harness.setOpen(true));
     (document.body as HTMLElement).focus();
     flushSync(() => harness.setOpen(false));
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Insert');
-    unmount(harness as never);
   });
 });
 
 // The rail's tool lock, as Excalidraw's.
 describe("ToolRail's lock", () => {
   it('shows whether the tool is kept, and reports a press', () => {
-    const target = document.createElement('div');
-    document.body.append(target);
     const onLock = vi.fn();
     const props = { active: 'select', insertOpen: false, onSelect: vi.fn(), onInsert: vi.fn(), locked: true, onLock };
-    const app = flushSync(() => mount(ToolRail, { target, props: props as never }));
+    const { target } = render(ToolRail, props as never);
     const lock = [...target.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === 'Keep tool after drawing')!;
     expect(lock.getAttribute('aria-pressed')).toBe('true');
     lock.click();
     expect(onLock).toHaveBeenCalledOnce();
-    unmount(app);
   });
 });

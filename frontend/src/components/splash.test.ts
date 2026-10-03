@@ -1,39 +1,13 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
-import { flushSync, mount, unmount } from 'svelte';
+import { describe, expect, it } from 'vitest';
+import { render } from '../test/render';
 import Splash from './Splash.svelte';
 
-afterEach(() => {
-  document.body.innerHTML = '';
-});
-
 describe('Splash', () => {
-  it('shows the mark, the wordmark, an indeterminate bar and the status', () => {
-    const target = document.createElement('div');
-    document.body.append(target);
-    const app = flushSync(() => mount(Splash, { target, props: { status: 'Starting' } }));
-
-    const splash = target.querySelector('[data-part="splash"]');
-    expect(splash).not.toBeNull();
-    expect(splash?.getAttribute('aria-busy')).toBe('true');
-    expect(target.querySelector('.mark')?.getAttribute('data-size')).toBe('splash');
-    expect(target.textContent).toContain('bava');
-    expect(target.textContent).toContain('Starting');
-    expect(target.textContent).toContain('Apache-2.0');
+  it('says it is busy, with a bar that claims no progress and the status it is given', () => {
+    const { target } = render(Splash, { status: 'Starting' });
+    expect(target.querySelector('[data-part="splash"]')?.getAttribute('aria-busy')).toBe('true');
     expect(target.querySelector('[role="progressbar"]')?.hasAttribute('aria-valuenow')).toBe(false);
-    unmount(app);
-  });
-
-  // As the mockup lays it out: one centred column, the bar and its status
-  // under the wordmark, the footer on its own at the bottom.
-  it('keeps the bar in the centred column, under the wordmark', () => {
-    const target = document.createElement('div');
-    document.body.append(target);
-    const app = flushSync(() => mount(Splash, { target, props: { status: 'Starting' } }));
-    const column = target.querySelector('.identity')!;
-    expect(column.querySelector('.wordmark')).not.toBeNull();
-    expect(column.querySelector('[role="progressbar"]')).not.toBeNull();
-    expect(column.querySelector('.footer')).toBeNull();
-    unmount(app);
+    expect(target.textContent).toContain('Starting');
   });
 });

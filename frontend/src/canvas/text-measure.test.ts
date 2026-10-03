@@ -49,6 +49,5 @@ describe('canvasLineWidth', () => {
     const spy = vi.spyOn(document, 'createElement');
     for (let i = 0; i < 5; i++) canvasLineWidth(`${i}px Geist`)('abc');
     expect(spy.mock.calls.filter(([tag]) => tag === 'canvas')).toHaveLength(0);
-    spy.mockRestore();
   });
 });

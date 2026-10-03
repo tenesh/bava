@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { THEMES, menu, openApp, openDialog, shot } from './helpers';
+import { THEMES, menu, openApp, openDialog, restPointer, shot, shotDialog } from './helpers';
 
 for (const theme of THEMES) {
   test.describe(`Settings, ${theme}`, () => {
@@ -9,7 +9,9 @@ for (const theme of THEMES) {
         await menu(page, 'app.settings');
         await expect(openDialog(page)).toBeVisible();
         await page.getByRole('tab', { name: section }).click();
-        await expect(openDialog(page)).toHaveScreenshot(shot('settings', 'settings', section.toLowerCase(), theme));
+        await restPointer(page);
+        await expect(page.getByRole('tab', { name: section })).toHaveAttribute('aria-selected', 'true');
+        await shotDialog(page, shot('settings', 'tab', section.toLowerCase(), theme));
       });
     }
   });

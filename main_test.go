@@ -1,5 +1,7 @@
 package main
 
+// In package main to reach appOptions, the options the app runs with.
+
 import (
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/tenesh/bava/internal/app"
 	"github.com/tenesh/bava/internal/logs"
+	"github.com/tenesh/bava/internal/testutil"
 )
 
 // On macOS [NSApp terminate:] exits the process once Wails' cleanup has run,
@@ -24,6 +27,9 @@ func TestPostShutdownClosesTheSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// PostShutdown closes it; this closes it if the test stops first, as
+	// Windows cannot delete an open file. Close is idempotent.
+	t.Cleanup(func() { _ = session.Close() })
 
 	options := appOptions(session, nil, func(app.AppError) {}, app.NewOpenedFolders())
 	if options.PostShutdown == nil {
@@ -48,7 +54,7 @@ func TestPostShutdownClosesTheSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer next.Close()
+	t.Cleanup(func() { _ = next.Close() })
 	if next.Previous.Unexpected {
 		t.Error("a quit through PostShutdown was reported as unexpected at the next launch")
 	}
@@ -58,16 +64,14 @@ func TestPostShutdownClosesTheSession(t *testing.T) {
 // the file route must sit in front of it.
 func TestTheFileRouteIsInstalled(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "a.png"), []byte("png"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testutil.WriteTree(t, root, map[string]string{"a.png": "png"})
 	folders := app.NewOpenedFolders()
 	folders.Allow(root)
 	session, err := logs.Start(logs.Options{Dir: t.TempDir(), Now: time.Date(2026, 9, 29, 10, 0, 0, 0, time.UTC), PID: 42})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer session.Close()
+	t.Cleanup(func() { _ = session.Close() })
 	options := appOptions(session, nil, func(app.AppError) {}, folders)
 	if options.Assets.Middleware == nil {
 		t.Fatal("no file route")

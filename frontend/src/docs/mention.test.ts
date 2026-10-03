@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocEditor } from './editor';
+import { openEditor } from './test-editor';
 import { rankPages, typedDates } from './mention';
 import { atTextEnd } from './test-caret';
 
@@ -64,21 +65,11 @@ beforeEach(() => {
   vi.setSystemTime(new Date(2026, 8, 28, 10, 0));
 });
 
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-  vi.useRealTimers();
-});
-
 function open(markdown: string, here: string | null = 'Notes/Today.md') {
-  const host = document.createElement('div');
-  document.body.append(host);
   const onMention = vi.fn();
   const onMentionPages = vi.fn();
-  editor = new DocEditor();
-  editor.mount(host, { onChange: vi.fn(), onMention, onMentionPages });
-  editor.setPage(markdown);
+  const opened = openEditor(markdown, { onMention, onMentionPages });
+  editor = opened.editor;
   editor.setSpacePages(here, null);
   const view = editor.view!;
   view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)));

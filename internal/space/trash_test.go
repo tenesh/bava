@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/tenesh/bava/internal/testutil"
 )
 
 func TestTrashMovesTheItemWholeAndListsIt(t *testing.T) {
@@ -127,9 +129,7 @@ func TestPageWidthIsSavedInTheSpace(t *testing.T) {
 // restore.
 func TestAFailedTrashLeavesNoSlot(t *testing.T) {
 	s := newSpace(t, "a.md")
-	if err := os.WriteFile(filepath.Join(s.Root, ".bava", "space.json"), []byte("not json"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testutil.WriteTree(t, s.Root, map[string]string{".bava/space.json": "not json"})
 	if _, err := s.Trash("a.md"); err == nil {
 		t.Fatal("trash reported no error with a broken space.json")
 	}

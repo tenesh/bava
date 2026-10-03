@@ -1,25 +1,17 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
+import { openEditor } from './test-editor';
 import { runItem, SLASH_ITEMS } from './slash';
 
 let editor: DocEditor | null = null;
 
-beforeEach(() => localStorage.clear());
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
-
 function open(markdown: string, key = 'page.md') {
-  const host = document.createElement('div');
-  document.body.append(host);
   const onChange = vi.fn();
-  editor = new DocEditor();
-  editor.mount(host, { onChange });
-  editor.setPage(markdown, key);
+  const opened = openEditor(markdown, { onChange, foldMemory: key });
+  editor = opened.editor;
+  const { host } = opened;
   return { host, onChange, view: editor.view! };
 }
 
@@ -75,21 +67,18 @@ describe('folding', () => {
     const first = open(TOGGLE, 'a.md');
     press(first.host.querySelector('.toggle-arrow')!);
     editor!.destroy();
-    document.body.innerHTML = '';
     expect(open(TOGGLE, 'a.md').host.querySelector('.toggle')!.hasAttribute('data-folded')).toBe(false);
     editor!.destroy();
-    document.body.innerHTML = '';
     expect(open(TOGGLE, 'b.md').host.querySelector('.toggle')!.hasAttribute('data-folded')).toBe(true);
   });
 
   it('carries on when this computer will not remember', () => {
-    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('full');
     });
     const { host } = open(TOGGLE);
     expect(() => press(host.querySelector('.toggle-arrow')!)).not.toThrow();
     expect(host.querySelector('.toggle')!.hasAttribute('data-folded')).toBe(false);
-    spy.mockRestore();
   });
 
   it('opens a fold that find lands in', () => {

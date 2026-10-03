@@ -75,6 +75,126 @@ run.
 Release builds never contain the driver: it exists only with the `e2e` tag,
 and a test fails if a default build has it.
 
+## The standard
+
+Every test follows these. A change that adds or touches tests leaves them
+following these.
+
+### Everywhere
+
+- **One behaviour per test, named as a sentence about it.** Before writing
+  it, name the change to the code that would make it fail; if there is none,
+  it tests nothing.
+- **No fixed sleeps.** Wait for a sign that something happened, or use fake
+  time. A wait that proves something did not happen first waits for what the
+  action would have produced. The one exception is the screen checks'
+  `personPace`: a person's pause, for readiness the page never shows (a
+  listener not yet attached), used only where no signal exists.
+- **No shared state between tests.** Each test sets up what it needs and the
+  shared teardown removes it.
+- **Retries only for a named cause.** A retry loop carries a comment saying
+  what it waits out, and gives up within five seconds.
+
+### Go tests
+
+- `x_test.go` beside the code, in package `x_test`; package `x` only to reach
+  something unexported, with a comment saying what.
+- `Test<Subject><Behaviour>`, e.g. `TestRenameNeverReplacesAnotherFile`.
+- A table with `t.Run(name)` when one behaviour is checked over several
+  inputs; otherwise one function per behaviour.
+- Shared helpers come from `internal/testutil`: repo paths, writing a tree of
+  files, JSON keys, goldens. `t.TempDir` for files, `t.Cleanup` to restore
+  anything changed, `t.Helper` in every helper.
+- Every result type the frontend reads has a test pinning its JSON keys, in
+  the package that defines it.
+- A skip states its reason (the platform or filesystem that cannot do it).
+
+### Frontend unit tests
+
+- `x.test.ts` beside the module; `x.svelte.test.ts` only when the test itself
+  uses runes. Node by default; `// @vitest-environment jsdom` only when the
+  test needs a page.
+- `describe` names the unit (a component or a function); each `it` is a
+  behaviour.
+- Components mount through `render()` from `src/test/render.ts`, the page
+  editor through `src/docs/test-editor.ts`. The shared teardown in
+  `src/test-setup.ts` unmounts everything, lets pending work finish, empties
+  the page and restores real timers, so no test does its own.
+- Spies restore themselves after each test (`restoreMocks`); a file that
+  mocks a module with `vi.mock` clears those mocks itself.
+- Fixtures sit in `__fixtures__/` beside the module. A test that reads a
+  committed file as a contract (the menu spec, `docs/shortcuts.md`) finds it
+  from its own location, never the working folder.
+- What something looks like (classes, copy, markup) belongs to screen checks,
+  not here.
+
+### Screen checks
+
+- One area, two files: `specs/<area>.spec.ts` takes the pictures, in both
+  themes; `specs/<area>-actions.spec.ts` checks behaviour on the page or the
+  saved file, in light only.
+- Every helper comes from `specs/helpers.ts`; a spec defines none of its own.
+- Before each picture, assert what makes it right (the counts, the focus,
+  which row is checked or highlighted, images loaded) and move the pointer
+  off what is pictured. Highlight and checked state is always read from the
+  page, never trusted to the picture (headless WebKit can paint it late).
+- Crop to what is pictured: `shotPane`, `shotDialog`, `shotFloating`. Only
+  `start` and `shell` picture the whole window.
+- References are `<area>/<screen>--<state>--<theme>.png`: the screen a
+  singular noun that does not repeat the area, the state a short word.
+- A full run lists any reference no test compared, to be deleted.
+- The coverage table below changes in the same change as a walk.
+
+### Smoke runs
+
+- A scenario does one job and ends by reading back, with `file` steps, what
+  it saved. The scenarios run in order on one scratch folder: `create`, then
+  `reopen`, then `canvas`.
+- A failing step takes a screenshot before the run reports.
+- Native menus and accelerators are not reached by a scenario (`menu` steps
+  send the command); they stay a check by hand.
+
+## What the screen checks cover
+
+Each area has its pictures in `specs/<area>.spec.ts` and its references in
+`testdata/visual/<area>/`; behaviour is checked in `specs/<area>-actions.spec.ts`.
+`canvas-actions` and `floating-actions` take no pictures: what the canvas does,
+read from the saved file, and that anything floating closes on a press
+elsewhere.
+
+| Surface | Covered | Where |
+|---|---|---|
+| Splash | Not covered | |
+| Start screen, with and without recent Spaces | Covered; nothing covers the window at launch | `start`, `start-actions` |
+| Shell: Both, Document, Canvas, no page | Partly: no splitter drag, no status notice | `shell` |
+| Space tree: Files, a folder open, folded, naming a page, Media, switcher, Add menu | Partly: no row right-click menu, no rename of an existing row, no drag and drop | `space`; renaming in `document-actions` |
+| Document: text, headings, marks, lists, to-dos, quote, coloured paragraph, divider, code | Covered | `document` (`page--everything`) |
+| Document: callouts, toggles, contents, code block, equations, footnotes | Covered | `document` (`block--*`) |
+| Document: images and a video at each width, shape and alignment, a missing image | Covered | `document` (`media--*`) |
+| Document: file and web cards, an online video | Covered | `document` (`card--*`) |
+| Document: tables in both forms, merged, moved, pasted, a new one | Covered | `document` (`table--*`) |
+| Document: date chips, links between pages, Linked from | Covered | `document` |
+| Document: locked page, widths, find | Covered | `document` |
+| Document floating UI: / and @ menus, emoji, bubble, block, page, language, media, card and table menus, equation field, calendar, link card, full screen | Covered | `document`; closing in `floating-actions` |
+| Document: the link field (⌘K) and a caption field | Not covered as pictures; closing is | `floating-actions` |
+| Canvas elements: every shape, colour, style, arrow and head, frames and groups, turned, a diagram, many | Covered at 100% and 200% | `canvas-look` |
+| Canvas states: each kind selected, all selected, marquee, rotating, points, snapping, arrow ends | Covered | `canvas-states` |
+| Canvas controls: every picker, More, right-click menu and its submenus, insert panel | Covered; submenus in dark only | `canvas-states` |
+| Canvas: a label or code being edited, the eraser, an empty canvas, the zoom menu, tooltips, a detached binding | Not covered | |
+| Dialogs: New Space, Space settings, Trash, Media, confirmations, Shortcuts, About, Export, Diagram from Code | Partly: no validation errors, no D2 error, one export state, no Media rename | `dialogs`, `canvas-states` |
+| Unexpected error dialog | Partly: with details only | `dialogs` |
+| A pane that failed to draw | Not covered | |
+| Settings, each tab | Partly: defaults only | `settings` |
+| Status notices | Not covered | |
+
+The smoke runs follow one chain on one scratch folder. `create` makes the
+Space, writes a page with a link, maths, code, an image, a file card, an
+online video and a table, draws a shape, saves, and reads the file back for
+each. `reopen` opens that Space, checks the page, Media and a
+rename's link, and reads back the rewritten link. `canvas` draws on that page,
+inserts a diagram, saves, and reads back the shapes, bindings and labels. A
+step that fails stops the chain where it is.
+
 ## What still needs you
 
 Before a release, a short pass on your own Mac for feel: the menu bar, the

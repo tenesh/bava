@@ -2,7 +2,6 @@ package render_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/tenesh/bava/internal/render"
@@ -46,19 +45,6 @@ func TestDiagnosticLineIsOneIndexed(t *testing.T) {
 	}
 }
 
-func TestDiagnosticCarriesMessage(t *testing.T) {
-	res, err := render.Render(context.Background(), brokenSource, render.Options{})
-	if err != nil {
-		t.Fatalf("Render returned error: %v", err)
-	}
-	if len(res.Errors) == 0 {
-		t.Fatal("no diagnostics to check")
-	}
-	if strings.TrimSpace(res.Errors[0].Message) == "" {
-		t.Error("diagnostic has an empty message")
-	}
-}
-
 // The offsets address the document the way CodeMirror does. They must be
 // within the source and ordered, or a lint marker lands on the wrong text.
 func TestDiagnosticOffsetsAreUsable(t *testing.T) {
@@ -78,9 +64,10 @@ func TestDiagnosticOffsetsAreUsable(t *testing.T) {
 	}
 }
 
-// D2 prefixes its messages with a 1-indexed "line:col: " that duplicates the
-// position we already carry structurally. Shown next to a marked line in the
-// editor, that prefix is noise, so it is stripped at the boundary.
+// The message is D2's own words. D2 prefixes it with a 1-indexed "line:col: "
+// that duplicates the position we already carry structurally; shown next to a
+// marked line in the editor, that prefix is noise, so it is stripped at the
+// boundary.
 func TestDiagnosticMessageHasNoPositionPrefix(t *testing.T) {
 	res, err := render.Render(context.Background(), brokenSource, render.Options{})
 	if err != nil {

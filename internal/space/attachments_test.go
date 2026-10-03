@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/tenesh/bava/internal/space"
+	"github.com/tenesh/bava/internal/testutil"
 )
 
 // outsideFile writes a file outside the Space, as one picked or dropped from
@@ -237,9 +238,7 @@ func TestAnAttachmentIsTakenByItsExactName(t *testing.T) {
 	if _, err := s.AttachData("logo.png", []byte("used")); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(s.Root, ".bava", "attachments", "logo.png "), []byte("stray"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testutil.WriteTree(t, s.Root, map[string]string{".bava/attachments/logo.png ": "stray"})
 	if _, err := s.TrashAttachment("logo.png "); err != nil {
 		t.Fatal(err)
 	}
@@ -260,12 +259,8 @@ func TestAnAttachmentsFolderThatIsALinkIsRefused(t *testing.T) {
 	}
 	s := newSpace(t)
 	elsewhere := t.TempDir()
-	if err := os.WriteFile(filepath.Join(elsewhere, "x.png"), []byte("x"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(filepath.Join(s.Root, ".bava"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	testutil.WriteTree(t, elsewhere, map[string]string{"x.png": "x"})
+	testutil.WriteTree(t, s.Root, map[string]string{".bava/": ""})
 	if err := os.Symlink(elsewhere, filepath.Join(s.Root, ".bava", "attachments")); err != nil {
 		t.Fatal(err)
 	}
