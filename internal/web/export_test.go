@@ -1,14 +1,22 @@
 package web
 
+// In package web to reach pagePrivate, which decides whether a page is on
+// the user's own network.
+
 import (
 	"context"
 	"net/url"
+	"testing"
 )
 
 // TreatAsPublic counts the host of address as on the web, not a private
-// network, until the returned function puts things back.
-func TreatAsPublic(address string) func() {
-	u, _ := url.Parse(address)
+// network, until the test ends.
+func TreatAsPublic(t testing.TB, address string) {
+	t.Helper()
+	u, err := url.Parse(address)
+	if err != nil {
+		t.Fatal(err)
+	}
 	was := pagePrivate
 	pagePrivate = func(ctx context.Context, host string) bool {
 		if host == u.Hostname() {
@@ -16,5 +24,5 @@ func TreatAsPublic(address string) func() {
 		}
 		return was(ctx, host)
 	}
-	return func() { pagePrivate = was }
+	t.Cleanup(func() { pagePrivate = was })
 }

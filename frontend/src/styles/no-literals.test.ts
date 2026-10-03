@@ -77,7 +77,7 @@ describe('no literal values outside the token layer', () => {
 // were silently dead that way.
 describe('global stylesheets', () => {
   it('has no Svelte :global() in the compiled CSS', () => {
-    const compiled = compile('src/styles/index.scss', { style: 'expanded' }).css;
+    const compiled = compile(fileURLToPath(new URL('./index.scss', import.meta.url)), { style: 'expanded' }).css;
     expect(compiled).not.toContain(':global');
   });
 });

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { NodeSelection, TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
+import { openEditor } from './test-editor';
 import { classifyLink, followAction, followBeside, joinFile, missingTarget, relinkCandidate } from './links';
 import { atTextEnd } from './test-caret';
 
@@ -74,19 +75,11 @@ describe('following a link from a page opened on its own', () => {
 
 let editor: DocEditor | null = null;
 
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
-
 function open(markdown: string, here: string | null = 'Roadmap.md') {
-  const host = document.createElement('div');
-  document.body.append(host);
   const options = { onChange: vi.fn(), onLinkCard: vi.fn(), onFollow: vi.fn(), onDateChip: vi.fn(), onCopy: vi.fn() };
-  editor = new DocEditor();
-  editor.mount(host, options);
-  editor.setPage(markdown);
+  const opened = openEditor(markdown, options);
+  editor = opened.editor;
+  const { host } = opened;
   editor.setSpacePages(here, pages);
   return { ...options, view: editor.view!, host };
 }

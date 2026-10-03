@@ -2,8 +2,11 @@ package app_test
 
 import (
 	"os"
+	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/tenesh/bava/internal/testutil"
 )
 
 // The Wails template names the app "My Product" everywhere it is packaged.
@@ -22,7 +25,7 @@ func TestPackagingMetadataIsNotTheWailsTemplate(t *testing.T) {
 		"windows/msix/app_manifest.xml",
 	}
 	for _, name := range files {
-		content, err := os.ReadFile(buildPath(name))
+		content, err := os.ReadFile(testutil.RepoPath(t, "build", name))
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
@@ -34,13 +37,16 @@ func TestPackagingMetadataIsNotTheWailsTemplate(t *testing.T) {
 	}
 }
 
+// The key and its value, whatever the indentation between them.
+var bundleName = regexp.MustCompile(`<key>CFBundleName</key>\s*<string>Bava</string>`)
+
 func TestMacAppMenuIsTitledBava(t *testing.T) {
 	for _, name := range []string{"darwin/Info.plist", "darwin/Info.dev.plist"} {
-		content, err := os.ReadFile(buildPath(name))
+		content, err := os.ReadFile(testutil.RepoPath(t, "build", name))
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
-		if !strings.Contains(string(content), "<key>CFBundleName</key>\n            <string>Bava</string>") {
+		if !bundleName.Match(content) {
 			t.Errorf("%s: CFBundleName is not Bava", name)
 		}
 	}

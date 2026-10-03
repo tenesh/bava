@@ -61,7 +61,7 @@ func TestResolveUnknownEngineReturnsError(t *testing.T) {
 
 // d2lib.Compile takes a LayoutResolver of exactly this shape. The adapter is
 // what lets internal/render hand our resolver straight to D2.
-func TestResolverAdaptsToD2(t *testing.T) {
+func TestResolverGivesD2TheNamedLayoutOrAnError(t *testing.T) {
 	resolver := layout.Resolver()
 	layoutFn, err := resolver("dagre")
 	if err != nil {

@@ -1,24 +1,17 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
+import { openEditor } from './test-editor';
 
 let editor: DocEditor | null = null;
 
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
-
 function open(markdown: string) {
-  const host = document.createElement('div');
-  document.body.append(host);
   const onCopy = vi.fn();
   const onCodeLanguage = vi.fn();
-  editor = new DocEditor();
-  editor.mount(host, { onChange: vi.fn(), onCopy, onCodeLanguage });
-  editor.setPage(markdown);
+  const opened = openEditor(markdown, { onCopy, onCodeLanguage });
+  editor = opened.editor;
+  const { host } = opened;
   return { editor, onCopy, onCodeLanguage, view: editor.view!, host };
 }
 
@@ -141,22 +134,18 @@ describe('a code block in the page', () => {
 });
 
 describe("↓ on a code block's last line", () => {
-  it('moves the caret onto the block after, whatever sends the key', () => {
-    for (const [page, next] of [
-      ['```go\nx\n```\n\nNext\n', 'Next'],
-      ['```go\nx\n```\n', ''],
-    ] as const) {
-      open(page);
-      const view = editor!.view!;
-      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)));
-      // No layout here: the caret is on the block's last line as drawn.
-      view.endOfTextblock = () => true;
-      const moved = view.someProp('handleKeyDown', (f) => f(view, new KeyboardEvent('keydown', { key: 'ArrowDown' })));
-      expect(moved, page).toBe(true);
-      expect(view.state.selection.$from.parent.type.name, page).toBe('paragraph');
-      expect(view.state.selection.$from.parent.textContent, page).toBe(next);
-      editor!.destroy();
-      editor = null;
-    }
+  it.each([
+    ['with a block after it', '```go\nx\n```\n\nNext\n', 'Next'],
+    ['at the end of the page', '```go\nx\n```\n', ''],
+  ])('moves the caret onto the block after, whatever sends the key, %s', (_, page, next) => {
+    open(page);
+    const view = editor!.view!;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)));
+    // No layout here: the caret is on the block's last line as drawn.
+    view.endOfTextblock = () => true;
+    const moved = view.someProp('handleKeyDown', (f) => f(view, new KeyboardEvent('keydown', { key: 'ArrowDown' })));
+    expect(moved).toBe(true);
+    expect(view.state.selection.$from.parent.type.name).toBe('paragraph');
+    expect(view.state.selection.$from.parent.textContent).toBe(next);
   });
 });

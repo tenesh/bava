@@ -1,12 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { flushSync, mount, unmount } from 'svelte';
+import { describe, expect, it, vi } from 'vitest';
+import { flushSync } from 'svelte';
+import { render } from '../test/render';
 import ContextMenu from './ContextMenu.svelte';
 import type { MenuNode } from '../canvas/context-menu';
-
-afterEach(() => {
-  document.body.innerHTML = '';
-});
 
 const items: MenuNode[] = [
   { kind: 'item', id: 'edit.cut', label: 'Cut', keys: '⌘X' },
@@ -19,14 +16,10 @@ const items: MenuNode[] = [
   },
 ];
 
-function render() {
-  const target = document.createElement('div');
-  document.body.append(target);
+function setup() {
   const onSelect = vi.fn();
   const onOpenChange = vi.fn();
-  const app = flushSync(() =>
-    mount(ContextMenu, { target, props: { items, open: true, anchor: { x: 40, y: 60 }, onSelect, onOpenChange } }),
-  );
+  const { app } = render(ContextMenu, { items, open: true, anchor: { x: 40, y: 60 }, onSelect, onOpenChange });
   return { app, onSelect, onOpenChange };
 }
 
@@ -35,28 +28,27 @@ const key = (el: HTMLElement, k: string) => flushSync(() => el.dispatchEvent(new
 
 describe('ContextMenu', () => {
   it('shows items with their keys, separators between groups, and a chevron on a submenu', async () => {
-    const { app } = render();
+    setup();
     await vi.waitFor(() => expect(content()).not.toBeNull());
     expect(content().textContent).toContain('Cut');
     expect(content().querySelector('.keys')?.textContent).toBe('⌘X');
     expect(content().querySelector('[data-part="separator"]')).not.toBeNull();
     const trigger = [...content().querySelectorAll('[data-part="trigger-item"]')].find((el) => el.textContent?.includes('Arrange'));
     expect(trigger?.querySelector('.chevron svg')).not.toBeNull();
-    unmount(app);
   });
 
-  it('reports the command chosen, including from a submenu by keyboard', async () => {
-    const { app, onSelect } = render();
+  it('reports the command chosen by keyboard', async () => {
+    const { onSelect } = setup();
     await vi.waitFor(() => expect(content()).not.toBeNull());
     const menu = content();
     key(menu, 'ArrowDown');
     await vi.waitFor(() => expect(menu.querySelector('[data-highlighted]')?.textContent).toContain('Cut'));
     key(menu, 'Enter');
     await vi.waitFor(() => expect(onSelect).toHaveBeenCalledWith('edit.cut'));
+  });
 
-    // Choosing closes the menu; the page reopens it, so find it afresh.
-    unmount(app);
-    const again = render();
+  it('opens a submenu by keyboard', async () => {
+    setup();
     await vi.waitFor(() => expect(content()).not.toBeNull());
     const reopened = content();
     key(reopened, 'ArrowDown');
@@ -67,6 +59,5 @@ describe('ContextMenu', () => {
       const open = [...document.querySelectorAll('[data-part="content"]:not([hidden])')];
       expect(open.some((el) => el.textContent?.includes('Bring Forward'))).toBe(true);
     });
-    unmount(again.app);
   });
 });

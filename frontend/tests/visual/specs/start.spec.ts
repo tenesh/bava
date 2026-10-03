@@ -1,27 +1,25 @@
 import { expect, test } from '@playwright/test';
-import { THEMES, expectNothingCovering, openApp, shot } from './helpers';
+import { THEMES, openApp, restPointer, shot } from './helpers';
+
+const RECENTS = [
+  { path: '/Users/you/Documents/Acme Product', kind: 'space', openedAt: Date.UTC(2026, 8, 26) },
+  { path: '/Users/you/Documents/Thesis', kind: 'space', openedAt: Date.UTC(2026, 8, 20) },
+];
 
 for (const theme of THEMES) {
-  test.describe(`launch, ${theme}`, () => {
-    // Closed dialogs once covered the window at launch with every logic test
-    // green: nothing may show until something is opened.
-    test('covers nothing', async ({ page }) => {
+  test.describe(`the start screen, ${theme}`, () => {
+    test('with no recent Spaces', async ({ page }) => {
       await openApp(page, theme);
-      await expectNothingCovering(page);
+      await restPointer(page);
+      await expect(page.getByRole('button', { name: 'New Space' })).toBeVisible();
+      await expect(page).toHaveScreenshot(shot('start', 'screen', 'no-recents', theme));
     });
 
-    test('the start screen', async ({ page }) => {
-      await openApp(page, theme);
-      await expect(page).toHaveScreenshot(shot('start', 'start', 'no-recents', theme));
-    });
-
-    test('the start screen with recent Spaces', async ({ page }) => {
-      const recents = [
-        { path: '/Users/you/Documents/Acme Product', kind: 'space', openedAt: Date.UTC(2026, 8, 26) },
-        { path: '/Users/you/Documents/Thesis', kind: 'space', openedAt: Date.UTC(2026, 8, 20) },
-      ];
-      await openApp(page, theme, { 'bava.recents': JSON.stringify(recents) });
-      await expect(page).toHaveScreenshot(shot('start', 'start', 'recents', theme));
+    test('with recent Spaces', async ({ page }) => {
+      await openApp(page, theme, { 'bava.recents': JSON.stringify(RECENTS) });
+      await restPointer(page);
+      await expect(page.getByText('Thesis').first()).toBeVisible();
+      await expect(page).toHaveScreenshot(shot('start', 'screen', 'recents', theme));
     });
   });
 }

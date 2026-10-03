@@ -1,35 +1,25 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { flushSync, mount, unmount } from 'svelte';
+import { describe, expect, it, vi } from 'vitest';
+import { flushSync } from 'svelte';
+import { render, unmount } from '../test/render';
 import DiagramDialog from './DiagramDialog.svelte';
 
-afterEach(() => {
-  document.body.innerHTML = '';
-});
-
-async function render(props: Record<string, unknown> = {}) {
-  const target = document.createElement('div');
-  document.body.append(target);
+async function setup(props: Record<string, unknown> = {}) {
   const onSource = vi.fn();
   const onInsert = vi.fn();
   const onOpenChange = vi.fn();
-  const app = flushSync(() =>
-    mount(DiagramDialog, {
-      target,
-      props: {
-        open: true,
-        source: 'a -> b',
-        preview: '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>',
-        errors: [],
-        pending: false,
-        shapes: 2,
-        onSource,
-        onInsert,
-        onOpenChange,
-        ...props,
-      } as never,
-    }),
-  );
+  const { app } = render(DiagramDialog, {
+    open: true,
+    source: 'a -> b',
+    preview: '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>',
+    errors: [],
+    pending: false,
+    shapes: 2,
+    onSource,
+    onInsert,
+    onOpenChange,
+    ...props,
+  } as never);
   await vi.waitFor(() => expect(document.querySelector('.bava-diagram-preview')).not.toBeNull());
   const button = (name: string) =>
     [...document.querySelectorAll('button')].find((b) => (b.textContent ?? '').trim() === name);
@@ -38,73 +28,67 @@ async function render(props: Record<string, unknown> = {}) {
 
 describe('DiagramDialog', () => {
   it('shows the preview it is handed', async () => {
-    const { app } = await render();
-    expect(document.querySelector('.bava-diagram-preview')!.innerHTML).toContain('<svg');
-    unmount(app);
+    const preview = '<svg xmlns="http://www.w3.org/2000/svg"><rect id="handed-in" width="4"></rect></svg>';
+    await setup({ preview });
+    expect(document.querySelector('.bava-diagram-preview')!.innerHTML).toBe(preview);
   });
 
   it('mounts an editor for the source, and takes it away again', async () => {
-    const { app } = await render();
+    const { app } = await setup();
     expect(document.querySelector('.cm-editor')).not.toBeNull();
     unmount(app);
     expect(document.querySelector('.cm-editor')).toBeNull();
   });
 
   it('inserts what is previewed', async () => {
-    const { app, button, onInsert } = await render();
+    const { button, onInsert } = await setup();
     button('Insert')!.click();
     expect(onInsert).toHaveBeenCalled();
-    unmount(app);
   });
 
   // Nothing to insert, and nothing that would arrive as an empty diagram.
   // The preview describes the previous source until the render lands, so
   // inserting during that window would insert the wrong diagram.
   it('cannot insert while a render is still coming', async () => {
-    const { app, button } = await render({ pending: true });
+    const { button } = await setup({ pending: true });
     expect(button('Insert')!.disabled).toBe(true);
-    unmount(app);
   });
 
   // A source that compiles to nothing still produces an SVG, so the button
   // cannot key off the preview alone or it does nothing when pressed.
   it('cannot insert a diagram with no shapes in it', async () => {
-    const { app, button } = await render({ shapes: 0 });
+    const { button } = await setup({ shapes: 0 });
     expect(button('Insert')!.disabled).toBe(true);
-    unmount(app);
   });
 
-  it('cannot insert while the source does not compile, or is empty', async () => {
-    const broken = await render({ errors: [{ message: 'expected a name', line: 1, from: 0, to: 1 }] });
+  it('cannot insert while the source does not compile', async () => {
+    const broken = await setup({ errors: [{ message: 'expected a name', line: 1, from: 0, to: 1 }] });
     expect(broken.button('Insert')!.disabled).toBe(true);
     expect(document.body.textContent).toContain('expected a name');
-    unmount(broken.app);
+  });
 
-    const empty = await render({ source: '   ' });
+  it('cannot insert an empty source', async () => {
+    const empty = await setup({ source: '   ' });
     expect(empty.button('Insert')!.disabled).toBe(true);
-    unmount(empty.app);
   });
 
   it('says which engine laid the preview out, and how many shapes it holds', async () => {
-    const { app } = await render({ engine: 'tala', shapes: 3 });
+    await setup({ engine: 'tala', shapes: 3 });
     expect(document.querySelector('.bava-diagram-status')?.textContent).toBe('Laid out by TALA · 3 shapes');
-    unmount(app);
   });
 
   // The engine choice sits in the footer, beside the buttons it decides.
   it('keeps the engine picker in the footer', async () => {
-    const { app } = await render({ engine: 'tala' });
+    await setup({ engine: 'tala' });
     const footer = document.querySelector('.bava-dialog-footer')!;
     expect(footer.textContent).toContain('TALA');
     expect(footer.textContent).toContain('Insert');
-    unmount(app);
   });
 
   it('reports a cancel, so the caller can close it', async () => {
-    const { app, button, onOpenChange } = await render();
+    const { button, onOpenChange } = await setup();
     button('Cancel')!.click();
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    unmount(app);
   });
 });
 
@@ -113,25 +97,18 @@ describe('DiagramDialog', () => {
 // source while the preview had been reset, and Insert inserted the wrong one.
 describe('closing and reopening', () => {
   it('builds a fresh editor each time it opens', async () => {
-    const target = document.createElement('div');
-    document.body.append(target);
     // Mounted twice rather than with reactive props: the component is fed by
     // its caller, and what matters here is that a close takes the editor away.
     const open = (source: string) =>
-      flushSync(() =>
-        mount(DiagramDialog, {
-          target,
-          props: {
-            open: true,
-            source,
-            preview: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
-            errors: [],
-            onSource: vi.fn(),
-            onInsert: vi.fn(),
-            onOpenChange: vi.fn(),
-          } as never,
-        }),
-      );
+      render(DiagramDialog, {
+        open: true,
+        source,
+        preview: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+        errors: [],
+        onSource: vi.fn(),
+        onInsert: vi.fn(),
+        onOpenChange: vi.fn(),
+      } as never).app;
     const app = open('first -> one');
     await vi.waitFor(() => expect(document.querySelector('.cm-editor')).not.toBeNull());
     expect(document.querySelector('.cm-content')!.textContent).toContain('first');
@@ -139,10 +116,9 @@ describe('closing and reopening', () => {
     unmount(app);
     await vi.waitFor(() => expect(document.querySelector('.cm-editor')).toBeNull());
 
-    const second = open('second -> two');
+    open('second -> two');
     await vi.waitFor(() => expect(document.querySelector('.cm-editor')).not.toBeNull());
     expect(document.querySelector('.cm-content')!.textContent).toContain('second');
-    unmount(second);
   });
 });
 
@@ -150,26 +126,23 @@ describe('closing and reopening', () => {
 // their content and the code area was a sliver. It asks for the wide size.
 describe('the Diagram from Code dialog size', () => {
   it('uses the diagram dialog\'s own size', async () => {
-    const { app } = await render();
+    await setup();
     expect(document.querySelector('.bava-dialog-content')!.getAttribute('data-size')).toBe('diagram');
-    unmount(app);
   });
 });
 
 describe('choosing a layout in the dialog', () => {
   it('shows the picker and reports an engine choice', async () => {
     const onEngine = vi.fn();
-    const { app } = await render({ engine: 'tala', direction: 'down', onEngine, onDirection: vi.fn() });
+    await setup({ engine: 'tala', direction: 'down', onEngine, onDirection: vi.fn() });
     const dagre = [...document.querySelectorAll<HTMLElement>('[data-part="item"]')].find((el) => el.textContent?.trim() === 'Dagre');
     flushSync(() => dagre!.click());
     expect(onEngine).toHaveBeenCalledWith('dagre');
-    unmount(app);
   });
 
   it('says the code wins when a direction can be chosen', async () => {
-    const { app } = await render({ engine: 'dagre', direction: 'down', onEngine: vi.fn(), onDirection: vi.fn() });
+    await setup({ engine: 'dagre', direction: 'down', onEngine: vi.fn(), onDirection: vi.fn() });
     expect(document.body.textContent).toContain('A direction written in the code wins over this one.');
-    unmount(app);
   });
 });
 
@@ -177,12 +150,11 @@ describe('choosing a layout in the dialog', () => {
 // an editor that also kept the binding would act twice.
 describe('keys the menu reserves', () => {
   it('are dropped by the dialog editor, as by the document pane', async () => {
-    const { app } = await render({ isReserved: (binding: { key?: string }) => binding.key === 'Mod-z' });
+    await setup({ isReserved: (binding: { key?: string }) => binding.key === 'Mod-z' });
     const { EditorView } = await import('@codemirror/view');
     const view = EditorView.findFromDOM(document.querySelector('.bava-dialog-content .cm-editor') as HTMLElement)!;
     view.dispatch({ changes: { from: view.state.doc.length, insert: '!' } });
     view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', keyCode: 90, ctrlKey: true, bubbles: true, cancelable: true }));
     expect(view.state.doc.toString()).toBe('a -> b!');
-    unmount(app);
   });
 });

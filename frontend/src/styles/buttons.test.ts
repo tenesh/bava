@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { compile } from 'sass';
 import { readFileSync } from 'node:fs';
 import { globSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+const css = compile(resolve(__dirname, 'index.scss'), { style: 'expanded' }).css;
 const rule = (selector: string) => {
   const at = css.indexOf(`${selector} {`);
   return at < 0 ? null : css.slice(at, css.indexOf('}', at) + 1);
@@ -37,7 +38,8 @@ describe('buttons', () => {
 // Every button in the app answers the pointer: it either uses the shared
 // style, or its own component styles its hover and pressed states.
 describe('every button in a component', () => {
-  const files = globSync('src/**/*.svelte');
+  // From this file's place, not the working folder.
+  const files = globSync('**/*.svelte', { cwd: resolve(__dirname, '..') }).map((file) => resolve(__dirname, '..', file));
   const cases = files.flatMap((file) => {
     const source = readFileSync(file, 'utf8');
     // A component's own styles, and the shared ones in styles/.

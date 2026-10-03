@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLaunch } from './launch.svelte';
 
 // A promise the test settles by hand.
@@ -15,10 +15,6 @@ function deferred() {
 describe('launch readiness', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
   });
 
   it('is not ready while settings are loading', async () => {

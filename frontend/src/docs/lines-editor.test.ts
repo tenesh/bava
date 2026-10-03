@@ -1,23 +1,15 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
+import { openEditor } from './test-editor';
 
 let editor: DocEditor | null = null;
 
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
-
 function open(markdown: string) {
-  const host = document.createElement('div');
-  document.body.append(host);
   const onChange = vi.fn();
-  editor = new DocEditor();
-  editor.mount(host, { onChange });
-  editor.setPage(markdown);
+  const opened = openEditor(markdown, { onChange });
+  editor = opened.editor;
   return { onChange, view: editor.view! };
 }
 

@@ -8,9 +8,9 @@ import (
 	"github.com/tenesh/bava/internal/render"
 )
 
-// Values come from frontend/src/styles/tokens/_color.scss; the token layer is
-// the source of truth, and Go holds the mapping rather than a second copy of
-// the palette. These are the dark values.
+// The dark values, from frontend/src/styles/tokens/_color.scss. The token
+// layer is the source of truth, and Go holds the mapping rather than a second
+// copy of the palette; the dark goldens prove the mapping reaches the renderer.
 func darkTheme() *render.Theme {
 	return &render.Theme{
 		Background:    "#1b1c1f",
@@ -59,23 +59,6 @@ func TestThemeValuesReachTheOutput(t *testing.T) {
 		if !strings.Contains(svg, value) {
 			t.Errorf("%s (%s) does not appear in the rendered SVG", name, value)
 		}
-	}
-}
-
-// The existing goldens were rendered without a theme. If omitting one changed
-// anything, every committed golden would shift. This is the test that pins
-// that it does not.
-func TestUnsetThemeIsByteIdenticalToBefore(t *testing.T) {
-	a, err := render.Render(context.Background(), themeSource, render.Options{})
-	if err != nil {
-		t.Fatalf("Render: %v", err)
-	}
-	b, err := render.Render(context.Background(), themeSource, render.Options{Theme: nil})
-	if err != nil {
-		t.Fatalf("Render: %v", err)
-	}
-	if a.SVG != b.SVG {
-		t.Error("an explicitly nil theme differs from an absent one")
 	}
 }
 

@@ -1,11 +1,8 @@
 // @vitest-environment jsdom
-import { describe, expect, it, afterEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { compile } from 'sass';
+import { resolve } from 'node:path';
 import { PORTAL_ROOT_ID, portalRoot } from './portal-root';
-
-afterEach(() => {
-  document.body.innerHTML = '';
-});
 
 describe('portal root', () => {
   it('lives outside the app root', () => {
@@ -30,9 +27,9 @@ describe('portal stacking', () => {
   // asserted is that the rule exists and resolves from the token, which is
   // the thing that was missing when Ark content was found rendering
   // below ordinary app chrome.
-  // Relative to the vitest root, not import.meta.url: under jsdom that is not
-  // a file: URL and sass cannot resolve it.
-  const css = compile('src/styles/index.scss', { style: 'expanded' }).css;
+  // From this file's place, by path: under jsdom import.meta.url is not a
+  // file: URL and sass cannot resolve it.
+  const css = compile(resolve(__dirname, '../styles/index.scss'), { style: 'expanded' }).css;
 
   it('gives the portal root the portal layer', () => {
     const rule = css.match(new RegExp(`#${PORTAL_ROOT_ID}\\s*\\{[^}]*\\}`));

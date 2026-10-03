@@ -1,27 +1,17 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { DocEditor } from './editor';
+import { openEditor } from './test-editor';
 import { calloutLook, callouts } from './callout';
 import { runItem } from './slash';
 import { SLASH_ITEMS } from './slash';
-import { atTextEnd } from './test-caret';
 
 let editor: DocEditor | null = null;
 
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
-
 function open(markdown: string) {
-  const host = document.createElement('div');
-  document.body.append(host);
-  editor = new DocEditor();
-  editor.mount(host, { onChange: vi.fn() });
-  editor.setPage(markdown);
-  const view = editor.view!;
-  view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)));
+  const opened = openEditor(markdown, { caretAtEnd: true });
+  editor = opened.editor;
+  const { host, view } = opened;
   return { view, host };
 }
 

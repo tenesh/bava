@@ -1,54 +1,44 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { flushSync, mount, unmount } from 'svelte';
+import { describe, expect, it, vi } from 'vitest';
+import { flushSync } from 'svelte';
+import { render } from '../test/render';
 import Toggle from './Toggle.svelte';
 
-afterEach(() => {
-  document.body.innerHTML = '';
-});
-
-function render(props: Record<string, unknown> = {}) {
-  const target = document.createElement('div');
-  document.body.append(target);
+function setup(props: Record<string, unknown> = {}) {
   const onChange = vi.fn();
-  const app = flushSync(() =>
-    mount(Toggle, { target, props: { label: 'Background', checked: false, onChange, ...props } as never }),
-  );
+  const { target, app } = render(Toggle, { label: 'Background', checked: false, onChange, ...props } as never);
   const input = target.querySelector('input')!;
   return { app, target, input, onChange };
 }
 
 describe('Toggle', () => {
   it('is a labelled checkbox reporting what it was switched to', () => {
-    const { app, target, input, onChange } = render();
+    const { target, input, onChange } = setup();
     expect(target.textContent).toContain('Background');
     expect(input.checked).toBe(false);
     flushSync(() => input.click());
     expect(onChange).toHaveBeenCalledWith(true);
-    unmount(app);
   });
 
   it('shows the state it is given', () => {
-    const { app, input } = render({ checked: true });
+    const { input } = setup({ checked: true });
     expect(input.checked).toBe(true);
-    unmount(app);
   });
 
   // A disabled toggle explains itself by staying visible rather than vanishing:
   // Only selected is disabled when nothing is selected.
   it('can be disabled, and then reports nothing', () => {
-    const { app, input, onChange } = render({ disabled: true });
+    const { input, onChange } = setup({ disabled: true });
     expect(input.disabled).toBe(true);
     flushSync(() => input.click());
     expect(onChange).not.toHaveBeenCalled();
-    unmount(app);
   });
 });
 
 // Export lists its settings as rows: the name first, the switch at the end.
 describe('Toggle as a row', () => {
   it('puts the label before the switch and keeps it as the accessible name', () => {
-    const { app, target, input, onChange } = render({ variant: 'row' });
+    const { target, input, onChange } = setup({ variant: 'row' });
     const root = target.querySelector('.bava-toggle')!;
     expect(root.getAttribute('data-variant')).toBe('row');
     const label = root.querySelector('.bava-toggle-label')!;
@@ -57,6 +47,5 @@ describe('Toggle as a row', () => {
     expect(input.labels?.[0]?.textContent).toContain('Background');
     flushSync(() => input.click());
     expect(onChange).toHaveBeenCalledWith(true);
-    unmount(app);
   });
 });

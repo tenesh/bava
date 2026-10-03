@@ -9,7 +9,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: true,
   retries: 0,
-  reporter: [['list'], ['html', { outputFolder: './.results/report', open: 'never' }]],
+  // The orphan list: references a full run never compared, to be deleted.
+  reporter: [['list'], ['html', { outputFolder: './.results/report', open: 'never' }], ['./harness/orphans.ts']],
   expect: {
     toHaveScreenshot: { animations: 'disabled', caret: 'hide', scale: 'css', maxDiffPixels: 0 },
   },

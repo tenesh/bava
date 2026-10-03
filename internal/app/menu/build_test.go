@@ -1,6 +1,7 @@
 package menu_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -125,14 +126,35 @@ func TestSpaceItemsFollowHasSpace(t *testing.T) {
 	}
 }
 
-// Menus are never inspected by a test runner's click, so emission is checked
-// by applying recents and asserting Apply does not panic on repeated calls;
-// the recents submenu is cleared and rebuilt each time.
-func TestRecentsCanBeReappliedRepeatedly(t *testing.T) {
+// The recents submenu is cleared and rebuilt each time the list changes: it
+// shows the latest list only, and a placeholder when there is none.
+func TestRecentsSubmenuShowsTheLatestList(t *testing.T) {
 	built, _ := build(t, "darwin")
+	item := built.Menu.FindByLabel("Open Recent")
+	if item == nil || item.GetSubmenu() == nil {
+		t.Fatal("no Open Recent submenu")
+	}
+	recents := item.GetSubmenu()
+	labels := func() []string {
+		var out []string
+		for i := 0; recents.ItemAt(i) != nil; i++ {
+			out = append(out, recents.ItemAt(i).Label())
+		}
+		return out
+	}
+
 	built.Apply(menu.State{Recents: []string{"/a.md", "/b.md"}})
+	if got := labels(); !slices.Equal(got, []string{"/a.md", "/b.md"}) {
+		t.Errorf("two recents: %v", got)
+	}
 	built.Apply(menu.State{Recents: []string{"/c.md"}})
+	if got := labels(); !slices.Equal(got, []string{"/c.md"}) {
+		t.Errorf("one recent: %v", got)
+	}
 	built.Apply(menu.State{})
+	if got := labels(); !slices.Equal(got, []string{"No Recent Files"}) || recents.ItemAt(0).Enabled() {
+		t.Errorf("no recents: %v, enabled %v", got, recents.ItemAt(0).Enabled())
+	}
 }
 
 // Only Windows right-aligns text after a tab in a menu label. macOS and GTK

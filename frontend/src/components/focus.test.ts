@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 // Desktop users keyboard far more than web users and notice immediately when
 // focus is invisible. This catches a component shipping with interactive
 // elements and no focus treatment at all. It cannot judge whether the ring is
 // *good*, which is what the manual pass is for.
 
-const COMPONENT_DIRS = ['src/components', 'src/shell', 'src/settings'];
+// From this file's place, not the working folder.
+const SRC = resolve(__dirname, '..');
+const COMPONENT_DIRS = ['components', 'shell', 'settings'].map((dir) => join(SRC, dir));
 
 function componentFiles(): string[] {
   const out: string[] = [];
@@ -55,7 +57,7 @@ describe('focus treatment', () => {
   // The shared class is a component's focus treatment by proxy, so it has to
   // carry a ring built from the same tokens.
   it('gives the shared control class a focus ring from the tokens', () => {
-    const shared = readFileSync('src/styles/controls.scss', 'utf8');
+    const shared = readFileSync(join(SRC, 'styles/controls.scss'), 'utf8');
     expect(shared).toContain('.bava-control-trigger:focus-visible');
     expect(shared).toContain('.bava-button:focus-visible');
     expect(shared).toContain('.bava-icon-button:focus-visible');

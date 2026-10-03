@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { createRenderClient, DEBOUNCE_MS } from './render.svelte';
 import type { RenderResult } from './render.svelte';
 
@@ -14,7 +14,6 @@ const ok = (svg: string): RenderResult => ({ svg, errors: [], nodeMap: {} });
 
 describe('render client', () => {
   beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
 
   it('issues one request after typing stops, not one per keystroke', async () => {
     const send = vi.fn().mockResolvedValue(ok('<svg/>'));
@@ -106,7 +105,6 @@ describe('render client', () => {
 
 describe('render client transport failures', () => {
   beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
 
   // An unknown engine, a ruler failure, or any Wails transport error rejects
   // the call. Before this was handled it became an unhandled rejection:
@@ -150,7 +148,6 @@ describe('render client transport failures', () => {
 
 describe('configurable debounce', () => {
   beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
 
   // The debounce comes from the settings file, with the constant as the
   // fallback.
@@ -257,7 +254,6 @@ describe('the real transport', () => {
 // with, so the preview and the insert use the same layout.
 describe('render client layout options', () => {
   beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
 
   it('sends the engine and direction it is asked for', async () => {
     const send = vi.fn().mockResolvedValue(ok('<svg/>'));

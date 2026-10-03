@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { TextSelection, type Command } from 'prosemirror-state';
 import { CellSelection } from 'prosemirror-tables';
 import { Slice } from 'prosemirror-model';
 import { DocEditor } from './editor';
+import { openEditor } from './test-editor';
 import { runItem, SLASH_ITEMS } from './slash';
 import { readCells, tables } from './table';
 import { atTextEnd } from './test-caret';
@@ -20,20 +21,11 @@ if (typeof document.elementFromPoint !== 'function') document.elementFromPoint =
 
 let editor: DocEditor | null = null;
 
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
-
 const TABLE = '| A   | B   |\n|-----|-----|\n| 1   | 2   |\n';
 
 function open(markdown: string) {
-  const host = document.createElement('div');
-  document.body.append(host);
-  editor = new DocEditor();
-  editor.mount(host, { onChange: vi.fn() });
-  editor.setPage(markdown);
+  const opened = openEditor(markdown);
+  editor = opened.editor;
   return editor.view!;
 }
 
@@ -339,12 +331,10 @@ describe('what the table menu offers', () => {
 
 describe('a right-click on selected cells', () => {
   it('keeps the cells selected for the menu, even when the webview selects a word under the pointer', () => {
-    const host = document.createElement('div');
-    document.body.append(host);
     const onTableMenu = vi.fn();
-    editor = new DocEditor();
-    editor.mount(host, { onChange: vi.fn(), onTableMenu });
-    editor.setPage(GRID);
+    const opened = openEditor(GRID, { onTableMenu });
+    editor = opened.editor;
+    const { host } = opened;
     selectCells('1', '5');
     const view = editor.view!;
     const cell = [...host.querySelectorAll('td')].find((td) => td.textContent === '5')!;
@@ -358,12 +348,10 @@ describe('a right-click on selected cells', () => {
   });
 
   it('puts the caret in a cell right-clicked outside the selection', () => {
-    const host = document.createElement('div');
-    document.body.append(host);
     const onTableMenu = vi.fn();
-    editor = new DocEditor();
-    editor.mount(host, { onChange: vi.fn(), onTableMenu });
-    editor.setPage(GRID);
+    const opened = openEditor(GRID, { onTableMenu });
+    editor = opened.editor;
+    const { host } = opened;
     selectCells('1', '2');
     const cell = [...host.querySelectorAll('td')].find((td) => td.textContent === '6')!;
     cell.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
@@ -373,12 +361,10 @@ describe('a right-click on selected cells', () => {
 
 describe('inside a cell', () => {
   it('shows no hint to type /, and the / menu offers only what goes in a line', () => {
-    const host = document.createElement('div');
-    document.body.append(host);
     const onSlash = vi.fn();
-    editor = new DocEditor();
-    editor.mount(host, { onChange: vi.fn(), onSlash });
-    editor.setPage('| A   | B   |\n|-----|-----|\n|     | 2   |\n');
+    const opened = openEditor('| A   | B   |\n|-----|-----|\n|     | 2   |\n', { onSlash });
+    editor = opened.editor;
+    const { host } = opened;
     const view = editor.view!;
     let empty = -1;
     view.state.doc.descendants((node, pos) => {
@@ -428,12 +414,10 @@ describe('the table menu, next to merged cells and after a right-click', () => {
   });
 
   it('forgets cells held for a right-click that did not open the menu', () => {
-    const host = document.createElement('div');
-    document.body.append(host);
     const onTableMenu = vi.fn();
-    editor = new DocEditor();
-    editor.mount(host, { onChange: vi.fn(), onTableMenu });
-    editor.setPage(GRID);
+    const opened = openEditor(GRID, { onTableMenu });
+    editor = opened.editor;
+    const { host } = opened;
     selectCells('1', '5');
     const cellWith = (text: string) => [...host.querySelectorAll('td')].find((td) => td.textContent === text)!;
     cellWith('5').dispatchEvent(new MouseEvent('mousedown', { button: 2, bubbles: true, cancelable: true }));
@@ -449,11 +433,9 @@ describe('the table menu, next to merged cells and after a right-click', () => {
     const platform = Object.getOwnPropertyDescriptor(navigator, 'platform');
     Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true });
     try {
-      const host = document.createElement('div');
-      document.body.append(host);
-      editor = new DocEditor();
-      editor.mount(host, { onChange: vi.fn(), onTableMenu: vi.fn() });
-      editor.setPage(GRID);
+      const opened = openEditor(GRID, { onTableMenu: vi.fn() });
+      editor = opened.editor;
+      const { host } = opened;
       selectCells('1', '5');
       const cell = [...host.querySelectorAll('td')].find((td) => td.textContent === '5')!;
       const down = new MouseEvent('mousedown', { button: 0, ctrlKey: true, bubbles: true, cancelable: true });
@@ -479,12 +461,10 @@ describe('the table menu, next to merged cells and after a right-click', () => {
   });
 
   it('shows no hint and a line-only / menu after Tab, in body and header cells alike', () => {
-    const host = document.createElement('div');
-    document.body.append(host);
     const onSlash = vi.fn();
-    editor = new DocEditor();
-    editor.mount(host, { onChange: vi.fn(), onSlash });
-    editor.setPage('| A   |     |\n|-----|-----|\n| 1   |     |\n');
+    const opened = openEditor('| A   |     |\n|-----|-----|\n| 1   |     |\n', { onSlash });
+    editor = opened.editor;
+    const { host } = opened;
     caretIn('A');
     key('Tab');
     expect(host.querySelector('.is-empty')).toBeNull();

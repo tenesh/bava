@@ -14,7 +14,7 @@ import (
 	"github.com/tenesh/bava/internal/logs"
 )
 
-func TestDirPerPlatform(t *testing.T) {
+func TestLogDirFollowsEachPlatform(t *testing.T) {
 	cases := []struct {
 		name string
 		goos string
@@ -40,9 +40,11 @@ func TestDirPerPlatform(t *testing.T) {
 			}
 		})
 	}
+}
 
-	// No LOCALAPPDATA is a broken Windows environment, not a reason to write
-	// logs somewhere surprising.
+// No LOCALAPPDATA is a broken Windows environment, not a reason to write
+// logs somewhere surprising.
+func TestLogDirOnWindowsNeedsLocalAppData(t *testing.T) {
 	if _, err := logs.Dir("windows", logs.Env{Home: `C:\Users\a`}); err == nil {
 		t.Error("windows without LOCALAPPDATA: want an error")
 	}
@@ -92,7 +94,6 @@ func TestPruneKeepsTheNewestTenAndTheCurrent(t *testing.T) {
 		s.Close()
 	}
 	current := start(t, dir, base.Add(time.Hour))
-	defer current.Close()
 
 	names := sessionFiles(t, dir)
 	if len(names) != 10 {
@@ -115,7 +116,6 @@ func TestPruneRespectsTheSizeCap(t *testing.T) {
 		}
 	}
 	current := start(t, dir, base.Add(time.Hour), func(o *logs.Options) { o.MaxBytes = 1000 })
-	defer current.Close()
 
 	names := sessionFiles(t, dir)
 	var total int64
@@ -200,7 +200,6 @@ func TestSessionStartIsRecordedAtTheDefaultLevel(t *testing.T) {
 func TestTailReturnsTheLastLines(t *testing.T) {
 	dir := t.TempDir()
 	s := start(t, dir, base)
-	defer s.Close()
 	for i := 0; i < 5; i++ {
 		s.Logger.Warn("line", "i", i)
 	}
@@ -218,7 +217,6 @@ var _ *slog.Logger = (&logs.Session{}).Logger
 
 func TestFirstLaunchIsClean(t *testing.T) {
 	s := start(t, t.TempDir(), base)
-	defer s.Close()
 	if s.Previous.Unexpected {
 		t.Error("a first launch reported an unexpected end")
 	}
@@ -228,7 +226,6 @@ func TestCleanCloseReportsCleanNextTime(t *testing.T) {
 	dir := t.TempDir()
 	start(t, dir, base).Close()
 	next := start(t, dir, base.Add(time.Minute))
-	defer next.Close()
 	if next.Previous.Unexpected {
 		t.Error("a clean close was reported as unexpected")
 	}
@@ -263,7 +260,6 @@ func TestMissingCloseReportsUnexpectedWithTheSessionName(t *testing.T) {
 	// No Close: the process "died" here.
 
 	next := start(t, dir, base.Add(time.Minute))
-	defer next.Close()
 	if !next.Previous.Unexpected {
 		t.Fatal("an unclosed session was not reported")
 	}
@@ -300,10 +296,8 @@ func TestWailsLoggerNeverRecordsValuesOrDebug(t *testing.T) {
 func TestAnotherRunningSessionIsNeitherACrashNorPruned(t *testing.T) {
 	dir := t.TempDir()
 	first := start(t, dir, base, func(o *logs.Options) { o.KeepSessions = 1; o.PID = os.Getpid() })
-	defer first.Close()
 
 	second := start(t, dir, base.Add(time.Minute), func(o *logs.Options) { o.KeepSessions = 1; o.PID = os.Getpid() + 1 })
-	defer second.Close()
 
 	if second.Previous.Unexpected {
 		t.Error("a session still running was reported as an unexpected exit")
@@ -323,7 +317,6 @@ func TestADeadSessionsMarkerIsReportedOnce(t *testing.T) {
 	}
 	next.Close()
 	again := start(t, dir, base.Add(2*time.Minute))
-	defer again.Close()
 	if again.Previous.Unexpected {
 		t.Error("the same crash was reported twice")
 	}
@@ -339,7 +332,6 @@ func TestLogFilesAreOnlyReadableByTheUser(t *testing.T) {
 	}
 	dir := filepath.Join(t.TempDir(), "logs")
 	s := start(t, dir, base)
-	defer s.Close()
 	for path, want := range map[string]os.FileMode{dir: 0o700, s.Path(): 0o600} {
 		info, err := os.Stat(path)
 		if err != nil {
@@ -357,8 +349,7 @@ func TestPruneRemovesOrphanRolls(t *testing.T) {
 	if err := os.WriteFile(orphan, []byte("old"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	s := start(t, dir, base)
-	defer s.Close()
+	start(t, dir, base)
 	if _, err := os.Stat(orphan); !os.IsNotExist(err) {
 		t.Error("a roll with no session file was kept")
 	}

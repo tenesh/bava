@@ -1,72 +1,41 @@
-import { expect, test, type Page } from '@playwright/test';
-import { inflateSync } from 'node:zlib';
-import { SCENES, kinds } from '../harness/canvas-scenes';
-import { canvasHost, exportsSoFar, menu, onScreen, openCanvas, openPage, savedScene, zoomSteps } from './helpers';
+import { expect, test } from '@playwright/test';
+import { SCENES, box, kinds } from '../harness/canvas-scenes';
+import {
+  CANVAS_PAGE,
+  angleOf,
+  byId,
+  clickScene,
+  dragScene,
+  ends,
+  exportAs,
+  luminance,
+  menu,
+  menus,
+  ofType,
+  onScreen,
+  openCanvas,
+  openDialog,
+  pick,
+  placed,
+  pngFacts,
+  popovers,
+  pointsOf,
+  reopened,
+  saved,
+  selectTool,
+  selectionToolbar,
+  startCanvas,
+  zoomSteps,
+  type Point,
+  type Saved,
+} from './helpers';
 
 // What the canvas does, checked on the file it saves: each test acts as a
 // person would, saves, and reads the scene back.
 
-const PAGE = 'Engineering/Architecture.md';
-const visibleMenus = (page: Page) => page.locator('.bava-menu').filter({ visible: true });
-
-type Point = { x: number; y: number };
-type Saved = Record<string, unknown> & { id: string; type: string; x: number; y: number; w: number; h: number };
-type Modifier = 'Shift' | 'Alt' | 'Control';
-
-/** A box, its id and label the same. */
-const box = (id: string, x: number, y: number, extra: Record<string, unknown> = {}) => ({
-  id,
-  type: 'rect',
-  x,
-  y,
-  w: 120,
-  h: 80,
-  z: Number(id.replace(/\D/g, '') || 1),
-  label: id,
-  ...extra,
-});
-
-/** The page opened on the canvas at actual size, holding `elements`. */
-async function start(page: Page, elements: unknown[] = []) {
-  await openCanvas(page, 'light', PAGE, elements);
-  await zoomSteps(page, 0);
-  // Keys reach the canvas once it has been clicked, as a person's would.
-  await click(page, { x: 900, y: 560 });
-}
-
-async function click(page: Page, point: Point, options: { button?: 'right'; modifiers?: Modifier[]; zoom?: number } = {}) {
-  const at = await onScreen(page, point, options.zoom ?? 1);
-  for (const key of options.modifiers ?? []) await page.keyboard.down(key);
-  await page.mouse.click(at.x, at.y, { button: options.button });
-  for (const key of options.modifiers ?? []) await page.keyboard.up(key);
-}
-
-/** A drag in scene units, in steps, keys held throughout. */
-async function drag(page: Page, from: Point, to: Point, options: { modifiers?: Modifier[]; zoom?: number; steps?: number } = {}) {
-  const zoom = options.zoom ?? 1;
-  const a = await onScreen(page, from, zoom);
-  const b = await onScreen(page, to, zoom);
-  for (const key of options.modifiers ?? []) await page.keyboard.down(key);
-  await page.mouse.move(a.x, a.y);
-  await page.mouse.down();
-  await page.mouse.move(b.x, b.y, { steps: options.steps ?? 8 });
-  await page.mouse.up();
-  for (const key of options.modifiers ?? []) await page.keyboard.up(key);
-}
-
-/** Every element of the saved scene. */
-async function saved(page: Page): Promise<Saved[]> {
-  const scene = await savedScene(page, PAGE);
-  return scene!.elements as Saved[];
-}
-
-const ofType = (elements: Saved[], type: string) => elements.filter((element) => element.type === type);
-const byId = (elements: Saved[], id: string) => elements.find((element) => element.id === id)!;
-const selectTool = (page: Page) => page.getByRole('toolbar', { name: 'Tools' }).getByRole('button', { name: 'Select' });
-
 test.describe('drawing', () => {
   test('each rail tool draws its kind', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     const tools: [string, Point][] = [
       ['r', { x: 100, y: 60 }],
       ['o', { x: 300, y: 60 }],
@@ -77,7 +46,7 @@ test.describe('drawing', () => {
     ];
     for (const [key, from] of tools) {
       await page.keyboard.press(key);
-      await drag(page, from, { x: from.x + 140, y: from.y + 90 });
+      await dragScene(page, from, { x: from.x + 140, y: from.y + 90 });
       await page.keyboard.press('Escape');
     }
     const types = (await saved(page)).map((element) => element.type).sort();
@@ -85,20 +54,20 @@ test.describe('drawing', () => {
   });
 
   test('a drawn shape ends selected, with the select tool on', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     await page.keyboard.press('r');
-    await drag(page, { x: 100, y: 100 }, { x: 260, y: 200 });
+    await dragScene(page, { x: 100, y: 100 }, { x: 260, y: 200 });
     await expect(selectTool(page)).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByRole('toolbar', { name: 'Selection' })).toBeVisible();
+    await expect(selectionToolbar(page)).toBeVisible();
   });
 
   test('Shift draws a square and a 45° line', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     await page.keyboard.press('r');
-    await drag(page, { x: 100, y: 100 }, { x: 260, y: 170 }, { modifiers: ['Shift'] });
+    await dragScene(page, { x: 100, y: 100 }, { x: 260, y: 170 }, { modifiers: ['Shift'] });
     await page.keyboard.press('l');
     // Lines turn in 15° steps with Shift; a drag near the diagonal is 45°.
-    await drag(page, { x: 400, y: 100 }, { x: 560, y: 252 }, { modifiers: ['Shift'] });
+    await dragScene(page, { x: 400, y: 100 }, { x: 560, y: 252 }, { modifiers: ['Shift'] });
     const elements = await saved(page);
     const square = ofType(elements, 'rect')[0];
     expect(square.w).toBe(square.h);
@@ -109,7 +78,7 @@ test.describe('drawing', () => {
   });
 
   test('Shift pressed mid-drag squares the shape; released mid-drag frees it', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     await page.keyboard.press('r');
     let a = await onScreen(page, { x: 100, y: 100 });
     await page.mouse.move(a.x, a.y);
@@ -136,26 +105,26 @@ test.describe('drawing', () => {
   });
 
   test('the pen draws twice in a row', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     await page.keyboard.press('d');
-    await drag(page, { x: 100, y: 100 }, { x: 260, y: 160 });
+    await dragScene(page, { x: 100, y: 100 }, { x: 260, y: 160 });
     await page.keyboard.press('d');
-    await drag(page, { x: 100, y: 260 }, { x: 260, y: 320 });
+    await dragScene(page, { x: 100, y: 260 }, { x: 260, y: 320 });
     expect(ofType(await saved(page), 'stroke')).toHaveLength(2);
   });
 
   test('Q keeps the tool on: two drawings, nothing selected', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     await page.keyboard.press('r');
     await page.keyboard.press('q');
-    await drag(page, { x: 100, y: 100 }, { x: 220, y: 180 });
-    await drag(page, { x: 300, y: 100 }, { x: 420, y: 180 });
-    await expect(page.getByRole('toolbar', { name: 'Selection' })).toHaveCount(0);
+    await dragScene(page, { x: 100, y: 100 }, { x: 220, y: 180 });
+    await dragScene(page, { x: 300, y: 100 }, { x: 420, y: 180 });
+    await expect(selectionToolbar(page)).toHaveCount(0);
     expect(ofType(await saved(page), 'rect')).toHaveLength(2);
   });
 
   test('a line drawn by clicks, closed on its first point', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     await page.keyboard.press('l');
     for (const point of [
       { x: 100, y: 100 },
@@ -163,7 +132,7 @@ test.describe('drawing', () => {
       { x: 180, y: 220 },
       { x: 100, y: 100 },
     ]) {
-      await click(page, point);
+      await clickScene(page, point);
     }
     const line = ofType(await saved(page), 'line')[0] as Saved & { closed?: boolean; points: number[] };
     expect(line.closed).toBe(true);
@@ -171,12 +140,12 @@ test.describe('drawing', () => {
   });
 
   test('a picked colour carries to the next drawing', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     await page.keyboard.press('r');
-    await drag(page, { x: 100, y: 100 }, { x: 220, y: 180 });
+    await dragScene(page, { x: 100, y: 100 }, { x: 220, y: 180 });
     await pick(page, 'Border colour', 'red');
     await page.keyboard.press('r');
-    await drag(page, { x: 300, y: 100 }, { x: 420, y: 180 });
+    await dragScene(page, { x: 300, y: 100 }, { x: 420, y: 180 });
     const rects = ofType(await saved(page), 'rect');
     expect(rects.map((rect) => rect.stroke)).toEqual(['red', 'red']);
   });
@@ -186,9 +155,9 @@ test.describe('selecting and moving', () => {
   const three = () => [box('b1', 100, 100), box('b2', 300, 100), box('b3', 500, 100)];
 
   test('Shift-click takes a shape out of the selection', async ({ page }) => {
-    await start(page, three());
+    await startCanvas(page, three());
     await menu(page, 'edit.selectAll');
-    await click(page, { x: 160, y: 140 }, { modifiers: ['Shift'] });
+    await clickScene(page, { x: 160, y: 140 }, { modifiers: ['Shift'] });
     await page.keyboard.press('ArrowRight');
     const elements = await saved(page);
     expect(byId(elements, 'b1').x).toBe(100);
@@ -197,17 +166,17 @@ test.describe('selecting and moving', () => {
   });
 
   test('dragging empty space inside a selection of two moves both', async ({ page }) => {
-    await start(page, [box('b1', 100, 100), box('b2', 300, 100)]);
+    await startCanvas(page, [box('b1', 100, 100), box('b2', 300, 100)]);
     await menu(page, 'edit.selectAll');
     // Between the two boxes, inside the selection's outline.
-    await drag(page, { x: 260, y: 140 }, { x: 260, y: 240 });
+    await dragScene(page, { x: 260, y: 140 }, { x: 260, y: 240 });
     const elements = await saved(page);
     expect([byId(elements, 'b1').y, byId(elements, 'b2').y]).toEqual([200, 200]);
   });
 
   test('Shift-drag moves on one axis; Shift+arrow moves 5', async ({ page }) => {
-    await start(page, [box('b1', 100, 100)]);
-    await drag(page, { x: 160, y: 140 }, { x: 300, y: 160 }, { modifiers: ['Shift'] });
+    await startCanvas(page, [box('b1', 100, 100)]);
+    await dragScene(page, { x: 160, y: 140 }, { x: 300, y: 160 }, { modifiers: ['Shift'] });
     let shape = byId(await saved(page), 'b1');
     expect(shape.y).toBe(100);
     expect(shape.x).toBeGreaterThan(200);
@@ -218,8 +187,8 @@ test.describe('selecting and moving', () => {
   });
 
   test('Alt-drag moves a copy and leaves the original', async ({ page }) => {
-    await start(page, [box('b1', 100, 100)]);
-    await drag(page, { x: 160, y: 140 }, { x: 460, y: 140 }, { modifiers: ['Alt'] });
+    await startCanvas(page, [box('b1', 100, 100)]);
+    await dragScene(page, { x: 160, y: 140 }, { x: 460, y: 140 }, { modifiers: ['Alt'] });
     const rects = ofType(await saved(page), 'rect').sort((p, q) => p.x - q.x);
     expect(rects).toHaveLength(2);
     expect(rects[0]).toMatchObject({ id: 'b1', x: 100, y: 100 });
@@ -227,7 +196,7 @@ test.describe('selecting and moving', () => {
   });
 
   test('a twitch on a shape at 25% moves nothing', async ({ page }) => {
-    await start(page, [box('b1', 100, 100)]);
+    await startCanvas(page, [box('b1', 100, 100)]);
     const zoom = await zoomSteps(page, -8);
     const at = await onScreen(page, { x: 160, y: 140 }, zoom);
     await page.mouse.move(at.x, at.y);
@@ -241,7 +210,7 @@ test.describe('selecting and moving', () => {
 
 test.describe('arranging', () => {
   test('align and distribute three', async ({ page }) => {
-    await start(page, [box('b1', 100, 100), box('b2', 260, 160), box('b3', 600, 130)]);
+    await startCanvas(page, [box('b1', 100, 100), box('b2', 260, 160), box('b3', 600, 130)]);
     await menu(page, 'edit.selectAll');
     await menu(page, 'canvas.alignTop');
     await menu(page, 'canvas.distributeHorizontal');
@@ -252,12 +221,12 @@ test.describe('arranging', () => {
   });
 
   test('duplicate, flip and reorder', async ({ page }) => {
-    await start(page, [box('b1', 100, 100), box('b2', 140, 120)]);
-    await click(page, { x: 120, y: 110 });
+    await startCanvas(page, [box('b1', 100, 100), box('b2', 140, 120)]);
+    await clickScene(page, { x: 120, y: 110 });
     await menu(page, 'canvas.duplicate');
     let elements = await saved(page);
     expect(ofType(elements, 'rect')).toHaveLength(3);
-    await click(page, { x: 120, y: 110 });
+    await clickScene(page, { x: 120, y: 110 });
     await menu(page, 'canvas.bringToFront');
     elements = await saved(page);
     const top = elements.reduce((p, q) => ((p.z as number) > (q.z as number) ? p : q));
@@ -265,15 +234,15 @@ test.describe('arranging', () => {
   });
 
   test('flip a line', async ({ page }) => {
-    await start(page, [{ id: 'l1', type: 'line', x: 100, y: 100, w: 160, h: 80, z: 1, points: [0, 0, 160, 80] }]);
-    await click(page, { x: 180, y: 140 });
+    await startCanvas(page, [{ id: 'l1', type: 'line', x: 100, y: 100, w: 160, h: 80, z: 1, points: [0, 0, 160, 80] }]);
+    await clickScene(page, { x: 180, y: 140 });
     await menu(page, 'canvas.flipHorizontal');
     const line = byId(await saved(page), 'l1') as Saved & { points: number[] };
     expect(line.points).toEqual([160, 0, 0, 80]);
   });
 
   test('group and ungroup', async ({ page }) => {
-    await start(page, [box('b1', 100, 100), box('b2', 300, 100)]);
+    await startCanvas(page, [box('b1', 100, 100), box('b2', 300, 100)]);
     await menu(page, 'edit.selectAll');
     await menu(page, 'canvas.group');
     let groups = ofType(await saved(page), 'group') as (Saved & { children: string[] })[];
@@ -285,54 +254,28 @@ test.describe('arranging', () => {
   });
 
   test('copy a style and paste it onto another shape', async ({ page }) => {
-    await start(page, [box('b1', 100, 100, { fill: 'green', strokeStyle: 'dashed' }), box('b2', 300, 100)]);
-    await click(page, { x: 160, y: 140 });
+    await startCanvas(page, [box('b1', 100, 100, { fill: 'green', strokeStyle: 'dashed' }), box('b2', 300, 100)]);
+    await clickScene(page, { x: 160, y: 140 });
     await menu(page, 'canvas.copyStyles');
-    await click(page, { x: 360, y: 140 });
+    await clickScene(page, { x: 360, y: 140 });
     await menu(page, 'canvas.pasteStyles');
     expect(byId(await saved(page), 'b2')).toMatchObject({ fill: 'green', strokeStyle: 'dashed' });
   });
 
   test('erase two shapes, then undo', async ({ page }) => {
-    await start(page, [box('b1', 100, 100), box('b2', 300, 100), box('b3', 500, 100)]);
+    await startCanvas(page, [box('b1', 100, 100), box('b2', 300, 100), box('b3', 500, 100)]);
     await page.keyboard.press('e');
-    await drag(page, { x: 60, y: 140 }, { x: 400, y: 140 }, { steps: 16 });
+    await dragScene(page, { x: 60, y: 140 }, { x: 400, y: 140 }, { steps: 16 });
     expect((await saved(page)).map((element) => element.id)).toEqual(['b3']);
     await menu(page, 'edit.undo');
     expect((await saved(page)).map((element) => element.id).sort()).toEqual(['b1', 'b2', 'b3']);
   });
 });
 
-/** A choice from one of the toolbar's pickers, by the control's and the option's names. */
-async function pick(page: Page, control: string, option: string) {
-  await page.getByRole('toolbar', { name: 'Selection' }).getByRole('button', { name: control, exact: true }).click();
-  const popover = page.locator('.bava-control-popover, .bava-style-popover').filter({ visible: true });
-  await expect(popover).toBeVisible();
-  const swatch = popover.getByTitle(new RegExp(`^${option}$`, 'i'));
-  const choice = (await swatch.count()) > 0 ? swatch.first() : popover.locator('.bava-option', { has: page.getByRole('radio', { name: option, exact: true }) });
-  // Clicked again if the first click came before the popover settled, as a
-  // person would; what it applied is checked on the saved file.
-  await expect(async () => {
-    await choice.click();
-    await expect(choice).toHaveAttribute('data-state', 'checked', { timeout: 500 });
-  }).toPass({ timeout: 5000 });
-  await page.keyboard.press('Escape');
-  await expect(popover).toHaveCount(0);
-}
-
-/** The arrow's points on the canvas, its own offsets added. */
-function ends(arrow: Saved) {
-  const points = arrow.points as number[];
-  return {
-    start: { x: arrow.x + points[0], y: arrow.y + points[1] },
-    end: { x: arrow.x + points[points.length - 2], y: arrow.y + points[points.length - 1] },
-  };
-}
-
 test.describe('styles', () => {
   test('every property set on a shape', async ({ page }) => {
-    await start(page, [box('b1', 100, 100)]);
-    await click(page, { x: 160, y: 140 });
+    await startCanvas(page, [box('b1', 100, 100)]);
+    await clickScene(page, { x: 160, y: 140 });
     await pick(page, 'Fill colour', 'blue');
     await pick(page, 'Border colour', 'red');
     await pick(page, 'Text colour', 'green');
@@ -356,11 +299,11 @@ test.describe('styles', () => {
   });
 
   test('every property set on an arrow and a line', async ({ page }) => {
-    await start(page, [
+    await startCanvas(page, [
       { id: 'a1', type: 'arrow', x: 100, y: 100, w: 200, h: 0, z: 1, points: [0, 0, 200, 0], label: 'calls' },
       { id: 'l1', type: 'line', x: 100, y: 300, w: 200, h: 0, z: 2, points: [0, 0, 200, 0] },
     ]);
-    await click(page, { x: 150, y: 100 });
+    await clickScene(page, { x: 150, y: 100 });
     await pick(page, 'Stroke width', 'Thin');
     await pick(page, 'Line style', 'Dashed');
     await pick(page, 'Start head', 'Circle');
@@ -368,7 +311,7 @@ test.describe('styles', () => {
     await pick(page, 'Arrow type', 'Arc');
     await pick(page, 'Text size', 'Small');
     await pick(page, 'Label direction', 'Along the arrow');
-    await click(page, { x: 150, y: 300 });
+    await clickScene(page, { x: 150, y: 300 });
     await pick(page, 'Border colour', 'purple');
     await pick(page, 'Line style', 'Dotted');
     const elements = await saved(page);
@@ -385,8 +328,8 @@ test.describe('styles', () => {
   });
 
   test('every property set on text', async ({ page }) => {
-    await start(page, [{ id: 't1', type: 'text', x: 100, y: 100, w: 120, h: 28, z: 1, text: 'Hello', measuredWidth: 50, measuredHeight: 28 }]);
-    await click(page, { x: 120, y: 112 });
+    await startCanvas(page, [{ id: 't1', type: 'text', x: 100, y: 100, w: 120, h: 28, z: 1, text: 'Hello', measuredWidth: 50, measuredHeight: 28 }]);
+    await clickScene(page, { x: 120, y: 112 });
     await pick(page, 'Text colour', 'orange');
     await pick(page, 'Text size', 'Very large');
     await pick(page, 'Alignment', 'Centre');
@@ -394,17 +337,14 @@ test.describe('styles', () => {
   });
 
   test('a custom colour is kept as written across a theme switch', async ({ page }) => {
-    await start(page, [box('b1', 100, 100)]);
-    await click(page, { x: 160, y: 140 });
-    const popover = page.locator('.bava-style-popover').filter({ visible: true });
-    // Typed again if the field was not yet ready for it, as a person would.
-    await expect(async () => {
-      if ((await popover.count()) === 0) await page.getByRole('button', { name: 'Border colour', exact: true }).click();
-      const custom = popover.getByRole('textbox');
-      await custom.fill('#c0392b');
-      await custom.press('Enter');
-      expect(byId(await saved(page), 'b1').stroke).toBe('#c0392b');
-    }).toPass({ timeout: 10000 });
+    await startCanvas(page, [box('b1', 100, 100)]);
+    await clickScene(page, { x: 160, y: 140 });
+    await selectionToolbar(page).getByRole('button', { name: 'Border colour', exact: true }).click();
+    await placed(popovers(page));
+    const custom = popovers(page).getByRole('textbox');
+    await custom.fill('#c0392b');
+    await custom.press('Enter');
+    expect(byId(await saved(page), 'b1').stroke).toBe('#c0392b');
     await page.keyboard.press('Escape');
     await menu(page, 'view.theme.dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -412,28 +352,28 @@ test.describe('styles', () => {
   });
 
   test('a locked shape does not move; unlocked, it does', async ({ page }) => {
-    await start(page, [box('b1', 100, 100)]);
-    await click(page, { x: 160, y: 140 });
+    await startCanvas(page, [box('b1', 100, 100)]);
+    await clickScene(page, { x: 160, y: 140 });
     await menu(page, 'canvas.lock');
-    await drag(page, { x: 160, y: 140 }, { x: 360, y: 140 });
+    await dragScene(page, { x: 160, y: 140 }, { x: 360, y: 140 });
     expect(byId(await saved(page), 'b1')).toMatchObject({ x: 100, locked: true });
     await menu(page, 'canvas.unlockAll');
-    await click(page, { x: 160, y: 140 });
-    await drag(page, { x: 160, y: 140 }, { x: 360, y: 140 });
+    await clickScene(page, { x: 160, y: 140 });
+    await dragScene(page, { x: 160, y: 140 }, { x: 360, y: 140 });
     const shape = byId(await saved(page), 'b1');
     expect(shape.x).toBe(300);
     expect(shape.locked).toBeUndefined();
   });
 
   test('rotating a shape, freely and in 15° steps with Shift', async ({ page }) => {
-    await start(page, [box('b1', 100, 100), box('b2', 400, 100)]);
-    await click(page, { x: 160, y: 140 });
+    await startCanvas(page, [box('b1', 100, 100), box('b2', 400, 100)]);
+    await clickScene(page, { x: 160, y: 140 });
     // The rotate handle, above the top edge's middle.
-    await drag(page, { x: 160, y: 84 }, { x: 260, y: 110 });
+    await dragScene(page, { x: 160, y: 84 }, { x: 260, y: 110 });
     const free = byId(await saved(page), 'b1').angle as number;
     expect(free).toBeGreaterThan(0);
-    await click(page, { x: 460, y: 140 });
-    await drag(page, { x: 460, y: 84 }, { x: 560, y: 110 }, { modifiers: ['Shift'] });
+    await clickScene(page, { x: 460, y: 140 });
+    await dragScene(page, { x: 460, y: 84 }, { x: 560, y: 110 }, { modifiers: ['Shift'] });
     const stepped = byId(await saved(page), 'b2').angle as number;
     expect(stepped % 15).toBe(0);
     expect(stepped).toBeGreaterThan(0);
@@ -444,22 +384,22 @@ test.describe('arrows', () => {
   const pair = () => [box('A', 100, 100), box('B', 500, 100)];
 
   test('an arrow drawn between two shapes attaches and follows a move, a resize and a turn', async ({ page }) => {
-    await start(page, pair());
+    await startCanvas(page, pair());
     await page.keyboard.press('a');
-    await drag(page, { x: 160, y: 140 }, { x: 560, y: 140 });
+    await dragScene(page, { x: 160, y: 140 }, { x: 560, y: 140 });
     let arrow = ofType(await saved(page), 'arrow')[0];
     expect(arrow).toMatchObject({ startBinding: 'A', endBinding: 'B' });
     const before = ends(arrow).start;
     // A, taken away from the arrow's end on it.
     await page.keyboard.press('Escape');
-    await click(page, { x: 120, y: 110 });
-    await drag(page, { x: 120, y: 110 }, { x: 120, y: 310 });
+    await clickScene(page, { x: 120, y: 110 });
+    await dragScene(page, { x: 120, y: 110 }, { x: 120, y: 310 });
     arrow = ofType(await saved(page), 'arrow')[0];
     expect(ends(arrow).start.y - before.y).toBe(200);
     // Resized from its bottom-right corner, then turned by the handle above
     // its top edge's middle.
-    await drag(page, { x: 220, y: 380 }, { x: 300, y: 400 });
-    await drag(page, { x: 200, y: 284 }, { x: 320, y: 300 });
+    await dragScene(page, { x: 220, y: 380 }, { x: 300, y: 400 });
+    await dragScene(page, { x: 200, y: 284 }, { x: 320, y: 300 });
     const a = byId(await saved(page), 'A');
     expect(a.w).toBeGreaterThan(120);
     expect(a.angle).toBeTruthy();
@@ -469,9 +409,9 @@ test.describe('arrows', () => {
 
   // Cmd/Ctrl leaves an end free: held from the press, both; at the drop, that end.
   test('Ctrl draws an arrow that stays free; Ctrl at the drop frees one end', async ({ page }) => {
-    await start(page, pair());
+    await startCanvas(page, pair());
     await page.keyboard.press('a');
-    await drag(page, { x: 160, y: 120 }, { x: 560, y: 120 }, { modifiers: ['Control'] });
+    await dragScene(page, { x: 160, y: 120 }, { x: 560, y: 120 }, { modifiers: ['Control'] });
     await page.keyboard.press('a');
     const a = await onScreen(page, { x: 160, y: 160 });
     const b = await onScreen(page, { x: 560, y: 160 });
@@ -492,7 +432,7 @@ test.describe('arrows', () => {
   // Inside a shape an end is pinned where it is dropped; just outside it
   // attaches to the edge; with Alt it is pinned anywhere on the shape.
   test('an end dropped inside a shape is pinned there; just outside it attaches; Alt pins it', async ({ page }) => {
-    await start(page, pair());
+    await startCanvas(page, pair());
     const draw = async (to: Point, alt = false) => {
       await page.keyboard.press('a');
       const a = await onScreen(page, { x: 160, y: 140 });
@@ -523,11 +463,11 @@ test.describe('arrows', () => {
   });
 
   test('deleting an attached shape detaches the arrow; undo attaches it again', async ({ page }) => {
-    await start(page, [
+    await startCanvas(page, [
       ...pair(),
       { id: 'ar', type: 'arrow', x: 226, y: 140, w: 268, h: 0, z: 3, points: [0, 0, 268, 0], startBinding: 'A', endBinding: 'B' },
     ]);
-    await click(page, { x: 560, y: 140 });
+    await clickScene(page, { x: 560, y: 140 });
     await page.keyboard.press('Delete');
     let elements = await saved(page);
     expect(elements.map((element) => element.id).sort()).toEqual(['A', 'ar']);
@@ -541,10 +481,10 @@ test.describe('arrows', () => {
   // Switching to elbow replaces the bends with the route; switching away
   // keeps only the two ends (docs/file-format.md).
   test('bending, then arc, elbow and back to straight', async ({ page }) => {
-    await start(page, [{ id: 'ar', type: 'arrow', x: 100, y: 200, w: 300, h: 0, z: 1, points: [0, 0, 300, 0] }]);
-    await click(page, { x: 200, y: 200 });
+    await startCanvas(page, [{ id: 'ar', type: 'arrow', x: 100, y: 200, w: 300, h: 0, z: 1, points: [0, 0, 300, 0] }]);
+    await clickScene(page, { x: 200, y: 200 });
     // The middle handle, dragged up: a bend.
-    await drag(page, { x: 250, y: 200 }, { x: 250, y: 120 });
+    await dragScene(page, { x: 250, y: 200 }, { x: 250, y: 120 });
     let arrow = byId(await saved(page), 'ar');
     expect((arrow.points as number[]).length).toBe(6);
     await pick(page, 'Arrow type', 'Arc');
@@ -561,7 +501,7 @@ test.describe('arrows', () => {
   });
 
   test('dragging an elbow’s middle segment fixes it', async ({ page }) => {
-    await start(page, [
+    await startCanvas(page, [
       ...pair(),
       {
         id: 'el',
@@ -578,24 +518,24 @@ test.describe('arrows', () => {
       },
     ]);
     await page.locator('body').click({ position: { x: 1, y: 1 } }).catch(() => undefined);
-    await click(page, { x: 360, y: 140 });
-    await drag(page, { x: 360, y: 140 }, { x: 360, y: 260 });
+    await clickScene(page, { x: 360, y: 140 });
+    await dragScene(page, { x: 360, y: 140 }, { x: 360, y: 260 });
     const elbow = byId(await saved(page), 'el');
     expect((elbow.fixedSegments as unknown[]).length).toBeGreaterThan(0);
   });
 
   test('sliding a label along its arrow', async ({ page }) => {
-    await start(page, [{ id: 'ar', type: 'arrow', x: 100, y: 200, w: 400, h: 0, z: 1, points: [0, 0, 400, 0], label: 'calls' }]);
-    await click(page, { x: 150, y: 200 });
+    await startCanvas(page, [{ id: 'ar', type: 'arrow', x: 100, y: 200, w: 400, h: 0, z: 1, points: [0, 0, 400, 0], label: 'calls' }]);
+    await clickScene(page, { x: 150, y: 200 });
     // The label, beside the middle handle that sits on it: the handle bends.
-    await drag(page, { x: 284, y: 200 }, { x: 404, y: 200 });
+    await dragScene(page, { x: 284, y: 200 }, { x: 404, y: 200 });
     const position = byId(await saved(page), 'ar').labelPosition as number;
     expect(position).toBeGreaterThan(0.6);
   });
 
   test('a line turned into an arrow and back', async ({ page }) => {
-    await start(page, [{ id: 'l1', type: 'line', x: 100, y: 200, w: 300, h: 0, z: 1, points: [0, 0, 300, 0] }]);
-    await click(page, { x: 200, y: 200 });
+    await startCanvas(page, [{ id: 'l1', type: 'line', x: 100, y: 200, w: 300, h: 0, z: 1, points: [0, 0, 300, 0] }]);
+    await clickScene(page, { x: 200, y: 200 });
     await pick(page, 'Arrow type', 'Straight');
     expect(byId(await saved(page), 'l1').type).toBe('arrow');
     await pick(page, 'Arrow type', 'Line');
@@ -603,17 +543,17 @@ test.describe('arrows', () => {
   });
 
   test('with attaching off in Settings, an arrow stays free; Ctrl attaches it', async ({ page }) => {
-    await start(page, pair());
+    await startCanvas(page, pair());
     await menu(page, 'app.settings');
-    const dialog = page.locator('.bava-dialog-content').filter({ visible: true });
+    const dialog = openDialog(page);
     await dialog.getByRole('tab', { name: 'Canvas' }).click();
     await dialog.getByRole('radiogroup', { name: 'Attach arrows to shapes' }).getByText('Off', { exact: true }).click();
     await page.keyboard.press('Escape');
-    await click(page, { x: 900, y: 560 });
+    await clickScene(page, { x: 900, y: 560 });
     await page.keyboard.press('a');
-    await drag(page, { x: 160, y: 120 }, { x: 560, y: 120 });
+    await dragScene(page, { x: 160, y: 120 }, { x: 560, y: 120 });
     await page.keyboard.press('a');
-    await drag(page, { x: 160, y: 160 }, { x: 560, y: 160 }, { modifiers: ['Control'] });
+    await dragScene(page, { x: 160, y: 160 }, { x: 560, y: 160 }, { modifiers: ['Control'] });
     const [plain, held] = ofType(await saved(page), 'arrow').sort((p, q) => p.y - q.y);
     expect(plain.endBinding).toBeUndefined();
     expect(held.endBinding).toBe('B');
@@ -628,29 +568,29 @@ test.describe('frames', () => {
   ];
 
   test('into and out of a frame', async ({ page }) => {
-    await start(page, framed());
-    await drag(page, { x: 660, y: 200 }, { x: 330, y: 280 });
+    await startCanvas(page, framed());
+    await dragScene(page, { x: 660, y: 200 }, { x: 330, y: 280 });
     expect(byId(await saved(page), 'out').frame).toBe('F');
-    await drag(page, { x: 200, y: 200 }, { x: 760, y: 500 });
+    await dragScene(page, { x: 200, y: 200 }, { x: 760, y: 500 });
     expect(byId(await saved(page), 'in').frame).toBeUndefined();
   });
 
   test('moving a frame carries its contents; resizing it keeps their size', async ({ page }) => {
-    await start(page, framed());
+    await startCanvas(page, framed());
     // By its label, at its top-left corner.
-    await drag(page, { x: 112, y: 112 }, { x: 112, y: 212 });
+    await dragScene(page, { x: 112, y: 112 }, { x: 112, y: 212 });
     let elements = await saved(page);
     expect([byId(elements, 'F').y, byId(elements, 'in').y]).toEqual([200, 260]);
     // From its bottom-right corner.
-    await drag(page, { x: 400, y: 440 }, { x: 480, y: 500 });
+    await dragScene(page, { x: 400, y: 440 }, { x: 480, y: 500 });
     elements = await saved(page);
     expect(byId(elements, 'F').w).toBeGreaterThan(300);
     expect([byId(elements, 'in').w, byId(elements, 'in').h]).toEqual([120, 80]);
   });
 
   test('deleting a frame keeps its contents', async ({ page }) => {
-    await start(page, framed());
-    await click(page, { x: 112, y: 112 });
+    await startCanvas(page, framed());
+    await clickScene(page, { x: 112, y: 112 });
     await page.keyboard.press('Delete');
     const elements = await saved(page);
     expect(elements.map((element) => element.id).sort()).toEqual(['in', 'out']);
@@ -660,12 +600,12 @@ test.describe('frames', () => {
 
 test.describe('code blocks', () => {
   test('typing grows the block; a language, a resize, an arrow and a frame', async ({ page }) => {
-    await start(page, [
+    await startCanvas(page, [
       { id: 'F', type: 'frame', x: 600, y: 80, w: 360, h: 300, z: 1, label: 'F' },
       box('A', 100, 420),
     ]);
     await page.keyboard.press('c');
-    await click(page, { x: 100, y: 100 });
+    await clickScene(page, { x: 100, y: 100 });
     await page.keyboard.type('one\ntwo\nthree\nfour\nfive');
     await page.keyboard.press('Escape');
     let code = ofType(await saved(page), 'code')[0];
@@ -673,24 +613,24 @@ test.describe('code blocks', () => {
     const firstHeight = code.h;
     expect(firstHeight).toBeGreaterThan(60);
 
-    await click(page, { x: code.x + 20, y: code.y + 20 });
+    await clickScene(page, { x: code.x + 20, y: code.y + 20 });
     await pick(page, 'Language', 'Python');
     expect(ofType(await saved(page), 'code')[0].language).toBe('python');
 
     // Its right edge, dragged in, then out.
     code = ofType(await saved(page), 'code')[0];
-    await drag(page, { x: code.x + code.w, y: code.y + code.h / 2 }, { x: code.x + code.w - 60, y: code.y + code.h / 2 });
+    await dragScene(page, { x: code.x + code.w, y: code.y + code.h / 2 }, { x: code.x + code.w - 60, y: code.y + code.h / 2 });
     const narrower = ofType(await saved(page), 'code')[0].w;
     expect(narrower).toBeLessThan(code.w);
 
     await page.keyboard.press('a');
-    await drag(page, { x: 160, y: 460 }, { x: code.x + 40, y: code.y + 30 });
+    await dragScene(page, { x: 160, y: 460 }, { x: code.x + 40, y: code.y + 30 });
     const arrow = ofType(await saved(page), 'arrow')[0];
     expect(arrow.endBinding).toBe(code.id);
 
     await page.keyboard.press('v');
-    await click(page, { x: code.x + 20, y: code.y + 20 });
-    await drag(page, { x: code.x + 20, y: code.y + 20 }, { x: 640, y: 140 });
+    await clickScene(page, { x: code.x + 20, y: code.y + 20 });
+    await dragScene(page, { x: code.x + 20, y: code.y + 20 }, { x: 640, y: 140 });
     expect(ofType(await saved(page), 'code')[0].frame).toBe('F');
   });
 });
@@ -700,23 +640,23 @@ test.describe('snapping', () => {
   const lined = () => [box('b1', 300, 300), box('b2', 460, 340)];
 
   test('off by default; a drag with Ctrl held snaps', async ({ page }) => {
-    await start(page, lined());
-    await drag(page, { x: 520, y: 380 }, { x: 520, y: 343 });
+    await startCanvas(page, lined());
+    await dragScene(page, { x: 520, y: 380 }, { x: 520, y: 343 });
     expect(byId(await saved(page), 'b2').y).toBe(303);
-    await drag(page, { x: 520, y: 343 }, { x: 520, y: 346 }, { modifiers: ['Control'] });
+    await dragScene(page, { x: 520, y: 343 }, { x: 520, y: 346 }, { modifiers: ['Control'] });
     expect(byId(await saved(page), 'b2').y).toBe(300);
   });
 
   test('Alt+S turns it on, and the menu’s tick follows', async ({ page }) => {
-    await start(page, lined());
+    await startCanvas(page, lined());
     await page.keyboard.press('Alt+s');
-    await drag(page, { x: 520, y: 380 }, { x: 520, y: 343 });
+    await dragScene(page, { x: 520, y: 380 }, { x: 520, y: 343 });
     expect(byId(await saved(page), 'b2').y).toBe(300);
   });
 
   for (const steps of [-8, 0, 8]) {
     test(`the reach is the same on screen at ${Math.round(1.2 ** steps * 100)}%`, async ({ page }) => {
-      await start(page, lined());
+      await startCanvas(page, lined());
       const zoom = await zoomSteps(page, steps);
       // Dropped 4 screen pixels below the line of b1's top edge.
       const from = await onScreen(page, { x: 520, y: 380 }, zoom);
@@ -733,50 +673,11 @@ test.describe('snapping', () => {
   }
 });
 
-/** A PNG's width, height and first pixel, from its bytes. */
-function pngFacts(base64: string) {
-  const bytes = Buffer.from(base64, 'base64');
-  const width = bytes.readUInt32BE(16);
-  const height = bytes.readUInt32BE(20);
-  const chunks: Buffer[] = [];
-  for (let at = 8; at < bytes.length; ) {
-    const length = bytes.readUInt32BE(at);
-    if (bytes.toString('ascii', at + 4, at + 8) === 'IDAT') chunks.push(bytes.subarray(at + 8, at + 8 + length));
-    at += 12 + length;
-  }
-  // Whatever the first row's filter, its first pixel is stored as it is.
-  const raw = inflateSync(Buffer.concat(chunks));
-  const [r, g, b, a] = [raw[1], raw[2], raw[3], raw[4]];
-  return { width, height, pixel: { r, g, b, a } };
-}
-
-const luminance = ({ r, g, b }: { r: number; g: number; b: number }) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-
-/** Exports through the dialog, as the person sets it up. */
-async function exportAs(page: Page, format: 'PNG' | 'SVG', settings: { scale?: string; background?: boolean; dark?: boolean; onlySelected?: boolean } = {}) {
-  await menu(page, settings.onlySelected ? 'canvas.exportSelection' : 'file.export');
-  const dialog = page.locator('.bava-dialog-content').filter({ visible: true });
-  await expect(dialog).toBeVisible();
-  const toggle = async (name: string, on: boolean | undefined) => {
-    if (on === undefined) return;
-    const control = dialog.getByRole('checkbox', { name });
-    if ((await control.isChecked()) !== on) await dialog.getByText(name, { exact: true }).click();
-    await expect(control).toBeChecked({ checked: on });
-  };
-  await toggle('Background', settings.background);
-  await toggle('Dark mode', settings.dark);
-  if (settings.scale) await dialog.getByText(settings.scale, { exact: true }).click();
-  const before = (await exportsSoFar(page)).length;
-  await dialog.getByRole('button', { name: format, exact: true }).click();
-  await expect.poll(async () => (await exportsSoFar(page)).length).toBe(before + 1);
-  return (await exportsSoFar(page)).at(-1)!;
-}
-
 test.describe('export', () => {
   const scene = () => [box('b1', 100, 100), box('b2', 400, 260, { fill: 'blue' })];
 
   test('the whole canvas as PNG at 1× and 2×, with and without background, light and dark', async ({ page }) => {
-    await start(page, scene());
+    await startCanvas(page, scene());
     const one = pngFacts((await exportAs(page, 'PNG', { scale: '1×', background: true, dark: false })).contentsBase64);
     const two = pngFacts((await exportAs(page, 'PNG', { scale: '2×' })).contentsBase64);
     expect(two.width).toBe(one.width * 2);
@@ -790,17 +691,17 @@ test.describe('export', () => {
   });
 
   test('a selection exports alone, smaller than the canvas', async ({ page }) => {
-    await start(page, scene());
+    await startCanvas(page, scene());
     const whole = pngFacts((await exportAs(page, 'PNG', { scale: '1×' })).contentsBase64);
     await page.keyboard.press('Escape');
-    await click(page, { x: 160, y: 140 });
+    await clickScene(page, { x: 160, y: 140 });
     const part = pngFacts((await exportAs(page, 'PNG', { onlySelected: true })).contentsBase64);
     expect(part.width).toBeLessThan(whole.width);
     expect(part.height).toBeLessThan(whole.height);
   });
 
   test('an SVG’s labels and code are text, in Geist and Geist Mono, the fonts inside it', async ({ page }) => {
-    await start(page, [
+    await startCanvas(page, [
       box('b1', 100, 100),
       { id: 'k1', type: 'code', x: 100, y: 260, w: 220, h: 60, z: 2, code: 'let answer = 42', language: 'javascript', measuredWidth: 150, measuredHeight: 40 },
     ]);
@@ -813,36 +714,21 @@ test.describe('export', () => {
   });
 });
 
-/** The page closed and opened again from its file, nudged there and back so the next save rewrites it. */
-async function reopened(page: Page) {
-  const before = await saved(page);
-  await openPage(page, 'Engineering', 'Engineering/Blocks.md');
-  await openPage(page, 'Engineering', PAGE);
-  await menu(page, 'view.canvas');
-  await expect(canvasHost(page)).toBeVisible();
-  await click(page, { x: 900, y: 560 });
-  await menu(page, 'edit.selectAll');
-  await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowLeft');
-  const after = await saved(page);
-  return { before, after };
-}
-
 test.describe('round trips', () => {
   test('everything drawn, styled, attached and framed comes back as it was', async ({ page }) => {
-    await start(page, [{ id: 'F', type: 'frame', x: 600, y: 80, w: 360, h: 300, z: 1, label: 'F' }]);
+    await startCanvas(page, [{ id: 'F', type: 'frame', x: 600, y: 80, w: 360, h: 300, z: 1, label: 'F' }]);
     await page.keyboard.press('r');
-    await drag(page, { x: 100, y: 100 }, { x: 240, y: 180 });
+    await dragScene(page, { x: 100, y: 100 }, { x: 240, y: 180 });
     await pick(page, 'Fill colour', 'yellow');
     await pick(page, 'Line style', 'Dashed');
     await page.keyboard.press('o');
-    await drag(page, { x: 640, y: 140 }, { x: 760, y: 220 });
+    await dragScene(page, { x: 640, y: 140 }, { x: 760, y: 220 });
     await page.keyboard.press('a');
-    await drag(page, { x: 170, y: 140 }, { x: 700, y: 180 });
+    await dragScene(page, { x: 170, y: 140 }, { x: 700, y: 180 });
     await page.keyboard.press('d');
-    await drag(page, { x: 100, y: 400 }, { x: 300, y: 460 });
+    await dragScene(page, { x: 100, y: 400 }, { x: 300, y: 460 });
     await page.keyboard.press('c');
-    await click(page, { x: 100, y: 500 });
+    await clickScene(page, { x: 100, y: 500 });
     await page.keyboard.type('x = 1');
     await page.keyboard.press('Escape');
     const { before, after } = await reopened(page);
@@ -851,7 +737,7 @@ test.describe('round trips', () => {
   });
 
   test('the seeded canvases come back as they were', async ({ page }) => {
-    await start(page, SCENES.arrows());
+    await startCanvas(page, SCENES.arrows());
     const { before, after } = await reopened(page);
     expect(after).toEqual(before);
   });
@@ -859,20 +745,20 @@ test.describe('round trips', () => {
 
 test.describe('defaults, text and dialogs', () => {
   test('new arrows are drawn curved and new lines round', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     await page.keyboard.press('a');
-    await drag(page, { x: 100, y: 100 }, { x: 300, y: 160 });
+    await dragScene(page, { x: 100, y: 100 }, { x: 300, y: 160 });
     await page.keyboard.press('l');
-    await drag(page, { x: 100, y: 300 }, { x: 300, y: 360 });
+    await dragScene(page, { x: 100, y: 300 }, { x: 300, y: 360 });
     const elements = await saved(page);
     expect(ofType(elements, 'arrow')[0].arrowType).toBe('arc');
     expect(ofType(elements, 'line')[0].edges).toBe('round');
   });
 
   test('a new shape writes no size or width: the same as picking Medium and 20', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     await page.keyboard.press('r');
-    await drag(page, { x: 100, y: 100 }, { x: 240, y: 180 });
+    await dragScene(page, { x: 100, y: 100 }, { x: 240, y: 180 });
     const drawn = ofType(await saved(page), 'rect')[0];
     await pick(page, 'Stroke width', 'Medium');
     await pick(page, 'Text size', 'Medium');
@@ -883,9 +769,9 @@ test.describe('defaults, text and dialogs', () => {
   });
 
   test('text typed with the text tool', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     await page.keyboard.press('t');
-    await click(page, { x: 100, y: 100 });
+    await clickScene(page, { x: 100, y: 100 });
     await page.keyboard.type('A note');
     await page.keyboard.press('Escape');
     const text = ofType(await saved(page), 'text')[0];
@@ -894,29 +780,29 @@ test.describe('defaults, text and dialogs', () => {
   });
 
   test('Insert with a cylinder from the panel', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     await page.getByRole('toolbar', { name: 'Tools' }).getByRole('button', { name: 'Insert', exact: true }).click();
     await page.keyboard.type('cyl');
     await page.keyboard.press('Enter');
-    await drag(page, { x: 300, y: 200 }, { x: 420, y: 300 });
+    await dragScene(page, { x: 300, y: 200 }, { x: 420, y: 300 });
     expect(ofType(await saved(page), 'cylinder')).toHaveLength(1);
   });
 
   test('align, flip and duplicate a frame carry its shapes', async ({ page }) => {
-    await start(page, [
+    await startCanvas(page, [
       { id: 'F', type: 'frame', x: 100, y: 100, w: 300, h: 240, z: 1, label: 'F' },
       box('in', 140, 160, { frame: 'F', z: 2 }),
       box('other', 600, 300, { z: 3 }),
     ]);
-    await click(page, { x: 112, y: 112 });
-    await click(page, { x: 660, y: 340 }, { modifiers: ['Shift'] });
+    await clickScene(page, { x: 112, y: 112 });
+    await clickScene(page, { x: 660, y: 340 }, { modifiers: ['Shift'] });
     await menu(page, 'canvas.alignBottom');
     let elements = await saved(page);
     // The frame's bottom on the other box's; its shape came down with it.
     expect(byId(elements, 'F').y + byId(elements, 'F').h).toBe(380);
     expect(byId(elements, 'in').y - byId(elements, 'F').y).toBe(60);
-    await click(page, { x: 900, y: 560 });
-    await click(page, { x: 112, y: byId(elements, 'F').y + 12 });
+    await clickScene(page, { x: 900, y: 560 });
+    await clickScene(page, { x: 112, y: byId(elements, 'F').y + 12 });
     await menu(page, 'canvas.flipHorizontal');
     elements = await saved(page);
     const frame = byId(elements, 'F');
@@ -930,7 +816,7 @@ test.describe('defaults, text and dialogs', () => {
   });
 
   test('double-clicking an arrow’s label at 25% opens its field on the label', async ({ page }) => {
-    await start(page, [{ id: 'ar', type: 'arrow', x: 300, y: 360, w: 400, h: 0, z: 1, points: [0, 0, 400, 0], label: 'calls' }]);
+    await startCanvas(page, [{ id: 'ar', type: 'arrow', x: 300, y: 360, w: 400, h: 0, z: 1, points: [0, 0, 400, 0], label: 'calls' }]);
     const zoom = await zoomSteps(page, -8);
     const label = await onScreen(page, { x: 470, y: 360 }, zoom);
     await page.mouse.dblclick(label.x, label.y);
@@ -945,9 +831,9 @@ test.describe('defaults, text and dialogs', () => {
   // ⌘Enter is the native menu's accelerator for Edit Points; the harness has
   // no native menu, so it sends the command the accelerator sends.
   test('Edit Points on an arrow', async ({ page }) => {
-    await start(page, [{ id: 'ar', type: 'arrow', x: 100, y: 200, w: 300, h: 0, z: 1, points: [0, 0, 300, 0] }]);
-    await click(page, { x: 200, y: 200 });
-    const editPoints = page.getByRole('toolbar', { name: 'Selection' }).getByRole('button', { name: 'Edit points' });
+    await startCanvas(page, [{ id: 'ar', type: 'arrow', x: 100, y: 200, w: 300, h: 0, z: 1, points: [0, 0, 300, 0] }]);
+    await clickScene(page, { x: 200, y: 200 });
+    const editPoints = selectionToolbar(page).getByRole('button', { name: 'Edit points' });
     await expect(editPoints).toBeVisible();
     await menu(page, 'canvas.editPoints');
     // In point editing, the toolbar no longer offers it.
@@ -955,9 +841,9 @@ test.describe('defaults, text and dialogs', () => {
   });
 
   test('Diagram from Code starts at the engine used last, and the status bar names it', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     await menu(page, 'insert.diagram');
-    const dialog = page.locator('.bava-dialog-content').filter({ visible: true });
+    const dialog = openDialog(page);
     await dialog.getByText('Dagre', { exact: true }).click();
     await dialog.locator('.cm-content').click();
     await page.keyboard.press('ControlOrMeta+a');
@@ -975,7 +861,7 @@ test.describe('defaults, text and dialogs', () => {
   // The webview's own menu (with Reload) shows unless the right-click's
   // contextmenu event is prevented; Bava's menu shows in its place.
   test('the right-click menu has no Reload', async ({ page }) => {
-    await start(page, [box('b1', 100, 100)]);
+    await startCanvas(page, [box('b1', 100, 100)]);
     await page.evaluate(() => {
       const seen: boolean[] = [];
       (window as unknown as { contextPrevented: boolean[] }).contextPrevented = seen;
@@ -983,51 +869,43 @@ test.describe('defaults, text and dialogs', () => {
       window.addEventListener('contextmenu', (event) => seen.push(event.defaultPrevented));
     });
     for (const point of [{ x: 160, y: 140 }, { x: 700, y: 400 }]) {
-      await click(page, point, { button: 'right' });
-      await expect(visibleMenus(page)).toBeVisible();
-      await expect(visibleMenus(page).getByText('Reload')).toHaveCount(0);
+      await clickScene(page, point, { button: 'right' });
+      await expect(menus(page)).toBeVisible();
+      await expect(menus(page).getByText('Reload')).toHaveCount(0);
       await page.keyboard.press('Escape');
     }
     expect(await page.evaluate(() => (window as unknown as { contextPrevented: boolean[] }).contextPrevented)).toEqual([true, true]);
   });
 
   test('saving, reopening and saving again asks nothing', async ({ page }) => {
-    await start(page, [box('b1', 100, 100)]);
-    await drag(page, { x: 160, y: 140 }, { x: 260, y: 140 });
+    await startCanvas(page, [box('b1', 100, 100)]);
+    await dragScene(page, { x: 160, y: 140 }, { x: 260, y: 140 });
     await reopened(page);
-    await expect(page.locator('.bava-dialog-content').filter({ visible: true })).toHaveCount(0);
+    await expect(openDialog(page)).toHaveCount(0);
   });
 });
 
-const angleOf = (from: Point, to: Point) => Math.round((Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI);
-const pointsOf = (element: Saved) => {
-  const points = element.points as number[];
-  const out: Point[] = [];
-  for (let i = 0; i < points.length; i += 2) out.push({ x: element.x + points[i], y: element.y + points[i + 1] });
-  return out;
-};
-
 test.describe('editing details', () => {
   test('clicking one of three selected leaves only it selected', async ({ page }) => {
-    await start(page, [box('b1', 100, 100), box('b2', 300, 100), box('b3', 500, 100)]);
+    await startCanvas(page, [box('b1', 100, 100), box('b2', 300, 100), box('b3', 500, 100)]);
     await menu(page, 'edit.selectAll');
-    await click(page, { x: 360, y: 140 });
+    await clickScene(page, { x: 360, y: 140 });
     await page.keyboard.press('ArrowDown');
     expect((await saved(page)).map((element) => element.y)).toEqual([100, 101, 100]);
   });
 
   test('a resize with Shift keeps the shape’s proportions and leaves it selected', async ({ page }) => {
-    await start(page, [box('b1', 100, 100)]);
-    await click(page, { x: 160, y: 140 });
-    await drag(page, { x: 220, y: 180 }, { x: 340, y: 200 }, { modifiers: ['Shift'] });
+    await startCanvas(page, [box('b1', 100, 100)]);
+    await clickScene(page, { x: 160, y: 140 });
+    await dragScene(page, { x: 220, y: 180 }, { x: 340, y: 200 }, { modifiers: ['Shift'] });
     const shape = byId(await saved(page), 'b1');
     expect(shape.w / shape.h).toBeCloseTo(1.5, 2);
     expect(shape.w).toBeGreaterThan(200);
-    await expect(page.getByRole('toolbar', { name: 'Selection' })).toBeVisible();
+    await expect(selectionToolbar(page)).toBeVisible();
   });
 
   test('a PNG at 3× is three times the size, and a turned, locked shape exports as drawn', async ({ page }) => {
-    await start(page, [box('b1', 100, 100, { angle: 30, locked: true })]);
+    await startCanvas(page, [box('b1', 100, 100, { angle: 30, locked: true })]);
     const one = pngFacts((await exportAs(page, 'PNG', { scale: '1×' })).contentsBase64);
     const three = pngFacts((await exportAs(page, 'PNG', { scale: '3×' })).contentsBase64);
     // A turned shape's bounds are fractional; each scale rounds its own size.
@@ -1037,13 +915,13 @@ test.describe('editing details', () => {
   });
 
   test('an attached arrow dragged by its body moves and lets go', async ({ page }) => {
-    await start(page, [
+    await startCanvas(page, [
       box('A', 100, 100),
       box('B', 500, 100),
       { id: 'ar', type: 'arrow', x: 226, y: 140, w: 268, h: 0, z: 3, points: [0, 0, 268, 0], startBinding: 'A', endBinding: 'B' },
     ]);
-    await click(page, { x: 330, y: 140 });
-    await drag(page, { x: 330, y: 140 }, { x: 330, y: 340 });
+    await clickScene(page, { x: 330, y: 140 });
+    await dragScene(page, { x: 330, y: 140 }, { x: 330, y: 340 });
     const arrow = byId(await saved(page), 'ar');
     expect(arrow.y).toBe(340);
     expect(arrow.startBinding).toBeUndefined();
@@ -1051,15 +929,15 @@ test.describe('editing details', () => {
   });
 
   test('an arrow with both ends on one shape is pinned inside it at both', async ({ page }) => {
-    await start(page, [box('A', 100, 100, { w: 240, h: 160 })]);
+    await startCanvas(page, [box('A', 100, 100, { w: 240, h: 160 })]);
     await page.keyboard.press('a');
-    await drag(page, { x: 140, y: 140 }, { x: 300, y: 220 });
+    await dragScene(page, { x: 140, y: 140 }, { x: 300, y: 220 });
     const arrow = ofType(await saved(page), 'arrow')[0];
     expect(arrow).toMatchObject({ startBinding: 'A', endBinding: 'A', startMode: 'inside', endMode: 'inside' });
   });
 
   test('flipped together, shapes keep their arrow attached', async ({ page }) => {
-    await start(page, [
+    await startCanvas(page, [
       box('A', 100, 100),
       box('B', 500, 100),
       { id: 'ar', type: 'arrow', x: 226, y: 140, w: 268, h: 0, z: 3, points: [0, 0, 268, 0], startBinding: 'A', endBinding: 'B' },
@@ -1072,7 +950,7 @@ test.describe('editing details', () => {
   });
 
   test('an elbow from the top of A to the bottom of B, A above B, leaves upwards and comes in from below', async ({ page }) => {
-    await start(page, [
+    await startCanvas(page, [
       box('A', 300, 100),
       box('B', 300, 360),
       {
@@ -1092,8 +970,8 @@ test.describe('editing details', () => {
       },
     ]);
     // Moved a little, so the route is worked out again.
-    await click(page, { x: 320, y: 120 });
-    await drag(page, { x: 320, y: 120 }, { x: 330, y: 120 });
+    await clickScene(page, { x: 320, y: 120 });
+    await dragScene(page, { x: 320, y: 120 }, { x: 330, y: 120 });
     const route = pointsOf(byId(await saved(page), 'el'));
     expect(route.length).toBeGreaterThan(3);
     expect(route[1].y).toBeLessThan(route[0].y);
@@ -1101,7 +979,7 @@ test.describe('editing details', () => {
   });
 
   test('double-clicking a fixed segment’s handle hands it back to the router', async ({ page }) => {
-    await start(page, [
+    await startCanvas(page, [
       box('A', 100, 100),
       box('B', 500, 300),
       {
@@ -1124,19 +1002,19 @@ test.describe('editing details', () => {
     // Its handle, at the middle of the fixed segment as the opened page routes it.
     const route = pointsOf(byId(await saved(page), 'el'));
     const middle = { x: (route[1].x + route[2].x) / 2, y: (route[1].y + route[2].y) / 2 };
-    await click(page, middle);
+    await clickScene(page, middle);
     const handle = await onScreen(page, middle);
     await page.mouse.dblclick(handle.x, handle.y);
     expect(byId(await saved(page), 'el').fixedSegments).toBeUndefined();
   });
 
   test('a line by clicks: undo waits, Shift turns in 15° steps, the last point clicked again finishes it', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     await page.keyboard.press('l');
-    await click(page, { x: 100, y: 100 });
-    await click(page, { x: 300, y: 100 });
+    await clickScene(page, { x: 100, y: 100 });
+    await clickScene(page, { x: 300, y: 100 });
     await menu(page, 'edit.undo');
-    await click(page, { x: 400, y: 190 }, { modifiers: ['Shift'] });
+    await clickScene(page, { x: 400, y: 190 }, { modifiers: ['Shift'] });
     const at = await onScreen(page, { x: 400, y: 190 });
     // Finished by clicking where the last point went.
     await page.mouse.click(at.x, at.y);
@@ -1147,10 +1025,10 @@ test.describe('editing details', () => {
   });
 
   test('an arrow by clicks finishes on a click just outside a shape, attached to it', async ({ page }) => {
-    await start(page, [box('B', 500, 100)]);
+    await startCanvas(page, [box('B', 500, 100)]);
     await page.keyboard.press('a');
-    await click(page, { x: 100, y: 300 });
-    await click(page, { x: 494, y: 140 });
+    await clickScene(page, { x: 100, y: 300 });
+    await clickScene(page, { x: 494, y: 140 });
     await page.keyboard.press('Escape');
     const arrow = ofType(await saved(page), 'arrow')[0];
     expect(arrow.endBinding).toBe('B');
@@ -1158,8 +1036,8 @@ test.describe('editing details', () => {
   });
 
   test('Shift on an arrow’s end turns it in 15° steps', async ({ page }) => {
-    await start(page, [{ id: 'ar', type: 'arrow', x: 100, y: 200, w: 300, h: 0, z: 1, points: [0, 0, 300, 0] }]);
-    await click(page, { x: 200, y: 200 });
+    await startCanvas(page, [{ id: 'ar', type: 'arrow', x: 100, y: 200, w: 300, h: 0, z: 1, points: [0, 0, 300, 0] }]);
+    await clickScene(page, { x: 200, y: 200 });
     // The end taken first, then Shift: a Shift-press is a click that adds to
     // or takes from the selection, and passes over the handles.
     const from = await onScreen(page, { x: 400, y: 200 });
@@ -1177,33 +1055,33 @@ test.describe('editing details', () => {
   });
 
   test('in point editing, points boxed and deleted go', async ({ page }) => {
-    await start(page, [{ id: 'l1', type: 'line', x: 100, y: 100, w: 300, h: 100, z: 1, points: [0, 100, 150, 0, 300, 100] }]);
-    await click(page, { x: 160, y: 160 });
+    await startCanvas(page, [{ id: 'l1', type: 'line', x: 100, y: 100, w: 300, h: 100, z: 1, points: [0, 100, 150, 0, 300, 100] }]);
+    await clickScene(page, { x: 160, y: 160 });
     await menu(page, 'canvas.editPoints');
     // A box round the top point only.
-    await drag(page, { x: 220, y: 70 }, { x: 280, y: 130 });
+    await dragScene(page, { x: 220, y: 70 }, { x: 280, y: 130 });
     await page.keyboard.press('Delete');
     expect(pointsOf(byId(await saved(page), 'l1'))).toHaveLength(2);
   });
 
   test('a code block made narrower wraps its long line and grows to hold it', async ({ page }) => {
     const long = 'const result = computeTheAnswer(firstArgument, secondArgument, thirdArgument);';
-    await start(page, [{ id: 'k1', type: 'code', x: 100, y: 100, w: 700, h: 60, z: 1, code: long, language: 'javascript', measuredWidth: 650, measuredHeight: 40 }]);
-    await click(page, { x: 140, y: 120 });
+    await startCanvas(page, [{ id: 'k1', type: 'code', x: 100, y: 100, w: 700, h: 60, z: 1, code: long, language: 'javascript', measuredWidth: 650, measuredHeight: 40 }]);
+    await clickScene(page, { x: 140, y: 120 });
     const before = byId(await saved(page), 'k1');
-    await drag(page, { x: 800, y: 100 + before.h / 2 }, { x: 360, y: 100 + before.h / 2 });
+    await dragScene(page, { x: 800, y: 100 + before.h / 2 }, { x: 360, y: 100 + before.h / 2 });
     const after = byId(await saved(page), 'k1');
     expect(after.w).toBeLessThan(before.w);
     expect(after.h).toBeGreaterThan(before.h);
   });
 
   test('with snapping on, a drawn box snaps to another’s edge, and Ctrl draws freely', async ({ page }) => {
-    await start(page, [box('b1', 300, 300)]);
+    await startCanvas(page, [box('b1', 300, 300)]);
     await page.keyboard.press('Alt+s');
     await page.keyboard.press('r');
-    await drag(page, { x: 500, y: 303 }, { x: 600, y: 377 });
+    await dragScene(page, { x: 500, y: 303 }, { x: 600, y: 377 });
     await page.keyboard.press('r');
-    await drag(page, { x: 500, y: 503 }, { x: 600, y: 577 }, { modifiers: ['Control'] });
+    await dragScene(page, { x: 500, y: 503 }, { x: 600, y: 577 }, { modifiers: ['Control'] });
     const [snapped, free] = ofType(await saved(page), 'rect')
       .filter((rect) => rect.id !== 'b1')
       .sort((p, q) => p.y - q.y);
@@ -1212,9 +1090,9 @@ test.describe('editing details', () => {
   });
 
   test('a diagram from code is undone with one press', async ({ page }) => {
-    await start(page);
+    await startCanvas(page);
     await menu(page, 'insert.diagram');
-    const dialog = page.locator('.bava-dialog-content').filter({ visible: true });
+    const dialog = openDialog(page);
     await dialog.locator('.cm-content').click();
     await page.keyboard.press('ControlOrMeta+a');
     await page.keyboard.type('api');
@@ -1231,11 +1109,11 @@ test.describe('menus over the canvas', () => {
   // moved the selected shape under it.
   test('arrow keys go to an open right-click menu, not the selection', async ({ page }) => {
     const scene = kinds();
-    await openCanvas(page, 'light', PAGE, scene.elements);
+    await openCanvas(page, 'light', CANVAS_PAGE, scene.elements);
     const before = scene.elements.find((element) => element.id === 'k-shape')!;
-    await click(page, scene.click.shape);
-    await click(page, scene.click.shape, { button: 'right' });
-    await expect(visibleMenus(page)).toBeVisible();
+    await clickScene(page, scene.click.shape);
+    await clickScene(page, scene.click.shape, { button: 'right' });
+    await expect(menus(page)).toBeVisible();
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Escape');

@@ -1,13 +1,23 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { onTeardown } from '../test/render';
+import { describe, expect, it, vi } from 'vitest';
 import { createHistory } from './history';
 import { commitLabel, commitText, editableAt, insertText, labelBox, LabelEditor } from './label-editor';
 import { editTarget } from '../shell/edit-target';
 import type { SceneData } from './scene';
 
-afterEach(() => {
-  document.body.innerHTML = '';
-});
+/** An editor taken down by the shared teardown, whatever the test does. */
+function tracked<T extends { destroy(): void }>(editor: T): T {
+  let destroyed = false;
+  const destroy = editor.destroy.bind(editor);
+  editor.destroy = () => {
+    if (destroyed) return;
+    destroyed = true;
+    destroy();
+  };
+  onTeardown(() => editor.destroy());
+  return editor;
+}
 
 const scene = (): SceneData => ({
   elements: [
@@ -90,7 +100,7 @@ describe('LabelEditor', () => {
   it('opens a textarea over the element with its value, and canvas keys stand down', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const editor = new LabelEditor(host);
+    const editor = tracked(new LabelEditor(host));
     editor.open({ value: 'Old', rect: { x: 10, y: 20, width: 100, height: 50 }, onCommit: vi.fn() });
 
     const field = host.querySelector('textarea')!;
@@ -104,7 +114,7 @@ describe('LabelEditor', () => {
   it('commits once on Escape and once on blur, then closes', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const editor = new LabelEditor(host);
+    const editor = tracked(new LabelEditor(host));
     const onCommit = vi.fn();
     editor.open({ value: '', rect: { x: 0, y: 0, width: 10, height: 10 }, onCommit });
 
@@ -126,7 +136,7 @@ describe('LabelEditor sizing', () => {
   it('grows the field to the measured size as you type', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const editor = new LabelEditor(host);
+    const editor = tracked(new LabelEditor(host));
     editor.open({
       value: '',
       rect: { x: 0, y: 0, width: 0, height: 0 },
@@ -146,7 +156,7 @@ describe('LabelEditor sizing', () => {
   it('keeps a shape label at its box when no measure is given', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const editor = new LabelEditor(host);
+    const editor = tracked(new LabelEditor(host));
     editor.open({ value: '', rect: { x: 0, y: 0, width: 100, height: 50 }, onCommit: vi.fn() });
 
     const field = host.querySelector('textarea')!;
@@ -163,7 +173,7 @@ describe('LabelEditor lifecycle', () => {
   it('commits an open editor before opening another', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const editor = new LabelEditor(host);
+    const editor = tracked(new LabelEditor(host));
     const first = vi.fn();
     editor.open({ value: '', rect: { x: 0, y: 0, width: 10, height: 10 }, onCommit: first });
     host.querySelector('textarea')!.value = 'typed';
@@ -175,7 +185,7 @@ describe('LabelEditor lifecycle', () => {
   it('commits when told to, for a view change under it', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const editor = new LabelEditor(host);
+    const editor = tracked(new LabelEditor(host));
     const onCommit = vi.fn();
     editor.open({ value: 'x', rect: { x: 0, y: 0, width: 10, height: 10 }, onCommit });
     editor.commit();
@@ -186,7 +196,7 @@ describe('LabelEditor lifecycle', () => {
   it('aligns free text to the left and labels to the centre', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const editor = new LabelEditor(host);
+    const editor = tracked(new LabelEditor(host));
     editor.open({ value: '', rect: { x: 0, y: 0, width: 10, height: 10 }, onCommit: vi.fn(), align: 'left' });
     expect(host.querySelector('textarea')!.style.textAlign).toBe('left');
     editor.destroy();
@@ -209,7 +219,7 @@ describe('editing a rotated element', () => {
   it('turns the field with the element', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const editor = new LabelEditor(host);
+    const editor = tracked(new LabelEditor(host));
     editor.open({ value: 'Old', rect: { x: 0, y: 0, width: 100, height: 20 }, angle: 90, onCommit: () => {} });
     const field = host.querySelector('textarea')!;
     expect(field.style.transform).toContain('rotate(90deg)');
@@ -270,7 +280,7 @@ describe('the editor looks like the text it edits', () => {
   function open(over: Record<string, unknown> = {}) {
     const host = document.createElement('div');
     document.body.append(host);
-    const editor = new LabelEditor(host);
+    const editor = tracked(new LabelEditor(host));
     editor.open({ value: 'Hi', rect: { x: 0, y: 0, width: 200, height: 100 }, font, zoom: 2, opacity: 0.5, onCommit: vi.fn(), ...over });
     return { editor, field: host.querySelector('textarea')! };
   }
@@ -350,7 +360,7 @@ describe('a field that grows about its middle', () => {
   it('grows taller, staying centred on where it opened', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const editor = new LabelEditor(host);
+    const editor = tracked(new LabelEditor(host));
     editor.open({
       value: '',
       rect: { x: 0, y: 100, width: 200, height: 20 },

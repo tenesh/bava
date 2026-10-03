@@ -1,13 +1,23 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { onTeardown } from '../../test/render';
+import { describe, expect, it, vi } from 'vitest';
 import { EditorView } from '@codemirror/view';
 import { CodeEditor, commitCode, fitToCode } from './editor';
 import { createHistory } from '../history';
 import { editTarget } from '../../shell/edit-target';
 
-afterEach(() => {
-  document.body.innerHTML = '';
-});
+/** An editor taken down by the shared teardown, whatever the test does. */
+function tracked<T extends { destroy(): void }>(editor: T): T {
+  let destroyed = false;
+  const destroy = editor.destroy.bind(editor);
+  editor.destroy = () => {
+    if (destroyed) return;
+    destroyed = true;
+    destroy();
+  };
+  onTeardown(() => editor.destroy());
+  return editor;
+}
 
 function host() {
   const element = document.createElement('div');
@@ -17,7 +27,7 @@ function host() {
 
 describe('typing in a code block', () => {
   it('opens with the block code, and canvas keys stand down', async () => {
-    const editor = new CodeEditor(host());
+    const editor = tracked(new CodeEditor(host()));
     await editor.open({ code: 'const a = 1', rect: { x: 0, y: 0, width: 200, height: 60 }, onCommit: vi.fn() });
 
     expect(document.querySelector('.cm-content')!.textContent).toContain('const a = 1');
@@ -29,7 +39,7 @@ describe('typing in a code block', () => {
 
   it('commits what was typed, once', async () => {
     const onCommit = vi.fn();
-    const editor = new CodeEditor(host());
+    const editor = tracked(new CodeEditor(host()));
     await editor.open({ code: 'before', rect: { x: 0, y: 0, width: 10, height: 10 }, onCommit });
 
     editor.commit();
@@ -41,7 +51,7 @@ describe('typing in a code block', () => {
   // Escape is how every other editor in Bava is closed.
   it('commits on Escape', async () => {
     const onCommit = vi.fn();
-    const editor = new CodeEditor(host());
+    const editor = tracked(new CodeEditor(host()));
     await editor.open({ code: 'x', rect: { x: 0, y: 0, width: 10, height: 10 }, onCommit });
 
     document.querySelector('.cm-content')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
@@ -52,7 +62,7 @@ describe('typing in a code block', () => {
   // Enter belongs to the code, not to closing: this is a multi-line editor.
   it('keeps Enter for the code', async () => {
     const onCommit = vi.fn();
-    const editor = new CodeEditor(host());
+    const editor = tracked(new CodeEditor(host()));
     await editor.open({ code: 'x', rect: { x: 0, y: 0, width: 10, height: 10 }, onCommit });
 
     document.querySelector('.cm-content')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
@@ -61,14 +71,14 @@ describe('typing in a code block', () => {
   });
 
   it('is taken away when it is destroyed', async () => {
-    const editor = new CodeEditor(host());
+    const editor = tracked(new CodeEditor(host()));
     await editor.open({ code: 'x', rect: { x: 0, y: 0, width: 10, height: 10 }, onCommit: vi.fn() });
     editor.destroy();
     expect(document.querySelector('.cm-editor')).toBeNull();
   });
 
   it('highlights in the language it is given', async () => {
-    const editor = new CodeEditor(host());
+    const editor = tracked(new CodeEditor(host()));
     await editor.open({
       code: 'const a = 1',
       language: 'javascript',
@@ -128,7 +138,7 @@ describe('committing a code block', () => {
 describe('destroying an open editor', () => {
   it('commits first', async () => {
     const onCommit = vi.fn();
-    const editor = new CodeEditor(host());
+    const editor = tracked(new CodeEditor(host()));
     await editor.open({ code: 'typed', rect: { x: 0, y: 0, width: 10, height: 10 }, onCommit });
     editor.destroy();
     expect(onCommit).toHaveBeenCalledWith('typed');
@@ -137,7 +147,7 @@ describe('destroying an open editor', () => {
 
 describe('an editor on a rotated block', () => {
   it('turns with it, and scales with the zoom', async () => {
-    const editor = new CodeEditor(host());
+    const editor = tracked(new CodeEditor(host()));
     await editor.open({
       code: 'x',
       angle: 30,
@@ -157,7 +167,7 @@ describe('an editor on a rotated block', () => {
 // these commands reach the editor as commands or not at all.
 describe('the edit commands inside a code editor', () => {
   it('undoes and redoes its own typing', async () => {
-    const editor = new CodeEditor(host());
+    const editor = tracked(new CodeEditor(host()));
     await editor.open({ code: 'start', rect: { x: 0, y: 0, width: 10, height: 10 }, onCommit: vi.fn() });
 
     editor.replaceSelection('more');
@@ -170,7 +180,7 @@ describe('the edit commands inside a code editor', () => {
   });
 
   it('selects all, and reports what is selected for Copy', async () => {
-    const editor = new CodeEditor(host());
+    const editor = tracked(new CodeEditor(host()));
     await editor.open({ code: 'abc', rect: { x: 0, y: 0, width: 10, height: 10 }, onCommit: vi.fn() });
     editor.selectAll();
     expect(editor.selectedText()).toBe('abc');
@@ -178,7 +188,7 @@ describe('the edit commands inside a code editor', () => {
   });
 
   it('does nothing at all when it is not open', () => {
-    const editor = new CodeEditor(host());
+    const editor = tracked(new CodeEditor(host()));
     expect(() => {
       editor.undo();
       editor.selectAll();
@@ -193,7 +203,7 @@ describe('the edit commands inside a code editor', () => {
 describe('the editor growing with what is typed', () => {
   it('widens for a longer line, and grows taller for a new one', async () => {
     const h = host();
-    const editor = new CodeEditor(h);
+    const editor = tracked(new CodeEditor(h));
     const measure = (code: string) => {
       const lines = code.split('\n');
       return { width: Math.max(...lines.map((l) => l.length)) * 10, height: lines.length * 20 };
@@ -221,7 +231,7 @@ describe('committing code to a block of a chosen width', () => {
 
   it('wraps lines in the editor, as the block does', async () => {
     const h = host();
-    const editor = new CodeEditor(h);
+    const editor = tracked(new CodeEditor(h));
     await editor.open({ code: 'x', rect: { x: 0, y: 0, width: 100, height: 40 }, onCommit: vi.fn() });
     expect(h.querySelector('.cm-lineWrapping')).not.toBeNull();
     editor.destroy();
@@ -233,7 +243,7 @@ describe('committing code to a block of a chosen width', () => {
 describe('keys in the code block editor', () => {
   it('drops a key the menu reserves', async () => {
     const h = host();
-    const editor = new CodeEditor(h);
+    const editor = tracked(new CodeEditor(h));
     await editor.open({ code: 'x', rect: { x: 0, y: 0, width: 100, height: 40 }, isReserved: (b) => b.key === 'Mod-z', onCommit: vi.fn() });
     const view = EditorView.findFromDOM(h.querySelector('.cm-editor') as HTMLElement)!;
     view.dispatch({ changes: { from: 1, insert: '!' } });
@@ -245,7 +255,7 @@ describe('keys in the code block editor', () => {
   it('indents with Tab instead of leaving', async () => {
     const h = host();
     const onCommit = vi.fn();
-    const editor = new CodeEditor(h);
+    const editor = tracked(new CodeEditor(h));
     await editor.open({ code: 'x', rect: { x: 0, y: 0, width: 100, height: 40 }, onCommit });
     const view = EditorView.findFromDOM(h.querySelector('.cm-editor') as HTMLElement)!;
     view.dispatch({ selection: { anchor: 0 } });
@@ -263,7 +273,7 @@ describe('the code editor on the app path', () => {
     const { reservedByMenu } = await import('../../shell/shortcuts');
     const spec = (await import('../../../../internal/app/menu/spec.json')).default;
     const h = host();
-    const editor = new CodeEditor(h);
+    const editor = tracked(new CodeEditor(h));
     await editor.open({ code: 'x', rect: { x: 0, y: 0, width: 100, height: 40 }, isReserved: reservedByMenu(spec as never, 'linux'), onCommit: vi.fn() });
     const view = EditorView.findFromDOM(h.querySelector('.cm-editor') as HTMLElement)!;
     view.dispatch({ changes: { from: 1, insert: '!' } });
@@ -288,7 +298,7 @@ describe('committing code to a taller block', () => {
 
 describe("the editor over a block at another size", () => {
   it("scales its text with the block's size as well as the zoom", async () => {
-    const editor = new CodeEditor(host());
+    const editor = tracked(new CodeEditor(host()));
     await editor.open({ code: 'x', zoom: 2, fontScale: 1.5, rect: { x: 0, y: 0, width: 100, height: 40 }, onCommit: vi.fn() });
     const wrapper = document.querySelector('.bava-code-editor') as HTMLElement;
     expect(wrapper.style.fontSize).toBe('3em');

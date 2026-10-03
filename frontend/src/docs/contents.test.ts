@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { DocEditor } from './editor';
+import { openEditor } from './test-editor';
 import { headingEntries } from './contents';
 import { parsePage } from './markdown';
 import { runItem, SLASH_ITEMS } from './slash';
@@ -8,18 +9,10 @@ import { atTextEnd } from './test-caret';
 
 let editor: DocEditor | null = null;
 
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
-
 function open(markdown: string) {
-  const host = document.createElement('div');
-  document.body.append(host);
-  editor = new DocEditor();
-  editor.mount(host, { onChange: vi.fn() });
-  editor.setPage(markdown);
+  const opened = openEditor(markdown);
+  editor = opened.editor;
+  const { host } = opened;
   return { host, view: editor.view! };
 }
 

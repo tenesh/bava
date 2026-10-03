@@ -8,21 +8,8 @@ import (
 	"testing"
 
 	"github.com/tenesh/bava/internal/space"
+	"github.com/tenesh/bava/internal/testutil"
 )
-
-// writePages writes each page's text into the Space.
-func writePages(t *testing.T, s space.Space, pages map[string]string) {
-	t.Helper()
-	for rel, text := range pages {
-		full := filepath.Join(s.Root, filepath.FromSlash(rel))
-		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(full, []byte(text), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-}
 
 func readPage(t *testing.T, s space.Space, rel string) string {
 	t.Helper()
@@ -78,7 +65,7 @@ func TestPagesSkipsAFolderItCannotRead(t *testing.T) {
 
 func TestWriteIfUnchangedWritesOnlyWhatWasRead(t *testing.T) {
 	s := newSpace(t)
-	writePages(t, s, map[string]string{"Roadmap.md": "[Plan](Plan.md)\n"})
+	testutil.WriteTree(t, s.Root, map[string]string{"Roadmap.md": "[Plan](Plan.md)\n"})
 	if err := s.WriteIfUnchanged("Roadmap.md", "[Plan](Plan.md)\n", "[Q4](Q4.md)\n"); err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +80,7 @@ func TestWriteIfUnchangedWritesOnlyWhatWasRead(t *testing.T) {
 	if got := readPage(t, s, "Roadmap.md"); got != "[Q4](Q4.md)\n" {
 		t.Errorf("Roadmap.md = %q after a refused write", got)
 	}
-	writePages(t, s, map[string]string{".hidden.md": "x", "notes.txt": "x"})
+	testutil.WriteTree(t, s.Root, map[string]string{".hidden.md": "x", "notes.txt": "x"})
 	refused := []string{"../outside.md", ".bava/space.json", "Missing.md", "notes.txt", ".hidden.md"}
 	// Windows may not allow making a link; elsewhere a page through one is refused too.
 	if os.Symlink(filepath.Join(s.Root, "Roadmap.md"), filepath.Join(s.Root, "Linked.md")) == nil {

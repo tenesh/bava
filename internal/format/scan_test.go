@@ -67,7 +67,7 @@ func TestOffsetsSliceTheOriginalExactly(t *testing.T) {
 	}
 }
 
-func TestHandlesCRLF(t *testing.T) {
+func TestScanFindsABlockWithCRLFLineEndings(t *testing.T) {
 	src := "intro\r\n\r\n```d2\r\na -> b\r\n```\r\n"
 
 	blocks := format.Scan(src)

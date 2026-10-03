@@ -1,24 +1,16 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
+import { openEditor } from './test-editor';
 import { commands, turnIntoChoices } from './commands';
 import { atTextEnd } from './test-caret';
 
 let editor: DocEditor | null = null;
 
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
-
 function open(markdown: string, onChange = vi.fn()) {
-  const host = document.createElement('div');
-  document.body.append(host);
-  editor = new DocEditor();
-  editor.mount(host, { onChange });
-  editor.setPage(markdown);
+  const opened = openEditor(markdown, { onChange });
+  editor = opened.editor;
   return { editor, onChange, view: editor.view! };
 }
 
@@ -80,10 +72,7 @@ describe('opening and saving a page', () => {
   // An editor with no page (a pane mounted again after a failure) has nothing
   // to save; saving must fall back to the file, never write it empty.
   it('has no Markdown before a page is shown', () => {
-    const host = document.createElement('div');
-    document.body.append(host);
-    editor = new DocEditor();
-    editor.mount(host, { onChange: vi.fn() });
+    const { editor } = openEditor(null);
     expect(editor.markdown()).toBeNull();
   });
 
@@ -320,13 +309,10 @@ describe('edit commands from the menu', () => {
 
 describe('menus from the keyboard', () => {
   it('asks for the block menu on ⌘/ and for the formatting bubble on Alt+F10', () => {
-    const host = document.createElement('div');
-    document.body.append(host);
     const onBlockMenu = vi.fn();
     const onBubble = vi.fn();
-    editor = new DocEditor();
-    editor.mount(host, { onChange: vi.fn(), onBlockMenu, onBubble });
-    editor.setPage('Text\n');
+    const opened = openEditor('Text\n', { onBlockMenu, onBubble });
+    editor = opened.editor;
     key('/', { mod: true });
     expect(onBlockMenu).toHaveBeenCalledTimes(1);
     key('F10', { alt: true });

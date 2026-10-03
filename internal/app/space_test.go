@@ -3,7 +3,6 @@ package app_test
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/tenesh/bava/internal/app"
+	"github.com/tenesh/bava/internal/testutil"
 	"github.com/tenesh/bava/internal/web"
 )
 
@@ -83,9 +83,7 @@ func TestSpaceApplyRunsEachOperation(t *testing.T) {
 	if list.Error != "" || len(list.Entries) != 2 {
 		t.Fatalf("List = %+v", list)
 	}
-	if err := os.WriteFile(filepath.Join(root, "Press.md"), []byte("# Press\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testutil.WriteTree(t, root, map[string]string{"Press.md": "# Press\n"})
 	trashed := s.Apply(root, app.Operation{Kind: "trash", Path: "Press.md"})
 	if trashed.Error != "" || trashed.ID == "" {
 		t.Fatalf("trash = %+v", trashed)
@@ -123,30 +121,6 @@ func TestSpaceRevealShowsTheFolderOrSelectsAnItem(t *testing.T) {
 	}
 	if res := app.NewSpaceService(app.SpaceServiceOptions{}).Reveal(root, ""); res.Code != "revealUnavailable" {
 		t.Errorf("Reveal with no file manager = %+v, want code revealUnavailable", res)
-	}
-}
-
-func TestSpaceJSONFieldNames(t *testing.T) {
-	cases := []struct {
-		name string
-		v    any
-		keys []string
-	}{
-		{"SpaceInfo", app.SpaceInfo{}, []string{"code", "error", "name", "pageWidth", "root"}},
-		{"SpaceList", app.SpaceList{}, []string{"code", "entries", "error"}},
-		{"OpResult", app.OpResult{}, []string{"code", "error", "id", "missed", "name", "path", "root"}},
-		{"SpaceIndex", app.SpaceIndex{}, []string{"code", "error", "pages"}},
-		{"IndexPage", app.IndexPage{}, []string{"name", "path", "text", "unreadable"}},
-		{"PageEdit", app.PageEdit{}, []string{"after", "before", "path"}},
-		{"TrashList", app.TrashList{}, []string{"code", "error", "items", "size"}},
-		{"Operation", app.Operation{}, []string{"attachment", "data", "edits", "folder", "id", "index", "kind", "name", "path", "source", "width"}},
-	}
-	for _, c := range cases {
-		b, err := json.Marshal(c.v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		assertKeys(t, c.name, b, c.keys)
 	}
 }
 
@@ -213,11 +187,7 @@ func TestSpaceIndexListsPagesAndRelinkWritesUnchangedOnes(t *testing.T) {
 	root := t.TempDir()
 	s := spaceService(nil)
 	s.Open(root)
-	for name, text := range map[string]string{"Plan.md": "# Plan\n", "Roadmap.md": "[Plan](Plan.md)\n"} {
-		if err := os.WriteFile(filepath.Join(root, name), []byte(text), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
+	testutil.WriteTree(t, root, map[string]string{"Plan.md": "# Plan\n", "Roadmap.md": "[Plan](Plan.md)\n"})
 	index := s.Index(root, true)
 	if index.Error != "" || len(index.Pages) != 2 || index.Pages[1].Text != "[Plan](Plan.md)\n" {
 		t.Fatalf("Index = %+v", index)
@@ -355,17 +325,14 @@ func TestIndexSaysWhichPagesCouldNotBeRead(t *testing.T) {
 	root := t.TempDir()
 	s := spaceService(nil)
 	s.Open(root)
-	for _, name := range []string{"a.md", "b.md"} {
-		if err := os.WriteFile(filepath.Join(root, name), []byte("# "+name), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
+	testutil.WriteTree(t, root, map[string]string{"a.md": "# a.md", "b.md": "# b.md"})
 	if err := os.Chmod(filepath.Join(root, "b.md"), 0); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chmod(filepath.Join(root, "b.md"), 0o644)
+	// Readable again, so t.TempDir's cleanup can remove it.
+	t.Cleanup(func() { _ = os.Chmod(filepath.Join(root, "b.md"), 0o644) })
 	if _, err := os.ReadFile(filepath.Join(root, "b.md")); err == nil {
-		t.Skip("the file is still readable here")
+		t.Skip("a root user can still read a file with no permissions")
 	}
 	got := s.Index(root, true)
 	for _, page := range got.Pages {

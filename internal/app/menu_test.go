@@ -1,5 +1,8 @@
 package app
 
+// In package app to build a MenuService with a stand-in for the main thread
+// (its built and onMain fields).
+
 import (
 	"testing"
 
@@ -9,7 +12,7 @@ import (
 )
 
 // The frontend may report state before the menu bar exists; that must not
-// crash the app on launch.
+// crash the app on launch. It checks only that nothing panics.
 func TestMenuStateBeforeBuildIsIgnored(t *testing.T) {
 	NewMenuService().SetState(menu.State{ViewMode: "both"})
 }

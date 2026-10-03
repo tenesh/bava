@@ -1,9 +1,30 @@
-import { expect, type Page } from '@playwright/test';
+import { inflateSync } from 'node:zlib';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { kinds } from '../harness/canvas-scenes';
+import { REFERENCE } from '../harness/orphans';
+
+// Every helper the walks share. A spec defines none of its own.
 
 export type Theme = 'light' | 'dark';
 export const THEMES: Theme[] = ['light', 'dark'];
 
 type Harness = { __bava: { menu(id: string): void }; _wails: { dispatchWailsEvent(event: { name: string; data: unknown }): void } };
+
+/**
+ * A person's pace: how long a person takes, at the least, between seeing
+ * something appear and acting on it. Two things in the app wait about that
+ * long and show nothing on the page when they are ready: Ark's floating
+ * pieces and dialogs start listening for a press outside them, and for
+ * Escape, a moment after they open; and the page editor reads a click's selection a moment after the browser
+ * shows it. A step that follows one of them pauses this long first; anything
+ * the page does show is waited for instead.
+ */
+const PERSON_PACE_MS = 250;
+
+/** Pauses for a person's pace (see `PERSON_PACE_MS`). */
+export const personPace = (page: Page) => page.waitForTimeout(PERSON_PACE_MS);
+
+// ---- the app -----------------------------------------------------------------
 
 /** Opens the app on the harness page, in a theme, and waits for it to settle. */
 export async function openApp(page: Page, theme: Theme, storage: Record<string, string> = {}) {
@@ -29,14 +50,69 @@ export async function menu(page: Page, id: string) {
   await page.evaluate((command) => (window as unknown as Harness).__bava.menu(command), id);
 }
 
+/** An event from Go, such as an unexpected error. */
+export async function emit(page: Page, name: string, data: unknown) {
+  await page.evaluate(([event, payload]) => (window as unknown as Harness)._wails.dispatchWailsEvent({ name: event, data: payload }), [name, data] as const);
+}
+
+/** The pretend Space's folder, as the fixtures root it. */
+export const SPACE = '/Users/you/Documents/Acme Product';
+
 /** Opens the seeded Space, as Open Space would. */
 export async function openSpace(page: Page) {
   await menu(page, 'file.openSpace');
   await expect(page.locator('[data-path="Roadmap.md"]')).toBeVisible();
 }
 
-/** The name a reference is kept under: area/screen--state--theme. */
-export const shot = (area: string, screen: string, state: string, theme: Theme) => [area, `${screen}--${state}--${theme}.png`];
+/** The folder a page of the pretend Space is in, '' at the top. */
+const folderOf = (path: string) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '');
+
+/** Opens a page from the tree, opening its folder first. */
+export async function openPage(page: Page, path: string) {
+  await openSpace(page);
+  const row = page.locator(`[data-path="${path}"]`);
+  if (!(await row.isVisible())) await page.locator(`[data-path="${folderOf(path)}"]`).click();
+  await row.click();
+  await expect(page.locator('header')).toContainText(path.split('/').pop()!.replace(/\.md$/, ''));
+}
+
+/** Empties the pretend Space's Trash, as Empty Trash does. */
+export async function emptyTrash(page: Page) {
+  await page.evaluate((root) => {
+    const fakes = (window as unknown as { __bava: { fakes: { SpaceService: { Apply(root: string, op: object): Promise<unknown> } } } }).__bava.fakes;
+    return fakes.SpaceService.Apply(root, { kind: 'emptyTrash', path: '', folder: '', name: '', index: -1, id: '', width: '' });
+  }, SPACE);
+}
+
+// ---- what is on screen -----------------------------------------------------------
+
+/** The side pane: the Files tree and Media. */
+export const sidePane = (page: Page) => page.locator('.region-files');
+
+/** The Document's pane, and the page editor in it. */
+export const documentPane = (page: Page) => page.locator('[data-side="document"]');
+export const editor = (page: Page) => page.locator('.bava-doc');
+
+/** The Canvas's pane, and its drawing surface. */
+export const canvasPane = (page: Page) => page.locator("[data-side='canvas']");
+export const canvasHost = (page: Page) => page.locator("[data-side='canvas'] .konvajs-content");
+
+/** The dialog that is open now. */
+export const openDialog = (page: Page) => page.locator('.bava-dialog-content').filter({ visible: true });
+
+/** Every menu showing: a menu, and any submenu open from it. */
+export const menus = (page: Page) => page.locator('.bava-menu').filter({ visible: true });
+
+/** The canvas toolbar's picker that is open now. */
+export const popovers = (page: Page) => page.locator('.bava-control-popover, .bava-style-popover').filter({ visible: true });
+
+/** The tooltips showing. */
+const tooltips = (page: Page) => page.locator('.bava-tooltip').filter({ visible: true });
+
+/** Waits for every image in `within` to be drawn: one still loading paints late. */
+export async function imagesLoaded(within: Locator) {
+  await expect.poll(() => within.locator('img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).complete))).toBe(true);
+}
 
 /** Nothing covers the window: no dialog shows unless one was opened. */
 export async function expectNothingCovering(page: Page) {
@@ -45,27 +121,194 @@ export async function expectNothingCovering(page: Page) {
   }
 }
 
-/** An event from Go, such as an unexpected error. */
-export async function emit(page: Page, name: string, data: unknown) {
-  await page.evaluate(([event, payload]) => (window as unknown as Harness)._wails.dispatchWailsEvent({ name: event, data: payload }), [name, data] as const);
+// ---- pictures ------------------------------------------------------------------
+
+/**
+ * The name a reference is kept under: area/screen--state--theme. It is
+ * recorded on the test, so a full run can list the references none compared.
+ */
+export function shot(area: string, screen: string, state: string, theme: Theme) {
+  const name = [area, `${screen}--${state}--${theme}.png`];
+  test.info().annotations.push({ type: REFERENCE, description: name.join('/') });
+  return name;
 }
 
-/** Opens a page from the tree, opening its folder first. */
-export async function openPage(page: Page, folder: string, path: string) {
-  await openSpace(page);
-  const row = page.locator(`[data-path="${path}"]`);
-  if (!(await row.isVisible())) await page.locator(`[data-path="${folder}"]`).click();
-  await row.click();
-  await expect(page.locator('header')).toContainText(path.split('/').pop()!.replace(/\.md$/, ''));
+/**
+ * The pointer moved off everything, to the window's corner, so nothing in a
+ * picture shows as hovered; a tooltip waiting to open is dropped as the
+ * pointer leaves its control.
+ */
+export async function restPointer(page: Page) {
+  await page.mouse.move(0, 0);
+  await expect(tooltips(page)).toHaveCount(0);
 }
 
-/** The dialog that is open now. */
-export const openDialog = (page: Page) => page.locator('.bava-dialog-content').filter({ visible: true });
+/** A picture of one pane, or any part of the window a locator names. */
+export async function shotPane(pane: Locator, name: string[]) {
+  await expect(pane).toBeVisible();
+  await expect(pane).toHaveScreenshot(name);
+}
 
-// ---- the canvas ----------------------------------------------------------
+/** A picture of the dialog that is open now, or of `dialog` when given. */
+export async function shotDialog(page: Page, name: string[], dialog: Locator = openDialog(page)) {
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveScreenshot(name);
+}
 
-/** The pretend Space's folder, as the fixtures root it. */
-export const SPACE = '/Users/you/Documents/Acme Product';
+/**
+ * Waits for something floating to be placed: Ark shows a floating piece
+ * above the window, then moves it beside what it floats from a moment later.
+ * A click or a measurement before then lands where it no longer is.
+ */
+export async function placed(floating: Locator) {
+  await expect(floating.first()).toBeVisible();
+  let before = '';
+  await expect
+    .poll(async () => {
+      const boxes = await Promise.all((await floating.all()).map((part) => part.boundingBox()));
+      const now = JSON.stringify(boxes);
+      const still = now === before && boxes.every((box) => box !== null && box.y >= 0 && box.x >= 0);
+      before = now;
+      return still;
+    })
+    .toBe(true);
+}
+
+/** Room round a floating piece for its shadow. */
+const SHADOW = 16;
+
+/**
+ * A picture of something floating (a menu, a picker, a card) and what it
+ * floats from: the smallest part of the window holding both, with room for
+ * the shadow. `floating` may match several (a menu and its submenu).
+ */
+export async function shotFloating(page: Page, anchor: Locator | null, floating: Locator, name: string[]) {
+  await placed(floating);
+  const parts = [...(anchor ? await anchor.all() : []), ...(await floating.all())];
+  const boxes = (await Promise.all(parts.map((part) => part.boundingBox()))).filter((box) => box !== null);
+  const view = page.viewportSize()!;
+  const left = Math.max(0, Math.floor(Math.min(...boxes.map((box) => box.x)) - SHADOW));
+  const top = Math.max(0, Math.floor(Math.min(...boxes.map((box) => box.y)) - SHADOW));
+  const right = Math.min(view.width, Math.ceil(Math.max(...boxes.map((box) => box.x + box.width)) + SHADOW));
+  const bottom = Math.min(view.height, Math.ceil(Math.max(...boxes.map((box) => box.y + box.height)) + SHADOW));
+  await expect(page).toHaveScreenshot(name, { clip: { x: left, y: top, width: right - left, height: bottom - top } });
+}
+
+// ---- the Document ----------------------------------------------------------------
+
+/** Opens a page in the Document view. */
+export async function openDocument(page: Page, theme: Theme, path: string) {
+  await openApp(page, theme);
+  await openPage(page, path);
+  await menu(page, 'view.document');
+  await expect(editor(page)).toBeVisible();
+}
+
+/**
+ * Scrolls a block to the middle of its pane, so a menu opened from it opens
+ * the same way every run: a pointer's hover scrolls only as far as it must,
+ * which leaves the block wherever the last scroll did.
+ */
+export async function centreInView(block: Locator) {
+  await block.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+}
+
+/** Puts the caret on the empty line the page always ends with. */
+export async function newLineAtEnd(page: Page) {
+  const last = editor(page).locator('p').last();
+  await expect(last).toHaveText('');
+  await last.click();
+  // The editor settles the click's own caret just after the mouse is
+  // released, so it is read until it holds on that line.
+  await expect
+    .poll(() =>
+      last.evaluate((p) => {
+        const selection = document.getSelection()!;
+        return selection.isCollapsed && p.contains(selection.anchorNode);
+      }),
+    )
+    .toBe(true);
+}
+
+/** Clicks the table cell holding `text`, and waits for the caret to settle in it. */
+export async function caretInCell(page: Page, text: string) {
+  await editor(page).getByText(text, { exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => document.getSelection()?.anchorNode?.parentElement?.closest('td, th')?.textContent ?? ''))
+    .toBe(text);
+  // Keys pressed before the editor has read the click, as no person presses
+  // them, would act on the selection before it.
+  await personPace(page);
+}
+
+/** Drags across table cells, from the one holding `from` to the one holding `to`. */
+export async function dragCells(page: Page, from: string, to: string) {
+  // Positions are read once the page's fonts have settled.
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const start = (await editor(page).getByText(from, { exact: true }).first().boundingBox())!;
+  const end = (await editor(page).getByText(to, { exact: true }).first().boundingBox())!;
+  await page.mouse.move(start.x + 4, start.y + start.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(end.x + 4, end.y + end.height / 2, { steps: 8 });
+  await page.mouse.up();
+}
+
+/** A right-click on the table cell holding `text`, or on the element given. */
+export async function rightClick(page: Page, target: string | Locator) {
+  // As a person would: once any menu open before has closed.
+  await expect(menus(page)).toHaveCount(0);
+  const where = typeof target === 'string' ? editor(page).getByText(target, { exact: true }).first() : target;
+  const box = (await where.boundingBox())!;
+  await page.mouse.click(box.x + 4, box.y + box.height / 2, { button: 'right' });
+  await expect(menus(page)).toBeVisible();
+}
+
+/**
+ * Selects one word of the page, as a double-click on it would, and waits for
+ * the page to hold exactly it. The double-click lands on the word's own
+ * middle, measured from its text, wherever the line wraps.
+ */
+export async function selectWord(page: Page, word: string) {
+  const box = await page.evaluate((w) => {
+    const walker = document.createTreeWalker(document.querySelector('.bava-doc')!, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const at = node.textContent!.indexOf(w);
+      if (at < 0) continue;
+      const range = document.createRange();
+      range.setStart(node, at);
+      range.setEnd(node, at + w.length);
+      const r = range.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    }
+    return null;
+  }, word);
+  expect(box, `"${word}" is on the page`).not.toBeNull();
+  await page.mouse.dblclick(box!.x, box!.y);
+  await expect.poll(() => page.evaluate(() => document.getSelection()?.toString().trim())).toBe(word);
+  // The editor reads the browser's selection a moment later; the formatting
+  // bubble shows once it has, and keys pressed before then act on none.
+  await expect(page.getByRole('toolbar', { name: 'Formatting' })).toBeVisible();
+}
+
+/** A click somewhere else: on the page's title, or on the status bar, outside the page. */
+export async function clickAway(page: Page, where: 'page' | 'outside') {
+  // Not in the same instant the thing appeared: before Ark's pieces listen
+  // for a press outside them.
+  await personPace(page);
+  const target = where === 'page' ? editor(page).locator('h1').first() : page.locator('footer').first();
+  const box = (await target.boundingBox())!;
+  await page.mouse.click(box.x + Math.min(40, box.width / 2), box.y + box.height / 2);
+}
+
+// ---- the canvas ------------------------------------------------------------------
+
+/** The page every canvas walk seeds and opens. */
+export const CANVAS_PAGE = 'Engineering/Architecture.md';
+
+export type Point = { x: number; y: number };
+export type Modifier = 'Shift' | 'Alt' | 'Control';
+/** An element as the saved scene holds it. */
+export type Saved = Record<string, unknown> & { id: string; type: string; x: number; y: number; w: number; h: number };
 
 type CanvasHarness = {
   __bava: {
@@ -91,14 +334,25 @@ export async function seedScene(page: Page, path: string, elements: unknown[]) {
 export async function openCanvas(page: Page, theme: Theme, path: string, elements: unknown[]) {
   await openApp(page, theme);
   await seedScene(page, path, elements);
-  const folder = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
-  await openPage(page, folder, path);
+  await openPage(page, path);
   await menu(page, 'view.canvas');
   await expect(canvasHost(page)).toBeVisible();
 }
 
-/** The canvas's drawing surface. */
-export const canvasHost = (page: Page) => page.locator("[data-side='canvas'] .konvajs-content");
+/** The canvas page opened on one of each kind (`kinds`); returns a point on each. */
+export async function openKinds(page: Page, theme: Theme) {
+  const scene = kinds();
+  await openCanvas(page, theme, CANVAS_PAGE, scene.elements);
+  return scene.click;
+}
+
+/** The canvas page opened at actual size, in light, holding `elements`, and ready for keys. */
+export async function startCanvas(page: Page, elements: unknown[] = []) {
+  await openCanvas(page, 'light', CANVAS_PAGE, elements);
+  await zoomSteps(page, 0);
+  // Keys reach the canvas once it has been clicked, as a person's would.
+  await clickScene(page, { x: 900, y: 560 });
+}
 
 /** Saves the page, then the scene as the file now holds it. */
 export async function savedScene(page: Page, path: string) {
@@ -106,6 +360,32 @@ export async function savedScene(page: Page, path: string) {
   await expect(page.locator('header .state')).toHaveText('saved');
   return page.evaluate(([root, at]) => (window as unknown as CanvasHarness).__bava.fakes.harness.scene(root, at), [SPACE, path] as const);
 }
+
+/** Every element of the canvas page's saved scene. */
+export async function saved(page: Page): Promise<Saved[]> {
+  const scene = await savedScene(page, CANVAS_PAGE);
+  return scene!.elements as Saved[];
+}
+
+export const ofType = (elements: Saved[], type: string) => elements.filter((element) => element.type === type);
+export const byId = (elements: Saved[], id: string) => elements.find((element) => element.id === id)!;
+
+/** An element's points on the canvas, its own offset added. */
+export function pointsOf(element: Saved): Point[] {
+  const points = element.points as number[];
+  const out: Point[] = [];
+  for (let i = 0; i < points.length; i += 2) out.push({ x: element.x + points[i], y: element.y + points[i + 1] });
+  return out;
+}
+
+/** An arrow's first and last points on the canvas. */
+export function ends(arrow: Saved) {
+  const points = pointsOf(arrow);
+  return { start: points[0], end: points[points.length - 1] };
+}
+
+/** The angle from one point to another, in whole degrees. */
+export const angleOf = (from: Point, to: Point) => Math.round((Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI);
 
 /** Every export so far, its bytes as base64. */
 export const exportsSoFar = (page: Page) => page.evaluate(() => (window as unknown as CanvasHarness).__bava.fakes.harness.exports);
@@ -121,7 +401,7 @@ export async function zoomSteps(page: Page, steps: number) {
 }
 
 /** Where a point of the scene is on screen, at a zoom reached by `zoomSteps` from a fresh page. */
-export async function onScreen(page: Page, scene: { x: number; y: number }, zoom = 1) {
+export async function onScreen(page: Page, scene: Point, zoom = 1) {
   const box = (await canvasHost(page).boundingBox())!;
   const centre = { x: box.width / 2, y: box.height / 2 };
   return { x: box.x + scene.x * zoom + centre.x * (1 - zoom), y: box.y + scene.y * zoom + centre.y * (1 - zoom) };
@@ -131,10 +411,123 @@ export async function onScreen(page: Page, scene: { x: number; y: number }, zoom
  * Pans, by a wheel in pixels, so a point of the scene sits just right of the
  * tool rail, at a zoom reached by `zoomSteps` from a fresh page.
  */
-export async function bringToCorner(page: Page, scene: { x: number; y: number }, zoom: number) {
+export async function bringToCorner(page: Page, scene: Point, zoom: number) {
   const box = (await canvasHost(page).boundingBox())!;
   const now = await onScreen(page, scene, zoom);
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   // The wheel pans the other way to its delta.
   await page.mouse.wheel(now.x - (box.x + 80), now.y - (box.y + 20));
+}
+
+/** A click on a point of the scene, keys held through it. */
+export async function clickScene(page: Page, point: Point, options: { button?: 'right'; modifiers?: Modifier[]; zoom?: number } = {}) {
+  const at = await onScreen(page, point, options.zoom ?? 1);
+  for (const key of options.modifiers ?? []) await page.keyboard.down(key);
+  await page.mouse.click(at.x, at.y, { button: options.button });
+  for (const key of options.modifiers ?? []) await page.keyboard.up(key);
+}
+
+/**
+ * A drag in scene units, in steps, keys held throughout. With `hold`, the
+ * button stays down at the end, for a picture of the drag under way; the walk
+ * releases it.
+ */
+export async function dragScene(page: Page, from: Point, to: Point, options: { modifiers?: Modifier[]; zoom?: number; steps?: number; hold?: boolean } = {}) {
+  const zoom = options.zoom ?? 1;
+  const a = await onScreen(page, from, zoom);
+  const b = await onScreen(page, to, zoom);
+  for (const key of options.modifiers ?? []) await page.keyboard.down(key);
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(b.x, b.y, { steps: options.steps ?? 8 });
+  if (options.hold) return;
+  await page.mouse.up();
+  for (const key of options.modifiers ?? []) await page.keyboard.up(key);
+}
+
+/**
+ * The pointer moved off the canvas by way of its empty right edge. Left in
+ * one jump from a handle the canvas has just drawn under it, the canvas can
+ * keep that handle drawn hovered; a move over empty canvas first clears it.
+ */
+export async function restOffCanvas(page: Page) {
+  const box = (await canvasHost(page).boundingBox())!;
+  await page.mouse.move(box.x + box.width - 24, box.y + box.height / 2);
+  await restPointer(page);
+}
+
+/** The canvas's selection toolbar. */
+export const selectionToolbar = (page: Page) => page.getByRole('toolbar', { name: 'Selection' });
+
+/** The tool rail's Select tool. */
+export const selectTool = (page: Page) => page.getByRole('toolbar', { name: 'Tools' }).getByRole('button', { name: 'Select' });
+
+/** A short name for a control's label, for a reference's file name. */
+export const slug = (label: string) => label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+/** A choice from one of the toolbar's pickers, by the control's and the option's names. */
+export async function pick(page: Page, control: string, option: string) {
+  await selectionToolbar(page).getByRole('button', { name: control, exact: true }).click();
+  await placed(popovers(page));
+  const swatch = popovers(page).getByTitle(new RegExp(`^${option}$`, 'i'));
+  const choice = (await swatch.count()) > 0 ? swatch.first() : popovers(page).locator('.bava-option', { has: page.getByRole('radio', { name: option, exact: true }) });
+  await choice.click();
+  await expect(choice).toHaveAttribute('data-state', 'checked');
+  await page.keyboard.press('Escape');
+  await expect(popovers(page)).toHaveCount(0);
+}
+
+/** A PNG's width, height and first pixel, from its bytes. */
+export function pngFacts(base64: string) {
+  const bytes = Buffer.from(base64, 'base64');
+  const width = bytes.readUInt32BE(16);
+  const height = bytes.readUInt32BE(20);
+  const chunks: Buffer[] = [];
+  for (let at = 8; at < bytes.length; ) {
+    const length = bytes.readUInt32BE(at);
+    if (bytes.toString('ascii', at + 4, at + 8) === 'IDAT') chunks.push(bytes.subarray(at + 8, at + 8 + length));
+    at += 12 + length;
+  }
+  // Whatever the first row's filter, its first pixel is stored as it is.
+  const raw = inflateSync(Buffer.concat(chunks));
+  const [r, g, b, a] = [raw[1], raw[2], raw[3], raw[4]];
+  return { width, height, pixel: { r, g, b, a } };
+}
+
+/** How light a pixel is, from 0 to 1. */
+export const luminance = ({ r, g, b }: { r: number; g: number; b: number }) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+
+/** Exports through the dialog, as the person sets it up. */
+export async function exportAs(page: Page, format: 'PNG' | 'SVG', settings: { scale?: string; background?: boolean; dark?: boolean; onlySelected?: boolean } = {}) {
+  await menu(page, settings.onlySelected ? 'canvas.exportSelection' : 'file.export');
+  const dialog = openDialog(page);
+  await expect(dialog).toBeVisible();
+  const toggle = async (name: string, on: boolean | undefined) => {
+    if (on === undefined) return;
+    const control = dialog.getByRole('checkbox', { name });
+    if ((await control.isChecked()) !== on) await dialog.getByText(name, { exact: true }).click();
+    await expect(control).toBeChecked({ checked: on });
+  };
+  await toggle('Background', settings.background);
+  await toggle('Dark mode', settings.dark);
+  if (settings.scale) await dialog.getByText(settings.scale, { exact: true }).click();
+  const before = (await exportsSoFar(page)).length;
+  await dialog.getByRole('button', { name: format, exact: true }).click();
+  await expect.poll(async () => (await exportsSoFar(page)).length).toBe(before + 1);
+  return (await exportsSoFar(page)).at(-1)!;
+}
+
+/** The canvas page closed and opened again from its file, nudged there and back so the next save rewrites it. */
+export async function reopened(page: Page) {
+  const before = await saved(page);
+  await openPage(page, 'Engineering/Blocks.md');
+  await openPage(page, CANVAS_PAGE);
+  await menu(page, 'view.canvas');
+  await expect(canvasHost(page)).toBeVisible();
+  await clickScene(page, { x: 900, y: 560 });
+  await menu(page, 'edit.selectAll');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowLeft');
+  const after = await saved(page);
+  return { before, after };
 }

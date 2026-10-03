@@ -62,6 +62,16 @@
     { "do": "menu", "target": "file.save" },
     { "do": "wait", "target": "header", "text": "saved" },
     { "do": "wait", "target": "footer", "text": "Nodes 1" },
-    { "do": "shot", "name": "saved" }
+    { "do": "shot", "name": "saved" },
+
+    { "do": "file", "target": "Smoke/First page.md", "text": "Written in the smoke run" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "See [Target](Target.md)" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "Area $x^2$" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "```go\nx := 1\n```" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "](.bava/attachments/logo.png)" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "<!-- bava: card -->\n[notes.pdf](.bava/attachments/notes.pdf)" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "](https://www.youtube.com/watch?v=aqz-KE-bpKQ)" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "| Cell one |" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "\"type\": \"rect\"" }
   ]
 }

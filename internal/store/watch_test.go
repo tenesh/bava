@@ -42,8 +42,7 @@ func TestDetectsAChangeOnDisk(t *testing.T) {
 	}
 
 	// Modification time has coarse resolution on some filesystems, so the
-	// change is also a change in size.
-	time.Sleep(10 * time.Millisecond)
+	// change is also a change in size: it is noticed even within one tick.
 	if err := os.WriteFile(path, []byte("someone else wrote this\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -21,7 +21,7 @@ func TestDefaultsWhenTheFileIsAbsent(t *testing.T) {
 	}
 }
 
-func TestRoundTrip(t *testing.T) {
+func TestSettingsRoundTripThroughDisk(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
 	want := config.Settings{DebounceMS: 400, LayoutEngine: "dagre", Autosave: config.AutosaveAfterDelay, AutosaveDelayMS: 2500, PageWidth: "narrow"}
 

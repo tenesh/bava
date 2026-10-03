@@ -142,7 +142,21 @@ describe('the smoke driver', () => {
     const e = env();
     const failure = await runScenario([{ do: 'shot', name: 'a' }, { do: 'wait', target: '#never' }, { do: 'shot', name: 'b' }], e);
     expect(failure).toMatch(/^step 2 \(wait #never\)/);
-    expect(e.calls).toEqual(['shot a']);
+    expect(e.calls).not.toContain('shot b');
+  });
+
+  // A failure on CI is read from the run's screenshots: the window as the
+  // step found it is the first thing to look at.
+  it('takes a screenshot named failure before reporting a failed step', async () => {
+    const e = env();
+    const failure = await runScenario([{ do: 'shot', name: 'a' }, { do: 'wait', target: '#never' }], e);
+    expect(failure).toMatch(/^step 2 \(wait #never\)/);
+    expect(e.calls).toEqual(['shot a', 'shot failure']);
+  });
+
+  it('still reports the failed step when the screenshot itself fails', async () => {
+    const e = { ...env(), shot: vi.fn(async () => Promise.reject(new Error('no window'))) };
+    expect(await runScenario([{ do: 'wait', target: '#never' }], e)).toMatch(/^step 1 \(wait #never\): never showed/);
   });
 
   it('drags with the pointer from one point to another on its target', async () => {

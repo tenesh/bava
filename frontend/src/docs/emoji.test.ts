@@ -1,29 +1,19 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { TextSelection } from 'prosemirror-state';
 import { DocEditor } from './editor';
+import { openEditor } from './test-editor';
 import { loadEmoji, searchEmoji } from './emoji';
 import { runItem, SLASH_ITEMS } from './slash';
-import { atTextEnd } from './test-caret';
 
 let editor: DocEditor | null = null;
 
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  document.body.innerHTML = '';
-});
-
 function open(markdown: string) {
-  const host = document.createElement('div');
-  document.body.append(host);
   const onEmoji = vi.fn();
   const onEmojiPicker = vi.fn();
-  editor = new DocEditor();
-  editor.mount(host, { onChange: vi.fn(), onEmoji, onEmojiPicker });
-  editor.setPage(markdown);
-  const view = editor.view!;
-  view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)));
+  const opened = openEditor(markdown, { caretAtEnd: true, onEmoji, onEmojiPicker });
+  editor = opened.editor;
+  const { view } = opened;
   return { onEmoji, onEmojiPicker, view };
 }
 

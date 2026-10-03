@@ -1,12 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { toPng } from './png';
 import { exportArea } from './area';
 import type { SceneData } from '../scene';
-
-afterEach(() => {
-  document.body.innerHTML = '';
-});
 
 const read = (name: string) =>
   (({ '--color-shape-fill': 'ivory', '--color-shape-stroke': 'slategray', '--color-canvas-bg': 'white' }) as Record<
