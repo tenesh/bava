@@ -12,15 +12,21 @@ Check every item. **Absence of evidence is a finding, not a pass.**
 
 ## 1. Local-only
 
-- No network calls except to a user-configured local LLM endpoint. Grep for
-  `http.Get`, `http.Post`, `net/http` clients, `fetch(`, `XMLHttpRequest`,
-  `axios`, and any hardcoded URL.
-- No telemetry, analytics, crash reporting, update checks, or "phone home" of
-  any kind, including behind a disabled-by-default flag.
-- No accounts, auth, tokens, or API keys in code or config, other than a
-  user-supplied local model endpoint.
-- No hosted AI provider. Ollama or a user-configured local endpoint only.
-- No remote fonts, icons, or stylesheets. Everything bundled.
+- **No service of ours.** No backend, no accounts with us, no sync, no
+  telemetry, analytics or crash reporting, including behind a
+  disabled-by-default flag. Nothing about a user or their work reaches anyone
+  operating this project.
+- **Network only where the user configured or triggered it:** the LLM
+  endpoint they chose, local or hosted, with credentials they supplied; the
+  update check, which fetches public release metadata and sends no user data
+  or identifier; and fetching a web page, card, image or video the user put
+  in a page. Grep for `http.Get`, `http.Post`, `net/http` clients, `fetch(`,
+  `XMLHttpRequest`, `axios` and any hardcoded URL, and trace each call to one
+  of these.
+- **Credentials go to the OS secret store**, never to a file, config or
+  code.
+- No remote fonts, icons or stylesheets for the app itself. Everything
+  bundled.
 
 ## 2. Files as source of truth
 
@@ -60,14 +66,16 @@ Check every item. **Absence of evidence is a finding, not a pass.**
 
 ## 5. Architecture boundaries
 
-- **Diagram rendering stays outside Svelte reactivity.** Flag per-node Svelte
-  components, `{#each}` over diagram nodes, and any `$state`/`$derived` that
-  holds diagram geometry.
+- **The canvas stays outside Svelte reactivity.** It is a plain TypeScript
+  class owning a Konva stage. Flag one Svelte component per scene element,
+  `{#each}` over scene elements, and any `$state`/`$derived` that holds
+  element geometry.
 - CodeMirror and ProseMirror are mounted in `onMount` and destroyed in the
   cleanup return. Flag reactive props passed into either.
-- One render IPC surface. Flag a second render path, and flag any
-  frontend-side layout or text measurement; all measurement happens in Go via
-  `textmeasure`.
+- One render IPC surface. Flag a second render path. D2 diagram text is
+  measured in Go via `textmeasure`; flag frontend measurement of it. Canvas
+  text is measured in the frontend, and its measured dimensions must be
+  stored in the file.
 - Render requests carry an incrementing ID and stale responses are dropped.
   A debounced call without staleness handling is a finding.
 - Shared state in `.svelte.ts` modules using runes. Flag any store library.
@@ -103,15 +111,27 @@ Check every item. **Absence of evidence is a finding, not a pass.**
 - Diagram output changes have golden fixtures. **If goldens changed, say so
   explicitly** so the user knows to inspect them visually.
 - File-format work has a round-trip test.
-- Frontend changes: `npm run check` and `npm run lint` output present.
+- Frontend changes: `npm run check`, `npm run lint` and `npm test` output
+  present, `npm test` judged by its exit code.
+- Anything drawn changed (a style, token, layout, string, screen or dialog):
+  `npm run visual` (Docker) output present, and every changed reference
+  under `testdata/visual/` named.
+- A new or changed IPC method is in `docs/ipc.md`; a new or changed shortcut
+  is in `docs/shortcuts.md`. A test reads the shortcuts doc
+  (`shortcuts-doc.test.ts`); nothing reads `docs/ipc.md`, so compare it by
+  hand with the bound Go methods.
 
 ## 8. Conventions
 
 - Errors wrapped with context; no panics in library code.
 - Exported Go functions documented.
 - No hardcoded user-facing strings: everything through translation files.
-- No hardcoded tunables (debounce ms, default engine, spacing constants):
-  these resolve from config or tokens.
+- Behavioural constants (debounce ms, thresholds, reaches) stay named in
+  code, never inline numbers (see `docs/decisions.md` and
+  `.ai/rules/canvas.md`). Visual values come from tokens.
+- No em dash character anywhere in the diff.
+- No process references in code comments or test names: no milestones,
+  plans, decisions or reviews.
 - **Flag any git write operation attempted by an agent as a blocker,
   regardless of content.**
 

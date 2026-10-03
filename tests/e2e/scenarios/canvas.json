@@ -32,13 +32,12 @@
 
     { "do": "menu", "target": "insert.diagram" },
     { "do": "wait", "target": ".bava-dialog-content .cm-content" },
-    { "do": "key", "text": "a", "target": ".bava-dialog-content .cm-content", "modifiers": ["mod"] },
-    { "do": "type", "text": "web -> db" },
+    { "do": "type", "text": "web -> db; " },
     { "do": "wait", "target": ".bava-diagram-preview svg", "text": "db", "timeoutMs": 20000 },
     { "do": "shot", "name": "diagram" },
     { "do": "click", "target": "text=Insert" },
     { "do": "gone", "target": ".bava-dialog-content" },
-    { "do": "wait", "target": "footer", "text": "Nodes 7" },
+    { "do": "wait", "target": "footer", "text": "Nodes 10" },
 
     { "do": "menu", "target": "file.save" },
     { "do": "file", "target": "Smoke/First page.md", "text": "\"type\": \"ellipse\"" },
@@ -52,7 +51,7 @@
     { "do": "click", "target": "[data-path='First page.md']" },
     { "do": "wait", "target": "header", "text": "First page" },
     { "do": "menu", "target": "view.canvas" },
-    { "do": "wait", "target": "footer", "text": "Nodes 7" },
+    { "do": "wait", "target": "footer", "text": "Nodes 10" },
     { "do": "shot", "name": "reopened" }
   ]
 }

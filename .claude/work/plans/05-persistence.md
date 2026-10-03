@@ -1,5 +1,7 @@
 # 05: File format and persistence
 
+> Historical: built and committed; see the roadmap for what followed.
+
 **Goal:** Open and save real files. The first milestone where work outlives
 the app.
 
@@ -205,6 +207,9 @@ throwing `localStorage`. The title bar shows saved/unsaved. **What does not
 exist: the file tree, the open and save dialogs, the three prompts, and the
 menu wiring to trigger any of it.** So the app cannot yet open or save a file
 by hand, though everything underneath it can.
+
+*Since built:* Milestone 5.5 built the file tree, the open and save dialogs
+and the prompts; 8.1 replaced the tree with a Space's Files tree.
 
 That is a deviation from the plan, which said Milestone 5 was the point where
 work outlives the app. It is not, yet. The remaining piece is UI over a tested

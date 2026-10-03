@@ -1,5 +1,7 @@
 # 03: App shell
 
+> Historical: built and committed; see the roadmap for what followed.
+
 **Goal:** The real tool window: four resizable regions, the
 `Document | Both | Canvas` switcher, and the first design-system components.
 
@@ -8,7 +10,7 @@
 - `.ai/rules/design-system.md`: component rules, Ark usage, inventory, stacking
 - `.ai/rules/svelte.md`: runes only; imperative libraries mounted in `onMount`
 - Build-loop repo-state: the Ark portal spike, and Milestone 1's debts
-- `~/Workspace/designs/bava/claude-design-v1` screens `3a`, `3b`, `2a`–`2d`.
+- The first Claude Design mockups, screens `3a`, `3b`, `2a`–`2d`.
   **Reference for appearance only.** Behaviour and storage come from the code
   and the rules.
 

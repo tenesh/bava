@@ -14,8 +14,8 @@ fine-grained reactivity across module boundaries; adding Zustand-alikes or
 Svelte 4 stores on top is redundant.
 
 ## TypeScript only
-No `.js` source files. The sole exception is a config file the tooling
-requires by name (`svelte.config.js`).
+No `.js` source files. The only exceptions are config files the tooling
+requires by name: `frontend/svelte.config.js` and `frontend/eslint.config.js`.
 
 ## Logic out of markup
 One component per file. Anything beyond rendering (derivation, formatting,

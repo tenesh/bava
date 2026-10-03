@@ -1,5 +1,7 @@
 # 04: Canvas foundation
 
+> Historical: built and committed; see the roadmap for what followed.
+
 **Goal:** An infinite canvas you can draw on: place, select, move, group,
 undo.
 
@@ -9,7 +11,7 @@ undo.
   measured text is stored
 - `.claude/work/specs/canvas-architecture.md`: the element model
 - `.ai/rules/design-system.md`: tool rail and contextual toolbar
-- `~/Workspace/designs/bava/claude-design-v1` screens `2s`, `2r`, `2t`, `2v`.
+- The first Claude Design mockups, screens `2s`, `2r`, `2t`, `2v`.
   **Reference for appearance only.**
 
 **File format impact:** none. Nothing is written to disk. The scene lives in

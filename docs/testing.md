@@ -56,11 +56,21 @@ for example `testdata/visual/dialogs/trash--with-items--dark.png`.
 
 ### 3. Smoke runs
 
-A test build of Bava (`-tags e2e`) follows a scenario: make a Space in a
-scratch folder, make a page, draw a shape, save, quit, reopen, and check it
-is all there, taking a screenshot at each step. It answers the native folder
-pickers from the scenario. It runs on GitHub's Linux, macOS and Windows
-machines after a push; the screenshots are attached to the run.
+A test build of Bava (`-tags e2e`) follows three scenarios in turn, each a
+fresh launch, taking screenshots on the way:
+
+- `create`: make a Space in a scratch folder and two pages, write in the
+  Document (a page link, an equation, a code block, an image, a file, an
+  online video, a table), draw a shape on the canvas, and save.
+- `reopen`: open that Space again, check Media, rename a page, and show the
+  canvas.
+- `canvas`: draw shapes and an attached arrow, move, undo and redo, insert a
+  diagram with Diagram from Code, save, and read the saved file back for the
+  shapes, the bindings and the diagram's labels.
+
+It answers the native pickers from the scenario. It runs on GitHub's Linux,
+macOS and Windows machines after a push; the screenshots are attached to the
+run.
 
 Release builds never contain the driver: it exists only with the `e2e` tag,
 and a test fails if a default build has it.

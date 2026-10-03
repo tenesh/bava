@@ -2,7 +2,7 @@
 
 Decisions taken 2026-09-16. These supersede the "local Ollama only" position in
 CLAUDE.md's stack table; the non-negotiables rewrite that follows from them is
-pending approval.
+done (CLAUDE.md's first non-negotiable).
 
 ## Scope change
 
@@ -102,9 +102,19 @@ page nobody opens.
 
 ## Milestone consequences
 
-Milestone 6 as written is now several milestones. Ordering constraints that
-cannot be dodged:
+AI is Milestones 11 to 14 in the roadmap. Ordering constraints that cannot be
+dodged:
 
-- Chat persistence cannot precede the format spec it needs.
-- Selection-scoped document editing cannot precede documents (Milestone 5).
-- Diagram generation with the repair loop needs only Milestones 1 and 3.
+- Chat persistence cannot precede the format spec it needs (Milestone 5).
+- Selection-scoped document editing cannot precede documents (Milestone 8).
+- Diagram generation with the repair loop needs the generator and conversion
+  of Diagram from Code (Milestone 6.6).
+
+## To settle before Milestone 11
+
+- **What a chat is keyed by.** Bava now opens Spaces of pages, not single
+  files: one thread per page or per Space, and how history follows a page
+  that is moved or renamed inside the Space.
+- **Attaching a diagram to a message.** Diagrams are now ordinary shapes,
+  often in a frame, so "this diagram" means a selection or a frame rather than
+  a `diagram` element.

@@ -4,31 +4,11 @@ Worked out with the user one question at a time, before any plan
 (`.claude/plan/roadmap.md`, Milestone 8). Each decision is dated; a later one
 that changes an earlier one says so.
 
-## To do once the discussion is finished
+## Design pass
 
-**Design pass in Claude Design** (the user's request, 2026-09-27; wait
-until every Milestone 8 question is settled, then do it before the plan):
-the user's design project,
-https://claude.ai/design/p/28e3aa53-6138-47bd-9f8d-73729df2431a
-- Design everything decided here properly: the Space, the Files tree
-  (order by hand, trash, duplicate), the Media section and dialog, the
-  attachment menu on a page, the Notion-like Document and whatever blocks
-  are chosen.
-- Update the project's existing designs to match the app as it is now: they
-  are out of date (the canvas, toolbars and settings have moved on since
-  they were drawn).
-- Mockups are reference, not spec: the code and these decisions stay the
-  source of truth.
-- **Done 2026-09-27, as a Design artifact** (the user chose mockups made
-  here over a brief for Claude Design): **Bava Design**,
-  https://claude.ai/artifact/RMvLeKBkbF4N2Hv89HSude, pinned in the user's
-  sidebar. Nineteen screens on a Light page and the same nineteen on a
-  Dark page: Spaces and the shell, the Document, Media, Trash and
-  Templates, export, import and states, the Canvas, Settings (redesigned
-  with a section list) and the app's existing dialogs (Diagram from Code,
-  Canvas export, launch and About, shortcuts, errors and prompts). Built on
-  Bava's own tokens, Geist and the panda mark. AI chat mockups come later
-  (the user, 2026-09-27).
+Done 2026-09-27: mockups in **Bava Design**,
+https://claude.ai/artifact/RMvLeKBkbF4N2Hv89HSude. Mockups are reference,
+not spec: the code and these decisions stay the source of truth.
 
 ## Decisions
 
@@ -331,6 +311,11 @@ contacts the site until the user clicks play (non-negotiable 1: network only
 when the user triggers it). Stored as an `<iframe>` (or the link) with its
 size. Whether each plays inside Bava's webview is tested early, on all three
 platforms.
+
+Revised 2026-09-29 (`docs/decisions.md`): a video shows its first frame or
+thumbnail when the page opens, nothing plays until play is pressed, and
+YouTube opens in the browser because it will not play in Bava's window. It is
+stored as an image with a mark (decision 94), not an `<iframe>`.
 
 ### 33. Only images and videos are shown in the page; every other file is a link or card (2026-09-27)
 
@@ -658,6 +643,9 @@ attachments; 8.5 the Canvas in the Document (carrying the roadmap's exit
 criterion); 8.6 tags and templates. Each is planned, gated and committed on
 its own, its file-format changes specified first. The roadmap lists them.
 
+Later added: 8.1a (testing layers), 8.3d (adding lines) and 8.4a (canvas
+testing), each planned and committed on its own.
+
 ### 68. Export and import go to Milestone 15, moved up to follow Milestone 8 (2026-09-27)
 
 Decisions 48 and 49 are built in Milestone 15 (Export, import and search),
@@ -750,6 +738,9 @@ The user's choice, so each is planned, checked and committed on its own:
 footnotes, the contents block, emoji); **8.3b** rich tables, with
 spreadsheet paste; **8.3c** links between pages (`@` page links, backlinks,
 links to headings) and date chips, which need the Space scanned.
+
+Later added: 8.3d, adding a line before or after any block (decisions 90 and
+91).
 
 ### 78. A custom callout keeps its colour and icon in an invisible mark (2026-09-27)
 
@@ -925,8 +916,8 @@ click); **8.4.3** the Media section and dialog. Named 8.4.1 to 8.4.3 because
 ## Features
 
 Chosen from Notion's editor, one question at a time (decisions 12 to 50),
-from the inventory in `notion-editor-features.md`. The discussion finished
-on 2026-09-27; next is the design pass above, then the plan.
+from the inventory in `research/notion-editor-features.md`. The discussion
+finished on 2026-09-27.
 
 ## Media, background (2026-09-27; the decisions are 30 to 37 and 54)
 

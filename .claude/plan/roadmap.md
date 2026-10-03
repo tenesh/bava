@@ -1,6 +1,6 @@
 # Bava roadmap
 
-Milestones 0–16, including two half-steps (0.5, 3.5) that exist because
+Milestones 0–16, including half-steps (0.5, 5.5 to 5.8) that exist because
 something must land before the milestone that depends on it. Each has one goal,
 one exit criterion provable by running a
 command, and its dependencies. The build loop in
@@ -8,8 +8,8 @@ command, and its dependencies. The build loop in
 milestone; determine it from what exists in the tree, not from what a
 previous session claimed.
 
-Sequence is fixed. Two standing orderings come from the rules and cannot be
-traded away under schedule pressure:
+Sequence is fixed. Three standing rules cannot be traded away under schedule
+pressure:
 
 - **Tokens before components.** `frontend/src/styles/tokens/` exists before
   anything lands in `frontend/src/components/` (`.ai/rules/design-system.md`).
@@ -48,12 +48,11 @@ wails3 doctor && go vet ./... && (cd frontend && npm ci && npm run build)
 **Depends on:** nothing.
 
 **Note:** `go build ./...` was excluded here while the mobile targets broke
-the link step; they are gone as of Milestone 0.5, and the criterion above can
-be tightened to include it once that removal is committed.
+the link step; they are gone as of Milestone 0.5, whose criterion includes it.
 
 ---
 
-## Milestone 0.5: Toolchain and doc alignment
+## Milestone 0.5: Toolchain and doc alignment *(complete)*
 
 **Goal:** Make the gates runnable and make every documented fact about the
 tree true, before any milestone depends on either.
@@ -68,7 +67,7 @@ tree true, before any milestone depends on either.
 | `npm run lint` (ESLint 10 + `eslint-plugin-svelte` 3 + typescript-eslint 8) | Added: `frontend/eslint.config.js`, flat config, `bindings/` and `dist/` ignored. |
 | `npm test` (Vitest 5) | Added. No tests yet; Milestone 1 writes the first. |
 | CLAUDE.md states intent only | Done: version pins now point at `go.mod`, spike timings and tree inventory moved to the build loop's repo-state section. |
-| Mobile targets removed | Done: `git rm -r build/android build/ios` (46 files, staged and awaiting your commit), plus their references in `Taskfile.yml`, `build/Taskfile.yml`, `.gitignore` and `build/config.yml`. `go build ./...` passes again. |
+| Mobile targets removed | Done: `build/android` and `build/ios` removed (46 files, committed in `e7e0508`), plus their references in `Taskfile.yml`, `build/Taskfile.yml`, `.gitignore` and `build/config.yml`. `go build ./...` passes again. |
 | Bindings match the module path | Done: regenerated to `frontend/bindings/github.com/tenesh/bava/`, stale `changeme/` removed, `src/App.svelte` import updated. |
 
 **Exit criterion:**
@@ -83,15 +82,9 @@ Verified 2026-09-16: everything above passes except `npm run lint`, which
 still reports three errors, all inside the Wails demo screen `src/App.svelte`
 (one `any`, two direct DOM manipulations). Milestone 1 deletes that screen, so
 the gate goes green there rather than by editing code already scheduled for
-removal. Recorded in the build loop's repo-state section; it does not block
-Milestone 1 starting.
+removal. Milestone 1 deleted it and the gate went green.
 
 **Depends on:** Milestone 0.
-
-**Requires the user:** the 46 mobile-target deletions are staged in the index
-and need committing; until then a `git reset` restores them. Commit this
-milestone separately from Milestone 1 so the removal is legible in history,
-which is what `.ai/rules/wails.md` describes.
 
 **Trap discovered here:** `wails3 task common:generate:bindings` depends on
 `go:mod:tidy`, and tidy drops `github.com/d2lang/d2` because nothing imports
@@ -112,6 +105,10 @@ app. It renders `diagram` elements placed on the canvas. Everything built here
 which adds node geometry to `nodeMap` and places the result on a stage. The
 two-pane shell and the interim `DiagramCanvas` class built here are replaced by
 Milestones 3 and 4.
+
+**Superseded 2026-09-17: diagrams become shapes.** There is no live `diagram`
+element. The pipeline survives as the generator behind Diagram from Code,
+whose output is converted to ordinary shapes (see the top of this file).
 
 **Scope:** `internal/layout` and `internal/render` on D2
 v0.9.0 (library only, logger in every `Compile` context, TALA default, text
@@ -225,10 +222,9 @@ the element, the mitigation `canvas.md` requires now that measurement has left
 Go.
 
 **Inherited debt, moved here from Milestone 3 on 2026-09-17:** click-on-node
-jump-to-source was wired in Milestone 1 with no keyboard equivalent. Paying it
-in Milestone 3 would have meant building selection over the interim canvas this
-milestone replaces, so it belongs with the real selection model rather than
-being built twice.
+jump-to-source was wired in Milestone 1 with no keyboard equivalent.
+Obsolete since diagrams became shapes: a converted diagram keeps no source to
+jump to.
 
 **Exit criterion:**
 
@@ -260,6 +256,9 @@ keys and unknown element types survive a round trip untouched. Then
 `internal/format` and `internal/store`, native open/save dialogs, the file
 tree on Ark's TreeView, recent files, and the unsaved-changes and
 file-changed-on-disk flows.
+
+**Superseded 2026-09-17: diagrams become shapes.** No `diagram` element holds
+D2 source; generated diagrams are saved as ordinary shapes and arrows.
 
 The two tunables Milestone 1 left as compile-time constants (the 250ms
 debounce and the default layout engine) move behind the settings file here.
@@ -304,15 +303,15 @@ reopen, and confirm the drawing is intact.
 
 ---
 
-## Milestone 5.6: Chrome *(gated; awaiting the window check; brand deferred)*
+## Milestone 5.6: Chrome *(gated; awaiting the window check; brand shipped in 5.7)*
 
 **Goal:** A real desktop menu bar in place of title-bar buttons, and autosave.
 
 **Scope:** The native menu declared as data (`internal/app/menu/spec.json`),
 grouped for the items later milestones add; one `menu:command` path into the
 frontend; the JS keymap stripped of whatever the menu binds; autosave settings
-modelled on VS Code, off by default. The brand mark was in scope and is
-deferred: the art needs an SVG and a small-size drawing first.
+modelled on VS Code, off by default. The brand mark was in scope; it moved to
+Milestone 5.7 and shipped there.
 
 **Exit criterion:**
 
@@ -405,7 +404,7 @@ automatic upload: never.
 
 ---
 
-## Milestone 6: Canvas *(built in parts 6 to 6.17, all committed; window checks owed)*
+## Milestone 6: Canvas *(built in parts 6 to 6.17, all committed; window checks settled by 8.4a)*
 
 **Goal:** A free-placement canvas that draws, styles, connects, exports and
 edits everything a diagram needs, and behaves as Excalidraw does.
@@ -430,7 +429,7 @@ references elsewhere ("Milestone 6.5") still name them:
 | 6.6, 6.11 | Diagram from code: D2 typed in a dialog, previewed and inserted as ordinary shapes; the dialog's engines and direction |
 | 6.7, 6.9 | Code blocks: highlighted, in Geist Mono, edited in place *(moved forward from Milestone 15)* |
 | 6.8 | Feel fixes: styles at their size, tools that let go, zoom-steady distances |
-| 6.10, 6.12 to 6.16 | Every line and arrow behaviour in `.claude/work/specs/excalidraw-lines-inventory.md` (90 rows): bends, elbows, pinned ends, point editing, click-by-click lines, heads, labels, attaching settings |
+| 6.10, 6.12 to 6.16 | Every line and arrow behaviour in `.claude/work/specs/research/excalidraw-lines-inventory.md` (90 rows): bends, elbows, pinned ends, point editing, click-by-click lines, heads, labels, attaching settings |
 | 6.17 | A code block's language and font size; arrow labels typed in place and along the arrow; the false "changed on disk" prompt and the right-click Reload fixed |
 
 **Exit criterion:**
@@ -441,7 +440,9 @@ go test ./internal/format -run RoundTrip && go test ./internal/... . \
 ```
 
 green (it is, for every part), plus the hand check each part's plan
-describes, at a running window in both themes. That check is what remains.
+describes, at a running window in both themes. The 8.4a canvas testing pass
+settled those checks; the few that still need a person at a window are listed
+in its As built (`.claude/work/plans/08.4a-canvas-testing.md`).
 
 **Depends on:** Milestone 5.8.
 
@@ -474,39 +475,32 @@ restores the attachment.
 
 ---
 
-## Milestone 8: Documents *(in progress; 8.1 and 8.2 built and committed 2026-09-27, 8.3 next)*
+## Milestone 8: Documents *(in progress; 8.1 to 8.4a built and committed, 8.5 next)*
 
-**Discussed and decided (2026-09-27):** 71 decisions in
+**Discussed and decided (2026-09-27):** 97 decisions in
 `.claude/work/specs/08-documents.md`, mockups in Bava Design
-(https://claude.ai/artifact/RMvLeKBkbF4N2Hv89HSude). Built in six parts, each
-planned, gated and committed on its own; each specifies its file-format
-changes in `docs/file-format.md` first:
+(https://claude.ai/artifact/RMvLeKBkbF4N2Hv89HSude). Planned in six parts,
+with 8.1a, 8.3d and 8.4a added along the way; each is planned, gated and
+committed on its own, and specifies its file-format changes in
+`docs/file-format.md` first:
 
 | Part | Delivers |
 |---|---|
-| 8.1 Spaces and files *(built)* | `.bava` folder and `space.json`; start screen, Space switcher and settings; New Space (a name and a place); the Files tree (order by hand, duplicate, trash, an Add menu, folding); single files; one page open at a time. Also built with it: the restyle to the mockups (dialog frame, status bar per side, canvas dot grid) |
-| 8.2 The Document editor *(built)* | ProseMirror, saving Markdown; text blocks, lists, inline formatting and colours; typing shortcuts, `/` menu, formatting bubble, block handle; find and replace, word count; page menu, lock, width |
-| 8.3 Rich blocks | In three parts (decision 77): **8.3a** callouts, toggles, code, equations, footnotes, contents, emoji; **8.3b** rich tables and spreadsheet paste; **8.3c** `@` page links and backlinks, links to headings, date chips |
-| 8.4 Media and attachments | In three parts (decision 97): **8.4.1** the attachments folder, images and video files, relinking; **8.4.2** online videos, file and web-link cards; **8.4.3** the Media section and dialog |
-| 8.4a Canvas testing pass | Screen checks of seeded canvases (every shape and style, arrows of every kind and attachment, frames, groups, code blocks, a D2 diagram; selection, rotation, snapping and point-editing states; the pickers and menus; exported PNG and SVG) in both themes and at two zooms; real-app smoke scenarios that draw, connect, move, undo and insert a diagram, then check the saved file's contents. Replaces the 6.x window checks still owed. Before 8.5, so embedding cannot break the canvas unseen |
-| 8.5 Canvas in the Document | Live frame embeds, Diagram from Code from the Document; this part carries the exit criterion below |
+| 8.1 Spaces and files *(committed)* | `.bava` folder and `space.json`; start screen, Space switcher and settings; New Space (a name and a place); the Files tree (order by hand, duplicate, trash, an Add menu, folding); single files; one page open at a time. Also built with it: the restyle to the mockups (dialog frame, status bar per side, canvas dot grid) |
+| 8.1a Testing layers *(committed)* | Screen checks in a pinned container and a real-app smoke driver, both run in CI |
+| 8.2 The Document editor *(committed)* | ProseMirror, saving Markdown; text blocks, lists, inline formatting and colours; typing shortcuts, `/` menu, formatting bubble, block handle; find and replace, word count; page menu, lock, width |
+| 8.3 Rich blocks *(committed)* | In three parts (decision 77): **8.3a** callouts, toggles, code, equations, footnotes, contents, emoji; **8.3b** rich tables and spreadsheet paste; **8.3c** `@` page links and backlinks, links to headings, date chips |
+| 8.3d Adding lines *(committed)* | A block added before or after any block with ⌘Enter and ⇧⌘Enter or the block menu, and an empty line kept at the end of every page (decision 90); toggle headings dropped (decision 91) |
+| 8.4 Media and attachments *(committed)* | In three parts (decision 97): **8.4.1** the attachments folder, images and video files, relinking; **8.4.2** online videos, file and web-link cards; **8.4.3** the Media section and dialog |
+| 8.4a Canvas testing pass *(committed)* | Screen checks of seeded canvases (every shape and style, arrows of every kind and attachment, frames, groups, code blocks, a D2 diagram; selection, rotation, snapping and point-editing states; the pickers and menus; exported PNG and SVG) in both themes and at two zooms; real-app smoke scenarios that draw, connect, move, undo and insert a diagram, then check the saved file's contents. Replaces the 6.x window checks still owed. Before 8.5, so embedding cannot break the canvas unseen |
+| 8.5 Canvas in the Document *(next)* | Live frame embeds, Diagram from Code from the Document; this part carries the exit criterion below |
 | 8.6 Tags and templates | Tags and the Tags section; the Templates dialog |
 
-Export and import moved to Milestone 15, which now follows this one. The
-original outline below is kept for its exit criterion; the decisions file
-supersedes its scope.
+Export and import moved to Milestone 15, which now follows this one.
 
 **Goal:** Prose alongside the canvas, with parts of the canvas embedded in the
-text.
-
-**Scope:** ProseMirror over Markdown, so every document Bava writes opens
-cleanly in any editor. Markdown input rules, a slash menu, a selection bubble.
-**Embeds of a canvas selection**, decided 2026-09-17: shown as an inline link
-or rendered in place, at the user's choice. Editing an embed moves focus to the
-canvas with those elements selected; there is no editor inside the document.
-Open questions, to settle when this milestone is planned: whether an embed is
-the picked elements or a region, live or a snapshot, how it reads in a plain
-Markdown viewer, and what it shows when its elements are deleted.
+text. How embeds work (a frame, kept up to date as an image, from either side)
+is settled in decisions 24 to 27 and 61 of `08-documents.md`.
 
 **Exit criterion:**
 
@@ -537,6 +531,15 @@ decisions 48, 49 and 58):
   folder; name clashes kept numbered, never overwritten.
 - **Search** across a Space, with results, jump-to-match, and the
   `EmptyState` the design system already assumes exists for it.
+
+**Canvas work with no other home**, from the ranked list in
+`.claude/work/specs/research/excalidraw-comparison.md`, none built yet:
+- Zoom to fit and zoom to selection.
+- A command palette.
+- Paste from other apps onto the canvas: text as a text element, and Bava
+  shapes through the system clipboard.
+- Labels that fit their shape: a text area per shape (diamond, ellipse and
+  the outline shapes), and a shape that grows to its label on commit.
 
 **Carried from Milestone 6.6:** SQL table and UML class shapes. Canvas export
 and code blocks moved forward to Milestones 6.4 and 6.7 (2026-09-18); any
@@ -748,8 +751,9 @@ refresh.
 **Goal:** Everything between "it works on my machine" and "someone else can
 install it".
 
-**Scope:** First-run experience (no account, no network): choosing a workspace
-folder and a theme. The About screen rendering `NOTICE`, which is a licence
+**Scope:** First-run experience (no account, no network): choosing a theme,
+alongside 8.1's start screen, which already opens a folder or makes a New
+Space. The About screen rendering `NOTICE`, which is a licence
 obligation and not decoration. The in-app updater: available, release notes,
 downloading, restart to apply, failed. Signature verification before anything
 is applied. Auto-check as a setting that genuinely turns off. Packaging for
@@ -786,22 +790,19 @@ a local build.
 ## Cross-cutting, no milestone of its own
 
 - **CI build matrix.** `.github/workflows/ci.yml`: test and build jobs across
-  ubuntu/macos/windows. Its first run failed on all three (Go steps ran before
-  the frontend was built, and `frontend/dist` is gitignored); fixed, awaiting a
-  re-run. Until it goes green, no claim that Bava "builds on all platforms" is
-  supportable; a local `wails3 build` proves nothing about Windows or Linux.
-  It also answers a question nothing else can: goldens are byte-compared and
-  rest on `.gitattributes` forcing LF for `*.svg`, and nothing has verified
-  that D2 renders identical bytes on another platform.
+  ubuntu/macos/windows, plus the screen checks and smoke runs from 8.1a. First
+  green on all three platforms at `9cf4d06`; later runs have failed and been
+  fixed, so read the latest rather than assume it. A local `wails3 build`
+  proves nothing about Windows or Linux. It also checks that D2 renders
+  identical golden bytes on every platform (`.gitattributes` forces LF for
+  `*.svg`).
   Check: `gh run list --workflow=ci.yml --limit 1`.
-- **Translations.** The translation layer arrives in Milestone 3. Milestone 1
-  shipped the first two user-facing strings (the pane `aria-label`s) hardcoded,
-  and Milestone 3 migrates them; after that, no new hardcoded string.
+- **Translations.** The translation layer is `frontend/src/i18n/`, with the
+  strings in `messages.ts`. No new hardcoded string.
 - **Artifact sync.** `docs/ipc.md`, `docs/file-format.md`, `docs/shortcuts.md`,
   `docs/decisions.md`, `NOTICE` and the `.ai/rules/` files are updated in the
   same change as the code that makes them true, per the build loop's checklist.
-- **Accessibility debt from Milestone 1.** Paid in part in Milestone 4: scene
-  elements are keyboard selectable and tab order is paint order. The remaining
-  half (reaching a node *inside* a diagram) dissolved on 2026-09-17: a
-  converted diagram's nodes are ordinary elements, reachable the same way.
-  Milestone 6.6 confirms tab order covers them.
+- **Accessibility debt from Milestone 1.** Reaching a node *inside* a diagram
+  dissolved on 2026-09-17: a converted diagram's nodes are ordinary elements.
+  Tab is not a canvas key; it is left to the browser's focus
+  (`frontend/src/canvas/keymap.test.ts`).

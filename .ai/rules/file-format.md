@@ -1,8 +1,8 @@
 # File format
 
 ## Nothing writes a format that is not specified
-Until `docs/file-format.md` exists and describes it, no code may write a
-persistent format. This is the product's long-term contract with its users:
+Until `docs/file-format.md` describes it, no code may write a persistent
+format. This is the product's long-term contract with its users:
 wrong once, wrong forever, and unnoticed until people have files in the old
 shape.
 
@@ -14,9 +14,8 @@ a hosted one.
 
 A scene is JSON, which is plain text in the letter but not hand-editable in the
 spirit. That is accepted for a scene, because coordinates are not something a
-human edits by hand, but it raises the bar on the rest: **D2 source inside a
-diagram element is stored as readable source, never escaped into
-unrecognisability**, and document prose stays Markdown.
+human edits by hand, but it raises the bar on the rest: document prose stays
+Markdown, and a fenced `d2` block a person writes in it is kept as written.
 
 ## What the scene holds
 Every element carries its own geometry. Two element properties are less
@@ -25,8 +24,10 @@ obvious and both are required:
 - **Measured text dimensions.** Canvas text is measured in the frontend, where
   platforms disagree on glyph advances. Storing the measurement is what makes a
   scene reopen identically elsewhere.
-- **Bindings by id, never by coordinate.** An arrow into a diagram stores the
-  node's D2 absolute id. Coordinates would break on the next re-layout.
+- **Bindings by id, never by coordinate.** An attached arrow stores the
+  target element's id (`startBinding`, `endBinding`). Coordinates would break
+  on the next move. A target that is gone leaves the end detached, never
+  deleted.
 
 ## Round-trip tests are mandatory
 Every format change ships with a test: write → read → compare. Not a unit test
@@ -54,8 +55,7 @@ read and write; any new format test belongs on that path too.
 
 ## Space data lives in `.bava`, never a page's content
 A Space's `.bava/` holds what belongs to the Space as a whole (`space.json`:
-the order and the default page width; `trash/`; later attachments and
-templates). A page's text and canvas stay in its own `.md` file, so copying
+the order and the default page width; `trash/`; `attachments/`). A page's text and canvas stay in its own `.md` file, so copying
 one page still carries all of it; `docs/file-format.md` ("Why one file rather
 than a sidecar") is the reason. Every change to a Space goes through
 `internal/space`, which refuses a path that leaves the Space or is hidden.

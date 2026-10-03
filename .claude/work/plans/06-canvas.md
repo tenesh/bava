@@ -1,5 +1,9 @@
 # 06: Canvas
 
+> The window checks this file calls owed were settled by the 8.4a canvas
+> testing pass. Its As built (`08.4a-canvas-testing.md`) maps each one to the
+> test that covers it, or names it as still needing a person at a window.
+
 Milestone 6 and the parts built after it, 6.1 to 6.17 (2026-09-17 to
 2026-09-27), in one file. Each part was planned, built test first, gated and
 spec-reviewed on its own; its plan follows below unchanged except that its
@@ -10,15 +14,13 @@ headings sit one level down. Milestone 7 (`07-snapping.md`) comes after.
 Milestone 6 began as "shapes that look right" and grew, part by part, into
 the whole free-placement canvas: styles, rotation, export, attached arrows
 and frames, diagrams from D2 as ordinary shapes, code blocks, and every line
-and arrow behaviour in `.claude/work/specs/excalidraw-lines-inventory.md`
+and arrow behaviour in `.claude/work/specs/research/excalidraw-lines-inventory.md`
 (90 rows, all same or built by 6.16; B22 kept by the `CLAUDE.md` detached
 rule). Decisions along the way live in `.claude/work/specs/06.12-arrows-and-code.md`
 (1 to 16), `diagrams-as-shapes.md` and `docs/decisions.md`.
 
-Every part is committed. **Each still owes the hand check its own
-"Verification" section describes**, at a running window in both themes;
-the user tests as they go and has reported findings from most of them, but
-no part is recorded as checked.
+Every part is committed. Each part's "Verification" section was owed at a
+running window in both themes; 8.4a settled them (see the note at the top).
 
 | Part | Date | Name | What it delivered |
 |---|---|---|---|
@@ -238,7 +240,8 @@ defining vertices.
 - [x] Failing test (spec guards, existing): every new menu id has a handler
 - [x] Implement
 - [x] Green: `go test ./internal/app/menu && cd frontend && npm test`
-- [ ] Keyboard pass on the shape menu: arrows, Enter, Escape
+- [ ] Keyboard pass on the shape menu: arrows, Enter, Escape (obsolete: the
+      icon rail replaced the shape menu)
 
 #### Task 7: Selection outline and resize
 **Files:**
@@ -2724,7 +2727,7 @@ a text editor that does not look like the text it edits, and per-frame work
 the canvas does not need.
 
 **Specs:**
-- `.claude/work/specs/excalidraw-comparison.md` (2026-09-26): the bug table,
+- `.claude/work/specs/research/excalidraw-comparison.md` (2026-09-26): the bug table,
   sections 1 and 7, appendix A1 and A3
 - `docs/file-format.md`, "Style properties": absent `strokeWidth` means 2,
   absent `fontSize` means 20
@@ -2993,7 +2996,7 @@ selecting, moving and arranging behave the way a user of any drawing tool
 expects, frames and groups included.
 
 **Specs:**
-- `.claude/work/specs/excalidraw-comparison.md` (2026-09-26): the bug table,
+- `.claude/work/specs/research/excalidraw-comparison.md` (2026-09-26): the bug table,
   section 2 (selecting and transforming), section 3's text-editor note (A3)
 - `docs/file-format.md`, "Code blocks" (changed by Task 1), "Attachment and
   containment"
@@ -3237,7 +3240,7 @@ along it.
 **Specs:**
 - `.claude/work/specs/arrows.md`: decisions 1 to 6, made with the user
   2026-09-26 (the source for every behaviour below)
-- `.claude/work/specs/excalidraw-comparison.md`: section 3 (arrows and lines),
+- `.claude/work/specs/research/excalidraw-comparison.md`: section 3 (arrows and lines),
   appendix A2 (binding); Excalidraw read at `5db42c3`
 - `docs/file-format.md`: "Lines, arrows and strokes", "Attachment and
   containment", the style table (all changed by Task 1, before any code)
@@ -3689,7 +3692,7 @@ attached on and route around shapes.
 **Specs:**
 - `.claude/work/specs/06.12-arrows-and-code.md`: decisions 1 to 6 (06.12
   carries 1, 2, 3, 5, 6 and the drag details of 4)
-- `.claude/work/specs/excalidraw-elbow-routing.md`: the routing algorithm,
+- `.claude/work/specs/research/excalidraw-elbow-routing.md`: the routing algorithm,
   constants and file:line references
 - `.claude/work/specs/arrows.md` (06.10 decisions; decision 3 there is
   amended by Task 1 below)
@@ -3903,7 +3906,7 @@ mode, and a line or arrow can be drawn click by click.
 
 **Specs:**
 - `.claude/work/specs/06.12-arrows-and-code.md`: decisions 4, 7, 8 and 9
-- `.claude/work/specs/excalidraw-comparison.md` section 3; Excalidraw at
+- `.claude/work/specs/research/excalidraw-comparison.md` section 3; Excalidraw at
   `5db42c3`, file:line references in the decisions
 - `docs/file-format.md` ("Attachment and containment", style table; changed
   first, by Task 1), `docs/shortcuts.md`
@@ -3997,7 +4000,7 @@ returns to the select tool, as a drag does.
 
 #### Task 6: Gates
 - [x] `npm run check`, `npm run lint`, `npm test` (exit code); Go gates.
-- [ ] `spec-reviewer` on the working-tree diff.
+- [x] `spec-reviewer` on the working-tree diff.
 
 ### Artifacts
 - `docs/file-format.md`, `docs/decisions.md`, `docs/shortcuts.md` (Task 1).
@@ -4063,10 +4066,10 @@ every elbow item (E), every selection-chrome, handle and cursor item (S), the
 duplicate/paste bug (B23), and a code block's height.
 
 **Specs:**
-- `.claude/work/specs/excalidraw-lines-inventory.md`: sections 2 (S), 4 (E)
+- `.claude/work/specs/research/excalidraw-lines-inventory.md`: sections 2 (S), 4 (E)
   and row B23, with Excalidraw file:line for every item
 - `.claude/work/specs/06.12-arrows-and-code.md`: decisions 10, 11, 12
-- `.claude/work/specs/excalidraw-elbow-routing.md`
+- `.claude/work/specs/research/excalidraw-elbow-routing.md`
 - `docs/file-format.md` (changed first, by Task 1), `docs/decisions.md`,
   `docs/shortcuts.md`
 - `.ai/rules/canvas.md` (one pointer path, preview equals release, the chrome
@@ -4221,7 +4224,7 @@ corners are now curves of radius 16; looked at before it was updated.
 - E8: the segment moves by the drag, not to the pointer (Excalidraw jumps it
   to the cursor); a free last end keeps its point where Excalidraw can lose it;
   a straight-through merge keeps the segment fixed if either part was. From
-  `.claude/work/specs/excalidraw-elbow-segments.md`, section 8.
+  `.claude/work/specs/research/excalidraw-elbow-segments.md`, section 8.
 - E14's re-attach uses the elbow snap at the end's drawn point; E15 re-attaches
   at the current spot, which for Bava's anchors changes nothing in practice.
 - S9: Excalidraw also hides a focus point that falls outside its shape's drawn
@@ -4272,7 +4275,7 @@ same, plus V2 (a two-point curve is straight), which the new curved default
 needs.
 
 **Specs:**
-- `.claude/work/specs/excalidraw-lines-inventory.md`: sections 1 (C) and 3
+- `.claude/work/specs/research/excalidraw-lines-inventory.md`: sections 1 (C) and 3
   (P), row V2, with Excalidraw file:line for every item
 - `.claude/work/specs/06.12-arrows-and-code.md`: decisions 12 to 15 (13 to 15
   are recorded by Task 1 from the user's answers of 2026-09-27)
@@ -4514,7 +4517,7 @@ with nothing selected, drag the line itself. `⌘Enter` on an arrow.
 not already the same or built, so the inventory is complete.
 
 **Specs:**
-- `.claude/work/specs/excalidraw-lines-inventory.md`: sections 5 (B), 6 (H),
+- `.claude/work/specs/research/excalidraw-lines-inventory.md`: sections 5 (B), 6 (H),
   7 (L), 9 (T), 10 (X), 11 (O), with Excalidraw file:line for every item
 - `.claude/work/specs/06.12-arrows-and-code.md`: decisions 12 and 16
 - `docs/file-format.md` (changed first, by Task 1), `docs/decisions.md`,

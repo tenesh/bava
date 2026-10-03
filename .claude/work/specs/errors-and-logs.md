@@ -1,5 +1,7 @@
 # Errors and logs
 
+> Historical: implemented (or superseded); kept as the record.
+
 Opened 2026-09-17. What a user sees when something fails, what is recorded, and
 how they can hand it to us, **without anything reaching us unless they send
 it**. The first non-negotiable rules out crash reporting and telemetry: every

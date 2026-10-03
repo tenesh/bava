@@ -1,5 +1,7 @@
 # 02: Design tokens and theming
 
+> Historical: built and committed; see the roadmap for what followed.
+
 **Goal:** A semantic token layer and light/dark theming, so component work can
 start in Milestone 3 without a literal value anywhere.
 
@@ -7,8 +9,7 @@ start in Milestone 3 without a literal value anywhere.
 - `.claude/plan/roadmap.md`: Milestone 2
 - `.ai/rules/design-system.md`: token rules, density, the theme/diagram split
 - `.ai/rules/canvas.md`: bundled fonts; diagram tokens are a separate layer
-- `~/Workspace/designs/bava/claude-design-v1/Bava Mockups.dc.html`: the
-  palette. **Reference for appearance only**: behaviour and storage come from
+- The first Claude Design mockups: the palette. **Reference for appearance only**: behaviour and storage come from
   the code and the rules, never from a mockup caption.
 - Build-loop repo-state: the Ark portal finding that `--z-*` exists to fix
 
