@@ -7,8 +7,7 @@
    * Presentational: the caller draws the TeX (`render`) and applies what is
    * saved.
    */
-  import { Portal } from '@ark-ui/svelte';
-  import { portalRoot } from './portal-root';
+  import Portal from './Portal.svelte';
   import { pressAway } from './press-away';
   import { t } from '../i18n/t';
 
@@ -57,7 +56,7 @@
   }
 </script>
 
-<Portal container={portalRoot()}>
+<Portal>
   <div bind:this={box} class="equation-field" style:left={`${at.left}px`} style:top={`calc(${at.bottom}px + var(--space-2))`}>
     <textarea
       bind:this={field}
