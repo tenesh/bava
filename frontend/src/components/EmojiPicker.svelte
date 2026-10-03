@@ -6,8 +6,7 @@
    * Presentational: the caller supplies the emoji and their group names, and
    * puts the pick where it belongs.
    */
-  import { Portal } from '@ark-ui/svelte';
-  import { portalRoot } from './portal-root';
+  import Portal from './Portal.svelte';
   import { pressAway } from './press-away';
   import Progress from './Progress.svelte';
   import { t } from '../i18n/t';
@@ -68,7 +67,7 @@
   </div>
 {/snippet}
 
-<Portal container={portalRoot()}>
+<Portal>
   <div
     bind:this={panel}
     class="emoji-picker"

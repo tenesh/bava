@@ -8,8 +8,7 @@
    *
    * Presentational: the caller follows, edits or relinks the link.
    */
-  import { Portal } from '@ark-ui/svelte';
-  import { portalRoot } from './portal-root';
+  import Portal from './Portal.svelte';
   import { t } from '../i18n/t';
 
   type Props = {
@@ -63,7 +62,7 @@
   });
 </script>
 
-<Portal container={portalRoot()}>
+<Portal>
   <div
     bind:this={card}
     class="link-card"

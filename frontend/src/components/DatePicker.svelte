@@ -6,8 +6,8 @@
    *
    * Presentational: the caller changes the chip.
    */
-  import { DatePicker, Portal, parseDate } from '@ark-ui/svelte';
-  import { portalRoot } from './portal-root';
+  import { DatePicker, parseDate } from '@ark-ui/svelte';
+  import Portal from './Portal.svelte';
   import { t } from '../i18n/t';
 
   type Props = {
@@ -44,7 +44,7 @@
   });
 </script>
 
-<Portal container={portalRoot()}>
+<Portal>
   <div
     bind:this={panel}
     class="date-picker"
