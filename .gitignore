@@ -8,5 +8,5 @@ build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 # macOS Finder metadata
 .DS_Store
 
-# Screen-check results (differences, report); the approved screenshots live in testdata/visual
-frontend/tests/visual/.results/
+# Browser-test results (differences, report); the approved screenshots live in testdata/visual
+frontend/tests/.results/

@@ -53,7 +53,7 @@ himself. Read-only git (status, diff, log, rev-parse) is fine.
 8. **Sync artifacts.** The checklist below, in the same change as the code.
 9. **Gates.** `go vet ./internal/... .`, `go test ./internal/... .`,
    `npm run check`, `npm run lint`, `npm test`: all green, with output shown.
-   `npm run visual` too when what is drawn changes. See the gate-status table in
+   `npm run browser` too when what is drawn or how the page behaves changes. See the gate-status table in
    repo state for any gate currently known-red and why.
 10. **Review.** Dispatch the `spec-reviewer` agent on the working-tree diff.
     Verify each finding before acting on it. Do not implement a finding you
@@ -74,8 +74,8 @@ himself. Read-only git (status, diff, log, rev-parse) is fine.
 | Svelte types | `npm run check` |
 | JS/TS lint | `npm run lint` |
 | Frontend tests | `npm test` |
-| Screen checks (layer 2, Docker) | `(cd frontend && npm run visual)` |
-| Accept intended screen changes | `(cd frontend && npm run visual:update)`, then open every changed image |
+| Browser tests: integration and visual regression (Docker) | `(cd frontend && npm run browser)`; one with `-- --project=visual` or `-- --project=integration` |
+| Accept intended screenshot changes | `(cd frontend && npm run browser:update)`, then open every changed image |
 | Env check | `wails3 doctor` |
 
 ## What gets a failing test first
@@ -89,8 +89,8 @@ where a red-first cycle proves nothing.
 | File format: reading, writing, round-tripping | Failing test first, always. Format bugs corrupt user data silently and are unrecoverable once shipped. |
 | Diagram output | Golden file. Add the fixture, watch it fail, implement, then review the generated SVG **by eye** before committing the golden. A golden blessed without looking at it asserts nothing. |
 | Wails bindings, config, build scripts | Implement, then a contract test pinning the outcome. |
-| Design system components | Build against `.ai/rules/design-system.md`. Verify with `npm run check` and `npm run lint`, a screen check (`npm run visual`, every changed image opened and read), plus a keyboard pass (tab order, escape, arrow keys) before done. |
-| Anything drawn: a style, token, layout, string, new screen or dialog | A screen check. A new screen or dialog gets a walk in `frontend/tests/visual/specs/` in the same change; references change only through `visual:update` after looking. |
+| Design system components | Build against `.ai/rules/design-system.md`. Verify with `npm run check` and `npm run lint`, a visual check (`npm run browser`, every changed image opened and read), plus a keyboard pass (tab order, escape, arrow keys) before done. |
+| Anything drawn: a style, token, layout, string, new screen or dialog | A visual check. A new screen or dialog gets a test in `frontend/tests/visual/` in the same change; references change only through `browser:update` after looking. |
 | Canvas interaction, editor wiring | Tests where real logic exists: coordinate math, staleness handling, debounce, selection state. Not for markup. |
 
 Test quality: one behavior per test, named for the behavior. Before writing a
@@ -193,7 +193,7 @@ Before any claim of done, passing, fixed or working:
 | Bug fixed | The original failing test, now green |
 | Component done | Keyboard pass performed, both themes checked |
 | Spike cleaned up | Restored state **shown** to match, not asserted: diff the touched files against their pre-spike state, confirm the dependency is gone from `package.json`, the lockfile *and* `node_modules`, and check the bundle size returned to baseline. A backup taken after an install restores the install. |
-| Visual behaviour verified | `npm run visual` green, and every changed screenshot opened and read in both themes; the real app's CI smoke run for anything that crosses into Go. Feel (scrolling, gestures, native menus) is still a human's call at a running window. |
+| Visual behaviour verified | `npm run browser` green, and every changed screenshot opened and read in both themes; the real app's CI end-to-end run for anything that crosses into Go. Feel (scrolling, gestures, native menus) is still a human's call at a running window. |
 | Builds on all platforms | CI matrix result, not a local `wails3 build` |
 | Subagent finished | The diff, read, not the agent's own success report |
 
@@ -302,14 +302,15 @@ History belongs in each plan's As built, not here.
 
 - **On the host:** Go tests and goldens, vitest (`npm test`), `npm run check`,
   `npm run lint` and `npm run build`. None of them starts the app.
-- **Screen checks (layer 2) run only in Docker:** `npm run visual`
-  (`tests/scripts/visual.sh`, image from `tests/docker/visual.Dockerfile`).
+- **Browser tests (integration and visual regression) run only in Docker:**
+  `npm run browser` (`tests/scripts/browser.sh`, image from
+  `tests/docker/browser.Dockerfile`).
   On this Mac, Docker is OrbStack and must be running (`docs/testing.md`).
-- **The real app (layer 3) runs only on CI:** the smoke build (`-tags e2e`)
-  walks `tests/e2e/scenarios/` (`create`, `reopen`, `canvas`) on all three
+- **The real app (end-to-end) runs only on CI:** the e2e build (`-tags e2e`)
+  walks `tests/e2e/` (`create`, `reopen`, `canvas`) on all three
   platforms. Never launch the app locally, `wails3 dev` included.
 
-### Gate status: 2026-10-03
+### Gate status: 2026-10-04
 
 | Gate | Result |
 |---|---|
@@ -318,10 +319,10 @@ History belongs in each plan's As built, not here.
 | `go test ./internal/render -run Golden` | exit 0 (inside the run above); 2 fixtures under `testdata/golden/`, light and dark |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 2,512 tests passed and 1 skipped, in 179 files (1 skipped) |
-| `npm run build` | CI's first frontend step. The production minifier rejects some CSS the dev server and the screen checks accept (WebKit-only selectors such as `::selection:window-inactive`) |
-| `npm run visual` (layer 2) | last full run 2026-10-03: 294 screen checks passed; 263 references in `testdata/visual/` |
-| CI `smoke` (layer 3) | `create`, `reopen` and `canvas` on all three platforms; see Milestones for the last run |
+| `npm test` | exit 0; 2,598 tests passed and 1 skipped, in 195 files |
+| `npm run build` | CI's first frontend step. The production minifier rejects some CSS the dev server and the browser tests accept (WebKit-only selectors such as `::selection:window-inactive`) |
+| `npm run browser` | last full run 2026-10-04: 881 passed (742 visual, 139 integration); 1157 references in `testdata/visual/` |
+| CI end-to-end | `create`, `reopen` and `canvas` on all three platforms; see Milestones for the last run |
 | `wails3 build` | CI only |
 
 ### Owed at a running window
@@ -344,7 +345,7 @@ What no test can see, still waiting for a person, in both themes:
 - **The Go gates are scoped to `./internal/... .`**: `frontend/node_modules`
   ships a Go package (`flatted/golang`), so `./...` would depend on an npm
   dependency. CI uses the same scope.
-- **Screen checks see WebKit in a container, not the real webviews.** They
+- **Browser tests see WebKit in a container, not the real webviews.** They
   catch layout and styling faults in both themes; how each platform's webview
   draws, and how anything feels, is still seen only at a running window.
 

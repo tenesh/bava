@@ -18,9 +18,11 @@
     anchor: { x: number; y: number } | null;
     onSelect: (id: string) => void;
     onOpenChange: (open: boolean) => void;
+    /** Once the menu has closed and left the page: where focus can be given back. */
+    onClosed?: () => void;
   };
 
-  let { items, open, anchor, onSelect, onOpenChange }: Props = $props();
+  let { items, open, anchor, onSelect, onOpenChange, onClosed }: Props = $props();
 </script>
 
 {#snippet entries(list: MenuNode[])}
@@ -57,6 +59,7 @@
   unmountOnExit
   onOpenChange={(details) => onOpenChange(details.open)}
   onSelect={(details) => onSelect(details.value)}
+  onExitComplete={() => queueMicrotask(() => onClosed?.())}
 >
   <Portal container={portalRoot()}>
     <Menu.Positioner>

@@ -59,7 +59,7 @@ here.
 **No component writes a literal value.** No hex codes, no `px` outside the
 token files, no one-off shadows. If a value is needed that no token provides,
 add the token; do not inline it.
-The screen checks' harness (`frontend/tests/visual/harness/`) is exempt: it
+The browser tests' harness (`frontend/tests/harness/`) is exempt: it
 never ships, and a demo's cell may need an exact pixel size (a splitter's odd
 width, a handle's gutter) for its picture to stay the same.
 
@@ -333,7 +333,7 @@ pieces do this themselves; a hand-built one uses `pressAway`
 (the page, for the menus that follow typing). What a press elsewhere does
 to what was typed is chosen per field: a link field changes nothing, as
 Escape does; a caption, a name or an equation keeps what was typed. The
-walk in `frontend/tests/visual/specs/click-away.spec.ts` checks each; a new floating
-piece gets a row there. The Find bar is the one exception: it stays until
+integration test `frontend/tests/integration/components.spec.ts` checks
+each; a new floating piece gets a row there. The Find bar is the one exception: it stays until
 closed, as a browser's does.
 

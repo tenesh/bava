@@ -163,29 +163,30 @@ jobs:
       - name: wails3 build
         run: wails3 build
 
-  # Layer 2: every screen, drawn by the same browser in the same pinned
-  # container as on the developer's Mac (arm64 both), compared with the
-  # approved screenshots in testdata/visual. On a failure the differences are
-  # uploaded for someone to look at.
-  visual:
-    name: screen checks
+  # Browser tests: visual regression (every screen, drawn by the same browser
+  # in the same pinned container as on the developer's Mac, arm64 both,
+  # compared with the approved screenshots in testdata/visual) and integration
+  # (behaviour in a real browser). On a failure the results are uploaded for
+  # someone to look at.
+  browser:
+    name: browser tests
     runs-on: ubuntu-24.04-arm
     needs: test
     steps:
       - uses: actions/checkout@v4
 
-      - name: npm run visual
-        run: tests/scripts/visual.sh
+      - name: npm run browser
+        run: tests/scripts/browser.sh
 
-      - name: upload differences
+      - name: upload results
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: screen-check-differences
-          path: frontend/tests/visual/.results/
+          name: browser-test-results
+          path: frontend/tests/.results/
           retention-days: 14
 
-  # Layer 3: the real app, built with the smoke driver (-tags e2e), makes a
+  # End-to-end: the real app, built with the e2e driver (-tags e2e), makes a
   # Space in a scratch folder, a page and a shape, saves, quits, reopens, and
   # checks it is all still there, taking screenshots on the way.
   smoke:
@@ -253,7 +254,7 @@ jobs:
           export BAVA_E2E_OUT="$out" BAVA_E2E_SCRATCH="$scratch"
           app=bin/bava; [[ "$RUNNER_OS" == "Windows" ]] && app=bin/bava.exe
           run() {
-            export BAVA_E2E_SCENARIO="tests/e2e/scenarios/$1.json"
+            export BAVA_E2E_SCENARIO="tests/e2e/$1.json"
             if [[ "$RUNNER_OS" == "Linux" ]]; then
               # WebKitGTK without a GPU: software drawing, or the window is blank.
               WEBKIT_DISABLE_DMABUF_RENDERER=1 GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 \

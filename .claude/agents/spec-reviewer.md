@@ -114,7 +114,7 @@ Check every item. **Absence of evidence is a finding, not a pass.**
 - Frontend changes: `npm run check`, `npm run lint` and `npm test` output
   present, `npm test` judged by its exit code.
 - Anything drawn changed (a style, token, layout, string, screen or dialog):
-  `npm run visual` (Docker) output present, and every changed reference
+  `npm run browser` (Docker) output present, and every changed reference
   under `testdata/visual/` named.
 - A new or changed IPC method is in `docs/ipc.md`; a new or changed shortcut
   is in `docs/shortcuts.md`. A test reads the shortcuts doc

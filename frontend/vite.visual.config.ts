@@ -4,12 +4,12 @@ import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
 import type { Plugin } from 'vite';
 
-const MEDIA = fileURLToPath(new URL('../testdata/media/', import.meta.url));
+const MEDIA = fileURLToPath(new URL('../testdata/fixtures/media/', import.meta.url));
 const TYPES: Record<string, string> = { png: 'image/png', mp4: 'video/mp4' };
 
 /**
  * The app's file route, for the pretend Space: its attachments are
- * testdata/media's files. A video is answered and never finished, so it
+ * testdata/fixtures/media's files. A video is answered and never finished, so it
  * stays on its poster: the container's browser plays no H.264.
  */
 function fileRoute(): Plugin {
@@ -42,15 +42,15 @@ function fileRoute(): Plugin {
   };
 }
 
-// The screen checks' page: the real interface with the Go bindings pointed at
-// the stand-in in tests/visual/harness. Never used by the app's own build.
+// The browser tests' page: the real interface with the Go bindings pointed at
+// the stand-in in tests/harness. Never used by the app's own build.
 export default defineConfig({
   plugins: [svelte(), fileRoute()],
   resolve: {
     alias: [
       {
         find: /^.*\/bindings\/github\.com\/tenesh\/bava\/internal\/app$/,
-        replacement: fileURLToPath(new URL('./tests/visual/harness/bindings-app.ts', import.meta.url)),
+        replacement: fileURLToPath(new URL('./tests/harness/bindings-app.ts', import.meta.url)),
       },
     ],
   },

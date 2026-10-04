@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import cases from '../../../testdata/links/paths.json';
+import cases from '../../../testdata/fixtures/links/paths.json';
 import { linkTo, resolveLink, retarget } from './links';
 
 describe('the link rules', () => {

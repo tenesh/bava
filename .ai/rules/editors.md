@@ -78,7 +78,7 @@ component per block.
   closed pages from those places (`page-links.ts`), and Go only lists pages
   and writes one back when it is unchanged since it was read. A second
   parser on the file side disagreed with this one on 29 of 113 unusual pages;
-  never bring one back. `testdata/links/pages.json` pins what is a link and
+  never bring one back. `testdata/fixtures/links/pages.json` pins what is a link and
   where; add a case for every surprise.
 - **A rewrite touches only a link's address, and its words where they are
   still the old name.** Every other byte of a page stays as it was. A link

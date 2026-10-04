@@ -130,11 +130,12 @@ shapes · line · arrow · stroke · text · code · frame · group
 
 ## Testing
 
-Four layers. Unit tests (Go, Vitest) and static checks run on the host;
-screen checks run only in Docker (`npm run visual`); the real app runs only
-on CI (smoke scenarios). Never launch the app locally to test. Golden SVGs
-guard D2 layout: run them before and after any D2, Wails or font change. The
-rules are in `.ai/rules/testing.md` and `docs/testing.md`.
+Four layers: unit (Go, Vitest, beside the code) and static checks run on the
+host; integration and visual regression run in a real browser, only in
+Docker (`npm run browser`); end-to-end runs the real app, only on CI. Never
+launch the app locally to test. Golden SVGs guard D2 layout: run them before
+and after any D2, Wails or font change. The rules are in
+`.ai/rules/testing.md` and `docs/testing.md`.
 
 ## Documentation Lookup
 
@@ -175,11 +176,11 @@ frontend/src/files/         file actions, autosave, the open page, Spaces, media
 frontend/src/settings/      settings screens
 frontend/src/ipc/           bindings clients: debounce, staleness
 frontend/src/i18n/          user-facing strings (messages.ts)
-frontend/src/e2e/           the smoke driver (smoke builds only)
-frontend/tests/visual/      screen checks (Playwright in Docker)
+frontend/src/e2e/           the end-to-end driver (e2e builds only)
+frontend/tests/             browser tests: visual/, integration/, harness/, fixtures/
 frontend/public/fonts/      bundled Geist and Geist Mono
-tests/e2e/scenarios/        smoke scenarios run on CI
-testdata/                   golden SVGs and screen check references
+tests/e2e/                  end-to-end scenarios run on CI
+testdata/                   golden SVGs, screenshot references, input fixtures
 ```
 
 Before entering plan mode or creating/editing any file: open

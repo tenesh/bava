@@ -1,6 +1,6 @@
 /**
  * Links between pages: which page a link reaches, and the address one page
- * uses for another. The cases in testdata/links/paths.json pin the rules.
+ * uses for another. The cases in testdata/fixtures/links/paths.json pin the rules.
  */
 
 /** A page or folder that moved, relative to the Space. */
