@@ -38,7 +38,9 @@ Fast, and blind to drawing: they run without real layout or styles.
 The interface runs in a real WebKit browser (the engine macOS gives Bava),
 with the Go side replaced by a stand-in over a pretend Space. Scripted walks
 open each screen and dialog, and each screenshot is compared pixel by pixel
-with its approved reference in `testdata/visual/`. They also check that
+with its approved reference in `testdata/visual/`, almost exactly: a pixel
+may differ only by the few steps of colour that edge smoothing varies run to
+run. They also check that
 nothing covers the window at launch.
 
 Needs OrbStack (or another Docker) running. The container sees the repo

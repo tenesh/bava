@@ -12,7 +12,10 @@ export default defineConfig({
   // The orphan list: references a full run never compared, to be deleted.
   reporter: [['list'], ['html', { outputFolder: './.results/report', open: 'never' }], ['./harness/orphans.ts']],
   expect: {
-    toHaveScreenshot: { animations: 'disabled', caret: 'hide', scale: 'css', maxDiffPixels: 0 },
+    // Near exact: the default tolerance passes a pixel within a fifth of its
+    // colour, enough to hide a changed icon or token. 0.02 passes only the few
+    // steps of edge smoothing that differ from run to run.
+    toHaveScreenshot: { animations: 'disabled', caret: 'hide', scale: 'css', maxDiffPixels: 0, threshold: 0.02 },
   },
   use: {
     browserName: 'webkit',

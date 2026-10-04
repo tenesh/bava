@@ -51,6 +51,17 @@ export function offersMiddles(element: SceneElement, editing: boolean): boolean 
   return points.length <= 4 || editing;
 }
 
+/**
+ * Which selected element shows no chrome of its own while an editor works on
+ * it: the line in point editing, else a code block whose editor is open (the
+ * editor covers it). The stage draws by it and the pointer presses by it, so
+ * a handle not drawn is not pressed.
+ */
+export function editingFor(selected: SceneElement[], pointEditing: string | null, textEditing: string | null): string | null {
+  if (pointEditing) return pointEditing;
+  return selected.length === 1 && selected[0].type === 'code' && textEditing === selected[0].id ? textEditing : null;
+}
+
 /** `editing`: the id of a line or arrow in point editing, which shows only its points. */
 export function chromeFor(selected: SceneElement[], editing: string | null = null): Chrome {
   if (selected.length === 1 && editing === selected[0].id) return { box: false, handles: [], rotate: false };

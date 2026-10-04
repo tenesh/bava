@@ -41,7 +41,7 @@ import { moveSegment, releaseSegment } from './elbow-segments';
 import { carriedWith, releaseFrames } from './containment';
 import { measureCode, MIN_RESIZE_COLUMNS, type CodeMetrics } from './code/measure';
 import { insideFilledLine, isLinear, nearElement, tensionOf } from './hit';
-import { besideLabel, chromeFor, elbowSegmentHandles, focusSpots, grown, labelSpotEnds, offersMiddles } from './selection-chrome';
+import { besideLabel, chromeFor, editingFor, elbowSegmentHandles, focusSpots, grown, labelSpotEnds, offersMiddles } from './selection-chrome';
 import type { CursorTarget } from './cursor';
 import { simplify } from './stroke';
 import { ANGLE_STEP, snapAngle, squareBox } from './constrain';
@@ -150,6 +150,12 @@ export type PointerHandlerOptions = {
    * screen px, divided by the zoom.
    */
   confirmDistance?: () => number;
+  /**
+   * The element an editor over the canvas is typing into (a label, text or a
+   * code block), or null: a code block being edited shows no handles, so none
+   * of them can be pressed. None when not given.
+   */
+  editingText?: () => ElementId | null;
   /** An arrow's label box in scene space, as the stage draws it, for sliding it. */
   labelBounds?: (id: ElementId) => Box | null;
   /**
@@ -333,6 +339,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   const bendInsertDistance = options.bendInsertDistance ?? (() => 10);
   const minLinear = options.minLinear ?? (() => 20);
   const confirmDistance = options.confirmDistance ?? (() => 8);
+  const editingText = options.editingText ?? (() => null);
   const newStyle = options.newStyle ?? (() => ({}));
   const bindingEnabled = options.bindingEnabled ?? (() => true);
   const labelDrag = options.labelDrag ?? (() => 10);
@@ -392,7 +399,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       // Selected alone and showing a box (a bent line), it is hit anywhere in
       // the box as drawn, its padding included (Excalidraw's `App.tsx:6824-6842`).
       if (selection.ids.length !== 1 || !selection.has(e.id)) return false;
-      const chrome = chromeFor([e], currentEditing()?.id ?? null);
+      const chrome = chromeFor([e], editingFor([e], currentEditing()?.id ?? null, editingText()));
       return chrome.box && containsPoint({ ...e, ...grown(e, chrome.padded ? bentBoxPadding() : tolerance) }, point);
     });
   }
@@ -1989,7 +1996,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     const bounds = { x: frame.x, y: frame.y, w: frame.w, h: frame.h };
     const size = handleSize();
     // Only the handles the stage draws for this selection can be pressed.
-    const chrome = chromeFor(history.current.elements.filter((e) => selection.has(e.id)), editingId);
+    const chosen = history.current.elements.filter((e) => selection.has(e.id));
+    const chrome = chromeFor(chosen, editingFor(chosen, editingId, editingText()));
     // Handles are drawn on the frame, so a press is read in its space.
     const local = pointInFrame(point, frame);
     // Where the handles are drawn: out on a padded box. A resize still

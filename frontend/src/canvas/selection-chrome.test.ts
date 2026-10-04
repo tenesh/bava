@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { besideLabel, labelSpotEnds } from './selection-chrome';
+import { besideLabel, editingFor, labelSpotEnds } from './selection-chrome';
 import type { SceneElement } from './scene';
 import { routePoints } from './arrows';
 
@@ -66,5 +66,28 @@ describe('labelSpotEnds', () => {
 
   it('keeps clear of whichever heads the arrow has', () => {
     expect(labelSpotEnds(arrow({ startArrowhead: 'diamond', endArrowhead: 'none' }), [0, 0, 200, 0], 5)).toEqual([34, 15]);
+  });
+});
+
+// The one element an editor covers, which the stage leaves undrawn and the
+// pointer leaves unpressed.
+describe('editingFor', () => {
+  const element = (id: string, type: string) => ({ id, type, x: 0, y: 0, w: 100, h: 50, z: 1 }) as unknown as SceneElement;
+
+  it('is the line in point editing, whatever text is being edited', () => {
+    expect(editingFor([element('l', 'line')], 'l', 'c')).toBe('l');
+  });
+
+  it('is a code block alone whose editor is open', () => {
+    expect(editingFor([element('c', 'code')], null, 'c')).toBe('c');
+  });
+
+  it('is nothing for a label or free text being typed, which keeps its handles', () => {
+    expect(editingFor([element('r', 'rect')], null, 'r')).toBeNull();
+    expect(editingFor([element('t', 'text')], null, 't')).toBeNull();
+  });
+
+  it('is nothing when more than one element is selected', () => {
+    expect(editingFor([element('c', 'code'), element('d', 'code')], null, 'c')).toBeNull();
   });
 });

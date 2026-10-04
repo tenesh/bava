@@ -1119,6 +1119,24 @@ describe('a code block resized by hand', () => {
     return { ...kit, block };
   }
 
+  // While its editor is open the block shows no handles, so a press where a
+  // corner was is no resize: what is not drawn cannot be pressed.
+  it('takes no resize from a corner hidden by its open editor', () => {
+    const kit = placed();
+    const handler = createPointerHandler({
+      history: kit.history,
+      selection: kit.selection,
+      tools: kit.tools,
+      handleSize: () => 4,
+      editingText: () => 'c',
+    });
+    handler.down(at(100, 40));
+    handler.move(at(300, 300));
+    handler.up(at(300, 300));
+    expect(kit.block().w).toBe(100);
+    expect(kit.block().h).toBe(40);
+  });
+
   // A corner resizes it like a shape, the height never below its code.
   it('resizes from a corner, never shorter than its code', () => {
     const { handler, block } = placed();
