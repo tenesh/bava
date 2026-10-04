@@ -34,7 +34,7 @@ import { canvasLineWidth } from './text-measure';
 import { LABEL_CLEARANCE, drawHead, endSegment, headAt, headDash, labelCorners, labelLayout, middlesAlong, pathOf } from './arrows';
 import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
 import { handleCentre, rotateHandleCentre } from './resize';
-import { besideLabel, chromeFor, elbowSegmentHandles, focusSpots, grown, labelSpotEnds, offersMiddles } from './selection-chrome';
+import { besideLabel, chromeFor, editingFor, elbowSegmentHandles, focusSpots, grown, labelSpotEnds, offersMiddles } from './selection-chrome';
 import { angleOfElement, centreOf, selectionFrame } from './rotate';
 import type { Guide } from './snapping';
 import { gridDots } from './grid';
@@ -619,8 +619,7 @@ export class CanvasStage {
     // A line in point editing shows its points alone, as Excalidraw's editor.
     // A code block whose editor is open shows none: the editor covers it.
     const editingThis = selected.length === 1 && this.#pointEditing?.id === selected[0].id;
-    const codeEditing = selected.length === 1 && selected[0].type === 'code' && this.#editing === selected[0].id;
-    const chrome = chromeFor(selected, this.#pointEditing?.id ?? (codeEditing ? this.#editing : null));
+    const chrome = chromeFor(selected, editingFor(selected, this.#pointEditing?.id ?? null, this.#editing));
     const tight = bounds;
     if (chrome.padded) bounds = grown(tight, number(read, '--size-bent-box-padding') * scale);
     if (chrome.box) {
@@ -1035,6 +1034,11 @@ export class CanvasStage {
   invalidate(): void {
     for (const entry of this.#entries.values()) entry.applied = null;
     this.render(this.#last);
+  }
+
+  /** The element an editor is typing into, if any (see `setEditing`). */
+  editing(): ElementId | null {
+    return this.#editing;
   }
 
   /**

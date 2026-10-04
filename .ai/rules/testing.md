@@ -103,6 +103,20 @@ image under `testdata/visual/` before keeping it, and list them in the report
 so the user sees them too. Regenerating because the check went red is how a
 drawing regression becomes the new expected state, exactly as with goldens.
 
+## Pictures compare almost exactly
+`maxDiffPixels: 0` and `threshold: 0.02` in
+`tests/visual/playwright.config.ts`. Playwright's default, 0.2, passes a pixel
+within a fifth of its colour, which hid an icon's missing dot and a dozen
+colour fixes behind references that never failed and so were never
+regenerated. 0.02 passes the one to three steps of edge smoothing that differ
+between runs under load, and fails the twelve and more a token change makes.
+Never raise it to quiet a failure: find what changed.
+
+## A click that leaves a cell selection is held
+A walk's click that moves the caret out of selected table cells is held, as
+a person's is (`click({ delay: 50 })`). Pressed and released in the same
+instant, it left the cells selected in 16 of 40 runs under load.
+
 ## References are small and named by where they are
 `testdata/visual/<area>/<screen>--<state>--<theme>.png`, one area per
 `specs/<area>.spec.ts` (the list is the coverage table in

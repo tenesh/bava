@@ -160,6 +160,10 @@ for (const theme of THEMES) {
         return svg.top >= frame.top - 0.5 && svg.bottom <= frame.bottom + 0.5 && svg.left >= frame.left - 0.5 && svg.right <= frame.right + 0.5;
       });
       expect(fits).toBe(true);
+      // Nothing is selected, so Only selected is off and drawn faded.
+      const onlySelected = openDialog(page).locator('.bava-toggle', { hasText: 'Only selected' });
+      await expect(onlySelected).toHaveAttribute('data-disabled', '');
+      await expect.poll(() => onlySelected.locator('.bava-toggle-track').evaluate((track) => getComputedStyle(track).opacity)).not.toBe('1');
       await shotDialog(page, shot('dialogs', 'export', 'canvas', theme));
     });
 

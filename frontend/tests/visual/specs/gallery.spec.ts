@@ -457,6 +457,8 @@ for (const theme of THEMES) {
       const width = cell(page, 'stroke width').locator('.bava-control-trigger');
       const heads = cell(page, 'arrowheads, some behind More');
       const mixed = cell(page, 'mixed').locator('.bava-control-trigger');
+      // The arrowheads chip is the end-head icon: a line, its head and a dot.
+      await expect(heads.locator('.bava-control-trigger svg path')).toHaveCount(2);
       await restPointer(page);
       await shotPane(stage(page), galleryShot('OptionPicker', 'rest', theme));
       await width.hover();

@@ -308,7 +308,11 @@ for (const theme of THEMES) {
       await page.getByRole('menuitem', { name: 'Remove header row' }).click();
       await expect(table.locator('th')).toHaveCount(0);
       // Nothing selected and the pointer away, so only the table is in the picture.
-      await editor(page).locator('h1').click();
+      // Held as a person holds it: a press and release in the same instant can
+      // leave the cell selection in place.
+      await expect(menus(page)).toHaveCount(0);
+      await editor(page).locator('h1').click({ delay: 50 });
+      await expect(table.locator('.selectedCell')).toHaveCount(0);
       await restPointer(page);
       await shotPane(documentPane(page), shot('document', 'table', 'moved-no-header', theme));
     });

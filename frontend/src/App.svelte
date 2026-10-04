@@ -166,6 +166,8 @@
     bendInsertDistance: () => (parseFloat(readRootVariable('--size-bend-insert')) || 0) / viewport.zoom,
     minLinear: () => (parseFloat(readRootVariable('--size-min-linear')) || 0) / viewport.zoom,
     confirmDistance: () => (parseFloat(readRootVariable('--size-line-confirm')) || 0) / viewport.zoom,
+    // A code block whose editor is open has no handles to press.
+    editingText: () => canvas.editing(),
     // An arrow's label as the stage draws it, for sliding it along the arrow.
     labelBounds: (id) => canvas.labelBounds(id),
     // How far a press must travel to be a drag, in scene units at this zoom.
