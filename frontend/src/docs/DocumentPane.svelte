@@ -922,14 +922,16 @@
     run?.(id);
   }}
   onOpenChange={(open) => {
-    if (open) return;
-    menu = null;
+    if (!open) menu = null;
+  }}
+  onClosed={() => {
     // A field or the viewer the chosen item opened takes focus itself.
     if (mediaField || viewer) return;
-    // Closed with nothing to give focus back to (a menu opened at a point has
-    // no button), the page takes it from the closing menu.
+    // A menu opened at a point has no button to give focus back to, and the
+    // closing menu can take it again until it has gone: the page takes it
+    // once nothing else holds it.
     const active = document.activeElement;
-    if (active === null || active === document.body || active.closest('.bava-menu')) editor.focus();
+    if (active === null || active === document.body) editor.focus();
   }}
 />
 

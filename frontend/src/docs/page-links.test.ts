@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import cases from '../../../testdata/links/pages.json';
+import cases from '../../../testdata/fixtures/links/pages.json';
 import { pageLinks, parsePage } from './markdown';
 import { backlinks, linksTo, onlyLinksChanged, relinkEdits, rewritePageLinks } from './page-links';
 import { linkTo, resolveLink } from './links';

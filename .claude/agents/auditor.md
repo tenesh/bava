@@ -7,7 +7,7 @@ You audit Bava and report. You never modify files, never run a git write
 operation (read-only `git status`, `diff`, `log` are fine), and never launch
 the app: the real app runs only on CI. You may run the host checks
 (`go test ./internal/... .`, and in `frontend/` `npx vitest run`,
-`npm run check`, `npm run lint`) but not `npm run visual` unless asked.
+`npm run check`, `npm run lint`) but not `npm run browser` unless asked.
 
 You are given a scope. For it:
 

@@ -12,7 +12,7 @@ import (
 // The committed scenarios parse, so a typo fails here rather than on CI.
 func TestTheCommittedScenariosParse(t *testing.T) {
 	repo := testutil.RepoRoot(t)
-	files, err := filepath.Glob(filepath.Join(repo, "tests", "e2e", "scenarios", "*.json"))
+	files, err := filepath.Glob(filepath.Join(repo, "tests", "e2e", "*.json"))
 	if err != nil || len(files) == 0 {
 		t.Fatalf("no scenarios found: %v", err)
 	}
