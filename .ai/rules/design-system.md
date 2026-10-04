@@ -52,6 +52,11 @@ than invented: **`text-prose`** (document body copy, softer than
 `text-primary`) and **`focus-halo`** (the halo the design's focus recipe
 describes in prose but never names).
 
+**Selected text is `selection`,** set once on `::selection` in
+`styles/base.scss`, never the system highlight: that differs by platform.
+An inactive window still dims it; a rule for that is refused by the
+production minifier (`::selection:window-inactive`), so there is none.
+
 **Shape colours are not tokens.** The swatches in the design's colour picker
 are content a user chooses per element; they live in the scene file, not
 here.

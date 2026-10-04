@@ -1,8 +1,9 @@
 /**
- * The component gallery: each component in `src/components/` on its own, in
- * the states it can show, with the app's tokens, styles and fonts. `?c=` names
- * the component, `&v=` one of its set-ups, `&theme=` light or dark. Props are
- * plain data: nothing here reaches the Go side.
+ * The component gallery: the components in `src/components/`, in the states
+ * they can show, with the app's tokens, styles and fonts. `?sheet=` names a
+ * family's sheet (`gallery/sheets.ts`); or `?c=` names one component and `&v=`
+ * one of its set-ups. `&theme=` is light or dark. Props are plain data:
+ * nothing here reaches the Go side.
  */
 import '../../src/styles/index.scss';
 import { mount } from 'svelte';
@@ -21,5 +22,5 @@ document.documentElement.setAttribute('data-theme', params.get('theme') === 'dar
 
 mount(Gallery, {
   target: document.getElementById('app')!,
-  props: { name: params.get('c') ?? '', variant: params.get('v') ?? '' },
+  props: { name: params.get('c') ?? '', variant: params.get('v') ?? '', sheet: params.get('sheet') ?? '' },
 });

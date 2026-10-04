@@ -283,7 +283,7 @@ export const LEFT_OUT: Record<ElementState, Record<string, string>> = {
     group: 'a group draws no label of its own',
   },
   editing: {
-    line: 'a double-click on a line edits its points, pictured in canvas-states',
+    line: 'a double-click on a line edits its points, pictured as point editing',
     stroke: 'a stroke has no text to edit',
     group: 'a double-click on a group types into the shape under the pointer, pictured as that shape',
   },
@@ -292,12 +292,6 @@ export const LEFT_OUT: Record<ElementState, Record<string, string>> = {
   ),
   erasing: {},
 };
-
-/** The kinds pictured again at about 200% (four steps in), where a handle or an edited label shows its detail. */
-export const AT_200 = {
-  handle: ['rect', 'line-open', 'arrow-straight', 'arrow-arc', 'arrow-elbow'],
-  editing: ['rect', 'arrow-straight', 'text', 'code', 'frame'],
-} as const satisfies Partial<Record<ElementState, readonly Kind[]>>;
 
 /** The kinds a state pictures, in family order. */
 export const pictured = (state: ElementState, among: readonly Kind[] = Object.keys(ELEMENT_KINDS) as Kind[]): Kind[] =>

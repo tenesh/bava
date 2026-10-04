@@ -8,8 +8,11 @@ source files, rewrite references only with `npm run browser:update` for the
 walks you are asked to, never run a git write operation, and never
 launch the app.
 
-1. Read `docs/testing.md` ("Integration and visual regression" and "The standard") and the change
-   you are given (what it meant to alter on screen).
+1. Read `docs/testing.md` ("Integration and visual regression", "Browser
+   tests" and "What the browser tests cover") and the change you are given
+   (what it meant to alter on screen). Most pictures are sheets: a family on
+   one page, each cell captioned with the state it shows, hovered, focused
+   and pressed forced on; check each cell against its caption.
 2. Run the checks in Docker: `cd frontend && npm run browser -- --project=visual`. Judge by exit
    code. If asked to, run `npm run browser:update` for the named walks only,
    to produce the new pictures for review.
@@ -22,7 +25,8 @@ launch the app.
 
 Report per picture: path; what changed; whether it matches the intended
 change; anything else wrong (cut-off text, wrong colour for the theme,
-overlap, a hover or tooltip caught in the picture, stale paint, alignment).
+overlap, a hover or tooltip caught in the picture, a cell not showing the
+state its caption names, stale paint, alignment).
 End with a verdict: keep, or which pictures must not be kept and why. If the
 run failed for a reason other than pixels (a timeout, a locator), give the
 error and the step.

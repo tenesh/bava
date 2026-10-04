@@ -163,6 +163,34 @@ jobs:
       - name: wails3 build
         run: wails3 build
 
+      # Each run's app, to try by hand: a download on the run's page, kept 14
+      # days. Packed first, as an artifact's zip drops the file mode that lets
+      # a program run. Unsigned: on macOS, allowed once in System Settings,
+      # Privacy & Security (docs/testing.md).
+      - name: pack the app
+        shell: bash
+        run: |
+          name="bava-$(echo "$RUNNER_OS" | tr "[:upper:]" "[:lower:]")-${GITHUB_SHA:0:7}"
+          case "$RUNNER_OS" in
+            macOS)
+              wails3 task darwin:create:app:bundle
+              ditto -c -k --keepParent bin/bava.app "$name.zip" ;;
+            Linux) tar -czf "$name.tar.gz" -C bin bava ;;
+            Windows) cp bin/bava.exe "$name.exe" ;;
+          esac
+          echo "APP_NAME=$name" >> "$GITHUB_ENV"
+
+      - name: upload the app
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP_NAME }}
+          path: |
+            ${{ env.APP_NAME }}.zip
+            ${{ env.APP_NAME }}.tar.gz
+            ${{ env.APP_NAME }}.exe
+          if-no-files-found: error
+          retention-days: 14
+
   # Browser tests: visual regression (every screen, drawn by the same browser
   # in the same pinned container as on the developer's Mac, arm64 both,
   # compared with the approved screenshots in testdata/visual) and integration
@@ -300,4 +328,8 @@ jobs:
           npm run build
           if grep -rl "internal/e2e.Service" dist; then
             echo "::error::the release bundle contains the smoke driver"; exit 1
+          fi
+          # The browser tests' forced states belong to their test page only.
+          if grep -rl "data-force" dist; then
+            echo "::error::the release bundle contains the browser tests' forced states"; exit 1
           fi

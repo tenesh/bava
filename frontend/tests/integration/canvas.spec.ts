@@ -15,6 +15,7 @@ import {
   ofType,
   onScreen,
   openCanvas,
+  openKinds,
   openDialog,
   pick,
   placed,
@@ -22,6 +23,7 @@ import {
   popovers,
   pointsOf,
   reopened,
+  restPointer,
   saved,
   selectTool,
   selectionToolbar,
@@ -272,8 +274,8 @@ test.describe('arranging', () => {
     expect((await saved(page)).map((element) => element.id).sort()).toEqual(['b1', 'b2', 'b3']);
   });
 
-  // The walk `canvas-elements` pictures mid-drag: what the trail faded is
-  // what the release deletes, all of it, for every kind.
+  // What the eraser's trail fades is what the release deletes, all of it,
+  // for every kind.
   for (const [family, members] of Object.entries(FAMILIES)) {
     test(`the eraser across every ${family} kind deletes them all`, async ({ page }) => {
       const scene = elementScene(pictured('erasing', members));
@@ -708,7 +710,10 @@ test.describe('export', () => {
     await startCanvas(page, scene());
     const whole = pngFacts((await exportAs(page, 'PNG', { scale: '1×' })).contentsBase64);
     await page.keyboard.press('Escape');
+    // The click lands on the canvas, not on the closing dialog, and selects.
+    await expect(openDialog(page)).toHaveCount(0);
     await clickScene(page, { x: 160, y: 140 });
+    await expect(selectionToolbar(page)).toBeVisible();
     const part = pngFacts((await exportAs(page, 'PNG', { onlySelected: true })).contentsBase64);
     expect(part.width).toBeLessThan(whole.width);
     expect(part.height).toBeLessThan(whole.height);
@@ -1134,4 +1139,80 @@ test.describe('menus over the canvas', () => {
     const shape = byId(await saved(page), 'k-shape');
     expect({ x: shape.x, y: shape.y }).toEqual({ x: before.x, y: before.y });
   });
+});
+
+// The canvas's menus: what each opens with, and how it is moved through.
+test.describe('menus on the canvas', () => {
+  test('the toolbar’s More opens with no row highlighted', async ({ page }) => {
+    const points = await openKinds(page, 'light');
+    await clickScene(page, points.shape);
+    await selectionToolbar(page).getByRole('button', { name: 'More actions' }).click();
+    await expect(menus(page)).toHaveCount(1);
+    await restPointer(page);
+    // Opened by a click: no row is highlighted until the pointer or a key moves to one.
+    await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
+  });
+
+  test('the right-click menu opens with no row highlighted, and each submenu opens from the keyboard', async ({ page }) => {
+    const points = await openKinds(page, 'light');
+    await clickScene(page, points.shape, { button: 'right' });
+    await expect(menus(page)).toHaveCount(1);
+    await restPointer(page);
+    await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
+    const labels = (await menus(page).first().locator('[data-part="trigger-item"]').allInnerTexts()).map((text) => text.trim());
+    expect(labels.length).toBeGreaterThan(0);
+    // Each from a fresh menu, by keys: by pointer, Ark holds a submenu shut a
+    // moment while the pointer may be heading into another.
+    for (const label of labels) {
+      await page.keyboard.press('Escape');
+      await expect(menus(page)).toHaveCount(0);
+      await clickScene(page, points.shape, { button: 'right' });
+      await restPointer(page);
+      const trigger = menus(page).first().locator('[data-part="trigger-item"]', { hasText: label });
+      const highlighted = menus(page).first().locator('[data-highlighted]');
+      // Pressed again while the menu has not yet taken focus: it takes it a
+      // moment after it shows, and a key before then goes to the canvas.
+      await expect(async () => {
+        await page.keyboard.press('Home');
+        await expect(highlighted).toHaveCount(1, { timeout: 500 });
+      }).toPass({ timeout: 5000 });
+      for (let step = 0; step < 20 && (await trigger.getAttribute('data-highlighted')) === null; step += 1) {
+        const before = await highlighted.innerText();
+        await page.keyboard.press('ArrowDown');
+        await expect(highlighted).not.toHaveText(before);
+      }
+      await page.keyboard.press('ArrowRight');
+      await expect(menus(page)).toHaveCount(2);
+      await expect(trigger).toHaveAttribute('data-highlighted', '');
+    }
+  });
+
+  test('locked elements: Select All selects none, and empty canvas offers Unlock All', async ({ page }) => {
+    const scene = elementScene(pictured('locked', FAMILIES.shapes), { locked: true });
+    await openCanvas(page, 'light', CANVAS_PAGE, scene.elements);
+    const empty = { x: 900, y: 600 };
+    await clickScene(page, empty);
+    await menu(page, 'edit.selectAll');
+    await expect(selectionToolbar(page)).toHaveCount(0);
+    await clickScene(page, empty, { button: 'right' });
+    await expect(menus(page)).toHaveCount(1);
+    await expect(menus(page).getByRole('menuitem', { name: /unlock all/i })).toBeVisible();
+    await restPointer(page);
+    await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
+  });
+});
+
+// The engine's own controls, and its layout, in Diagram from Code.
+test.describe('Diagram from Code', () => {
+  for (const engine of ['Dagre', 'ELK']) {
+    test(`with ${engine}, offers a direction and lays the code out`, async ({ page }) => {
+      await openKinds(page, 'light');
+      await menu(page, 'insert.diagram');
+      await expect(openDialog(page).locator('.cm-content')).toBeFocused();
+      await openDialog(page).getByText(engine, { exact: true }).click();
+      await expect(openDialog(page).getByRole('radio', { name: engine })).toBeChecked();
+      await expect(openDialog(page).getByRole('radiogroup', { name: 'Direction' })).toBeVisible();
+      await expect(openDialog(page).locator('.bava-diagram-preview svg')).toBeVisible();
+    });
+  }
 });

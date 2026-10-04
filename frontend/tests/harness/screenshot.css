@@ -1,0 +1,9 @@
+/*
+ * Applied only while a screenshot is taken. Headless WebKit paints the
+ * browser's text selection at one of two strengths, by a window state a test
+ * cannot set, so pictures leave it out; which text is selected is asserted
+ * from the page, and its colour by styles/selection.test.ts.
+ */
+::selection {
+  background: transparent !important;
+}

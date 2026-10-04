@@ -18,7 +18,9 @@ function setup() {
   });
   const { target } = render(FindBar, props);
   const [find, replace] = target.querySelectorAll('input');
-  return { props, find, replace };
+  const button = (name: string) => target.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`)!;
+  const position = () => target.querySelector('.position')!.textContent;
+  return { props, find, replace, button, position };
 }
 
 describe('FindBar', () => {
@@ -33,5 +35,28 @@ describe('FindBar', () => {
     expect(document.activeElement).toBe(replace);
     flushSync(() => (props.focus = { field: 'find', at: 3 }));
     expect(document.activeElement).toBe(find);
+  });
+
+  it('searches what is typed, and counts the matches it is told of', () => {
+    const { props, find, button, position } = setup();
+    find.value = 'plan';
+    flushSync(() => find.dispatchEvent(new Event('input', { bubbles: true })));
+    expect(props.onFind).toHaveBeenLastCalledWith('plan');
+    flushSync(() => {
+      props.count = 3;
+      props.index = 0;
+    });
+    expect(position()).toBe('1 of 3');
+    expect(button('Previous match').disabled).toBe(false);
+    expect(button('Next match').disabled).toBe(false);
+  });
+
+  it('says when nothing matches, with nowhere to move to', () => {
+    const { find, button, position } = setup();
+    find.value = 'zzz';
+    flushSync(() => find.dispatchEvent(new Event('input', { bubbles: true })));
+    expect(position()).toBe('No matches');
+    expect(button('Previous match').disabled).toBe(true);
+    expect(button('Next match').disabled).toBe(true);
   });
 });

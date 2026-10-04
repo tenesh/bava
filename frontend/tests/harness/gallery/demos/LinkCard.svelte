@@ -3,8 +3,6 @@
   import Cell from '../Cell.svelte';
   import { settledBox } from '../settled';
 
-  let { variant }: { variant: string } = $props();
-
   type Card = { name: string; href: string; missing: boolean; relinkName: string | null; readOnly?: boolean };
 
   const ALL: Card[] = [
@@ -14,8 +12,7 @@
     { name: 'on a locked page', href: 'Engineering/Architecture.md', missing: false, relinkName: null, readOnly: true },
     { name: 'a long address', href: 'https://example.com/a/very/long/address/that/runs/well/past/the/width/of/the/card?with=a&query=string', missing: false, relinkName: null },
   ];
-  // From the keyboard: the first link alone, its first button focused.
-  const cards = $derived(variant === 'keyboard' ? ALL.slice(0, 1) : ALL);
+  const cards = ALL;
 
   const anchors: HTMLElement[] = $state([]);
   let places = $state<({ left: number; bottom: number } | null)[]>([]);
@@ -28,7 +25,18 @@
 
 <div class="column">
   {#each cards as card, index (card.name)}
-    <Cell name={card.name} width="26rem" height="7rem">
+    <!-- The first card's Open hovered and its Edit focused. -->
+    <Cell
+      name={index === 0 ? `${card.name}; Open hovered, Edit focused` : card.name}
+      width="26rem"
+      height="7rem"
+      marks={index === 0
+        ? [
+            { scope: 'page', target: '.link-card .bava-button:not(.ghost)', force: 'hover' },
+            { scope: 'page', target: '.link-card .bava-button.ghost', force: 'focus' },
+          ]
+        : undefined}
+    >
       <span class="link" bind:this={anchors[index]}>{card.href}</span>
     </Cell>
   {/each}
@@ -42,7 +50,6 @@
       missing={card.missing}
       relinkName={card.relinkName}
       readOnly={card.readOnly}
-      focusFirst={variant === 'keyboard'}
       onOpen={() => {}}
       onEdit={() => {}}
       onRemove={() => {}}

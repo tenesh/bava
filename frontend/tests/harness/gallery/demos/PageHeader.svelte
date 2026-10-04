@@ -9,6 +9,12 @@
   <Cell name="locked" width="28rem"><PageHeader crumbs={['Roadmap']} locked onMenu={() => {}} /></Cell>
   <Cell name="long folders" width="28rem"><PageHeader crumbs={['Research and development', 'Customer interviews', 'Week one notes']} locked onMenu={() => {}} /></Cell>
   <Cell name="long" width="28rem"><PageHeader crumbs={['Research', 'Interviews', LONG]} locked onMenu={() => {}} /></Cell>
+  <Cell name="its menu button hovered" width="28rem" force="hover" target="[aria-label=&quot;Page menu&quot;]">
+    <PageHeader crumbs={['Engineering', 'Architecture']} locked={false} onMenu={() => {}} />
+  </Cell>
+  <Cell name="its menu button focused" width="28rem" force="focus" target="[aria-label=&quot;Page menu&quot;]">
+    <PageHeader crumbs={['Engineering', 'Architecture']} locked={false} onMenu={() => {}} />
+  </Cell>
 </div>
 
 <style>

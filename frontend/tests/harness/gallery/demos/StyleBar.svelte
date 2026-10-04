@@ -5,20 +5,23 @@
   let { variant }: { variant: string } = $props();
 
   type Current = string | null | 'mixed' | 'unavailable';
-  const ALL: { name: string; fill: Current; stroke: Current; color: Current }[] = [
+  const ALL: { name: string; fill: Current; stroke: Current; color: Current; force?: 'hover' | 'active' | 'focus' }[] = [
     { name: 'defaults', fill: null, stroke: null, color: null },
     { name: 'swatches', fill: 'blue', stroke: 'red', color: 'green' },
     { name: 'colours of their own', fill: '#ffe066', stroke: '#d9480f', color: '#5f3dc4' },
     { name: 'mixed', fill: 'mixed', stroke: 'mixed', color: 'mixed' },
     { name: 'a line: border only', fill: 'unavailable', stroke: 'purple', color: 'unavailable' },
+    { name: 'fill hovered', fill: 'blue', stroke: 'red', color: 'green', force: 'hover' },
+    { name: 'fill pressed', fill: 'blue', stroke: 'red', color: 'green', force: 'active' },
+    { name: 'fill focused', fill: 'blue', stroke: 'red', color: 'green', force: 'focus' },
   ];
   // A picker's chip is found by a fixed id, as the app has one bar at a time:
-  // a bar opened or hovered is shown alone.
+  // a bar opened is shown alone.
   const bars = $derived(variant === 'swatches' ? [ALL[1]] : variant === 'own' ? [ALL[2]] : ALL);
 </script>
 
 {#each bars as bar (bar.name)}
-  <Cell name={bar.name}>
+  <Cell name={bar.name} force={bar.force} target={bar.force ? '.bava-style-trigger' : undefined}>
     <div class="bar"><StyleBar fill={bar.fill} stroke={bar.stroke} color={bar.color} onApply={() => {}} /></div>
   </Cell>
 {/each}

@@ -251,7 +251,7 @@ Catch yourself thinking any of these and stop. The thought is the signal.
 
 ## Current repo state
 
-Facts that affect the gates, **verified 2026-10-03**. This is the only place
+Facts that affect the gates, **verified 2026-10-04**. This is the only place
 volatile facts live: `CLAUDE.md` and `.ai/rules/` state intent and settled
 decisions; this section states what is true in the tree today. Re-verify
 before trusting any line; every session that trusts a stale line starts from
@@ -260,14 +260,13 @@ History belongs in each plan's As built, not here.
 
 ### Milestones
 
-- **Committed through Milestone 8.4a** (canvas testing). HEAD is `e4b0061`.
-  **Next is 8.5** (Canvas in the Document), then 8.6 (tags and templates),
-  then Milestone 15 (export, import and search). The roadmap
-  (`.claude/plan/roadmap.md`) holds the sequence.
-- **CI** has been green on all three platforms, smoke runs included. The 8.4a
-  run failed only on a rare vitest teardown error in
-  `frontend/src/components/media-viewer.test.ts`, fixed in `e4b0061`. The
-  next CI run is the check, and the first run of the `canvas` smoke scenario.
+- **Committed through 08.4d** (the test layout). HEAD is `512cfe4`.
+  **08.4e** (visual sheets) is built and gated, uncommitted. **Next is 8.5**
+  (Canvas in the Document), then 8.6 (tags and templates), then Milestone 15
+  (export, import and search). The roadmap (`.claude/plan/roadmap.md`) holds
+  the sequence.
+- **CI** builds a downloadable app per system on every run (artifacts
+  `bava-<os>-<commit>`, 14 days) from 08.4e on; its first run is the check.
 - Each plan under `.claude/work/plans/` has an "As built" section with its
   deviations, its review outcome and the checks left to a person at a running
   window (feel, native menus, each platform's webview).
@@ -319,9 +318,9 @@ History belongs in each plan's As built, not here.
 | `go test ./internal/render -run Golden` | exit 0 (inside the run above); 2 fixtures under `testdata/golden/`, light and dark |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 2,598 tests passed and 1 skipped, in 195 files |
+| `npm test` | exit 0; 2,602 tests passed and 1 skipped, in 196 files |
 | `npm run build` | CI's first frontend step. The production minifier rejects some CSS the dev server and the browser tests accept (WebKit-only selectors such as `::selection:window-inactive`) |
-| `npm run browser` | last full run 2026-10-04: 881 passed (742 visual, 139 integration); 1157 references in `testdata/visual/` |
+| `npm run browser` | last full runs 2026-10-04: 421 passed (204 visual, 217 integration), three in a row; 248 references in `testdata/visual/` |
 | CI end-to-end | `create`, `reopen` and `canvas` on all three platforms; see Milestones for the last run |
 | `wails3 build` | CI only |
 

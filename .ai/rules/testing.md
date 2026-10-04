@@ -105,8 +105,33 @@ launch with every unit test green. That is the visual layer's job.
 Any change that alters what the user sees (a component, a style, a token, a
 layout, a string) runs `npm run browser` before it is called done. Every
 screenshot it reports as changed is opened and read, in both themes. A
-passing check with no changed images is evidence only for the screens the
-walks cover: a new screen or dialog gets a walk in the same change.
+passing check with no changed images is evidence only for what is pictured:
+a new component joins its family's sheet, and a new screen or dialog gets a
+picture, in the same change.
+
+## A picture shows what nothing else shows
+One sheet per family, its states side by side, not one picture per state:
+the old suite took 1,157 pictures, most of a state a test could read, and
+broke on every colour change and flake. A state the page can say (pressed,
+disabled, checked, open, a count) is asserted as data before the picture. A
+picture shows a finished state, set by fixtures or one action; how it is
+reached is an integration or unit test. Before a picture goes, what it
+showed is checked somewhere else.
+
+## Forced states, and what they must not touch
+Hovered, focused and pressed are forced on a sheet: in the test page each
+`:hover`, `:focus-visible` and `:active` rule also matches `data-force`
+(`harness/force-states.ts`). A state inside `:not()` is left as written:
+`:not(:hover)` rewritten matches every element, which hid the code block's
+Copy button under a real pointer. The app's own build never has the plugin
+(a test checks `vite.config.ts`).
+
+## Pictures leave out the text selection
+`harness/screenshot.css`, applied only while a screenshot is taken, makes
+the browser's selection transparent. Headless WebKit paints a selection at
+one of two strengths by a window state no test sets (not the page's focus:
+probed). Which text is selected is asserted from the page; its colour,
+`--color-selection`, by `styles/selection.test.ts`.
 
 ## A reference changes only when it has been looked at
 `npm run browser:update` is for an intended change. Open every new or changed

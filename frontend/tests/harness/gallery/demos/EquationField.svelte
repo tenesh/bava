@@ -4,24 +4,34 @@
   import Cell from '../Cell.svelte';
   import { settledBox } from '../settled';
 
-  let { variant }: { variant: string } = $props();
+  // Empty, inline and on its own line: each under its equation.
+  const fields = [
+    { name: 'empty', value: '', display: false },
+    { name: 'inline', value: 'E = mc^2', display: false },
+    { name: 'on its own line', value: '\\int_0^1 x^2 \\, dx = \\frac{1}{3}', display: true },
+  ];
 
-  const display = $derived(variant === 'display');
-  const value = $derived(variant === 'empty' ? '' : variant === 'display' ? '\\int_0^1 x^2 \\, dx = \\frac{1}{3}' : 'E = mc^2');
-
-  let anchor: HTMLElement | undefined = $state();
-  let at = $state<{ left: number; top: number; bottom: number } | null>(null);
+  const anchors = $state<(HTMLElement | undefined)[]>([]);
+  const at = $state<({ left: number; top: number; bottom: number } | null)[]>(fields.map(() => null));
   $effect(() => {
-    if (anchor) void settledBox(anchor).then((box) => (at = { left: box.left, top: box.top, bottom: box.bottom }));
+    anchors.forEach((anchor, index) => {
+      if (anchor) void settledBox(anchor).then((box) => (at[index] = box));
+    });
   });
 </script>
 
-<Cell name="under its equation" width="24rem" height="14rem">
-  <span class="anchor" bind:this={anchor}>The equation</span>
-</Cell>
-{#if at}
-  <EquationField {at} {value} {display} render={renderTex} onSave={() => {}} onCancel={() => {}} />
-{/if}
+{#each fields as field, index (field.name)}
+  <Cell name={field.name} width="24rem" height="14rem">
+    <span class="anchor" bind:this={anchors[index]}>The equation</span>
+  </Cell>
+{/each}
+
+{#each fields as field, index (field.name)}
+  {@const place = at[index]}
+  {#if place}
+    <EquationField at={place} value={field.value} display={field.display} render={renderTex} onSave={() => {}} onCancel={() => {}} />
+  {/if}
+{/each}
 
 <style>
   .anchor {

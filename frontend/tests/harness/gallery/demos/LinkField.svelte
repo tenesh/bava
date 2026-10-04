@@ -4,27 +4,46 @@
   import Cell from '../Cell.svelte';
   import { settledBox } from '../settled';
 
-  let { variant }: { variant: string } = $props();
+  // A new link, its field focused as it opens; a link with its address; and a
+  // caption: each over its words.
+  const fields = [
+    { name: 'a new link', value: '', caption: false },
+    { name: 'linked', value: 'https://example.com/docs', caption: false },
+    { name: 'a caption', value: '', caption: true },
+  ];
 
-  let anchor: HTMLElement | undefined = $state();
-  let at = $state<{ left: number; top: number } | null>(null);
+  const anchors = $state<(HTMLElement | undefined)[]>([]);
+  const at = $state<({ left: number; top: number } | null)[]>(fields.map(() => null));
   $effect(() => {
-    if (anchor) void settledBox(anchor).then((box) => (at = { left: box.left, top: box.top }));
+    anchors.forEach((anchor, index) => {
+      if (anchor) void settledBox(anchor).then((box) => (at[index] = { left: box.left, top: box.top }));
+    });
   });
 </script>
 
-<Cell name="over selected words" width="26rem" height="5rem">
-  <p class="line"><mark class="selected" bind:this={anchor}>selected words</mark> of a paragraph.</p>
-</Cell>
-{#if at}
-  {#if variant === 'linked'}
-    <LinkField {at} value="https://example.com/docs" onApply={() => {}} onRemove={() => {}} onCancel={() => {}} />
-  {:else if variant === 'caption'}
-    <LinkField {at} value="" placeholder={t('media.captionPlaceholder')} removeLabel={null} keepOnAway onApply={() => {}} onRemove={() => {}} onCancel={() => {}} />
-  {:else}
-    <LinkField {at} value="" onApply={() => {}} onRemove={() => {}} onCancel={() => {}} />
+{#each fields as field, index (field.name)}
+  <Cell
+    name={field.name}
+    width="26rem"
+    height="5rem"
+    force={index === 0 ? 'focus' : undefined}
+    scope="page"
+    target={index === 0 ? '.link-field input' : undefined}
+  >
+    <p class="line"><mark class="selected" bind:this={anchors[index]}>selected words</mark> of a paragraph.</p>
+  </Cell>
+{/each}
+
+{#each fields as field, index (field.name)}
+  {@const place = at[index]}
+  {#if place}
+    {#if field.caption}
+      <LinkField at={place} value="" placeholder={t('media.captionPlaceholder')} removeLabel={null} keepOnAway onApply={() => {}} onRemove={() => {}} onCancel={() => {}} />
+    {:else}
+      <LinkField at={place} value={field.value} onApply={() => {}} onRemove={() => {}} onCancel={() => {}} />
+    {/if}
   {/if}
-{/if}
+{/each}
 
 <style>
   .line {
