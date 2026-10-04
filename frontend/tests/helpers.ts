@@ -54,6 +54,10 @@ async function loadApp(page: Page, theme: Theme, storage: Record<string, string>
   await page.goto('/tests/harness/index.html');
 }
 
+/** The settings the stand-in holds as saved. */
+export const savedSettings = (page: Page) =>
+  page.evaluate(() => (window as unknown as { __bava: { fakes: { harness: { settings(): Record<string, unknown> } } } }).__bava.fakes.harness.settings());
+
 /** Opens the app on the harness page, in a theme, and waits for it to settle. */
 export async function openApp(page: Page, theme: Theme, storage: Record<string, string> = {}, boot: Boot = {}) {
   await loadApp(page, theme, storage, boot);
@@ -226,17 +230,22 @@ export async function shotDialog(page: Page, name: string[], dialog: Locator = o
 
 /**
  * Waits for something floating to be placed: Ark shows a floating piece
- * above the window, then moves it beside what it floats from a moment later.
+ * above the window or at its edge, then moves it beside what it floats from a
+ * moment later.
  * A click or a measurement before then lands where it no longer is.
  */
 export async function placed(floating: Locator) {
   await expect(floating.first()).toBeVisible();
+  const view = floating.page().viewportSize()!;
   let before = '';
   await expect
     .poll(async () => {
       const boxes = await Promise.all((await floating.all()).map((part) => part.boundingBox()));
       const now = JSON.stringify(boxes);
-      const still = now === before && boxes.every((box) => box !== null && box.y >= 0 && box.x >= 0);
+      // Still, and inside the window: before it is placed it can wait at an edge.
+      const inside = (box: { x: number; y: number; width: number; height: number } | null) =>
+        box !== null && box.x >= 0 && box.y >= 0 && box.x + box.width <= view.width && box.y + box.height <= view.height;
+      const still = now === before && boxes.every(inside);
       before = now;
       return still;
     })
@@ -258,7 +267,7 @@ const SHADOW = 16;
 export async function shotFloating(page: Page, anchor: Locator | null, floating: Locator, name: string[]) {
   await placed(floating);
   const parts = [...(anchor ? await anchor.all() : []), ...(await floating.all())];
-  const marked = await markPictured(parts);
+  await markPictured(parts);
   try {
     const cells = await page.locator('[data-pictured]').all();
     const boxes = (await Promise.all([...parts, ...cells].map((part) => part.boundingBox()))).filter((box) => box !== null);
@@ -269,26 +278,24 @@ export async function shotFloating(page: Page, anchor: Locator | null, floating:
     const bottom = Math.min(view.height, Math.ceil(Math.max(...boxes.map((box) => box.y + box.height)) + SHADOW));
     await expect(page).toHaveScreenshot(name, { clip: { x: left, y: top, width: right - left, height: bottom - top } });
   } finally {
-    if (marked) await page.locator('[data-pictured]').evaluateAll((cells) => cells.forEach((cell) => cell.removeAttribute('data-pictured')));
+    await page.locator('[data-pictured]').evaluateAll((all) => all.forEach((each) => each.removeAttribute('data-pictured')));
   }
 }
 
 /**
- * Marks the gallery cells holding `parts` as the ones pictured (the gallery
- * hides the rest while any is marked). Whether any was: outside the gallery,
- * or with the whole gallery as the anchor, none is.
+ * Marks what is pictured, and the gallery cells holding it (the gallery hides
+ * the rest while any is marked: other cells, and pieces floating open all
+ * along). Every part is held before any is marked, as marking hides what is
+ * not yet marked.
  */
 async function markPictured(parts: Locator[]) {
-  let marked = false;
-  for (const part of parts) {
-    const cell = await part.evaluate((element) => {
-      const found = element.closest('[data-cell]');
-      found?.setAttribute('data-pictured', '');
-      return found !== null;
+  const held = await Promise.all(parts.map((part) => part.elementHandle()));
+  for (const element of held) {
+    await element!.evaluate((node) => {
+      node.setAttribute('data-pictured', '');
+      node.closest('[data-cell]')?.setAttribute('data-pictured', '');
     });
-    marked ||= cell;
   }
-  return marked;
 }
 
 // ---- the Document ----------------------------------------------------------------
@@ -874,6 +881,25 @@ export async function openGallery(page: Page, component: string, theme: Theme, v
   await expect(page.locator(`[data-gallery="${component}"]`)).toBeVisible({ timeout: 15_000 });
   await page.evaluate(() => document.fonts.ready);
 }
+
+/**
+ * Opens a component sheet (`harness/gallery/sheets.ts`) in a theme, every
+ * forced state in place and the pointer off it.
+ */
+export async function openSheet(page: Page, sheet: string, theme: Theme) {
+  await page.clock.install({ time: new Date('2026-09-27T12:00:00Z') });
+  await page.goto(`/tests/harness/gallery.html?${new URLSearchParams({ sheet, theme })}`);
+  await expect(page.locator(`[data-sheet="${sheet}"]`)).toBeVisible({ timeout: 15_000 });
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page.locator('[data-forcing]:not([data-forced])')).toHaveCount(0);
+  // Nothing holds real focus: a piece that took it as it opened would show a
+  // focus look the sheet did not ask for, and which piece took it is a race.
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await restPointer(page);
+}
+
+/** The name a sheet's picture is kept under: components/sheet--<sheet>--<theme>. */
+export const sheetShot = (sheet: string, theme: Theme) => shot('components', 'sheet', sheet, theme);
 
 /** Everything the gallery shows of a component: each of its cells. */
 export const stage = (page: Page) => page.locator('.gallery');

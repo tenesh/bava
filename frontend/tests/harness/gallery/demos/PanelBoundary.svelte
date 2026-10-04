@@ -19,6 +19,12 @@
   </PanelBoundary>
 </Cell>
 
+<Cell name="failed, Reload focused" width="18rem" height="10rem" force="focus" target=".bava-button">
+  <PanelBoundary name="Files" onError={() => {}}>
+    <p class="text">{broken()}</p>
+  </PanelBoundary>
+</Cell>
+
 <style>
   .text {
     margin: 0;

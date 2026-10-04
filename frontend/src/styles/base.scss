@@ -33,6 +33,12 @@ label[for] {
   cursor: not-allowed;
 }
 
+// Selected text in Bava's colour, not the system highlight, which differs by
+// platform.
+::selection {
+  background: var(--color-selection);
+}
+
 // What a field asks for, before anything is typed: one colour in every field.
 input::placeholder,
 textarea::placeholder {

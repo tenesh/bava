@@ -16,7 +16,7 @@ set -euo pipefail
 repo="$(cd "$(dirname "$0")/../.." && pwd)"
 update=""
 if [[ "${1:-}" == "--update" ]]; then
-  update="--update-snapshots"
+  update="--update-snapshots=changed"
   shift
 fi
 

@@ -1,14 +1,19 @@
 import { expect, test } from '@playwright/test';
+import { SUBJECTS } from '../fixtures/document-blocks';
 import {
   caretInCell,
+  centreInView,
   documentPane,
   dragCells,
   editor,
+  imagesLoaded,
   menu,
   menus,
   newLineAtEnd,
   openDocument,
+  openSeeded,
   personPace,
+  restPointer,
   rightClick,
   selectWord,
 } from '../helpers';
@@ -30,6 +35,7 @@ test.describe('blocks', () => {
 
   test('unfolding a toggle shows what it holds and leaves the page saved', async ({ page }) => {
     await openDocument(page, 'light', 'Engineering/Blocks.md');
+    await expect(editor(page).getByText('Hidden inside it.')).toBeHidden();
     await editor(page).locator('.toggle', { hasText: 'A folded toggle' }).locator('.toggle-arrow').first().click();
     await expect(editor(page).getByText('Hidden inside it.')).toBeVisible();
     await expect(page.locator('header')).not.toContainText('unsaved');
@@ -333,4 +339,268 @@ test.describe('links', () => {
     await page.locator('[data-path="Roadmap.md"]').click();
     await expect(editor(page).locator('a[href="Handbook.md#lists"]')).toHaveText('Lists');
   });
+});
+
+// The page's menus, fields and typing as a person uses them: what each opens
+// with and offers, and what it leaves on the page.
+test.describe('the page as it is typed and pointed at', () => {
+  // The shortcuts, typed as a person types them, in a real browser.
+  test('typing shortcuts make blocks', async ({ page }) => {
+    await openDocument(page, 'light', 'Marketing/Launch plan.md');
+    await newLineAtEnd(page);
+    await page.keyboard.type('## Goals');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('- One');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('Two');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('[] Ship it');
+    await expect(editor(page).locator('h2')).toHaveText('Goals');
+    await expect(editor(page).locator('ul').first().locator('li')).toHaveCount(2);
+    await expect(editor(page).locator('li[data-checked="false"]')).toHaveCount(1);
+    await expect(page.locator('header')).toContainText('unsaved');
+  });
+
+  test('the / menu', async ({ page }) => {
+    await openDocument(page, 'light', 'Marketing/Launch plan.md');
+    await newLineAtEnd(page);
+    await page.keyboard.type('/');
+    await restPointer(page);
+    await expect(page.locator('.slash-group')).toHaveText(['Basic', 'Advanced', 'Inline']);
+    await expect(menus(page).locator('[data-highlighted]')).toHaveCount(1);
+    await expect(menus(page).locator('[role="option"]').first()).toHaveAttribute('data-highlighted', '');
+    await page.keyboard.type('head');
+    await expect(page.locator('.slash-group')).toHaveText(['Basic']);
+    await expect(menus(page).locator('[role="option"]').first()).toHaveAttribute('data-highlighted', '');
+  });
+
+  test('the bubble from the keyboard', async ({ page }) => {
+    await openDocument(page, 'light', 'Marketing/Launch plan.md');
+    await selectWord(page, 'thousand');
+    const bubble = page.getByRole('toolbar', { name: 'Formatting' });
+    // Alt+F10 goes into the bubble a person can see.
+    await expect(bubble).toBeVisible();
+    await page.keyboard.press('Alt+F10');
+    await expect(bubble.getByRole('button').first()).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await restPointer(page);
+    await expect(bubble.getByRole('button', { name: 'Bold' })).toBeFocused();
+  });
+
+  test("a code block's language menu lists plain text and each language", async ({ page }) => {
+    await openDocument(page, 'light', 'Engineering/Blocks.md');
+    const block = editor(page).locator('.code-block');
+    await block.hover();
+    await editor(page).locator('.code-language').click();
+    await expect(menus(page)).toHaveCount(1);
+    await expect(menus(page).getByRole('menuitem', { name: 'Plain text' })).toBeVisible();
+    for (const language of ['Python', 'Go', 'Rust', 'JSON']) await expect(menus(page).getByRole('menuitem', { name: language, exact: true })).toBeVisible();
+  });
+
+  test('editing an equation', async ({ page }) => {
+    await openDocument(page, 'light', 'Engineering/Blocks.md');
+    const equation = editor(page).locator('.math-inline').first();
+    await equation.click();
+    await restPointer(page);
+    await expect(page.getByRole('textbox', { name: 'Equation' })).toBeFocused();
+    await expect(page.locator('.equation-preview .katex')).toBeVisible();
+  });
+
+  test('emoji by name', async ({ page }) => {
+    await openDocument(page, 'light', 'Marketing/Launch plan.md');
+    await newLineAtEnd(page);
+    await page.keyboard.type('Go :rocke');
+    await restPointer(page);
+    const list = page.getByRole('listbox', { name: 'Emoji' });
+    await expect(list).toBeVisible();
+    await expect(list.locator('[role="option"]').first()).toHaveAttribute('data-highlighted', '');
+  });
+
+  test('/emoji opens the emoji picker under the line it was typed on', async ({ page }) => {
+    await openDocument(page, 'light', 'Marketing/Launch plan.md');
+    await newLineAtEnd(page);
+    await page.keyboard.type('/emoji');
+    await page.keyboard.press('Enter');
+    const picker = page.getByRole('dialog', { name: 'Emoji' });
+    await expect(picker).toBeVisible();
+    // The line it opened from is left empty, showing its placeholder.
+    const line = (await editor(page).locator('p.is-empty[data-placeholder]').boundingBox())!;
+    const box = (await picker.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(line.y + line.height - 1);
+  });
+
+  test("an image's menu, open at Width", async ({ page }) => {
+    await openDocument(page, 'light', 'Engineering/Media.md');
+    await expect(editor(page).locator('figure.media[data-kind="image"][data-state="ready"]')).toHaveCount(4);
+    const image = editor(page).locator('figure.media').first();
+    await image.hover();
+    await page.getByRole('button', { name: 'Drag, or open the block menu' }).click();
+    await page.getByRole('menuitem', { name: 'Width' }).click();
+    await expect(page.getByRole('menuitem', { name: 'Full width' })).toBeVisible();
+    // The pointer stays on Width: moved off, Ark closes the submenu it opened.
+    await expect(menus(page)).toHaveCount(2);
+    await expect(page.getByRole('menuitem', { name: 'Width', exact: true })).toHaveAttribute('data-highlighted', '');
+  });
+
+  test("a video's menu", async ({ page }) => {
+    await openDocument(page, 'light', 'Engineering/Media.md');
+    const video = editor(page).locator('figure.media').nth(4);
+    await centreInView(video);
+    await video.hover();
+    await page.getByRole('button', { name: 'Drag, or open the block menu' }).click();
+    await expect(page.getByRole('menuitem', { name: 'Loop' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Turn into' })).toHaveCount(0);
+    await expect(page.getByRole('menuitem', { name: 'Full screen' })).toHaveCount(0);
+    await restPointer(page);
+    await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
+  });
+
+  test("a web card's menu, open at Show as", async ({ page }) => {
+    await openDocument(page, 'light', 'Engineering/Media.md');
+    const card = editor(page).locator('.card').nth(3);
+    await centreInView(card);
+    await card.hover();
+    await page.getByRole('button', { name: 'Drag, or open the block menu' }).click();
+    await page.getByRole('menuitem', { name: 'Show as' }).click();
+    await expect(page.getByRole('menuitem', { name: 'Extended card' })).toBeVisible();
+    // The pointer stays on Show as: moved off, Ark closes the submenu it opened.
+    await expect(menus(page)).toHaveCount(2);
+    await expect(page.getByRole('menuitem', { name: 'Show as' })).toHaveAttribute('data-highlighted', '');
+  });
+
+  test('a row moved, and the header row switched off', async ({ page }) => {
+    await openDocument(page, 'light', 'Engineering/Tables.md');
+    const table = editor(page).locator('table').first();
+    await rightClick(page, 'Ben');
+    await page.getByRole('menuitem', { name: 'Move row up' }).click();
+    await expect(table.locator('tr').nth(1)).toContainText('Ben');
+    await rightClick(page, 'Ben');
+    await page.getByRole('menuitem', { name: 'Remove header row' }).click();
+    await expect(table.locator('th')).toHaveCount(0);
+    // Held as a person holds it: a press and release in the same instant can
+    // leave the cell selection in place.
+    await expect(menus(page)).toHaveCount(0);
+    await editor(page).locator('h1').click({ delay: 50 });
+    await expect(table.locator('.selectedCell')).toHaveCount(0);
+  });
+
+  test('a new table: no hint in its cells, and a / menu of what goes in a line', async ({ page }) => {
+    await openDocument(page, 'light', 'Marketing/Launch plan.md');
+    await newLineAtEnd(page);
+    await page.keyboard.type('/table');
+    await page.keyboard.press('Enter');
+    await expect(editor(page).locator('table th')).toHaveCount(3);
+    await expect(editor(page).locator('table .is-empty')).toHaveCount(0);
+    await page.keyboard.type('/');
+    await restPointer(page);
+    await expect(page.locator('.slash-group')).toHaveText(['Inline']);
+  });
+
+  test('spreadsheet rows pasted as a table', async ({ page }) => {
+    await openDocument(page, 'light', 'Marketing/Launch plan.md');
+    await newLineAtEnd(page);
+    await editor(page).evaluate((el) => {
+      const data = new DataTransfer();
+      data.setData('text/plain', 'Task\tOwner\nWrite\tAna\nShip\tBen');
+      el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+    });
+    await restPointer(page);
+    await expect(editor(page).locator('table td')).toHaveCount(4);
+  });
+
+  test('a page ending in a table keeps an empty line after it, which takes the caret', async ({ page }) => {
+    await openDocument(page, 'light', 'Engineering/Tables.md');
+    const last = editor(page).locator(':scope > :last-child');
+    await expect(last).toHaveText('');
+    expect(await last.evaluate((element) => [element.tagName, element.previousElementSibling?.querySelector('table') !== null || element.previousElementSibling?.tagName === 'TABLE'])).toEqual(['P', true]);
+    await last.click();
+    expect(await last.evaluate((element) => element.contains(getSelection()?.anchorNode ?? null))).toBe(true);
+  });
+
+  test('the @ menu: dates, then pages', async ({ page }) => {
+    await openDocument(page, 'light', 'Roadmap.md');
+    await newLineAtEnd(page);
+    await page.keyboard.type('See @');
+    await restPointer(page);
+    const list = page.getByRole('listbox', { name: 'Dates and pages' });
+    await expect(list.getByRole('option').first()).toContainText('Today');
+    await expect(list.getByRole('option').first()).toHaveAttribute('data-highlighted', '');
+    await expect(list.getByRole('option', { name: /Launch plan/ })).toBeVisible();
+  });
+
+  test('a date chip and its calendar', async ({ page }) => {
+    await openDocument(page, 'light', 'Roadmap.md');
+    const chip = editor(page).locator('time.date-chip').first();
+    await expect(editor(page).locator('time.date-chip')).toHaveText(['2 Oct 2026', 'next Friday']);
+    await chip.click();
+    await restPointer(page);
+    const calendar = page.getByRole('dialog', { name: 'Calendar' });
+    await expect(calendar.locator('.month')).toHaveText('October 2026');
+    // The chip's own day is the one chosen, and has the focus.
+    await expect(calendar.locator('.day[data-selected]')).toHaveText('2');
+    await expect(calendar.locator('.day[data-selected]')).toBeFocused();
+  });
+
+  test('a link card, and a link to a missing page', async ({ page }) => {
+    await openDocument(page, 'light', 'Roadmap.md');
+    const brand = editor(page).getByText('Brand guide', { exact: true });
+    await brand.click();
+    await restPointer(page);
+    const card = page.getByRole('dialog', { name: 'Link' });
+    await expect(card.locator('.address')).toHaveText('Marketing/Brand guide.md');
+    await page.keyboard.press('Escape');
+    await expect(card).toBeHidden();
+    const brief = editor(page).getByText('Brief', { exact: true });
+    await expect(editor(page).locator('.link-missing')).toHaveText('Brief');
+    await brief.click();
+    await restPointer(page);
+    await expect(card.locator('.missing')).toHaveText('Page not found');
+    await expect(card.getByRole('button', { name: 'Open' })).toHaveCount(0);
+  });
+
+  test('the page menu', async ({ page }) => {
+    await openDocument(page, 'light', 'Marketing/Launch plan.md');
+    const button = page.getByRole('button', { name: 'Page menu' });
+    await button.click();
+    await expect(menus(page)).toHaveCount(1);
+    await restPointer(page);
+    await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
+  });
+});
+
+test.describe('how the page is laid out', () => {
+  test('a to-do box sits level with its line, and a paragraph after a heading is set apart', async ({ page }) => {
+    await openDocument(page, 'light', 'Team handbook.md');
+    await expect(editor(page).locator('li[data-checked="true"]')).toHaveCount(1);
+    const item = editor(page).locator('li[data-checked="false"]');
+    const box = (await item.locator('.todo-box').boundingBox())!;
+    const line = (await item.locator('p').boundingBox())!;
+    expect(Math.abs(box.y + box.height / 2 - (line.y + Math.min(line.height, 24) / 2))).toBeLessThan(2);
+    const title = (await editor(page).locator('h1').boundingBox())!;
+    const intro = (await editor(page).locator('p').first().boundingBox())!;
+    expect(intro.y - (title.y + title.height)).toBeGreaterThanOrEqual(8);
+  });
+});
+
+// A field opened from a block's menu takes the keys, and the menu closes as
+// it opens rather than staying in the page.
+test.describe("fields opened from a block's menu", () => {
+  for (const [name, item] of [
+    ['image', 'Caption'],
+    ['file-card', 'Rename file'],
+  ] as const) {
+    test(`${item} on ${name === 'image' ? 'an image' : 'a file card'} opens its field focused, and the menu closes`, async ({ page }) => {
+      const subject = SUBJECTS[name];
+      await openSeeded(page, 'light', subject.markdown);
+      const block = editor(page).locator(subject.find).first();
+      await expect(block).toBeVisible();
+      await imagesLoaded(editor(page));
+      await block.hover();
+      await page.getByRole('button', { name: 'Drag, or open the block menu' }).click();
+      await page.getByRole('menuitem', { name: item }).click();
+      await expect(page.locator('.link-field').getByRole('textbox')).toBeFocused();
+      await expect(menus(page)).toHaveCount(0);
+    });
+  }
 });

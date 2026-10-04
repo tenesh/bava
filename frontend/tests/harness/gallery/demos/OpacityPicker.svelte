@@ -5,9 +5,11 @@
   let current = $state(60);
 </script>
 
-<Cell name="in the selection toolbar">
-  <div class="bar"><OpacityPicker {current} onSelect={(value) => (current = value)} /></div>
-</Cell>
+{#each [undefined, 'hover', 'focus'] as const as force (force ?? 'rest')}
+  <Cell name={force === 'hover' ? 'hovered' : force === 'focus' ? 'focused' : 'in the selection toolbar'} {force} target={force ? '.bava-control-trigger' : undefined}>
+    <div class="bar"><OpacityPicker {current} onSelect={(value) => (current = value)} /></div>
+  </Cell>
+{/each}
 
 <style>
   .bar {

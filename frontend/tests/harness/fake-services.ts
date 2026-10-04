@@ -259,6 +259,8 @@ export function createFakes(first: FakeSpace = seedSpace()) {
   const harness = {
     exports,
     faults,
+    /** The settings as last saved, for a test to read what a control changed. */
+    settings: () => ({ ...settings }),
     fileToOpen: '',
     setSource(root: string, path: string, source: string) {
       const space = spaceOf(root);
@@ -452,7 +454,10 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       async OpenLogsFolder() {
         return '';
       },
-      async SetVerbose(_on: boolean) {
+      // Saved with the settings first, as Go saves it before the live level.
+      async SetVerbose(on: boolean) {
+        if (faults.settingsSaveFails) return 'write settings: permission denied';
+        settings = { ...settings, verboseLogging: on };
         return '';
       },
     },

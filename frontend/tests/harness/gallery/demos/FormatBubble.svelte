@@ -15,7 +15,16 @@
   });
 </script>
 
-<Cell name="bold and a link" width="24rem" height="5rem">
+<!-- The first bubble's Italic hovered and its first button focused. -->
+<Cell
+  name="bold and a link; Italic hovered, Turn into focused"
+  width="24rem"
+  height="5rem"
+  marks={[
+    { scope: 'page', target: '.bubble [aria-label="Italic"]', force: 'hover' },
+    { scope: 'page', target: '.bubble button', force: 'focus' },
+  ]}
+>
   <p class="line">Some <mark class="selected" bind:this={first}>selected words</mark> of a paragraph.</p>
 </Cell>
 <Cell name="in a block that cannot turn" width="24rem" height="5rem">

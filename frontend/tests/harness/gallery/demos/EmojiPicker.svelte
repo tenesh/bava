@@ -6,25 +6,36 @@
   import Cell from '../Cell.svelte';
   import { settledBox } from '../settled';
 
-  let { variant }: { variant: string } = $props();
-
   let emojis = $state.raw<Emoji[]>([]);
   $effect(() => {
-    if (variant !== 'loading') void loadEmoji().then((list) => (emojis = list));
+    void loadEmoji().then((list) => (emojis = list));
   });
 
-  let anchor: HTMLElement | undefined = $state();
-  let at = $state<{ left: number; top: number; bottom: number } | null>(null);
+  // One picker with its emoji, the first hovered; one while they load.
+  let loadedAnchor: HTMLElement | undefined = $state();
+  let loadingAnchor: HTMLElement | undefined = $state();
+  let loadedAt = $state<{ left: number; top: number; bottom: number } | null>(null);
+  let loadingAt = $state<{ left: number; top: number; bottom: number } | null>(null);
   $effect(() => {
-    if (anchor) void settledBox(anchor).then((box) => (at = { left: box.left, top: box.top, bottom: box.bottom }));
+    if (loadedAnchor) void settledBox(loadedAnchor).then((box) => (loadedAt = box));
+    if (loadingAnchor) void settledBox(loadingAnchor).then((box) => (loadingAt = box));
   });
+
+  const groupLabel = (group: string) => t(`emoji.group.${group}` as MessageKey);
 </script>
 
-<Cell name="under the page's icon" width="22rem" height="26rem">
-  <span class="anchor" bind:this={anchor}>Add icon</span>
+<Cell name="under the page's icon, an emoji hovered" width="22rem" height="26rem" force="hover" scope="page" target=".emoji-picker .emoji">
+  <span class="anchor" bind:this={loadedAnchor}>Add icon</span>
 </Cell>
-{#if at && (variant === 'loading' || emojis.length > 0)}
-  <EmojiPicker {at} {emojis} groupLabel={(group) => t(`emoji.group.${group}` as MessageKey)} onPick={() => {}} onClose={() => {}} />
+<Cell name="while the emoji load" width="22rem" height="26rem">
+  <span class="anchor" bind:this={loadingAnchor}>Add icon</span>
+</Cell>
+
+{#if loadedAt && emojis.length > 0}
+  <EmojiPicker at={loadedAt} {emojis} {groupLabel} onPick={() => {}} onClose={() => {}} />
+{/if}
+{#if loadingAt}
+  <EmojiPicker at={loadingAt} emojis={[]} {groupLabel} onPick={() => {}} onClose={() => {}} />
 {/if}
 
 <style>

@@ -1,10 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { THEMES, hovered, imagesLoaded, menu, menus, openApp, openSpace, restPointer, rightClick, shot, shotFloating, shotPane, sidePane, statusBar, statusMessage } from '../helpers';
-
-const RECENTS = [
-  { path: '/Users/you/Documents/Acme Product', kind: 'space', openedAt: Date.UTC(2026, 8, 26) },
-  { path: '/Users/you/Documents/Thesis', kind: 'space', openedAt: Date.UTC(2026, 8, 20) },
-];
+import { THEMES, hovered, imagesLoaded, openApp, openSpace, restPointer, shot, shotPane, sidePane } from '../helpers';
 
 for (const theme of THEMES) {
   test.describe(`the side pane, ${theme}`, () => {
@@ -26,25 +21,6 @@ for (const theme of THEMES) {
       await shotPane(sidePane(page), shot('space', 'files', 'folded', theme));
     });
 
-    test('the Add menu', async ({ page }) => {
-      await openApp(page, theme);
-      await openSpace(page);
-      const add = page.locator('.files-button');
-      await add.click();
-      await expect(menus(page)).toHaveCount(1);
-      await restPointer(page);
-      await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
-      await shotFloating(page, add, menus(page), shot('space', 'add-menu', 'open', theme));
-    });
-
-    test('naming a new page', async ({ page }) => {
-      await openApp(page, theme);
-      await openSpace(page);
-      await menu(page, 'file.new');
-      await expect(page.locator('input.rename').filter({ visible: true })).toBeFocused();
-      await shotPane(sidePane(page), shot('space', 'files', 'naming', theme));
-    });
-
     test('the Media section', async ({ page }) => {
       await openApp(page, theme);
       await openSpace(page);
@@ -54,7 +30,6 @@ for (const theme of THEMES) {
       await shotPane(sidePane(page), shot('space', 'media', 'section', theme));
       await sidePane(page).getByRole('searchbox', { name: 'Search files' }).fill('EXAMPLE');
       await expect(rows).toHaveCount(2);
-      await shotPane(sidePane(page), shot('space', 'media', 'searching', theme));
     });
 
     test('the Media section folded', async ({ page }) => {
@@ -66,70 +41,9 @@ for (const theme of THEMES) {
       await shotPane(sidePane(page), shot('space', 'media', 'folded', theme));
     });
 
-    test('the Space switcher', async ({ page }) => {
-      await openApp(page, theme);
-      await openSpace(page);
-      const switcher = page.locator('.bava-space-switcher');
-      await switcher.click();
-      await expect(menus(page)).toHaveCount(1);
-      await restPointer(page);
-      await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
-      await shotFloating(page, switcher, menus(page), shot('space', 'switcher', 'open', theme));
-    });
   });
 
   test.describe(`the Files tree at work, ${theme}`, () => {
-    for (const [what, path] of [
-      ['page', 'Roadmap.md'],
-      ['folder', 'Marketing'],
-    ] as const) {
-      test(`the right-click menu on a ${what}`, async ({ page }) => {
-        await openApp(page, theme);
-        await openSpace(page);
-        const row = page.locator(`[data-path="${path}"]`);
-        await rightClick(page, row);
-        await expect(menus(page)).toHaveCount(1);
-        await expect(menus(page).getByRole('menuitem', { name: 'Rename' })).toBeVisible();
-        await restPointer(page);
-        await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
-        // The row the menu is for stays marked while it is open.
-        await expect(row).toHaveAttribute('data-menu', '');
-        await shotFloating(page, row, menus(page), shot('space', 'row-menu', what, theme));
-      });
-    }
-
-    test('the right-click menu below the rows', async ({ page }) => {
-      await openApp(page, theme);
-      await openSpace(page);
-      // The tree's own room under its last row.
-      const box = (await sidePane(page).locator('.space-tree .tree').boundingBox())!;
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height - 4, { button: 'right' });
-      await expect(menus(page)).toHaveCount(1);
-      await expect(menus(page).getByRole('menuitem')).toHaveText(['New page', 'New folder']);
-      await restPointer(page);
-      await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
-      await expect(sidePane(page).locator('[data-menu]')).toHaveCount(0);
-      await shotFloating(page, null, menus(page), shot('space', 'row-menu', 'empty', theme));
-    });
-
-    test('renaming a page, and a name another page has', async ({ page }) => {
-      await openApp(page, theme);
-      await openSpace(page);
-      await rightClick(page, page.locator('[data-path="Roadmap.md"]'));
-      await menus(page).getByRole('menuitem', { name: 'Rename' }).click();
-      const field = page.locator('input.rename').filter({ visible: true });
-      await expect(field).toBeFocused();
-      await expect(field).toHaveValue('Roadmap');
-      await restPointer(page);
-      await shotPane(sidePane(page), shot('space', 'files', 'renaming', theme));
-      await field.fill('Team handbook');
-      await field.press('Enter');
-      await expect(statusMessage(page)).toHaveText('Something with that name is already there.');
-      await expect(page.locator('[data-path="Roadmap.md"]')).toBeVisible();
-      await restPointer(page);
-      await shotPane(statusBar(page), shot('space', 'files', 'name-taken', theme));
-    });
-
     test('a page dragged onto a folder, and dropped in it', async ({ page }) => {
       await openApp(page, theme);
       await openSpace(page);
@@ -153,7 +67,6 @@ for (const theme of THEMES) {
       await handbook.hover();
       await restPointer(page);
       expect(await hovered(handbook)).toBe(false);
-      await shotPane(sidePane(page), shot('space', 'files', 'dropped', theme));
     });
 
     test('a page dragged between two others', async ({ page }) => {
@@ -173,15 +86,5 @@ for (const theme of THEMES) {
       await expect(sidePane(page).locator('.space-tree .row .name')).toHaveText(['Marketing', 'Engineering', 'Team handbook', 'Roadmap']);
     });
 
-    test('the Space switcher with recent Spaces', async ({ page }) => {
-      await openApp(page, theme, { 'bava.recents': JSON.stringify(RECENTS) });
-      await openSpace(page);
-      const switcher = page.locator('.bava-space-switcher');
-      await switcher.click();
-      await expect(menus(page).getByRole('menuitem', { name: /Thesis/ })).toBeVisible();
-      await restPointer(page);
-      await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
-      await shotFloating(page, switcher, menus(page), shot('space', 'switcher', 'recents', theme));
-    });
   });
 }

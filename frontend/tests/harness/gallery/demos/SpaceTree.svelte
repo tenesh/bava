@@ -5,27 +5,41 @@
 
   let { variant }: { variant: string } = $props();
 
-  let expanded = $state(['Engineering']);
-  let active = $state<string | null>('Engineering/Architecture.md');
-  // svelte-ignore state_referenced_locally
-  const pending = variant === 'naming' ? { kind: 'page' as const, folder: 'Engineering' } : null;
+  type Mark = { target: string; force: 'hover' | 'focus' };
+
+  const trees: { name: string; expanded: string[]; naming?: boolean; marks?: Mark[] }[] = [
+    { name: "a Space's files", expanded: ['Engineering'] },
+    {
+      name: 'Roadmap hovered, Research focused',
+      expanded: ['Engineering'],
+      marks: [
+        { target: '[data-path="Roadmap.md"]', force: 'hover' },
+        { target: '[data-path="Research"]', force: 'focus' },
+      ],
+    },
+    { name: 'Engineering folded', expanded: [] },
+  ];
+  // Naming holds a field that commits when it loses focus, so it is shown alone.
+  const shown = variant === 'naming' ? [{ name: 'naming a new page', expanded: ['Engineering'], naming: true }] : trees;
 </script>
 
-<Cell name="a Space's files" width="16rem" height="14rem" ground="nav">
-  <SpaceTree
-    folders={FOLDERS}
-    rows={ROWS}
-    {expanded}
-    {pending}
-    activePath={active}
-    unsavedPath="Roadmap.md"
-    onToggle={(folder) => (expanded = expanded.includes(folder) ? expanded.filter((f) => f !== folder) : [...expanded, folder])}
-    onOpen={(path) => (active = path)}
-    onRename={() => {}}
-    onCommitNew={() => {}}
-    onCancelNew={() => {}}
-    onMove={() => {}}
-    onTrash={() => {}}
-    onContextMenu={() => {}}
-  />
-</Cell>
+{#each shown as tree (tree.name)}
+  <Cell name={tree.name} width="16rem" height="14rem" ground="nav" marks={tree.marks}>
+    <SpaceTree
+      folders={FOLDERS}
+      rows={ROWS}
+      expanded={tree.expanded}
+      pending={tree.naming ? { kind: 'page', folder: 'Engineering' } : null}
+      activePath="Engineering/Architecture.md"
+      unsavedPath="Roadmap.md"
+      onToggle={() => {}}
+      onOpen={() => {}}
+      onRename={() => {}}
+      onCommitNew={() => {}}
+      onCancelNew={() => {}}
+      onMove={() => {}}
+      onTrash={() => {}}
+      onContextMenu={() => {}}
+    />
+  </Cell>
+{/each}

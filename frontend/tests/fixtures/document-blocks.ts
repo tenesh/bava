@@ -1,21 +1,12 @@
 /**
  * Every block and inline piece the page schema (`src/docs/schema.ts`) holds,
- * each as a small page put into an empty page of the pretend Space before it
- * opens (`openSeeded`), so the Files tree never changes. Each subject is one
- * thing pictured, of one schema type, in the states its fields name.
- * `harness/document-blocks.test.ts` fails on a schema type left without a
- * picture in a state and no reason given.
+ * each as a small page of its own (a subject), and the pages the document
+ * area pictures whole, made of them: the subjects at rest (`DOC_SHEETS`),
+ * every one unable to draw, and every one empty (`sheetPage`). A page is put
+ * into an empty page of the pretend Space before it opens (`openSeeded`), so
+ * the Files tree never changes. `document-blocks.test.ts` fails on a schema
+ * type on no sheet.
  */
-
-/**
- * The states a block or an inline piece is pictured in: at rest; with the
- * pointer over it and its block handle showing; selected; being edited (its
- * words selected under the formatting bubble, or its field open); emptied;
- * and drawing an error.
- */
-export const BLOCK_STATES = ['rest', 'hovered', 'selected', 'editing', 'empty', 'error'] as const;
-
-export type BlockState = (typeof BLOCK_STATES)[number];
 
 /**
  * How a subject is selected: ArrowDown onto it from the end of the line
@@ -47,14 +38,10 @@ export type Subject = {
   find: string;
   /** What a selection or an emptying is checked on, inside the page; `find` when not given. */
   target?: string;
-  /** The subject whose picture at rest shows it as it would be here: no second, same picture is taken. */
-  restAs?: string;
   /** Shown once it has drawn: a picture taken before would catch it loading. */
   ready?: string;
   /** A word in it, for the caret, a double-click, or a selection. */
   word?: string;
-  /** Pictured with the pointer over it and its block handle showing. */
-  hover?: true;
   select?: Select;
   /** What a selection marks, and how many, when it is not `target` ringed as one node. */
   marked?: { selector: string; count: number };
@@ -92,7 +79,6 @@ export const SUBJECTS = {
     markdown: page('A paragraph of plain words, set on one line.'),
     find: LINE,
     word: 'plain',
-    hover: true,
     edit: 'bubble',
   },
   'paragraph-coloured': {
@@ -106,7 +92,6 @@ export const SUBJECTS = {
     markdown: page('## Goals for the launch'),
     find: ':scope > h2',
     word: 'Goals',
-    hover: true,
     edit: 'bubble',
     empty: true,
   },
@@ -120,7 +105,6 @@ export const SUBJECTS = {
     markdown: page('> Files are the source of truth.'),
     find: ':scope > blockquote',
     word: 'source',
-    hover: true,
     edit: 'bubble',
     empty: true,
   },
@@ -130,7 +114,6 @@ export const SUBJECTS = {
     // With the lines either side: a crop of the rule alone would cut through them.
     find: ':scope > :is(p:nth-child(1), hr, p:nth-child(3))',
     target: ':scope > hr',
-    hover: true,
     select: { arrow: 'down' },
   },
   bullets: {
@@ -138,7 +121,6 @@ export const SUBJECTS = {
     markdown: page('- Ship small\n  - Then smaller\n- Write it down'),
     find: ':scope > ul',
     word: 'Write',
-    hover: true,
     edit: 'bubble',
   },
   numbers: {
@@ -146,7 +128,6 @@ export const SUBJECTS = {
     markdown: page('1. Plan\n2. Build\n3. Check', '', '<!-- bava: list=a -->\n1. First\n2. Second', '', '<!-- bava: list=i -->\n1. One\n2. Two'),
     find: ':scope > ol',
     word: 'Build',
-    hover: true,
     edit: 'bubble',
   },
   item: {
@@ -154,7 +135,6 @@ export const SUBJECTS = {
     markdown: page('- Ship small\n- Write it down'),
     find: ':scope > ul',
     target: ':scope > ul > li >> nth=0',
-    restAs: 'bullets',
     word: 'Ship',
     edit: 'bubble',
     empty: true,
@@ -172,7 +152,6 @@ export const SUBJECTS = {
     markdown: page('> [!info]\n> Ship it on Friday.'),
     find: ':scope > aside.callout',
     word: 'Friday',
-    hover: true,
     edit: 'bubble',
     empty: true,
   },
@@ -186,7 +165,6 @@ export const SUBJECTS = {
     find: ':scope > .toggle',
     target: ':scope > .toggle >> nth=0',
     word: 'Shown',
-    hover: true,
     edit: 'bubble',
   },
   'toggle-summary': {
@@ -194,7 +172,6 @@ export const SUBJECTS = {
     markdown: page('<details open>\n<summary>An open toggle</summary>\n\nShown inside it.\n\n</details>'),
     find: ':scope > .toggle',
     target: '.toggle-summary',
-    restAs: 'toggle',
     word: 'open',
     takesNoMarks: true,
     empty: true,
@@ -205,7 +182,6 @@ export const SUBJECTS = {
     find: ':scope > .code-block',
     ready: '.syntax-keyword',
     word: 'main',
-    hover: true,
     edit: 'code-caption',
     empty: { markdown: page('```go\n```'), ready: '.code-block' },
   },
@@ -214,7 +190,6 @@ export const SUBJECTS = {
     markdown: page('$$\n\\int_0^1 x^2\\,dx = \\tfrac{1}{3}\n$$'),
     find: ':scope > .math-block',
     ready: '.katex-display',
-    hover: true,
     select: { arrow: 'down' },
     edit: 'equation',
     empty: { markdown: page('$$\n$$'), ready: '.math-empty' },
@@ -225,7 +200,6 @@ export const SUBJECTS = {
     markdown: page('<!-- bava: contents -->', '', '<!-- bava: /contents -->', '', '## Goals', '', '### This quarter', '', '## Dates'),
     find: ':scope > nav.contents',
     ready: '.contents a',
-    hover: true,
     select: { arrow: 'down' },
     empty: { markdown: page('<!-- bava: contents -->', '', '<!-- bava: /contents -->'), ready: '.contents-empty' },
   },
@@ -240,7 +214,6 @@ export const SUBJECTS = {
     markdown: ['Before it.', '', 'A claim.[^1] And another.[^2]', '', '[^1]: The source of the claim.', '', '[^2]: A second source.', ''].join('\n'),
     find: ':scope > .footnotes',
     target: '.footnote >> nth=1',
-    restAs: 'footnotes',
     word: 'second',
     edit: 'bubble',
     empty: true,
@@ -249,7 +222,6 @@ export const SUBJECTS = {
     type: 'table',
     markdown: page('| Name | Role   |\n|------|--------|\n| Ana  | Design |\n| Ben  | Build  |'),
     find: ':scope > .tableWrapper',
-    hover: true,
     select: { drag: ['Name', 'Build'] },
     marked: { selector: '.selectedCell', count: 6 },
   },
@@ -257,7 +229,6 @@ export const SUBJECTS = {
     type: 'table_row',
     markdown: page('| Name | Role   |\n|------|--------|\n| Ana  | Design |\n| Ben  | Build  |'),
     find: ':scope > .tableWrapper',
-    restAs: 'table',
     select: { drag: ['Ana', 'Design'] },
     marked: { selector: '.selectedCell', count: 2 },
   },
@@ -265,7 +236,6 @@ export const SUBJECTS = {
     type: 'table_cell',
     markdown: page('| Name | Role   |\n|------|--------|\n| Ana  | Design |\n| Ben  | Build  |'),
     find: ':scope > .tableWrapper',
-    restAs: 'table',
     target: 'td >> nth=0',
     word: 'Ana',
     select: { drag: ['Ana', 'Ben'] },
@@ -277,7 +247,6 @@ export const SUBJECTS = {
     type: 'table_header',
     markdown: page('| Name | Role   |\n|------|--------|\n| Ana  | Design |\n| Ben  | Build  |'),
     find: ':scope > .tableWrapper',
-    restAs: 'table',
     target: 'th >> nth=1',
     word: 'Role',
     select: { drag: ['Name', 'Role'] },
@@ -290,7 +259,6 @@ export const SUBJECTS = {
     markdown: page('<!-- bava: width=medium caption="The landscape" -->\n![Landscape](../.bava/attachments/landscape.png)'),
     find: ':scope > figure.media',
     ready: 'figure.media[data-state="ready"]',
-    hover: true,
     select: { arrow: 'down' },
     edit: 'caption',
   },
@@ -299,7 +267,6 @@ export const SUBJECTS = {
     markdown: page('<!-- bava: width=medium poster="demo poster.png" -->\n![Demo](../.bava/attachments/demo.mp4)'),
     find: ':scope > figure.media',
     ready: 'figure.media video[poster]',
-    hover: true,
     select: { arrow: 'down' },
     edit: 'caption',
     error: { markdown: page('![Demo](../.bava/attachments/gone.mp4)'), ready: 'figure.media[data-state="missing"]' },
@@ -309,7 +276,6 @@ export const SUBJECTS = {
     markdown: page('<!-- bava: width=medium caption="The launch demo" -->\n![Launch demo](https://www.youtube.com/watch?v=abc123)'),
     find: ':scope > figure.media',
     ready: 'figure.media[data-kind="online"]',
-    hover: true,
     select: { arrow: 'down' },
   },
   'file-card': {
@@ -317,7 +283,6 @@ export const SUBJECTS = {
     markdown: page('<!-- bava: card -->\n[Q3 report.pdf](../.bava/attachments/Q3%20report.pdf)'),
     find: ':scope > .card',
     ready: '.card[data-state="ready"]',
-    hover: true,
     select: { arrow: 'down' },
     edit: 'rename',
     error: { markdown: page('<!-- bava: card -->\n[Budget.xlsx](Budget.xlsx)'), ready: '.card[data-state="missing"]' },
@@ -328,14 +293,12 @@ export const SUBJECTS = {
       '<!-- bava: card=extended description="How we ship each week, and what went out." icon="example.com icon.png" image="example.com picture.png" -->\n[Release notes](https://www.example.com/notes)',
     ),
     find: ':scope > .card',
-    hover: true,
     select: { arrow: 'down' },
   },
   kept: {
     type: 'kept',
     markdown: page('<div align="center">\n  <b>raw</b>\n</div>'),
     find: ':scope > .kept-block',
-    hover: true,
     select: { arrow: 'down' },
   },
 
@@ -363,7 +326,6 @@ export const SUBJECTS = {
     type: 'link',
     markdown: page('Read the [guide](https://example.com) first.'),
     find: LINE,
-    restAs: 'link',
     word: 'guide',
     linksTo: 'https://example.com',
     edit: 'relink',
@@ -419,108 +381,41 @@ export const SUBJECTS = {
 
 export type SubjectName = keyof typeof SUBJECTS;
 
-/** The states a subject is pictured in. */
-export function statesOf(subject: Subject): BlockState[] {
-  return BLOCK_STATES.filter((state) => {
-    if (state === 'rest') return subject.restAs === undefined;
-    if (state === 'hovered') return subject.hover === true;
-    if (state === 'selected') return subject.select !== undefined;
-    if (state === 'editing') return subject.edit !== undefined;
-    if (state === 'empty') return subject.empty !== undefined;
-    return subject.error !== undefined;
-  });
+/** The pages pictured whole at rest, by name: the subjects each holds, in order. */
+export const DOC_SHEETS = {
+  blocks: [
+    'paragraph', 'paragraph-coloured', 'heading', 'headings', 'quote', 'divider', 'bullets', 'numbers', 'item', 'todo',
+    'callout', 'toggle', 'toggle-summary', 'code', 'equation', 'contents', 'footnotes', 'footnote',
+  ],
+  media: ['table', 'row', 'cell', 'header-cell', 'image', 'video', 'online-video', 'file-card', 'web-card', 'kept'],
+  inline: [
+    'bold', 'italic', 'underline', 'strike', 'inline-code', 'colour', 'highlight', 'link', 'link-changed', 'page-link',
+    'inline-equation', 'footnote-ref', 'date', 'kept-inline', 'line-break', 'emoji',
+  ],
+} as const satisfies Record<string, readonly SubjectName[]>;
+
+export type DocSheet = keyof typeof DOC_SHEETS | 'errors' | 'empty';
+
+/** What a subject's page holds between its lines before and after. */
+const body = (markdown: string) => markdown.replace(/^Before it\.\n\n/, '').replace(/\n\nAfter it\.\n$/, '');
+
+/**
+ * A sheet's page, and what shows once it has drawn: the subjects at rest, or
+ * every subject that has a page unable to draw (`errors`) or a page holding
+ * it empty (`empty`). A body two subjects share (a list and its item) is
+ * written once.
+ */
+export function sheetPage(sheet: DocSheet): { markdown: string; ready: string[] } {
+  const subjects = Object.values(SUBJECTS) as Subject[];
+  const pages: { markdown: string; ready?: string }[] =
+    sheet === 'errors'
+      ? subjects.flatMap((subject) => (subject.error ? [subject.error] : []))
+      : sheet === 'empty'
+        ? subjects.flatMap((subject) => (typeof subject.empty === 'object' ? [subject.empty] : []))
+        : DOC_SHEETS[sheet].map((name) => SUBJECTS[name] as Subject);
+  const bodies = [...new Set(pages.map((each) => body(each.markdown)))];
+  return {
+    markdown: ['Before it.', '', ...bodies.flatMap((each) => [each, '']), 'After it.', ''].join('\n'),
+    ready: pages.flatMap((each) => (each.ready ? [each.ready] : [])),
+  };
 }
-
-/**
- * States pictured by an existing walk of the `document` area, by schema type:
- * the reference that shows it.
- */
-export const PICTURED_ELSEWHERE: Record<string, Partial<Record<BlockState, string>>> = {
-  paragraph: { empty: 'document/page--placeholder' },
-  code_block: { editing: 'document/language-menu--open' },
-  table: { empty: 'document/table--new-slash' },
-  image: { error: 'document/media--bottom' },
-  math_inline: { editing: 'document/equation-field--editing' },
-  date: { editing: 'document/date-chip--calendar' },
-};
-
-const INLINE = ['text', 'hard_break', 'math_inline', 'footnote_ref', 'date', 'keptInline'];
-const MARKS = ['color', 'highlight', 'strong', 'em', 'underline', 'strike', 'link', 'code'];
-const all = (types: string[], why: string) => Object.fromEntries(types.map((type) => [type, why]));
-
-const NOT_TOP_LEVEL = 'the handle is for a block of the page, and this sits inside one: pictured hovered as the block holding it';
-const NOTHING_TO_TYPE = 'nothing in it is typed or set in a field';
-const NEVER_EMPTY = 'it has no words to empty';
-const CANNOT_FAIL = 'nothing it holds can fail to draw';
-const TEXT_SELECTED =
-  'a block of text is never selected whole: a click or its handle puts the caret in it, which no picture draws; its words selected are pictured as editing';
-const MARK_EDIT = 'a mark is set and cleared from the formatting bubble, pictured as selected';
-
-/**
- * What a state leaves out, by schema type, each with why it cannot be shown.
- * Everything else is pictured in it, here or in `PICTURED_ELSEWHERE`.
- */
-export const LEFT_OUT: Record<BlockState, Record<string, string>> = {
-  rest: {
-    doc: 'the page itself: pictured whole in the document area',
-  },
-  hovered: {
-    doc: 'the page itself has no handle',
-    ...all(['list_item', 'toggle_summary', 'table_row', 'table_cell', 'table_header'], NOT_TOP_LEVEL),
-    footnotes: 'the notes follow their references: they have no handle',
-    footnote: 'the notes follow their references: they have no handle',
-    ...all([...INLINE, ...MARKS], NOT_TOP_LEVEL),
-  },
-  selected: {
-    doc: 'Select All selects its text, pictured as any selection of words',
-    ...all(
-      ['paragraph', 'heading', 'blockquote', 'bullet_list', 'ordered_list', 'list_item', 'callout', 'toggle', 'toggle_summary', 'code_block', 'footnotes', 'footnote'],
-      TEXT_SELECTED,
-    ),
-    hard_break: 'a line break is never selected on its own',
-  },
-  editing: {
-    doc: 'the page itself: each block is pictured being edited',
-    horizontal_rule: NOTHING_TO_TYPE,
-    contents: 'it is rebuilt from the page\'s headings: nothing in it is typed',
-    footnotes: 'each note is edited in its place, pictured as footnote',
-    table: 'typing goes into a cell, pictured as table_cell and table_header',
-    table_row: 'typing goes into a cell, pictured as table_cell and table_header',
-    kept: 'kept byte for byte: Bava cannot edit it',
-    text: 'words are edited in their block, pictured with each block',
-    hard_break: NOTHING_TO_TYPE,
-    footnote_ref: 'its number comes from the page\'s order, and its note is edited at the end, pictured as footnote',
-    keptInline: 'kept as written: Bava cannot edit it',
-    toggle_summary: 'it takes no marks, so its words selected show no bubble, and the caret in it is never drawn',
-    ...all(['color', 'highlight', 'strong', 'em', 'underline', 'strike', 'code'], MARK_EDIT),
-  },
-  empty: {
-    doc: 'an empty page is pictured as page--placeholder in the document area',
-    horizontal_rule: NEVER_EMPTY,
-    bullet_list: 'a list with nothing in it is one empty item, pictured as list_item',
-    ordered_list: 'a list with nothing in it is one empty item, pictured as list_item',
-    toggle: 'a toggle with nothing in it is an empty summary line, pictured as toggle_summary',
-    footnotes: 'notes nothing cites are kept with their words: there are never notes without one',
-    table_row: 'a row with nothing in it is its cells emptied, pictured as table_cell',
-    image: 'an image is its file: one whose file is gone is its error',
-    video: 'a video is its file: one whose file is gone is its error',
-    card: 'a card is its link: one whose file is gone is its error',
-    kept: NEVER_EMPTY,
-    ...all([...INLINE, ...MARKS], 'an inline piece with nothing in it is not kept on the page'),
-  },
-  error: {
-    ...all(
-      [
-        'doc', 'paragraph', 'heading', 'blockquote', 'horizontal_rule', 'bullet_list', 'ordered_list', 'list_item',
-        'callout', 'toggle', 'toggle_summary', 'code_block', 'contents', 'footnotes', 'footnote', 'table', 'table_row',
-        'table_cell', 'table_header', 'text', 'hard_break',
-        'color', 'highlight', 'strong', 'em', 'underline', 'strike', 'code',
-      ],
-      CANNOT_FAIL,
-    ),
-    kept: 'it is itself what the page shows for what Bava cannot read',
-    footnote_ref: 'a reference with no note is read as the words it was written as',
-    date: 'a date that is not a day is read as the words it was written as',
-    keptInline: 'it is itself what the page shows for what Bava cannot read',
-  },
-};

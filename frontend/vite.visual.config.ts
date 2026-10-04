@@ -3,6 +3,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
 import type { Plugin } from 'vite';
+import { forceStates } from './tests/harness/force-states';
 
 const MEDIA = fileURLToPath(new URL('../testdata/fixtures/media/', import.meta.url));
 const TYPES: Record<string, string> = { png: 'image/png', mp4: 'video/mp4' };
@@ -46,6 +47,8 @@ function fileRoute(): Plugin {
 // the stand-in in tests/harness. Never used by the app's own build.
 export default defineConfig({
   plugins: [svelte(), fileRoute()],
+  // A sheet can show hovered, focused and pressed side by side.
+  css: { postcss: { plugins: [forceStates] } },
   resolve: {
     alias: [
       {

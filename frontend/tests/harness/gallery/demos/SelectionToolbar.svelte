@@ -15,6 +15,7 @@
     capacity?: number;
     lineActions?: LineAction[];
     showMore?: boolean;
+    marks?: { target: string; force: 'hover' | 'focus' | 'active' }[];
   };
 
   // The controls in the order the toolbar's model gives them.
@@ -49,12 +50,26 @@
     { name: 'a line, closed', styles: { fill: 'green', stroke: null, color: 'unavailable' }, controls: SHAPE.slice(0, 7), properties: shapeProps, align: false, distribute: false, lineActions: ['editPoints', 'openLine'] },
     { name: 'drawing a line by clicks', styles: { fill: 'unavailable', stroke: 'unavailable', color: 'unavailable' }, controls: [], properties: {}, align: false, distribute: false, lineActions: ['finishLine'], showMore: false },
     { name: 'narrow: the rest in More', styles: { fill: 'blue', stroke: null, color: null }, controls: SHAPE, properties: shapeProps, align: true, distribute: false, capacity: 4 },
+    {
+      name: 'More hovered, Align left focused, Edit points pressed',
+      styles: { fill: 'blue', stroke: null, color: null },
+      controls: SHAPE.slice(0, 3),
+      properties: shapeProps,
+      align: true,
+      distribute: false,
+      lineActions: ['editPoints'],
+      marks: [
+        { target: '[aria-label="More actions"]', force: 'hover' },
+        { target: '[aria-label="Align left"]', force: 'focus' },
+        { target: '[aria-label="Edit points"]', force: 'active' },
+      ],
+    },
   ];
 </script>
 
 <div class="column">
   {#each bars as bar (bar.name)}
-    <Cell name={bar.name}>
+    <Cell name={bar.name} marks={bar.marks}>
       <SelectionToolbar
         styles={bar.styles}
         controls={bar.controls}
