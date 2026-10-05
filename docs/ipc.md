@@ -114,7 +114,7 @@ them beyond handing the parse to `internal/format`.
 
 | Method | Returns |
 |---|---|
-| `Open(path)` | `OpenResult`: prose, diagram blocks by id, scene, stamp, error |
+| `Open(path)` | `OpenResult`: prose (the file without its canvas block, which `Save` writes from the scene), diagram blocks by id, scene, stamp, error |
 | `Save(path, source, scene)` | `SaveResult`: path, new stamp, error |
 | `ChangedOnDisk(path, stamp)` | bool |
 | `ChooseFileToOpen()` | `DialogResult`: a path, or empty when cancelled |

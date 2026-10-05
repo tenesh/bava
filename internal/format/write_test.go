@@ -125,3 +125,39 @@ func TestUnknownTopLevelKeysAreWrittenBack(t *testing.T) {
 		t.Errorf("an unknown top-level key was dropped:\n%s", out)
 	}
 }
+
+func TestProseLeavesOutTheCanvasBlock(t *testing.T) {
+	block := "```" + format.CanvasInfo + "\n{\n  \"elements\": [],\n  \"version\": 1\n}\n```\n"
+	cases := []struct{ name, source, want string }{
+		{"no canvas", "# T\n\nProse.\n", "# T\n\nProse.\n"},
+		{"canvas last", "# T\n\nProse.\n\n" + block, "# T\n\nProse.\n"},
+		{"canvas alone", block, ""},
+		{"text after the canvas", "# T\n\n" + block + "\nAfter.\n", "# T\n\nAfter.\n"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := format.Prose(tc.source); got != tc.want {
+				t.Errorf("Prose = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// The page edits the prose alone; saving it with the scene gives the file
+// back byte for byte.
+func TestProseWrittenWithItsSceneIsTheFile(t *testing.T) {
+	file, _ := format.Read("# Title\n\nProse.\n")
+	file.Scene.Elements = []format.Element{{ID: "e1", Type: "rect", W: 10, H: 10, Z: 1}}
+	saved, err := format.Write(file)
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	read, _ := format.Read(saved)
+	again, err := format.Write(format.File{Source: format.Prose(saved), Scene: read.Scene})
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if again != saved {
+		t.Errorf("not the same file:\n got %q\nwant %q", again, saved)
+	}
+}

@@ -97,8 +97,9 @@ func (s *FileService) Open(path string) OpenResult {
 	// A malformed canvas block still yields the prose, so the user sees their
 	// document rather than an empty window.
 	result := OpenResult{
-		Path:     path,
-		Source:   parsed.Source,
+		Path: path,
+		// The page edits the prose; the canvas block is written from Scene.
+		Source:   format.Prose(parsed.Source),
 		Diagrams: parsed.Diagrams,
 		Scene:    parsed.Scene,
 		Stamp:    file.Stamp,

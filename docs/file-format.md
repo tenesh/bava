@@ -70,7 +70,9 @@ tables, and 8.3c's links between pages and date chips, each ahead of the
 code.
 
 The prose part of a page, everything before the canvas block, is edited as
-formatted text and written back as Markdown in one style. A page whose prose
+formatted text and written back as Markdown in one style. The page never
+shows the canvas block: it is written from the canvas on every save, last,
+after one blank line. A page whose prose
 and settings are not changed is saved exactly as it was read. A page written by
 hand or by another tool is tidied into that style the first time its prose is
 edited and saved: what it shows in any Markdown viewer stays the same, and a

@@ -8,6 +8,8 @@ import {
   caretInCell,
   clickScene,
   openApp,
+  openDialog,
+  saved,
   openCanvas,
   openPage,
   seedScene,
@@ -684,6 +686,29 @@ test.describe('canvas embeds', () => {
     const host = (await canvasHost(page).boundingBox())!;
     await page.mouse.click(host.x + host.width / 2 - 150 + 12, host.y + host.height / 2 - 100 + 12, { button: 'right' });
     await expect(page.getByRole('menuitem', { name: 'Embed in Document' })).toBeVisible();
+  });
+
+  test('/ Diagram from code puts the diagram in a new frame on the canvas, embedded at the caret', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await openWithFrame(page);
+    await menu(page, 'view.both');
+    await newLineAtEnd(page);
+    await page.keyboard.type('/diagram');
+    await page.getByRole('option', { name: 'Diagram from code' }).click();
+    const dialog = openDialog(page);
+    await dialog.locator('.cm-content').click();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type('api');
+    await dialog.getByRole('button', { name: 'Insert' }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(editor(page).locator('figure.embed img')).toHaveAttribute('src', /^blob:/);
+    expect(await pictures(page)).toEqual(['Architecture - Diagram.png']);
+    const frame = (await saved(page)).find((element) => element.type === 'frame' && element.label === 'Diagram');
+    expect(frame).toBeDefined();
+    expect(frame!.y).toBeGreaterThan(1500 + 200);
+    expect(errors).toEqual([]);
+    await expect(openDialog(page)).toHaveCount(0);
   });
 
   test('Embed in Document on a frame puts it at the end of a page never typed in', async ({ page }) => {

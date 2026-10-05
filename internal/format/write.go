@@ -49,6 +49,28 @@ func Write(file File) (string, error) {
 	return prefix + block, nil
 }
 
+// Prose is a file's text without its canvas block: what the page edits.
+// The blank line before the block goes with it, so writing the prose back
+// with its scene (Write appends the block) gives the same file. Text a hand
+// left after the block stays in the prose, after what came before it.
+func Prose(source string) string {
+	block := canvasBlock(source)
+	if block == nil {
+		return source
+	}
+	before := strings.TrimRight(source[:block.Start], "\n")
+	after := strings.TrimLeft(source[block.End:], "\n")
+	switch {
+	case before == "" && after == "":
+		return ""
+	case before == "":
+		return after
+	case after == "":
+		return before + "\n"
+	}
+	return before + "\n\n" + after
+}
+
 func canvasBlock(source string) *Block {
 	for _, block := range Scan(source) {
 		if block.Info == CanvasInfo {

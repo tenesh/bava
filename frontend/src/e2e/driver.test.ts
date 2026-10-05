@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { runScenario, type Step } from './driver';
+import { runScenario, watchErrors, type Step } from './driver';
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -229,3 +229,23 @@ describe('loading the driver', () => {
     expect(main).not.toMatch(/^import .*e2e\/driver/m);
   });
 });
+
+describe("the driver's report of what went wrong in the page", () => {
+  it('names each error and rejection the page raised, message included', () => {
+    const target = new EventTarget();
+    const watch = watchErrors(target);
+    target.dispatchEvent(Object.assign(new Event('error'), { message: 'ResizeObserver loop completed', error: null }));
+    target.dispatchEvent(Object.assign(new Event('unhandledrejection'), { reason: new TypeError('x is undefined') }));
+    target.dispatchEvent(Object.assign(new Event('unhandledrejection'), { reason: 'a bare string' }));
+    expect(watch.seen()).toEqual(['error: ResizeObserver loop completed', 'rejection: TypeError: x is undefined', 'rejection: a bare string']);
+    watch.stop();
+    target.dispatchEvent(Object.assign(new Event('error'), { message: 'after', error: null }));
+    expect(watch.seen()).toHaveLength(3);
+  });
+
+  it('adds them to a failed step', async () => {
+    const failure = await runScenario([{ do: 'wait', target: '#never' }], { ...env(), errors: () => ['error: boom'] });
+    expect(failure).toBe('step 1 (wait #never): never showed; the page raised: error: boom');
+  });
+});
+

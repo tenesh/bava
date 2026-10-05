@@ -63,8 +63,17 @@ func TestSaveThenOpenRoundTrips(t *testing.T) {
 	if len(opened.Scene.Elements) != 1 || opened.Scene.Elements[0].ID != "e1" {
 		t.Errorf("scene did not round trip: %+v", opened.Scene)
 	}
-	if !strings.HasPrefix(opened.Source, "# T\n\nProse.\n") {
-		t.Errorf("prose did not survive: %q", opened.Source)
+	// The page is handed its prose only: the canvas block is the canvas's.
+	if opened.Source != "# T\n\nProse.\n" {
+		t.Errorf("Source = %q, want the prose alone", opened.Source)
+	}
+	before, _ := os.ReadFile(path)
+	if again := service.Save(path, opened.Source, opened.Scene); again.Error != "" {
+		t.Fatalf("Save error: %q", again.Error)
+	}
+	after, _ := os.ReadFile(path)
+	if string(after) != string(before) {
+		t.Errorf("saving what was opened changed the file:\n got %q\nwant %q", after, before)
 	}
 }
 

@@ -32,7 +32,35 @@ export type DriverEnv = {
   timeoutMs: number;
   /** Whether a found element counts as showing; the page's layout by default. */
   visible?: (el: HTMLElement) => boolean;
+  /** What the page raised so far, named in a failed step's report. */
+  errors?: () => string[];
 };
+
+/** A thrown value in words: an error's name and message, anything else as it is. */
+const described = (value: unknown) => (value instanceof Error ? `${value.name}: ${value.message}` : String(value));
+
+/**
+ * Every uncaught error and unhandled rejection on `target`, message and all:
+ * a run's report says what the page raised, which the app's own log leaves
+ * out. A driver build only; nothing here reaches a user's log.
+ */
+export function watchErrors(target: EventTarget) {
+  const seen: string[] = [];
+  const onError = (event: Event) => {
+    const { error, message } = event as ErrorEvent;
+    seen.push(`error: ${error ? described(error) : message}`);
+  };
+  const onRejection = (event: Event) => void seen.push(`rejection: ${described((event as PromiseRejectionEvent).reason)}`);
+  target.addEventListener('error', onError);
+  target.addEventListener('unhandledrejection', onRejection);
+  return {
+    seen: () => [...seen],
+    stop() {
+      target.removeEventListener('error', onError);
+      target.removeEventListener('unhandledrejection', onRejection);
+    },
+  };
+}
 
 const SERVICE = 'github.com/tenesh/bava/internal/e2e.Service';
 
@@ -227,7 +255,9 @@ export async function runScenario(steps: Step[], env: DriverEnv): Promise<string
     const failure = await step(s, env);
     if (failure) {
       await env.shot('failure').catch(() => '');
-      return `step ${index + 1} (${s.do}${s.target ? ` ${s.target}` : ''}): ${failure}`;
+      const raised = env.errors?.() ?? [];
+      const also = raised.length > 0 ? `; the page raised: ${raised.join('; ')}` : '';
+      return `step ${index + 1} (${s.do}${s.target ? ` ${s.target}` : ''}): ${failure}${also}`;
     }
     // Let the app settle between steps, as a person's pace would.
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -238,7 +268,9 @@ export async function runScenario(steps: Step[], env: DriverEnv): Promise<string
 /** Asks Go for the scenario, runs it, and reports the result, which quits the app. */
 export async function start(): Promise<void> {
   const scenario = (await Call.ByName(`${SERVICE}.Scenario`)) as { steps: Step[] };
+  const watch = watchErrors(window);
   const failure = await runScenario(scenario.steps, {
+    errors: watch.seen,
     menu: (id) =>
       (window as unknown as { _wails: { dispatchWailsEvent(e: { name: string; data: unknown }): void } })._wails.dispatchWailsEvent({
         name: 'menu:command',
