@@ -57,6 +57,15 @@ export function createReporter(send: (entry: LogEntry) => Promise<unknown>): Rep
 export const report: Report = createReporter((entry) => LogService.Report(entry));
 
 /**
+ * The browser's notice that a ResizeObserver's callback changed a size again
+ * in the same frame: the new size is delivered next frame, nothing failed.
+ * It comes as an error event with a message and no error.
+ */
+function resizeNotice(event: ErrorEvent): boolean {
+  return !event.error && typeof event.message === 'string' && event.message.startsWith('ResizeObserver loop');
+}
+
+/**
  * Catch what nothing else caught: uncaught exceptions and unhandled promise
  * rejections. Each is reported, then `onUnexpected` decides what the user sees.
  * Returns a remover.
@@ -66,6 +75,7 @@ export function installErrorHandlers(
   handlers: { report: (error: unknown, source: string) => unknown; onUnexpected: (error: unknown) => void },
 ): () => void {
   const onError = (event: Event) => {
+    if (resizeNotice(event as ErrorEvent)) return;
     const error = (event as ErrorEvent).error ?? (event as ErrorEvent).message;
     void handlers.report(error, 'window');
     handlers.onUnexpected(error);
