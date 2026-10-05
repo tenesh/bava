@@ -62,4 +62,21 @@ describe('installErrorHandlers', () => {
     target.dispatchEvent(errorEvent);
     expect(report).toHaveBeenCalledTimes(2);
   });
+
+  // The browser's notice that a resize was held to the next frame (WebKit
+  // raises it readily): nothing failed and nothing was lost.
+  it('passes over the ResizeObserver loop notice, and nothing else that looks like it', () => {
+    const target = new EventTarget();
+    const report = vi.fn();
+    const onUnexpected = vi.fn();
+    installErrorHandlers(target, { report, onUnexpected });
+    for (const message of ['ResizeObserver loop completed with undelivered notifications.', 'ResizeObserver loop limit exceeded']) {
+      target.dispatchEvent(Object.assign(new Event('error'), { error: null, message }));
+    }
+    expect(report).not.toHaveBeenCalled();
+    expect(onUnexpected).not.toHaveBeenCalled();
+    // A real error, even one naming ResizeObserver, still counts.
+    target.dispatchEvent(Object.assign(new Event('error'), { error: new TypeError('ResizeObserver loop'), message: 'ResizeObserver loop' }));
+    expect(onUnexpected).toHaveBeenCalledTimes(1);
+  });
 });
