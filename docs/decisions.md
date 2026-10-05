@@ -239,3 +239,4 @@ could reasonably have gone another way.
 | 2026-10-04 | An embed takes an image's width, alignment and caption | The user's choice (08.5 decision 4); no ratio, as the frame decides the shape. |
 | 2026-10-04 | A loose page asks to become a Space before it embeds | The user's choice (08.5 decision 5), the rule every picture a page holds follows. |
 | 2026-10-04 | Opening an embed from the Document view shows Both | The user's choice (08.5 decision 6): the page stays, the Canvas opens beside it with the frame selected and in view. |
+| 2026-10-06 | Removing a Space from the list asks, and can delete its `.bava` folder | The user's choice. Removing forgets the Space; a switch in the confirmation, off at first, when turned on also deletes `.bava` (attachments, the Trash with any pages in it, page order and settings) for good. The pages in the Space's folders are kept. Permanent because Bava has no system-Trash support; the warning says so. |

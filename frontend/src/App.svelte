@@ -1344,6 +1344,37 @@
     else if (chosen.paths?.length) await addMediaFiles(chosen.paths.map((path) => ({ path })));
   }
 
+  // Taking a Space off the list: asked first, with the choice to delete its
+  // .bava folder too; the open Space is closed first.
+  let removing = $state.raw<{ name: string; missing: boolean; resolve: (answer: { remove: boolean; deleteData: boolean }) => void } | null>(null);
+
+  async function removeSpace(path: string) {
+    const name = path.replace(/[\\/]+$/, '').replace(/^.*[\\/]/, '');
+    const missing = missingSpaces.includes(path);
+    const answer = await new Promise<{ remove: boolean; deleteData: boolean }>((resolve) => {
+      removing = { name, missing, resolve };
+    });
+    if (!answer.remove) return;
+    if (space.root === path) {
+      if (doc.isOpen && !(await fileActions.close())) return;
+      loadScene([]);
+      space.close();
+    }
+    if (answer.deleteData) {
+      const refusal = await space.deleteData(path);
+      if (refusal) notify(refusal);
+    }
+    recents.removePrefix(path);
+    missingSpaces = missingSpaces.filter((each) => each !== path);
+    let last: string | null = null;
+    try {
+      last = localStorage.getItem(LAST_SPACE_KEY);
+    } catch {
+      // Nothing to forget.
+    }
+    if (last === path) rememberLastSpace(null);
+  }
+
   // Space settings.
   let spaceSettingsOpen = $state.raw(false);
 
@@ -2485,6 +2516,7 @@
       onOpenSpace={() => void chooseSpace()}
       onOpenFile={() => void openFile()}
       onOpenRecent={(path) => void openPath(path)}
+      onRemoveRecent={(path) => void removeSpace(path)}
     />
   {/snippet}
 
@@ -2501,6 +2533,7 @@
           else if (id === 'file.open') void openFile();
           else if (id === 'space.trash') void openTrash();
           else if (id === 'space.settings') spaceSettingsOpen = true;
+          else if (id === 'space.remove' && space.root) void removeSpace(space.root);
         }}
       />
       <div class="side-sections">
@@ -2859,6 +2892,22 @@
       { value: 'save', label: t('file.unsaved.save'), primary: true },
     ]}
     onChoose={answer}
+  />
+{:else if removing}
+  <ConfirmDialog
+    open
+    title={t('space.remove.title').replace('{name}', removing.name)}
+    body={t('space.remove.body')}
+    options={[
+      { value: 'cancel', label: t('file.cancel') },
+      { value: 'remove', label: t('space.remove.confirm'), primary: true },
+    ]}
+    check={removing.missing ? undefined : { label: t('space.remove.deleteData'), hint: t('space.remove.deleteDataHint') }}
+    onChoose={(choice, checked) => {
+      const pending = removing;
+      removing = null;
+      pending?.resolve({ remove: choice === 'remove', deleteData: checked });
+    }}
   />
 {:else if prompt?.kind === 'conflict'}
   <ConfirmDialog

@@ -341,6 +341,12 @@ export function createSpace(
       return { path: result.path, error: result.error };
     },
 
+    /** Deletes a Space's `.bava` folder for good, the pages in its folders kept: why not, or null. */
+    async deleteData(dir: string): Promise<string | null> {
+      const result = await io.apply(dir, { kind: "deleteSpaceData" });
+      return result.error ? spaceMessage(result) : null;
+    },
+
     /**
      * Run an operation, then show the tree as it now is. `before` sees the
      * outcome ahead of the refresh, so the open page can follow a move before

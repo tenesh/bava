@@ -257,6 +257,11 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       case 'emptyTrash':
         space.trash = [];
         return ok();
+      // The Space's .bava gone: its attachments and Trash; the pages stay.
+      case 'deleteSpaceData':
+        space.trash = [];
+        space.attachments = [];
+        return ok();
       case 'renameSpace': {
         const checked = checkName(op.name);
         if ('code' in checked) return ok(checked);

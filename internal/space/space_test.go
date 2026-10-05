@@ -379,3 +379,40 @@ func TestALinkIsNotListedAsAPage(t *testing.T) {
 		}
 	}
 }
+
+func TestDeleteDataRemovesBavaAndKeepsThePages(t *testing.T) {
+	s := newSpace(t, "Roadmap.md", "Notes/Ideas.md")
+	testutil.WriteTree(t, s.Root, map[string]string{".bava/attachments/logo.png": "png"})
+	if err := s.DeleteData(); err != nil {
+		t.Fatalf("DeleteData: %v", err)
+	}
+	if exists(s.Root, space.Dir) {
+		t.Error(".bava is still there")
+	}
+	for _, page := range []string{"Roadmap.md", "Notes/Ideas.md"} {
+		if !exists(s.Root, page) {
+			t.Errorf("%s was deleted", page)
+		}
+	}
+}
+
+// A .bava that is a link is deleted through by nothing: what it points at
+// is outside the Space.
+func TestDeleteDataRefusesALinkedBava(t *testing.T) {
+	root := t.TempDir()
+	elsewhere := t.TempDir()
+	testutil.WriteTree(t, elsewhere, map[string]string{"space.json": "{}", "keep.txt": "mine"})
+	if err := os.Symlink(elsewhere, filepath.Join(root, space.Dir)); err != nil {
+		t.Skipf("no symlinks here: %v", err)
+	}
+	s := space.Space{Root: root}
+	if err := s.DeleteData(); !errors.Is(err, space.ErrThroughLink) {
+		t.Fatalf("DeleteData = %v, want the through-link refusal", err)
+	}
+	if !exists(elsewhere, "keep.txt") {
+		t.Error("deleted through the link")
+	}
+	if _, err := os.Lstat(filepath.Join(root, space.Dir)); err != nil {
+		t.Error("the link itself was removed")
+	}
+}

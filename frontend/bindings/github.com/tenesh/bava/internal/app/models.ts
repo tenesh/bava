@@ -144,7 +144,7 @@ export interface OpenResult {
  * Operation is one change to a Space. Kind is createPage, createFolder,
  * rename, move, duplicate, trash, restore, deleteForever, emptyTrash,
  * renameSpace, setPageWidth, relink, attach, attachData, renameAttachment,
- * trashAttachment or savePicture;
+ * trashAttachment, savePicture or deleteSpaceData;
  * the other fields are what it needs.
  */
 export interface Operation {

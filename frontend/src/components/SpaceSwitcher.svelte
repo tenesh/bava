@@ -59,6 +59,7 @@
         <Menu.Separator class="bava-menu-separator" />
         <Menu.Item value="space.trash" class="bava-menu-item"><ToolIcon id="delete" size="sm" /><span class="bava-menu-label">{t('space.trash')}</span></Menu.Item>
         <Menu.Item value="space.settings" class="bava-menu-item"><ToolIcon id="settings" size="sm" /><span class="bava-menu-label">{t('space.settings')}</span></Menu.Item>
+        <Menu.Item value="space.remove" class="bava-menu-item"><ToolIcon id="close" size="sm" /><span class="bava-menu-label">{t('space.remove')}</span></Menu.Item>
       </Menu.Content>
     </Menu.Positioner>
   </Portal>

@@ -220,13 +220,13 @@ check both before building either by hand.
 | `LinkCard` ✓ | The card under a clicked link: its address, Open, Edit, Remove; a missing page says so and offers the one page with its name. Escape or a press outside closes it; focus stays in the page. |
 | `DatePicker` ✓ | A calendar under a date chip, over Ark's `DatePicker` (inline): the chip's month, its day chosen; a pick gives `YYYY-MM-DD`. Escape or a press outside closes it. |
 | `SpaceTree` ✓ | The Files tree of a Space, wrapping Ark's TreeView (expand, keys, typeahead, F2 rename), with drag to move and reorder added on top; a new page or folder is named in place; the row a right-click menu is open for stays marked (`menuPath`). Rules in `files/tree.ts`. Reports actions; opens nothing itself. |
-| `SpaceSwitcher` ✓ | The Space's name atop the side pane, opening recent Spaces and Space actions; wraps Ark's Menu. |
-| `StartScreen` ✓ | Nothing open: the mark, New Space, Open Space, Open file, recent Spaces. |
+| `SpaceSwitcher` ✓ | The Space's name atop the side pane, opening recent Spaces and Space actions, Remove from List last; wraps Ark's Menu. |
+| `StartScreen` ✓ | Nothing open: the mark, New Space, Open Space, Open file, recent Spaces. Each recent row has a remove button after it (its own Tab stop), seen on hover or focus and always on a missing folder's row; it reports the path. |
 | `TrashDialog` ✓ | A Space's Trash: restore, delete, empty, search, total size. Restore and Delete show on the hovered, focused or chosen row, hidden by opacity so Tab still reaches them. |
 | `NewSpaceDialog` ✓ | New Space: the folder's name and where it is made. A name the caller refuses comes back from `onCreate` as its reason, shown under the field with the dialog kept open. |
 | `SpaceSettingsDialog` ✓ | Rename the Space, its default page width, show its folder. |
 | `SectionTabs` ✓ | Sections chosen from a list on the left, one shown at a time (Settings), each with an icon, under an optional heading; wraps Ark's Tabs, vertical. |
-| `ConfirmDialog` ✓ | A question with fixed answers. Dismissing it is a cancel, never an accident. |
+| `ConfirmDialog` ✓ | A question with fixed answers. Dismissing it is a cancel, never an accident. An optional `check` adds a `Toggle`, off at first, with a warning under it; its state comes with the answer. |
 | `CanvasControls` ✓ | The zoom readout and its buttons. |
 | `CanvasSection` ✓ | Settings ▸ Canvas: attach arrows to shapes, snap ends to side middles, snap to objects (`settings/`). |
 | `ToolRail` ✓ | The canvas tool rail: grouped icon buttons, a key letter in each corner, a tooltip naming each; one panel, the tool lock (`Q`) last, behind a hairline. Layout in `canvas/rail.ts`. |

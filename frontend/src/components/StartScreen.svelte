@@ -1,7 +1,8 @@
 <script lang="ts">
   /**
    * What Bava shows with no Space and no page open: the mark,
-   * New Space, Open Space and Open file, and the recent Spaces.
+   * New Space, Open Space and Open file, and the recent Spaces, each with
+   * a button that takes it off the list (its folder is never touched).
    *
    * Presentational: it reports what was chosen.
    */
@@ -18,9 +19,11 @@
     onOpenSpace: () => void;
     onOpenFile: () => void;
     onOpenRecent: (path: string) => void;
+    /** A recent Space taken off the list. */
+    onRemoveRecent: (path: string) => void;
   };
 
-  let { recents, onNewSpace, onOpenSpace, onOpenFile, onOpenRecent }: Props = $props();
+  let { recents, onNewSpace, onOpenSpace, onOpenFile, onOpenRecent, onRemoveRecent }: Props = $props();
 </script>
 
 <main class="start">
@@ -43,14 +46,25 @@
       <section class="recents" aria-label={t('space.recent')}>
         <h2>{t('space.recent')}</h2>
         {#each recents as recent (recent.path)}
-          <button type="button" class="recent" disabled={recent.missing} onclick={() => onOpenRecent(recent.path)}>
-            <span class="tile" style:background={tileFill(recent.name)} style:color={tileText(recent.name)} aria-hidden="true">{initial(recent.name)}</span>
-            <span class="text">
-              <span class="name">{recent.name}</span>
-              <span class="path">{recent.missing ? t('start.missing') : recent.path}</span>
-            </span>
-            <span class="when">{recent.when}</span>
-          </button>
+          <div class="entry" data-missing={recent.missing ? '' : undefined}>
+            <button type="button" class="recent" disabled={recent.missing} onclick={() => onOpenRecent(recent.path)}>
+              <span class="tile" style:background={tileFill(recent.name)} style:color={tileText(recent.name)} aria-hidden="true">{initial(recent.name)}</span>
+              <span class="text">
+                <span class="name">{recent.name}</span>
+                <span class="path">{recent.missing ? t('start.missing') : recent.path}</span>
+              </span>
+              <span class="when">{recent.when}</span>
+            </button>
+            <button
+              type="button"
+              class="bava-icon-button remove"
+              aria-label={t('start.remove').replace('{name}', recent.name)}
+              title={t('start.remove').replace('{name}', recent.name)}
+              onclick={() => onRemoveRecent(recent.path)}
+            >
+              <ToolIcon id="close" size="sm" />
+            </button>
+          </div>
         {/each}
       </section>
     {/if}
@@ -133,7 +147,16 @@
     color: var(--color-text-muted);
   }
 
+  /* A row and its remove button, side by side. */
+  .entry {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
   .recent {
+    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     gap: var(--space-3);
@@ -157,6 +180,19 @@
 
   .recent:disabled {
     opacity: var(--opacity-disabled);
+  }
+
+  /* Out of sight until its row is pointed at or reached by keys, but still
+     in the tab order; always there on a row whose folder is gone. */
+  .remove {
+    flex: none;
+    opacity: 0;
+  }
+
+  .entry:hover .remove,
+  .entry:focus-within .remove,
+  .entry[data-missing] .remove {
+    opacity: 1;
   }
 
   .tile {
