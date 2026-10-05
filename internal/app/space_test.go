@@ -368,3 +368,21 @@ func TestSavePictureFirstThenInPlace(t *testing.T) {
 		t.Error("data that is not base64 was saved")
 	}
 }
+
+func TestDeleteSpaceDataKeepsThePages(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "Roadmap.md"), []byte("# Roadmap\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s := spaceService(nil)
+	s.Open(root)
+	if result := s.Apply(root, app.Operation{Kind: "deleteSpaceData"}); result.Error != "" {
+		t.Fatalf("deleteSpaceData = %+v", result)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".bava")); !os.IsNotExist(err) {
+		t.Errorf(".bava is still there: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "Roadmap.md")); err != nil {
+		t.Errorf("the page went: %v", err)
+	}
+}

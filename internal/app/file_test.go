@@ -141,3 +141,34 @@ func TestSettingsWithNoFileAreTheDefaults(t *testing.T) {
 		t.Errorf("Settings = %+v, want the defaults", got)
 	}
 }
+
+// A file written by hand, with text after its canvas block and extra blank
+// lines: the text is kept, moved before the block on the first save, and a
+// second save changes nothing.
+func TestAHandWrittenCanvasBlockSettlesAfterOneSave(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "notes.md")
+	block := "```bava-canvas\n{\n  \"elements\": [\n    {\n      \"h\": 10,\n      \"id\": \"e1\",\n      \"type\": \"rect\",\n      \"w\": 10,\n      \"x\": 0,\n      \"y\": 0,\n      \"z\": 1\n    }\n  ],\n  \"version\": 1\n}\n```\n"
+	if err := os.WriteFile(path, []byte("# T\n\n\n\n"+block+"\nAfter.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	service := app.NewFileService(app.FileServiceOptions{})
+	opened := service.Open(path)
+	if opened.Source != "# T\n\nAfter.\n" {
+		t.Fatalf("Source = %q", opened.Source)
+	}
+	if saved := service.Save(path, opened.Source, opened.Scene); saved.Error != "" {
+		t.Fatalf("Save: %q", saved.Error)
+	}
+	first, _ := os.ReadFile(path)
+	if string(first) != "# T\n\nAfter.\n\n"+block {
+		t.Errorf("first save = %q", first)
+	}
+	again := service.Open(path)
+	if again.Source != opened.Source || len(again.Scene.Elements) != 1 {
+		t.Fatalf("reopened = %q, %d elements", again.Source, len(again.Scene.Elements))
+	}
+	service.Save(path, again.Source, again.Scene)
+	if second, _ := os.ReadFile(path); string(second) != string(first) {
+		t.Errorf("a second save changed the file:\n got %q\nwant %q", second, first)
+	}
+}

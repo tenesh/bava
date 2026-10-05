@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { THEMES, openApp, restPointer, shot } from '../helpers';
+import { THEMES, openApp, restPointer, shot, shotDialog } from '../helpers';
 
 const RECENTS = [
   { path: '/Users/you/Documents/Acme Product', kind: 'space', openedAt: Date.UTC(2026, 8, 26) },
@@ -20,6 +20,23 @@ for (const theme of THEMES) {
       await restPointer(page);
       await expect(page.getByText('Thesis').first()).toBeVisible();
       await expect(page).toHaveScreenshot(shot('start', 'screen', 'recents', theme));
+    });
+
+    // Reopening the last Space at launch finds its folder gone: its row
+    // says so, with its remove button always showing.
+    test('with a recent Space whose folder is gone', async ({ page }) => {
+      await openApp(page, theme, { 'bava.recents': JSON.stringify(RECENTS), 'bava.lastSpace': RECENTS[1].path });
+      await expect(page.getByText('Folder not found')).toBeVisible();
+      await restPointer(page);
+      await expect(page).toHaveScreenshot(shot('start', 'screen', 'missing', theme));
+    });
+
+    test('removing a Space, asked first', async ({ page }) => {
+      await openApp(page, theme, { 'bava.recents': JSON.stringify(RECENTS) });
+      await page.locator('.recent', { hasText: 'Acme Product' }).hover();
+      await page.getByRole('button', { name: 'Remove Acme Product from list' }).click();
+      await restPointer(page);
+      await shotDialog(page, shot('start', 'remove', 'asked', theme));
     });
   });
 }

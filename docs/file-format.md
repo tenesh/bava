@@ -72,7 +72,8 @@ code.
 The prose part of a page, everything before the canvas block, is edited as
 formatted text and written back as Markdown in one style. The page never
 shows the canvas block: it is written from the canvas on every save, last,
-after one blank line. A page whose prose
+after one blank line. Text a hand left after the block is kept in the page,
+and the first save puts the block after it. A page whose prose
 and settings are not changed is saved exactly as it was read. A page written by
 hand or by another tool is tidied into that style the first time its prose is
 edited and saved: what it shows in any Markdown viewer stays the same, and a
@@ -885,8 +886,10 @@ unchanged, into
 - `<id>` is opaque and unique within the Trash.
 - The order kept for a trashed folder's contents is not kept with it: a
   restored folder comes back at the end of its parent, its contents by name.
-- Items stay until the user deletes them from the Trash or empties it;
-  nothing is removed by age. Restoring moves the item back to `path`,
+- Items stay until the user deletes them from the Trash or empties it, or
+  removes the Space from Bava's list with "Also delete Bava's data in this
+  folder" on, which deletes `.bava/` whole (order, page width, attachments
+  and the Trash); nothing is removed by age. Restoring moves the item back to `path`,
   recreating missing folders; if the name is taken it comes back numbered
   (`Launch plan 2.md`).
 - An attachment is restored to the attachments folder, numbered if its

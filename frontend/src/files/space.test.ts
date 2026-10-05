@@ -312,3 +312,14 @@ describe("a Space's index", () => {
     expect(outcome.missed).toEqual(['Plan.md']);
   });
 });
+
+describe("deleting a Space's data", () => {
+  it('asks Go for that folder, open or not, and says why when it is refused', async () => {
+    const io = fakeIO(tree());
+    const space = createSpace(io, { storage: memoryStorage() });
+    expect(await space.deleteData('/w/Old')).toBeTruthy();
+    expect(io.apply).toHaveBeenCalledWith('/w/Old', { kind: 'deleteSpaceData' });
+    io.apply.mockResolvedValueOnce({ path: '', id: '', root: '', error: '' });
+    expect(await space.deleteData('/w/Old')).toBeNull();
+  });
+});

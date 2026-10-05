@@ -209,6 +209,28 @@ func (s Space) SetPageWidth(width string) error {
 	})
 }
 
+// DeleteData deletes the Space's .bava folder for good: its attachments, its
+// Trash (pages in it included), its page order and settings. The pages in the
+// Space's folders are kept. A .bava that is not a plain folder (a link most
+// of all) is refused, so nothing outside the Space can be deleted through it.
+func (s Space) DeleteData() error {
+	dir := filepath.Join(s.Root, Dir)
+	info, err := os.Lstat(dir)
+	if err != nil {
+		return fmt.Errorf("delete space data: %w", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return refuse(ErrThroughLink, "delete space data: %s is a link", dir)
+	}
+	if !info.IsDir() {
+		return refuse(ErrNotFolder, "delete space data: %s is not a folder", dir)
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		return fmt.Errorf("delete space data: %w", err)
+	}
+	return nil
+}
+
 func (s Space) spaceFile() string { return filepath.Join(s.Root, Dir, "space.json") }
 func (s Space) trashDir() string  { return filepath.Join(s.Root, Dir, "trash") }
 

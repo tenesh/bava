@@ -64,7 +64,7 @@ type SpaceList struct {
 // Operation is one change to a Space. Kind is createPage, createFolder,
 // rename, move, duplicate, trash, restore, deleteForever, emptyTrash,
 // renameSpace, setPageWidth, relink, attach, attachData, renameAttachment,
-// trashAttachment or savePicture;
+// trashAttachment, savePicture or deleteSpaceData;
 // the other fields are what it needs.
 type Operation struct {
 	Kind   string `json:"kind"`
@@ -205,6 +205,8 @@ func (s *SpaceService) Apply(root string, op Operation) OpResult {
 		err = sp.DeleteForever(op.ID)
 	case "emptyTrash":
 		err = sp.EmptyTrash()
+	case "deleteSpaceData":
+		err = sp.DeleteData()
 	case "renameSpace":
 		var next space.Space
 		next, err = sp.RenameSpace(op.Name)
