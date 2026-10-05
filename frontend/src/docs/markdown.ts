@@ -146,6 +146,7 @@ const APPLIES: Record<string, string[]> = {
   code_block: ['wrap', 'caption'],
   media_image: ['width', 'ratio', 'align', 'caption'],
   media_video: ['width', 'ratio', 'align', 'caption', 'poster', 'loop', 'muted'],
+  media_embed: ['embed', 'page', 'width', 'align', 'caption'],
   card_block: ['card', 'description', 'icon', 'image'],
 };
 
@@ -162,6 +163,9 @@ const VALID: Record<string, (value: string | true) => boolean> = {
   // A file in the attachments folder, by its name alone.
   poster: (v) => typeof v === 'string' && v !== '' && !/[/\\]/.test(v) && !v.startsWith('.'),
   loop: (v) => v === true,
+  // A frame's element id, and the address of the page holding it.
+  embed: (v) => typeof v === 'string' && /^[^\s"]+$/.test(v),
+  page: (v) => typeof v === 'string' && v !== '',
   muted: (v) => v === true,
   card: (v) => v === true || v === 'extended',
   description: (v) => typeof v === 'string',
@@ -828,6 +832,23 @@ function readMarksAndKept(state: CoreState & { src: string }): void {
   state.tokens = out;
 }
 
+/** A PNG in the Space's attachments, from this page or a folder below the Space's top. */
+const ATTACHED_PNG = /^(\.\.\/)*\.bava\/attachments\/[^/?#]+\.png$/i;
+
+/**
+ * An image whose mark names a frame (`embed`) and whose picture is a PNG in
+ * the attachments is a canvas embed. Anything else keeps the key on what is
+ * there, as written.
+ */
+function readEmbeds(state: CoreState): void {
+  for (const token of state.tokens) {
+    if (token.type !== 'media_image') continue;
+    const embed = (token.meta?.mark as MarkPair[] | undefined)?.find((pair) => pair.key === 'embed');
+    const read = token.meta.image as ImageRead;
+    if (embed && VALID.embed(embed.value) && ATTACHED_PNG.test(read.src)) token.type = 'media_embed';
+  }
+}
+
 /**
  * A link alone on its line, written inline with plain words, whose mark has
  * `card`, is a card. Anything else keeps the key on its paragraph, as written.
@@ -923,6 +944,7 @@ md.core.ruler.push('bava', (state) => {
   readTables(state);
   readMedia(state);
   readMarksAndKept(state);
+  readEmbeds(state);
   readCards(state);
   readFootnotes(state);
 });
@@ -988,6 +1010,13 @@ const parser = new MarkdownParser(schema, md, {
   },
   media_image: { node: 'image', getAttrs: mediaAttrs },
   media_video: { node: 'video', getAttrs: mediaAttrs },
+  media_embed: {
+    node: 'embed',
+    getAttrs: (tok) => {
+      const { embed, ...rest } = mediaAttrs(tok) as ReturnType<typeof mediaAttrs> & { embed?: string };
+      return { frame: embed, ...rest };
+    },
+  },
   hr: { node: 'horizontal_rule' },
   hardbreak: { node: 'hard_break' },
   kept: { node: 'kept', getAttrs: (tok) => ({ text: tok.content }) },
@@ -1009,6 +1038,8 @@ const parser = new MarkdownParser(schema, md, {
 function writeMark(state: MarkdownSerializerState, node: Node) {
   const a = node.attrs;
   const keys = [
+    node.type.name === 'embed' ? `embed=${a.frame}` : '',
+    node.type.name === 'embed' && a.page ? `page="${encodeValue(a.page)}"` : '',
     node.type.name === 'card' ? (a.look === 'extended' ? 'card=extended' : 'card') : '',
     a.width ? `width=${a.width}` : '',
     a.ratio ? `ratio=${a.ratio}` : '',
@@ -1321,6 +1352,7 @@ const serializer = new MarkdownSerializer(
     table_cell() {},
     image: writeMedia,
     video: writeMedia,
+    embed: writeMedia,
     card(state, node) {
       writeMark(state, node);
       writeRaw(state, cardLine(node));
@@ -1630,9 +1662,10 @@ export type PageLink = {
    * A link (a card's too); a media block's address; or a picture named in a
    * mark (a video's poster, a web card's icon or picture), whose `href` is
    * its file's name in the attachments folder and whose `dest` is its whole
-   * key in the mark (`key`).
+   * key in the mark (`key`); or the page a canvas embed's frame is on, whose
+   * `dest` is its whole `page="…"` in the mark.
    */
-  kind: 'link' | 'media' | 'poster';
+  kind: 'link' | 'media' | 'poster' | 'embed';
   /** For a picture named in a mark: its key, `poster`, `icon` or `image`. */
   key?: MarkFileKey;
 };
@@ -1708,8 +1741,14 @@ export function pageLinks(markdown: string): PageLink[] {
     out.push({ href: token.meta.href, text: token.meta.text, dest: back(place?.dest ?? null), label: back(place?.label ?? null), html: false, cell: false, kind: 'link' });
     markFiles(token, ['icon', 'image']);
   };
+  const embed = (token: Token) => {
+    media(token);
+    const page = markAttrs(token.type, token.meta.mark as MarkPair[] | undefined).page as string | undefined;
+    if (page !== undefined) out.push({ href: page, text: null, dest: back(markFilePlace(reading, token.meta.markLine as number | null, 'page', page)), label: null, html: false, cell: false, kind: 'embed' });
+  };
   for (const token of tokens) {
     if (token.type === 'media_image' || token.type === 'media_video') media(token);
+    else if (token.type === 'media_embed') embed(token);
     else if (token.type === 'card_block') card(token);
     else walk([token]);
   }
@@ -1717,7 +1756,7 @@ export function pageLinks(markdown: string): PageLink[] {
 }
 
 /** Where a mark's `key=` naming `name` is in the page, from the mark's line; null when it cannot be placed. */
-function markFilePlace(reading: LinkReading, line: number | null, key: MarkFileKey, name: string): Span | null {
+function markFilePlace(reading: LinkReading, line: number | null, key: MarkFileKey | 'page', name: string): Span | null {
   if (line === null || line >= reading.lines.length) return null;
   const text = lineText(reading, line);
   const open = /<!--\s*bava:\s*/.exec(text);
@@ -1748,6 +1787,15 @@ export function lineMark(extra: string | null): { color: string | null; backgrou
   const { color, background, extra: rest } = markAttrs('paragraph_open', extra ? readMark(extra) : []);
   return { color: (color as string | undefined) ?? null, background: (background as string | undefined) ?? null, extra: (rest as string | undefined) ?? null };
 }
+
+/** The page address a mark's written `page="…"` holds; null when it is not one. */
+export function markPageOf(written: string): string | null {
+  const pairs = readMark(written);
+  return pairs.length === 1 && pairs[0].key === 'page' && VALID.page(pairs[0].value) ? (pairs[0].value as string) : null;
+}
+
+/** A mark's `page="…"`, holding a page's address. */
+export const markPageKey = (address: string) => `page="${encodeValue(address)}"`;
 
 /** A mark's `key=` naming a file: in quotes, unless it was written without and the name needs none. */
 export const markFileKey = (key: MarkFileKey, name: string, quoted = true) =>

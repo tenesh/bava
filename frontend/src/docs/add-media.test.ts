@@ -85,6 +85,19 @@ describe('the / menu', () => {
     }
     expect(SLASH_ITEMS.find((item) => item.id === 'image')?.group).toBe('advanced');
   });
+
+  it('offers Embed frame and Diagram from Code, which ask the app, at the caret', () => {
+    const onCanvas = vi.fn();
+    const opened = openEditor('Text\n', { onCanvas });
+    editor = opened.editor;
+    const view = editor.view!;
+    for (const [id, what] of [['embedFrame', 'embed'], ['diagram', 'diagram']]) {
+      view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)).insertText(' /'));
+      editor.chooseSlash(id);
+      expect(onCanvas).toHaveBeenLastCalledWith(what, expect.objectContaining({ left: expect.any(Number), bottom: expect.any(Number) }));
+    }
+    expect(editor.markdown()).toBe('Text\n');
+  });
 });
 
 let editor: DocEditor | null = null;

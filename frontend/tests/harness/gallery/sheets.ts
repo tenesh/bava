@@ -5,7 +5,7 @@
  */
 export const SHEETS = {
   controls: ['Segments', 'Toggle', 'ViewSwitcher', 'SectionTabs', 'LayoutEnginePicker', 'Splitter', 'Pane', 'Icon', 'ToolIcon', 'Mark'],
-  pickers: ['OptionPicker', 'OpacityPicker', 'StyleBar', 'DatePicker', 'EmojiPicker'],
+  pickers: ['OptionPicker', 'OpacityPicker', 'StyleBar', 'DatePicker', 'EmojiPicker', 'FramePicker'],
   menus: ['ContextMenu', 'SlashMenu', 'SpaceSwitcher', 'Tooltip'],
   fields: ['LinkField', 'EquationField', 'FindBar'],
   'canvas-chrome': ['ToolRail', 'SelectionToolbar', 'CanvasControls', 'InsertPanel'],

@@ -260,11 +260,10 @@ History belongs in each plan's As built, not here.
 
 ### Milestones
 
-- **Committed through 08.4d** (the test layout). HEAD is `512cfe4`.
-  **08.4e** (visual sheets) is built and gated, uncommitted. **Next is 8.5**
-  (Canvas in the Document), then 8.6 (tags and templates), then Milestone 15
-  (export, import and search). The roadmap (`.claude/plan/roadmap.md`) holds
-  the sequence.
+- **Committed through 08.4e** (visual sheets). HEAD is `c889640`.
+  **8.5** (Canvas in the Document) is built and gated, uncommitted. **Next
+  is 8.6** (tags and templates), then Milestone 15 (export, import and
+  search). The roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **CI** builds a downloadable app per system on every run (artifacts
   `bava-<os>-<commit>`, 14 days) from 08.4e on; its first run is the check.
 - Each plan under `.claude/work/plans/` has an "As built" section with its
@@ -318,9 +317,9 @@ History belongs in each plan's As built, not here.
 | `go test ./internal/render -run Golden` | exit 0 (inside the run above); 2 fixtures under `testdata/golden/`, light and dark |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 2,602 tests passed and 1 skipped, in 196 files |
+| `npm test` | exit 0; 2,668 tests passed and 1 skipped, in 204 files |
 | `npm run build` | CI's first frontend step. The production minifier rejects some CSS the dev server and the browser tests accept (WebKit-only selectors such as `::selection:window-inactive`) |
-| `npm run browser` | last full runs 2026-10-04: 421 passed (204 visual, 217 integration), three in a row; 248 references in `testdata/visual/` |
+| `npm run browser` | last full runs 2026-10-04: 425 passed (204 visual, 221 integration); 248 references in `testdata/visual/` |
 | CI end-to-end | `create`, `reopen` and `canvas` on all three platforms; see Milestones for the last run |
 | `wails3 build` | CI only |
 

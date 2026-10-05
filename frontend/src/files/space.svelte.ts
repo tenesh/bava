@@ -116,6 +116,7 @@ const overIPC: SpaceIO = {
       source: "",
       data: "",
       attachment: "",
+      replace: false,
       ...op,
     }),
   index: (root, withText) =>

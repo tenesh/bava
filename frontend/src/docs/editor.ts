@@ -26,7 +26,7 @@ import { shortcuts } from './rules';
 import { dropPosition } from './handle';
 import { commands, currentKind, topBlock } from './commands';
 import { findNext, findPrev, getSearchState, replaceAll, replaceNext, search, SearchQuery, setSearchState } from 'prosemirror-search';
-import { filterItems, runItem, slashKey, slashPlugin, type SlashInfo } from './slash';
+import { CANVAS_ASK, filterItems, runItem, slashKey, slashPlugin, type SlashInfo } from './slash';
 import { schema } from './schema';
 import { codeBlockView, codeHighlight, codeKeys, setLanguage } from './code';
 import { foldKeys, foldPlugin, toggleView } from './fold';
@@ -41,6 +41,7 @@ import { linkAt, missingLinksPlugin } from './link-view';
 import { addBlock, endLinePlugin, endsWithALine, textWithoutEndLine } from './lines';
 import { posterAfter } from './page-links';
 import { ADDRESS_ASK, attachmentBlock, MEDIA_PICKER, mediaView, probeFile, type MediaPlace } from './media';
+import { embedView, type EmbedContext } from './embed-view';
 import { cardView, type FileDetails } from './card';
 import { onlineVideo, playsInPage } from './online-video';
 import { dropPoint } from 'prosemirror-transform';
@@ -65,6 +66,12 @@ export type DocEditorOptions = {
   fileDetails?: (root: string, path: string) => Promise<FileDetails>;
   /** Whether the file route has a file; asked for media that did not load. Defaults to asking the route. */
   probeFile?: (url: string) => Promise<boolean>;
+  /**
+   * Canvas embeds: how this page's frames are drawn and watched, whether
+   * another page still holds one, and opening one on its canvas. Without
+   * them, every embed shows its picture file.
+   */
+  embeds?: Pick<EmbedContext, 'draw' | 'watchCanvas' | 'holds' | 'open'>;
   /** ⌘K: the app asks for a link. */
   onLink?: () => void;
   /** ⌘/: the block menu for the block the caret is in. */
@@ -77,6 +84,8 @@ export type DocEditorOptions = {
   onEmoji?: (info: EmojiInfo | null) => void;
   /** The `/` menu's Emoji: the app opens the picker at the caret. */
   onEmojiPicker?: (at: { left: number; top: number; bottom: number }) => void;
+  /** `/` Embed frame or Diagram from Code: the app asks for a frame, or opens the dialog, and puts the result at the caret. */
+  onCanvas?: (what: 'embed' | 'diagram', at: { left: number; top: number; bottom: number }) => void;
   /** A right-click in a table: the app opens the table menu there. */
   onTableMenu?: (at: { x: number; y: number }) => void;
   /** An equation at `pos` to edit: the app opens its field there. */
@@ -261,6 +270,8 @@ export class DocEditor {
   #foldMemory: string | null = null;
   /** Cells selected when a right-click began, for its menu to act on. */
   #heldCells: CellSelection | null = null;
+  /** Whether the page has had the caret since it opened: where a canvas embed made from outside it goes. */
+  #hadCaret = false;
   #options: DocEditorOptions | null = null;
   /** This page's path in its Space (null outside one), and the Space's pages once read. */
   #space: { here: string | null; pages: PageRef[] | null } = { here: null, pages: null };
@@ -284,6 +295,7 @@ export class DocEditor {
         math_inline: (node, view, getPos) => mathView(node, view, getPos, (pos, at) => this.#options?.onEquation?.(pos, at)),
         image: (node, view, getPos) => mediaView(node, view, getPos, this.#mediaContext()),
         video: (node, view, getPos) => mediaView(node, view, getPos, this.#mediaContext()),
+        embed: (node, view, getPos) => embedView(node, view, getPos, { ...this.#mediaContext(), ...this.#embeds() }),
         card: (node, view, getPos) =>
           cardView(node, view, getPos, {
             ...this.#mediaContext(),
@@ -367,7 +379,10 @@ export class DocEditor {
           if (event.target instanceof Element && event.target.closest('a')) event.preventDefault();
           return false;
         },
-        focus: () => void this.#options?.onSelection?.(),
+        focus: () => {
+          this.#hadCaret = true;
+          this.#options?.onSelection?.();
+        },
         blur: () => void this.#options?.onSelection?.(),
         // A right-click on selected cells keeps them selected: WebKit on macOS
         // would select the word under the pointer instead.
@@ -455,6 +470,7 @@ export class DocEditor {
     if (tr.docChanged) this.#options?.onChange();
     if (tr.getMeta(PICKER)) this.#options?.onEmojiPicker?.(this.#caretAt());
     if (tr.getMeta(MEDIA_PICKER)) this.#options?.onChooseMedia?.(tr.getMeta(MEDIA_PICKER));
+    if (tr.getMeta(CANVAS_ASK)) this.#options?.onCanvas?.(tr.getMeta(CANVAS_ASK), this.#caretAt());
     if (tr.selectionSet || tr.docChanged) this.#options?.onSelection?.();
     const card = this.#card;
     const { from, to } = view.state.selection;
@@ -531,6 +547,14 @@ export class DocEditor {
         const picture = (key: 'icon' | 'image') => (node.attrs[key] ? (posterAfter(node.attrs[key] as string, moves) ?? node.attrs[key]) : null);
         const attrs = { ...node.attrs, href: next?.href ?? node.attrs.href, text: next?.text ?? node.attrs.text, icon: picture('icon'), image: picture('image') };
         if (Object.keys(attrs).some((key) => attrs[key as keyof typeof attrs] !== node.attrs[key])) tr.setNodeMarkup(pos, null, attrs);
+        return false;
+      }
+      // An embed's picture follows as a media block's address, and the page
+      // its frame is on as a link's address.
+      if (node.type === schema.nodes.embed) {
+        const src = retarget(page, node.attrs.src as string, '￼', moves)?.href ?? node.attrs.src;
+        const from = node.attrs.page ? (retarget(page, node.attrs.page as string, '￼', moves)?.href ?? node.attrs.page) : null;
+        if (src !== node.attrs.src || from !== node.attrs.page) tr.setNodeMarkup(pos, null, { ...node.attrs, src, page: from });
         return false;
       }
       if (node.type !== schema.nodes.image && node.type !== schema.nodes.video) return true;
@@ -649,6 +673,7 @@ export class DocEditor {
    */
   setPage(markdown: string, foldMemory: string | null = null): void {
     this.#foldMemory = foldMemory;
+    this.#hadCaret = false;
     const page = parsePage(markdown);
     const doc = endsWithALine(withALine(page.doc));
     this.#front = page.front;
@@ -923,6 +948,11 @@ export class DocEditor {
     for (const redraw of this.#mediaWatchers) redraw();
   }
 
+  /** The app's canvas embeds; with none, each embed shows its picture file. */
+  #embeds(): Pick<EmbedContext, 'draw' | 'watchCanvas' | 'holds' | 'open'> {
+    return this.#options?.embeds ?? { watchCanvas: () => () => {}, holds: async () => null, open: () => {} };
+  }
+
   #mediaContext() {
     return {
       place: () => this.#mediaPlace,
@@ -935,6 +965,33 @@ export class DocEditor {
       playsInPage: (provider: 'YouTube' | 'Vimeo' | 'Loom') => this.#options?.playsInPage?.(provider) ?? playsInPage(provider, window.location.protocol),
       openExternal: (href: string) => this.#options?.onOpenFile?.(href),
     };
+  }
+
+  /** Whether the page has had the caret since it opened. */
+  hasCaret(): boolean {
+    return this.#hadCaret;
+  }
+
+  /**
+   * Puts a canvas embed in the page, as one edit: at the caret, as media goes
+   * in, or at the end of a page that has had no caret since it opened,
+   * before its empty last line and its notes.
+   */
+  insertEmbed(attrs: { frame: string; page: string | null; src: string; alt: string }): void {
+    const view = this.view;
+    if (!view) return;
+    const node = schema.nodes.embed.create(attrs);
+    if (this.#hadCaret) {
+      this.#insertBlocks([node]);
+      return;
+    }
+    // Before the notes, and before the empty line the page always ends with.
+    const { doc } = view.state;
+    let end = doc.content.size;
+    if (doc.lastChild?.type === schema.nodes.footnotes) end -= doc.lastChild.nodeSize;
+    const before = doc.resolve(end).nodeBefore;
+    if (before?.type === schema.nodes.paragraph && before.content.size === 0) end -= before.nodeSize;
+    this.#insertBlocks([node], end);
   }
 
   /**
@@ -1102,7 +1159,7 @@ export class DocEditor {
   setMediaAttrs(pos: number, attrs: Record<string, unknown>): void {
     const view = this.view;
     const node = view?.state.doc.nodeAt(pos);
-    if (!view || this.locked || !node || ![schema.nodes.image, schema.nodes.video, schema.nodes.card].includes(node.type)) return;
+    if (!view || this.locked || !node || ![schema.nodes.image, schema.nodes.video, schema.nodes.embed, schema.nodes.card].includes(node.type)) return;
     view.dispatch(view.state.tr.setNodeMarkup(pos, null, { ...node.attrs, ...attrs }));
   }
 

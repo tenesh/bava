@@ -143,8 +143,8 @@ export interface OpenResult {
 /**
  * Operation is one change to a Space. Kind is createPage, createFolder,
  * rename, move, duplicate, trash, restore, deleteForever, emptyTrash,
- * renameSpace, setPageWidth, relink, attach, attachData, renameAttachment
- * or trashAttachment;
+ * renameSpace, setPageWidth, relink, attach, attachData, renameAttachment,
+ * trashAttachment or savePicture;
  * the other fields are what it needs.
  */
 export interface Operation {
@@ -180,6 +180,12 @@ export interface Operation {
      * Attachment is the file renameAttachment renames, to Name.
      */
     "attachment": string;
+
+    /**
+     * Replace makes savePicture write Name itself, a canvas embed's picture
+     * redrawn; without it, the first picture takes a free name.
+     */
+    "replace": boolean;
 }
 
 /**

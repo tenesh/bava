@@ -779,6 +779,56 @@ describe('date chips', () => {
   });
 });
 
+describe('canvas embeds', () => {
+  const first = (markdown: string) => parsePage(markdown).doc.firstChild!;
+
+  it("reads an embed of this page's frame, with its settings, and writes it back as written", () => {
+    const page = '<!-- bava: embed=f3 width=large caption="The write path" -->\n![Ingest pipeline](.bava/attachments/Architecture%20-%20Ingest%20pipeline.png)\n';
+    same(page);
+    const embed = first(page);
+    expect(embed.type.name).toBe('embed');
+    expect(embed.attrs).toMatchObject({
+      frame: 'f3',
+      page: null,
+      src: '.bava/attachments/Architecture%20-%20Ingest%20pipeline.png',
+      alt: 'Ingest pipeline',
+      width: 'large',
+      caption: 'The write path',
+    });
+  });
+
+  it("reads an embed of another page's frame by that page's address", () => {
+    const page = '<!-- bava: embed=f7 page="../Engineering/Architecture.md" -->\n![Write path](../.bava/attachments/Architecture%20-%20Write%20path.png)\n';
+    same(page);
+    expect(first(page).attrs).toMatchObject({ frame: 'f7', page: '../Engineering/Architecture.md' });
+  });
+
+  it("writes its keys in Bava's order, keeping one it does not know", () => {
+    expect(tidy('<!-- bava: caption="c" align=right page="A.md" zoom=2 embed=f1 width=small -->\n![a](.bava/attachments/a.png)\n')).toBe(
+      '<!-- bava: embed=f1 page="A.md" width=small align=right caption="c" zoom=2 -->\n![a](.bava/attachments/a.png)\n',
+    );
+  });
+
+  it('is an embed only over a PNG in the attachments; otherwise the key is kept on what is there', () => {
+    for (const page of [
+      '<!-- bava: embed=f1 -->\n![a](.bava/attachments/a.jpg)\n',
+      '<!-- bava: embed=f1 -->\n![a](pictures/a.png)\n',
+      '<!-- bava: embed=f1 -->\n![a](https://example.com/a.png)\n',
+    ]) {
+      expect(first(page).type.name, page).toBe('image');
+      expect(first(page).attrs.extra, page).toBe('embed=f1');
+      same(page);
+    }
+  });
+
+  it('is not an embed without a frame, and a ratio stays as written', () => {
+    expect(first('<!-- bava: embed -->\n![a](.bava/attachments/a.png)\n').type.name).toBe('image');
+    const page = '<!-- bava: embed=f1 ratio=16:9 -->\n![a](.bava/attachments/a.png)\n';
+    expect(first(page).attrs).toMatchObject({ frame: 'f1', extra: 'ratio=16:9' });
+    same(page);
+  });
+});
+
 describe('images and videos', () => {
   const first = (markdown: string) => parsePage(markdown).doc.firstChild!;
 

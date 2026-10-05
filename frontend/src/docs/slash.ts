@@ -45,6 +45,17 @@ const heading = (level: number): SlashItem => ({
   run: commands.turnInto('heading', level),
 });
 
+/** A transaction's ask of the app for something from the canvas: a frame to embed, or Diagram from Code. */
+export const CANVAS_ASK = 'bava-canvas-ask';
+
+/** Asks the app for a frame to embed, or a diagram from code, which it puts at the caret. */
+const askCanvas =
+  (what: 'embed' | 'diagram'): Command =>
+  (state, dispatch) => {
+    dispatch?.(state.tr.setMeta(CANVAS_ASK, what));
+    return true;
+  };
+
 /** Asks the app for images or videos, which it adds at the caret. */
 const chooseMedia =
   (kind: 'image' | 'video' | 'file'): Command =>
@@ -115,6 +126,8 @@ export const SLASH_ITEMS: SlashItem[] = [
   { id: 'onlinevideo', group: 'advanced', label: 'slash.onlineVideo', words: 'online video youtube vimeo loom embed', run: askAddress('onlinevideo') },
   { id: 'file', group: 'advanced', label: 'slash.file', words: 'file attachment pdf document upload card', run: chooseMedia('file') },
   { id: 'weblink', group: 'advanced', label: 'slash.webLink', words: 'web link bookmark card url website', run: askAddress('weblink') },
+  { id: 'embedFrame', group: 'advanced', label: 'slash.embedFrame', words: 'embed frame canvas picture drawing', run: askCanvas('embed') },
+  { id: 'diagram', group: 'advanced', label: 'slash.diagram', words: 'diagram from code d2 flowchart graph chart', run: askCanvas('diagram') },
   // Inline: put in the line itself.
   { id: 'inlineEquation', group: 'inline', label: 'slash.inlineEquation', words: 'inline equation math formula tex latex', run: math.insertInline },
   { id: 'footnote', group: 'inline', label: 'slash.footnote', words: 'footnote reference citation source', run: insertFootnote },

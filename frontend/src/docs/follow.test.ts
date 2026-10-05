@@ -236,6 +236,20 @@ describe('the open page after a rename or move', () => {
   });
 });
 
+describe("the open page's canvas embeds after a rename or move", () => {
+  it("follow the frame's page and the picture, as one edit", () => {
+    const page = '<!-- bava: embed=f7 page="Engineering/Architecture.md" -->\n![Write path](.bava/attachments/Write%20path.png)\n';
+    open(page, 'Roadmap.md');
+    editor!.followMoves('Roadmap.md', [
+      { from: 'Engineering/Architecture.md', to: 'Engineering/System design.md' },
+      { from: '.bava/attachments/Write path.png', to: '.bava/attachments/Writes.png' },
+    ]);
+    expect(editor!.markdown()).toBe('<!-- bava: embed=f7 page="Engineering/System%20design.md" -->\n![Write path](.bava/attachments/Writes.png)\n');
+    editor!.undo();
+    expect(editor!.markdown()).toBe(page);
+  });
+});
+
 describe("the open page's images and videos after a rename or move", () => {
   it('follow an attachment renamed, address and poster, as one edit', () => {
     const page = '<!-- bava: poster="logo.png" -->\n![Demo](.bava/attachments/demo.mp4)\n\n![Logo](.bava/attachments/logo.png)\n';

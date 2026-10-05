@@ -61,6 +61,14 @@ export function mediaMenuItems(kind: 'image' | 'video', attrs: Toggles, attachme
   ];
 }
 
+/** A canvas embed's menu: an image's width, alignment and caption; its shape is the frame's, its file Bava's. */
+export function embedMenuItems(): MenuNode[] {
+  const settings = mediaMenuItems('image', { loop: false, muted: false, poster: null }, false, false);
+  const kept = settings.filter((each) => each.kind !== 'separator' && ['m:width', 'm:align', 'm:caption'].includes(each.id));
+  // Opening the frame as a click does, for the keyboard.
+  return [item('m:openFrame', 'embed.openFrame'), { kind: 'separator' } satisfies MenuNode, ...kept];
+}
+
 /** The settings an `m:set:` item (or removing the poster) gives the block; null for any other item. */
 export function mediaSetting(id: string, attrs: Record<string, unknown>): Record<string, unknown> | null {
   if (id === 'm:noposter') return { poster: null };

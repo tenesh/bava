@@ -341,3 +341,30 @@ func TestIndexSaysWhichPagesCouldNotBeRead(t *testing.T) {
 		}
 	}
 }
+
+// A canvas embed's picture: saved under its own name first, then redrawn in
+// place; data that is not base64 is refused.
+func TestSavePictureFirstThenInPlace(t *testing.T) {
+	root := t.TempDir()
+	s := spaceService(nil)
+	s.Open(root)
+	data := func(text string) string { return base64.StdEncoding.EncodeToString([]byte(text)) }
+	first := s.Apply(root, app.Operation{Kind: "savePicture", Name: "Roadmap - Box.png", Data: data("one")})
+	if first.Error != "" || first.Name != "Roadmap - Box.png" {
+		t.Fatalf("savePicture = %+v", first)
+	}
+	second := s.Apply(root, app.Operation{Kind: "savePicture", Name: "Roadmap - Box.png", Data: data("two")})
+	if second.Name != "Roadmap - Box 2.png" {
+		t.Errorf("a second first picture took %q", second.Name)
+	}
+	redrawn := s.Apply(root, app.Operation{Kind: "savePicture", Name: "Roadmap - Box.png", Data: data("three"), Replace: true})
+	if redrawn.Error != "" || redrawn.Name != "Roadmap - Box.png" {
+		t.Fatalf("savePicture replace = %+v", redrawn)
+	}
+	if got, _ := os.ReadFile(filepath.Join(root, ".bava", "attachments", "Roadmap - Box.png")); string(got) != "three" {
+		t.Errorf("the picture holds %q", got)
+	}
+	if bad := s.Apply(root, app.Operation{Kind: "savePicture", Name: "x.png", Data: "not base64!"}); bad.Error == "" {
+		t.Error("data that is not base64 was saved")
+	}
+}

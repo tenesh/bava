@@ -51,6 +51,20 @@ export function createViewport() {
     },
 
     /**
+     * Bring a scene box into a view of `size` at the current zoom: left where
+     * it is when wholly in view, otherwise centred.
+     */
+    panToShow(box: { x: number; y: number; w: number; h: number }, size: { width: number; height: number }): void {
+      const topLeft = sceneToScreen(box);
+      const inView = topLeft.x >= 0 && topLeft.y >= 0 && topLeft.x + box.w * zoom <= size.width && topLeft.y + box.h * zoom <= size.height;
+      if (inView) return;
+      pan = {
+        x: size.width / 2 - (box.x + box.w / 2) * zoom,
+        y: size.height / 2 - (box.y + box.h / 2) * zoom,
+      };
+    },
+
+    /**
      * Zoom about a screen point, keeping whatever is under it in place.
      *
      * The scene point under the cursor is found first, then the pan is solved

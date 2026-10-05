@@ -304,3 +304,74 @@ func TestTrashAttachmentRefusesANameThatIsNotOne(t *testing.T) {
 		}
 	}
 }
+
+// A frame's first picture takes its own name, numbered when taken, and is
+// never shared with a file of the same bytes: redrawing one frame must not
+// change another's picture.
+func TestSavePictureFirstTakesAFreeNameAndSharesNothing(t *testing.T) {
+	s := newSpace(t)
+	same, err := s.AttachData("logo.png", []byte("png"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	name, err := s.SavePicture("Roadmap - Write path.png", []byte("png"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if name != "Roadmap - Write path.png" || name == same || attachment(t, s, name) != "png" {
+		t.Errorf("saved as %q", name)
+	}
+	again, err := s.SavePicture("Roadmap - Write path.png", []byte("other"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again != "Roadmap - Write path 2.png" || attachment(t, s, name) != "png" {
+		t.Errorf("a taken name gave %q, and the first holds %q", again, attachment(t, s, name))
+	}
+}
+
+// Redrawn, a picture replaces its own file, or makes it when it is gone.
+func TestSavePictureReplacesItsOwnFile(t *testing.T) {
+	s := newSpace(t)
+	if _, err := s.SavePicture("Box.png", []byte("one"), false); err != nil {
+		t.Fatal(err)
+	}
+	name, err := s.SavePicture("Box.png", []byte("two"), true)
+	if err != nil || name != "Box.png" || attachment(t, s, "Box.png") != "two" {
+		t.Fatalf("replaced as %q (%v), holding %q", name, err, attachment(t, s, "Box.png"))
+	}
+	if _, err := s.SavePicture("Gone.png", []byte("new"), true); err != nil || attachment(t, s, "Gone.png") != "new" {
+		t.Errorf("a missing picture was not made: %v", err)
+	}
+}
+
+// Drawn again with nothing changed, the file is left alone: its date stays
+// when it was last different.
+func TestSavePictureLeavesTheSameBytesUntouched(t *testing.T) {
+	s := newSpace(t)
+	if _, err := s.SavePicture("Box.png", []byte("one"), false); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(s.Root, ".bava", "attachments", "Box.png")
+	old := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	if err := os.Chtimes(path, old, old); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.SavePicture("Box.png", []byte("one"), true); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(path); err != nil || !info.ModTime().Equal(old) {
+		t.Errorf("the same picture was written again: %v", info.ModTime())
+	}
+}
+
+func TestSavePictureRefusesANameThatIsNotOne(t *testing.T) {
+	s := newSpace(t)
+	for _, name := range []string{"../escape.png", "a/b.png", ".hidden.png", "", "a:b.png"} {
+		for _, replace := range []bool{false, true} {
+			if _, err := s.SavePicture(name, []byte("x"), replace); err == nil {
+				t.Errorf("%q (replace %v): saved", name, replace)
+			}
+		}
+	}
+}

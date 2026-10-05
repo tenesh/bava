@@ -85,6 +85,41 @@ func (s Space) attach(name string, size int64, open func() (io.ReadCloser, error
 	return name, nil
 }
 
+// SavePicture saves a canvas embed's picture in the attachments and returns
+// its name. The first (replace false) takes name, numbered when a file has it,
+// and never shares a file with the same bytes: redrawing one frame must not
+// change another's picture. A redraw (replace true) writes name itself,
+// making it if it is gone, and leaves a file with the same bytes untouched.
+func (s Space) SavePicture(name string, data []byte, replace bool) (string, error) {
+	attaching.Lock()
+	defer attaching.Unlock()
+	name, err := validName(name)
+	if err != nil {
+		return "", err
+	}
+	dir, err := s.attachmentsFolder()
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("save picture %s: %w", name, err)
+	}
+	path := filepath.Join(dir, name)
+	if replace {
+		if old, err := os.ReadFile(path); err == nil && bytes.Equal(old, data) {
+			return name, nil
+		}
+	} else if _, err := os.Lstat(path); err == nil {
+		ext := filepath.Ext(name)
+		name = s.freeAttachmentName(strings.TrimSuffix(name, ext), ext)
+		path = filepath.Join(dir, name)
+	}
+	if err := store.SaveFrom(path, bytes.NewReader(data)); err != nil {
+		return "", fmt.Errorf("save picture %s: %w", name, err)
+	}
+	return name, nil
+}
+
 // identical is the name of an attachment holding exactly these bytes, or "".
 func (s Space) identical(size int64, sum []byte) (string, error) {
 	entries, err := os.ReadDir(s.attachmentsDir())

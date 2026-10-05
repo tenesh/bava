@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { COMMAND_IDS } from '../shell/commands';
-import { atPoint, contextMenuFor, contextSelection, overflowMenu, parseOverflowId, type MenuNode } from './context-menu';
+import { atPoint, contextMenuFor, contextSelection, overflowMenu, parseOverflowId, rightClickHit, type MenuNode } from './context-menu';
+import type { SceneData } from './scene';
 
 const ids = (nodes: MenuNode[]): string[] =>
   nodes.flatMap((n) => (n.kind === 'separator' ? ['---'] : n.kind === 'submenu' ? [`${n.id}▸`, ...ids(n.items).map((i) => `  ${i}`)] : [n.id]));
@@ -38,6 +39,13 @@ describe('the right-click menu', () => {
 
   it('offers group and ungroup only when they apply', () => {
     expect(ids(contextMenuFor({ ...base, units: 2, canGroup: true }))).toContain('canvas.group');
+  });
+
+  it('offers Embed in Document on a frame alone, after Export Selection', () => {
+    const frame = ids(contextMenuFor({ ...base, frame: true }));
+    expect(frame[frame.indexOf('canvas.exportSelection') + 1]).toBe('canvas.embedInDocument');
+    expect(contextMenuFor({ ...base, frame: true }).flatMap((node) => (node.kind === 'item' && node.id === 'canvas.embedInDocument' ? [node.label] : []))).toEqual(['Embed in Document']);
+    expect(ids(contextMenuFor(base))).not.toContain('canvas.embedInDocument');
     expect(ids(contextMenuFor({ ...base, canUngroup: true }))).toContain('canvas.ungroup');
     expect(ids(contextMenuFor(base))).not.toContain('canvas.group');
   });
@@ -170,5 +178,33 @@ describe('what an overflow menu id means', () => {
   it('is null for a command id, so a command still dispatches', () => {
     expect(parseOverflowId('canvas.duplicate')).toBeNull();
     expect(parseOverflowId('property:edges:oblong')).toBeNull();
+  });
+});
+
+describe('what a right-click lands on', () => {
+  const scene = {
+    elements: [
+      { id: 'outer', type: 'frame', x: 0, y: 0, w: 400, h: 300, z: 1 },
+      { id: 'inner', type: 'frame', x: 50, y: 50, w: 100, h: 100, z: 2 },
+      { id: 'box', type: 'rect', x: 200, y: 200, w: 50, h: 50, z: 3, frame: 'outer' },
+      { id: 'held', type: 'frame', x: 500, y: 0, w: 100, h: 100, z: 4, locked: true },
+    ],
+  } as unknown as SceneData;
+
+  it('is a frame anywhere inside it, as a left click takes it', () => {
+    expect(rightClickHit(scene, { x: 300, y: 50 })).toBe('outer');
+  });
+
+  it('is the innermost frame where frames nest', () => {
+    expect(rightClickHit(scene, { x: 100, y: 100 })).toBe('inner');
+  });
+
+  it('is what is drawn over a frame before the frame', () => {
+    expect(rightClickHit(scene, { x: 225, y: 225 })).toBe('box');
+  });
+
+  it('is nothing on empty canvas or a locked frame', () => {
+    expect(rightClickHit(scene, { x: 450, y: 50 })).toBeUndefined();
+    expect(rightClickHit(scene, { x: 550, y: 50 })).toBeUndefined();
   });
 });

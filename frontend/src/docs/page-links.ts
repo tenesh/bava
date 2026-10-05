@@ -5,7 +5,7 @@
  * only an address, and its words where they are still the old name, change.
  */
 import type { Node } from 'prosemirror-model';
-import { addressOf, markFileKey, markFileOf, pageLinks, parsePage, wordsOf, type MarkFileKey, type PageLink } from './markdown';
+import { addressOf, markFileKey, markFileOf, markPageKey, markPageOf, pageLinks, parsePage, wordsOf, type MarkFileKey, type PageLink } from './markdown';
 import { movedFrom, movedTo, resolveLink, retarget, type Move } from './links';
 
 const ATTACHMENTS = '.bava/attachments/';
@@ -57,6 +57,14 @@ export function rewritePageLinks(page: string, text: string, moves: Move[]): Rew
       else edits.set(link.dest[0], { end: link.dest[1], with: markFileKey(key, name, text.startsWith(`${key}="`, link.dest[0])) });
       continue;
     }
+    if (link.kind === 'embed') {
+      const next = retarget(page, link.href, '￼', moves);
+      if (!next) continue;
+      any = true;
+      if (!link.dest || markPageOf(text.slice(link.dest[0], link.dest[1])) !== link.href) unplaced += 1;
+      else edits.set(link.dest[0], { end: link.dest[1], with: markPageKey(next.href) });
+      continue;
+    }
     const next = retarget(page, link.href, link.text ?? '￼', moves);
     if (!next) continue;
     any = true;
@@ -85,7 +93,7 @@ export function rewritePageLinks(page: string, text: string, moves: Move[]): Rew
   return { text: out, unplaced };
 }
 
-type Run = { kind: 'link' | 'media' | 'poster'; href: string; text: string; key?: MarkFileKey };
+type Run = { kind: 'link' | 'media' | 'poster' | 'embed'; href: string; text: string; key?: MarkFileKey };
 
 /** A page as the Document reads it, with every link's address and words left out, and its links in order. */
 function reading(markdown: string): { rest: string; links: Run[] } {
@@ -103,6 +111,13 @@ function reading(markdown: string): { rest: string; links: Run[] } {
       links.push({ kind: 'media', href: node.attrs.src as string, text: node.attrs.alt as string });
       if (node.attrs.poster) links.push({ kind: 'poster', key: 'poster', href: node.attrs.poster as string, text: '' });
       return { ...json, attrs: { ...node.attrs, src: '', written: null, poster: node.attrs.poster ? '' : null } };
+    }
+    // An embed's picture may change as a media block's address, and the page
+    // its frame is on as a link's address; its words may not.
+    if (node.type.name === 'embed') {
+      links.push({ kind: 'media', href: node.attrs.src as string, text: node.attrs.alt as string });
+      if (node.attrs.page) links.push({ kind: 'embed', href: node.attrs.page as string, text: '' });
+      return { ...json, attrs: { ...node.attrs, src: '', written: null, page: node.attrs.page ? '' : null } };
     }
     // A card's address and words may change as a link's; its pictures as a poster.
     if (node.type.name === 'card') {
@@ -137,6 +152,7 @@ export function onlyLinksChanged(page: string, before: string, after: string, mo
     const got = now.links[i];
     if (got.kind !== link.kind || got.key !== link.key) return false;
     if (link.kind === 'poster') return got.href === (posterAfter(link.href, moves) ?? link.href);
+    if (link.kind === 'embed') return got.href === (retarget(page, link.href, '￼', moves)?.href ?? link.href);
     if (link.kind === 'media') return got.text === link.text && got.href === (retarget(page, link.href, link.text, moves)?.href ?? link.href);
     const next = retarget(page, link.href, link.text, moves);
     return got.href === (next?.href ?? link.href) && (got.text === link.text || got.text === next?.text);
@@ -145,7 +161,8 @@ export function onlyLinksChanged(page: string, before: string, after: string, mo
 
 /** Whether any link the Document reads in a page reaches `target`. */
 export function linksTo(page: string, text: string, target: string): boolean {
-  return pageLinks(text).some((link: PageLink) => link.kind !== 'poster' && resolveLink(page, link.href)?.target === target);
+  // A poster is a file's name, and an embed shows a frame: neither is a link.
+  return pageLinks(text).some((link: PageLink) => link.kind !== 'poster' && link.kind !== 'embed' && resolveLink(page, link.href)?.target === target);
 }
 
 /** A page of the Space with its text, as the file side lists it. */

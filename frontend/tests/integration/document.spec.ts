@@ -1,7 +1,18 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import { box } from '../fixtures/canvas-scenes';
 import { SUBJECTS } from '../fixtures/document-blocks';
 import {
+  CANVAS_PAGE,
+  SPACE,
+  canvasHost,
   caretInCell,
+  clickScene,
+  openApp,
+  openCanvas,
+  openPage,
+  seedScene,
+  selectionToolbar,
+  zoomSteps,
   centreInView,
   documentPane,
   dragCells,
@@ -603,4 +614,87 @@ test.describe("fields opened from a block's menu", () => {
       await expect(menus(page)).toHaveCount(0);
     });
   }
+});
+
+test.describe('canvas embeds', () => {
+  // A frame holding one box; at first far from the canvas's first view.
+  const framed = (x = 2000, y = 1500) => [
+    { id: 'f1', type: 'frame', x, y, w: 300, h: 200, z: 1, label: 'Ingest' },
+    box('b1', x + 60, y + 60, { frame: 'f1', z: 2 }),
+  ];
+  type Harness = { __bava: { fakes: { harness: { pictures(): Record<string, string>; source(root: string, path: string): string | undefined } } } };
+  const pictures = (page: Page) => page.evaluate(() => Object.keys((window as unknown as Harness).__bava.fakes.harness.pictures()));
+  const savedSource = async (page: Page) => {
+    await menu(page, 'file.save');
+    await expect(page.locator('header .state')).toHaveText('saved');
+    return page.evaluate(([root, at]) => (window as unknown as Harness).__bava.fakes.harness.source(root, at), [SPACE, CANVAS_PAGE] as const);
+  };
+
+  async function openWithFrame(page: Page) {
+    await openApp(page, 'light');
+    await seedScene(page, CANVAS_PAGE, framed());
+    await openPage(page, CANVAS_PAGE);
+    await menu(page, 'view.document');
+    await expect(editor(page)).toBeVisible();
+  }
+
+  async function embedFromSlash(page: Page) {
+    await newLineAtEnd(page);
+    await page.keyboard.type('/embed');
+    await page.getByRole('option', { name: 'Embed frame' }).click();
+    const picker = page.getByRole('dialog', { name: 'Frames' });
+    // This page's frames first, then each other page's under its name.
+    await expect(picker.getByRole('heading')).toHaveText(['This page', 'Release checklist']);
+    await expect(picker.getByRole('option')).toHaveText(['Ingest', 'Release flow']);
+    await page.keyboard.press('Enter');
+    await expect(picker).toHaveCount(0);
+  }
+
+  test('/ Embed frame puts the frame in the page, its picture saved and its mark written', async ({ page }) => {
+    await openWithFrame(page);
+    await embedFromSlash(page);
+    await expect(editor(page).locator('figure.embed img')).toHaveAttribute('src', /^blob:/);
+    expect(await pictures(page)).toEqual(['Architecture - Ingest.png']);
+    expect(await savedSource(page)).toContain('<!-- bava: embed=f1 -->\n![Ingest](../.bava/attachments/Architecture%20-%20Ingest.png)');
+  });
+
+  test('saving after a change of theme draws the picture again in the new theme', async ({ page }) => {
+    const picture = () =>
+      page.evaluate(() => (window as unknown as { __bava: { fakes: { harness: { pictures(): Record<string, string> } } } }).__bava.fakes.harness.pictures()['Architecture - Ingest.png']);
+    await openWithFrame(page);
+    await embedFromSlash(page);
+    await savedSource(page);
+    const light = await picture();
+    await menu(page, 'view.theme.dark');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await savedSource(page);
+    await expect.poll(picture).not.toBe(light);
+  });
+
+  test('clicking an embed shows the canvas beside the page, its frame selected and in view', async ({ page }) => {
+    await openWithFrame(page);
+    await embedFromSlash(page);
+    await editor(page).locator('figure.embed img').click();
+    await expect(canvasHost(page)).toBeVisible();
+    await expect(documentPane(page)).toBeVisible();
+    await expect(selectionToolbar(page)).toBeVisible();
+    // Brought to the middle of the canvas at 100%: a right-click on its
+    // label's corner there keeps it selected, and only a frame alone offers
+    // to embed it.
+    const host = (await canvasHost(page).boundingBox())!;
+    await page.mouse.click(host.x + host.width / 2 - 150 + 12, host.y + host.height / 2 - 100 + 12, { button: 'right' });
+    await expect(page.getByRole('menuitem', { name: 'Embed in Document' })).toBeVisible();
+  });
+
+  test('Embed in Document on a frame puts it at the end of a page never typed in', async ({ page }) => {
+    await openCanvas(page, 'light', CANVAS_PAGE, framed(100, 100));
+    await zoomSteps(page, 0);
+    // By its label, at its top-left corner.
+    await clickScene(page, { x: 112, y: 112 });
+    await clickScene(page, { x: 112, y: 112 }, { button: 'right' });
+    await page.getByRole('menuitem', { name: 'Embed in Document' }).click();
+    await expect(documentPane(page)).toBeVisible();
+    await expect(editor(page).locator('figure.embed')).toHaveCount(1);
+    expect(await pictures(page)).toEqual(['Architecture - Ingest.png']);
+  });
 });

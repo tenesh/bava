@@ -846,6 +846,35 @@ $callout-swatches: (
     visibility: hidden;
   }
 
+  // A canvas embed opens its frame on a click. A frame that is gone keeps
+  // its last picture, faded, with a mark saying so.
+  .embed .media-file {
+    cursor: pointer;
+  }
+
+  .embed-deleted {
+    display: none;
+  }
+
+  .embed[data-deleted] {
+    .media-file {
+      opacity: var(--opacity-gone);
+    }
+
+    .embed-deleted {
+      position: absolute;
+      top: var(--space-2);
+      left: var(--space-2);
+      display: block;
+      padding: var(--space-half) var(--space-2);
+      border-radius: var(--radius-sm);
+      background: var(--color-surface-raised);
+      box-shadow: var(--shadow-raised);
+      color: var(--color-text-secondary);
+      font-size: var(--text-meta);
+    }
+  }
+
   .media-relink {
     height: var(--size-row-sm);
     padding: 0 var(--space-2);

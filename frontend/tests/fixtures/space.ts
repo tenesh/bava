@@ -222,7 +222,8 @@ const mediaPage: FakePage = {
 // A locked page: nothing on it can be changed until it is unlocked.
 const checklist: FakePage = {
   source: '---\nbava:\n  locked: true\n---\n# Release checklist\n\n- [x] Tag the build\n- [ ] Write the notes\n',
-  scene: { version: 1, elements: [] },
+  // A frame other pages embed.
+  scene: { version: 1, elements: [{ id: 'f1', type: 'frame', z: 1, x: 0, y: 0, w: 400, h: 240, label: 'Release flow' }] },
 };
 
 export function seedSpace(): FakeSpace {

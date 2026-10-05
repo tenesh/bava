@@ -63,8 +63,8 @@ type SpaceList struct {
 
 // Operation is one change to a Space. Kind is createPage, createFolder,
 // rename, move, duplicate, trash, restore, deleteForever, emptyTrash,
-// renameSpace, setPageWidth, relink, attach, attachData, renameAttachment
-// or trashAttachment;
+// renameSpace, setPageWidth, relink, attach, attachData, renameAttachment,
+// trashAttachment or savePicture;
 // the other fields are what it needs.
 type Operation struct {
 	Kind   string `json:"kind"`
@@ -84,6 +84,9 @@ type Operation struct {
 	Data string `json:"data"`
 	// Attachment is the file renameAttachment renames, to Name.
 	Attachment string `json:"attachment"`
+	// Replace makes savePicture write Name itself, a canvas embed's picture
+	// redrawn; without it, the first picture takes a free name.
+	Replace bool `json:"replace"`
 }
 
 // PageEdit is a page's text before and after its links followed a rename.
@@ -219,6 +222,11 @@ func (s *SpaceService) Apply(root string, op Operation) OpResult {
 				name = space.PastedImageName(time.Now())
 			}
 			res.Name, err = sp.AttachData(name, data)
+		}
+	case "savePicture":
+		var data []byte
+		if data, err = base64.StdEncoding.DecodeString(op.Data); err == nil {
+			res.Name, err = sp.SavePicture(op.Name, data, op.Replace)
 		}
 	case "renameAttachment":
 		res.Name, err = sp.RenameAttachment(op.Attachment, op.Name)

@@ -551,3 +551,40 @@ func TestRoundTripClosedFilledLine(t *testing.T) {
 		t.Errorf("a closed line changed on the way through.\nwant:\n%s\ngot:\n%s", source, written)
 	}
 }
+
+// A page embedding its own frame and another page's: the marks and the
+// pictures are prose, kept byte for byte, beside the frame they name.
+func TestRoundTripPageWithCanvasEmbeds(t *testing.T) {
+	prose := "# Ingest\n\n" +
+		"<!-- bava: embed=f3 width=large caption=\"The write path\" -->\n" +
+		"![Ingest pipeline](.bava/attachments/Architecture%20-%20Ingest%20pipeline.png)\n\n" +
+		"<!-- bava: embed=f7 page=\"../Engineering/Architecture.md\" -->\n" +
+		"![Write path](../.bava/attachments/Architecture%20-%20Write%20path.png)\n"
+	file, _ := format.Read(prose)
+	file.Scene.Elements = []format.Element{
+		{ID: "f3", Type: "frame", W: 400, H: 300, Z: 1, Raw: json.RawMessage(`{"label":"Ingest pipeline"}`)},
+		{ID: "e1", Type: "rect", X: 40, Y: 40, W: 120, H: 80, Z: 2, Raw: json.RawMessage(`{"frame":"f3"}`)},
+	}
+	out, err := format.Write(file)
+	if err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if !strings.HasPrefix(out, prose) {
+		t.Errorf("the embeds' prose was altered:\n%q", out)
+	}
+	back, err := format.Read(out)
+	if err != nil {
+		t.Fatalf("re-read: %v", err)
+	}
+	again, err := format.Write(back)
+	if err != nil {
+		t.Fatalf("write again: %v", err)
+	}
+	if again != out {
+		t.Errorf("not byte for byte on a second round trip:\n%s", again)
+	}
+	var member map[string]any
+	if len(back.Scene.Elements) != 2 || json.Unmarshal(back.Scene.Elements[1].Raw, &member) != nil || member["frame"] != "f3" {
+		t.Errorf("the frame and its member did not survive: %+v", back.Scene.Elements)
+	}
+}

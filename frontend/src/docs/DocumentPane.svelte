@@ -38,8 +38,9 @@
   import { backlinks as findBacklinks, type PageText } from './page-links';
   import { formatDay } from './dates';
   import { isWeb, mediaUrl, videoFrame, type MediaPlace } from './media';
-  import { cardMenuItems, mediaMenuItems, mediaSetting, posterName } from './media-menu';
+  import { cardMenuItems, embedMenuItems, mediaMenuItems, mediaSetting, posterName } from './media-menu';
   import { onlineVideo } from './online-video';
+  import type { EmbedContext } from './embed-view';
   import type { FileDetails } from './card';
   import MediaViewer from '../components/MediaViewer.svelte';
   import { pressAway } from '../components/press-away';
@@ -90,9 +91,13 @@
     onAttachPoster: (data: string, name: string) => Promise<string | null>;
     /** Something could not be done. */
     onNotify: (message: string) => void;
+    /** How canvas embeds are drawn, watched and opened; read once, when the page mounts. */
+    embeds?: Pick<EmbedContext, 'draw' | 'watchCanvas' | 'holds' | 'open'>;
+    /** `/` Embed frame or Diagram from Code, with the caret's place on screen. */
+    onCanvas?: (what: 'embed' | 'diagram', at: { left: number; top: number; bottom: number }) => void;
   };
 
-  let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage, onCopyText, here, mediaPlace, readIndex, onFollow, onOpenPage, onChooseMedia, onOpenFile, fileDetails, fetchCard, onPasteImage, onReplaceMedia, onRenameAttachment, onRevealFile, onAttachPoster, onNotify }: Props = $props();
+  let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage, onCopyText, here, mediaPlace, readIndex, onFollow, onOpenPage, onChooseMedia, onOpenFile, fileDetails, fetchCard, onPasteImage, onReplaceMedia, onRenameAttachment, onRevealFile, onAttachPoster, onNotify, embeds, onCanvas }: Props = $props();
 
   const editor = new DocEditor();
   let host: HTMLDivElement;
@@ -175,6 +180,11 @@
     editor.insertMedia(names, at ? (editor.posAtPoint(at.x, at.y) ?? undefined) : undefined);
   }
 
+  /** Puts a canvas embed at the caret, or at the page's end when it has had none. */
+  export function insertEmbed(attrs: { frame: string; page: string | null; src: string; alt: string }) {
+    editor.insertEmbed(attrs);
+  }
+
   /** Rewrites this page's links after pages moved; `page` is where it was. */
   export function followMoves(page: string, moves: Move[]) {
     editor.followMoves(page, moves);
@@ -229,6 +239,8 @@
       onLinkCard: (card) => (linkCard = card),
       onFollow: (href) => onFollow(href),
       onChooseMedia: (kind) => onChooseMedia(kind),
+      onCanvas: (what, at) => onCanvas?.(what, at),
+      ...(embeds ? { embeds } : {}),
       onOpenFile: (href) => onOpenFile(href),
       fileDetails: (root, path) => fileDetails(root, path),
       fetchCard: (address) => fetchCard(address),
@@ -411,8 +423,8 @@
     if (pos === undefined || editor.locked) return;
     const block = editor.blockInfo(pos);
     editor.selectBlock(pos);
-    // An image, a video or a card turns into nothing.
-    const turnOptions = block?.type === 'image' || block?.type === 'video' || block?.type === 'card' ? [] : turnIntoItems();
+    // An image, a video, a canvas embed or a card turns into nothing.
+    const turnOptions = block?.type === 'image' || block?.type === 'video' || block?.type === 'embed' || block?.type === 'card' ? [] : turnIntoItems();
     // A callout's colour is its panel's; a text colour on it would be a second one.
     // A table's menu is the table's own.
     const media = block?.type === 'image' || block?.type === 'video' ? mediaFile(block.attrs.src as string) : null;
@@ -427,6 +439,8 @@
             isWeb(block.attrs.src as string),
             onlineVideo(block.attrs.src as string) !== null,
           )
+        : block?.type === 'embed'
+        ? embedMenuItems()
         : block && card
         ? cardMenuItems({ web: isWeb(block.attrs.href as string), attachment: card.attachment !== null, inSpace: here !== null })
         : block?.type === 'table'
@@ -517,13 +531,18 @@
 
   async function runMedia(pos: number, id: string, anchor: { x: number; y: number }) {
     const block = editor.blockInfo(pos);
-    if (!block || (block.type !== 'image' && block.type !== 'video')) return;
+    if (!block || (block.type !== 'image' && block.type !== 'video' && block.type !== 'embed')) return;
     const attrs = block.attrs;
     const setting = mediaSetting(id, attrs);
     const file = mediaFile(attrs.src as string);
     // Ark's menu may still focus itself in the frame an item is chosen: what
     // takes focus opens after that frame.
     if (id === 'm:caption' || id === 'm:rename' || id === 'm:fullscreen') await new Promise((next) => requestAnimationFrame(next));
+    if (id === 'm:openFrame' && block.type === 'embed') {
+      const written = attrs.page as string | null;
+      embeds?.open(attrs.frame as string, written === null ? null : (resolveLink(here ?? '', written)?.target ?? written));
+      return;
+    }
     if (setting) editor.setMediaAttrs(pos, setting);
     else if (id === 'm:caption') mediaField = { kind: 'caption', pos, ...fieldAt(pos, anchor), value: (attrs.caption as string | null) ?? '' };
     else if (id === 'm:rename' && file.attachment) mediaField = { kind: 'rename', pos, ...fieldAt(pos, anchor), value: file.attachment.replace(/\.[^.]*$/, '') };
@@ -532,7 +551,7 @@
     else if (id === 'm:fullscreen') {
       const src = mediaUrl(mediaPlace, attrs.src as string);
       if (src) viewer = { src, alt: attrs.alt as string };
-    } else if (id === 'm:replace') {
+    } else if (id === 'm:replace' && block.type !== 'embed') {
       const now = editor.follow(pos);
       const name = await onReplaceMedia(block.type);
       const at = now();

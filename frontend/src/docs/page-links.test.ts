@@ -139,6 +139,9 @@ describe('what links to a page, across the Space', () => {
       { name: 'C', path: 'C.md', text: '`[B](B.md)`\n' },
     ];
     expect(backlinks(pages, 'B.md').map((p) => p.path)).toEqual(['A.md']);
+    // An embed of a frame on B is not a link to B.
+    const embedding = { name: 'C', path: 'C.md', text: '<!-- bava: embed=f1 page="B.md" -->\n![F](.bava/attachments/F.png)\n' };
+    expect(backlinks([...pages, embedding], 'B.md').map((p) => p.path)).toEqual(['A.md']);
   });
 });
 
@@ -227,6 +230,27 @@ describe('images and videos after a rename', () => {
       text: '<!-- bava: caption="poster=logo.png" poster="brand mark.png" loop -->\n![Demo](.bava/attachments/demo.mp4)\n\n![Logo](.bava/attachments/brand%20mark.png)\n',
       unplaced: 0,
     });
+  });
+
+  it("follow the page an embed's frame is on, renamed or moved", () => {
+    const text = '<!-- bava: embed=f7 page="Engineering/Architecture.md" width=large -->\n![Write path](.bava/attachments/Write%20path.png)\n';
+    const renamed = rewritePageLinks('Roadmap.md', text, [{ from: 'Engineering/Architecture.md', to: 'Engineering/System design.md' }]);
+    expect(renamed).toEqual({
+      text: '<!-- bava: embed=f7 page="Engineering/System%20design.md" width=large -->\n![Write path](.bava/attachments/Write%20path.png)\n',
+      unplaced: 0,
+    });
+    // The page holding the embed moving changes the address from it.
+    const moved = rewritePageLinks('Roadmap.md', text, [{ from: 'Roadmap.md', to: 'Plans/Roadmap.md' }]);
+    expect(moved?.text).toBe(
+      '<!-- bava: embed=f7 page="../Engineering/Architecture.md" width=large -->\n![Write path](../.bava/attachments/Write%20path.png)\n',
+    );
+  });
+
+  it("follow an embed's picture renamed", () => {
+    const text = '<!-- bava: embed=f1 -->\n![Box](.bava/attachments/Box.png)\n';
+    expect(rewritePageLinks('Page.md', text, [{ from: '.bava/attachments/Box.png', to: '.bava/attachments/Big box.png' }])?.text).toBe(
+      '<!-- bava: embed=f1 -->\n![Box](.bava/attachments/Big%20box.png)\n',
+    );
   });
 
   it('keep a poster written without quotes that way', () => {

@@ -262,6 +262,13 @@ export const SUBJECTS = {
     select: { arrow: 'down' },
     edit: 'caption',
   },
+  embed: {
+    type: 'embed',
+    markdown: page('<!-- bava: embed=f1 page="../Engineering/Release%20checklist.md" width=medium caption="The release flow" -->\n![Release flow](../.bava/attachments/landscape.png)'),
+    find: ':scope > figure.embed',
+    // A frame its page no longer holds.
+    error: { markdown: page('<!-- bava: embed=gone page="../Engineering/Release%20checklist.md" width=small -->\n![Gone](../.bava/attachments/logo.png)'), ready: 'figure.embed[data-deleted]' },
+  },
   video: {
     type: 'video',
     markdown: page('<!-- bava: width=medium poster="demo poster.png" -->\n![Demo](../.bava/attachments/demo.mp4)'),
@@ -387,7 +394,7 @@ export const DOC_SHEETS = {
     'paragraph', 'paragraph-coloured', 'heading', 'headings', 'quote', 'divider', 'bullets', 'numbers', 'item', 'todo',
     'callout', 'toggle', 'toggle-summary', 'code', 'equation', 'contents', 'footnotes', 'footnote',
   ],
-  media: ['table', 'row', 'cell', 'header-cell', 'image', 'video', 'online-video', 'file-card', 'web-card', 'kept'],
+  media: ['table', 'row', 'cell', 'header-cell', 'image', 'embed', 'video', 'online-video', 'file-card', 'web-card', 'kept'],
   inline: [
     'bold', 'italic', 'underline', 'strike', 'inline-code', 'colour', 'highlight', 'link', 'link-changed', 'page-link',
     'inline-equation', 'footnote-ref', 'date', 'kept-inline', 'line-break', 'emoji',

@@ -30,6 +30,8 @@ describe('the / menu\'s items', () => {
       'advanced:onlinevideo',
       'advanced:file',
       'advanced:weblink',
+      'advanced:embedFrame',
+      'advanced:diagram',
       'inline:inlineEquation',
       'inline:footnote',
       'inline:emoji',
