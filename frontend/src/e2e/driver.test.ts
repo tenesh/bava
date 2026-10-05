@@ -230,6 +230,23 @@ describe('loading the driver', () => {
   });
 });
 
+describe('a click', () => {
+  it('waits for a disabled button to be enabled, as a person would', async () => {
+    document.body.innerHTML = '<button id="create" disabled>Create</button>';
+    const button = document.querySelector<HTMLButtonElement>('#create')!;
+    const clicked = vi.fn();
+    button.addEventListener('click', clicked);
+    setTimeout(() => (button.disabled = false), 50);
+    expect(await runScenario([{ do: 'click', target: '#create' }], env())).toBe('');
+    expect(clicked).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails when the button never becomes enabled', async () => {
+    document.body.innerHTML = '<button id="create" disabled>Create</button>';
+    expect(await runScenario([{ do: 'click', target: '#create' }], env())).toBe('step 1 (click #create): never enabled');
+  });
+});
+
 describe("the driver's report of what went wrong in the page", () => {
   it('names each error and rejection the page raised, message included', () => {
     const target = new EventTarget();

@@ -18,7 +18,8 @@ type SaveOutcome = { conflict: boolean; saved: boolean };
 export type FileActionDocument = {
   readonly path: string | null;
   readonly dirty: boolean;
-  open(path: string): Promise<{ error: string }>;
+  /** `stale` when a newer open overtook it: nothing was opened. */
+  open(path: string): Promise<{ error: string; stale?: boolean }>;
   save(scene: Scene, options?: { overwrite?: boolean }): Promise<SaveOutcome>;
   saveAs(path: string, scene: Scene): Promise<SaveOutcome>;
   reload(): Promise<unknown>;
@@ -87,7 +88,8 @@ export function createFileActions(options: FileActionOptions) {
   /** Resolves true when the file is now open. */
   async function open(path: string): Promise<boolean> {
     if (!(await settleUnsaved())) return false;
-    return !(await doc.open(path)).error;
+    const result = await doc.open(path);
+    return !result.error && !result.stale;
   }
 
   /** Resolves true when a new untitled document replaced the open one. */

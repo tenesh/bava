@@ -408,3 +408,26 @@ describe('each page that arrives', () => {
     expect(doc.generation).toBe(before);
   });
 });
+
+// Opens answer out of order (a slow disk, a page opened at launch and again
+// by a click): only the newest is the page. An older answer landing later
+// must not replace it, or what was drawn since goes with it.
+describe('opens that overlap', () => {
+  it('keeps the newest open, and drops an older one that answers last', async () => {
+    const answers: ((value: unknown) => void)[] = [];
+    const opened = (path: string, source: string) => ({ path, source, diagrams: {}, scene: emptyScene, stamp: { size: 1, modifiedUnixNano: '1' }, error: '' });
+    const io = stubIO({ open: vi.fn(() => new Promise((resolve) => answers.push(resolve))) });
+    const doc = createDocument(io);
+    const first = doc.open('/w/a.md');
+    const second = doc.open('/w/b.md');
+    answers[1](opened('/w/b.md', '# B\n'));
+    expect((await second).stale).toBeFalsy();
+    expect(doc.path).toBe('/w/b.md');
+    const generation = doc.generation;
+    answers[0](opened('/w/a.md', '# A\n'));
+    expect((await first).stale).toBe(true);
+    expect(doc.path).toBe('/w/b.md');
+    expect(doc.source).toBe('# B\n');
+    expect(doc.generation).toBe(generation);
+  });
+});

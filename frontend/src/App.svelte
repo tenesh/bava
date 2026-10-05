@@ -601,7 +601,8 @@
       },
       open: async (path) => {
         const result = await doc.open(path);
-        if (!result.error) loadScene(result.scene.elements ?? []);
+        // An open a newer one overtook leaves the canvas as it is.
+        if (!result.error && !result.stale) loadScene(result.scene.elements ?? []);
         return result;
       },
       save: async (scene, options) => redrawAfterSave(toldIfRefused(await doc.save(scene, options))),
