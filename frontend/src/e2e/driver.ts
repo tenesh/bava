@@ -163,6 +163,12 @@ function key(name: string, on?: HTMLElement, modifiers?: Modifier[]) {
   el.dispatchEvent(new KeyboardEvent('keyup', { key: name, bubbles: true, cancelable: true, ...held(modifiers) }));
 }
 
+/** Whether the control holding `el` cannot be used now. */
+function disabled(el: HTMLElement): boolean {
+  const control = el.closest<HTMLButtonElement | HTMLInputElement>('button, input, select, textarea');
+  return (control?.disabled ?? false) || el.closest('[aria-disabled="true"]') !== null;
+}
+
 async function step(s: Step, env: DriverEnv): Promise<string> {
   const timeout = s.timeoutMs ?? env.timeoutMs;
   const visible = env.visible ?? laidOut;
@@ -170,6 +176,8 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
     case 'click': {
       let el: HTMLElement | undefined;
       if (!(await until(() => (el = candidates(s.target!).find(visible)) !== undefined, timeout))) return 'not found';
+      // A disabled control is waited for, as a person waits for it to light up.
+      if (!(await until(() => !disabled(el!), timeout))) return 'never enabled';
       click(el!);
       return '';
     }

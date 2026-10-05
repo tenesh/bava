@@ -67,6 +67,9 @@ export function createDocument(io: DocumentIO = overIPC) {
   // Counts each page that arrives (open, reload, reset, close), so the editor
   // is handed a page when one arrives and never while it is being typed in.
   let generation = $state.raw(0);
+  // Numbers each open, and moves on when a page is closed or started: an
+  // open answering after a newer one began is dropped, never applied.
+  let opening = 0;
   // Where the page's text lives while an editor has it (bindSource).
   let readSource: (() => string) | null = null;
   let diagrams = $state.raw<Record<string, string>>({});
@@ -125,8 +128,11 @@ export function createDocument(io: DocumentIO = overIPC) {
       dirty = true;
     },
 
-    async open(next: string): Promise<OpenResult> {
+    /** Opens a file; `stale` when a newer open, a close or a new page overtook it, and nothing changed. */
+    async open(next: string): Promise<OpenResult & { stale?: boolean }> {
+      const asked = (opening += 1);
       const result = await io.open(next);
+      if (asked !== opening) return { ...result, stale: true };
       if (result.error) {
         // The previous document stays open: replacing it with an empty window
         // because a different file failed to load loses the user's place.
@@ -180,6 +186,7 @@ export function createDocument(io: DocumentIO = overIPC) {
 
     /** No page open: a Space shows its tree and nothing else. The caller settles unsaved work first. */
     close() {
+      opening += 1;
       generation += 1;
       isOpen = false;
       path = null;
@@ -193,6 +200,7 @@ export function createDocument(io: DocumentIO = overIPC) {
 
     /** Become a new, clean, untitled document. The caller settles unsaved work first. */
     reset() {
+      opening += 1;
       generation += 1;
       isOpen = true;
       path = null;

@@ -382,6 +382,8 @@ test.describe('dialogs and screens, alone', () => {
     await expect(menus(page)).toBeVisible();
     await restPointer(page);
     await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
+    // The key goes to the menu once it holds focus, as it does by the time a person presses one.
+    await expect(menus(page)).toBeFocused();
     await page.keyboard.press('ArrowDown');
     await expect(menus(page).locator('[data-highlighted]')).toHaveCount(1);
   });

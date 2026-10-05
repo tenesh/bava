@@ -39,6 +39,11 @@ function actionsFor(d: ReturnType<typeof doc>, prompt: ReturnType<typeof answeri
 }
 
 describe('opening a file', () => {
+  it('counts an open a newer one overtook as nothing opened', async () => {
+    const d = doc({ open: vi.fn().mockResolvedValue({ error: '', stale: true }) });
+    expect(await actionsFor(d, answering('cancel')).open('/w/other.md')).toBe(false);
+  });
+
   it('opens straight away when there is nothing unsaved', async () => {
     const d = doc();
     const prompt = answering('cancel');
