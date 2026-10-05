@@ -5,7 +5,7 @@ import type { MenuNode } from '../canvas/context-menu';
 import { DocEditor } from './editor';
 import { openEditor } from './test-editor';
 import { commands } from './commands';
-import { cardMenuItems, mediaMenuItems, mediaSetting, posterName } from './media-menu';
+import { cardMenuItems, embedMenuItems, mediaMenuItems, mediaSetting, posterName } from './media-menu';
 
 /** Every item's id, submenus opened. */
 const ids = (items: MenuNode[]): string[] => items.flatMap((item) => (item.kind === 'item' ? [item.id] : item.kind === 'submenu' ? [item.id, ...ids(item.items)] : []));
@@ -110,5 +110,24 @@ describe('deleting a medium', () => {
     view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, at)));
     editor!.run(commands.deleteBlock);
     expect(editor!.markdown()).toBe('Before\n\nAfter\n');
+  });
+});
+
+// A canvas embed sits on the page as an image does, its shape the frame's.
+describe("a canvas embed's menu", () => {
+  it('offers to open its frame, then width, alignment and caption, and nothing that changes its file or shape', () => {
+    const items = embedMenuItems();
+    expect(items.map((each) => (each.kind === 'separator' ? '-' : each.id))).toEqual(['m:openFrame', '-', 'm:width', 'm:align', 'm:caption']);
+    expect(ids(items)).toContain('m:set:width:large');
+    expect(ids(items)).not.toContain('m:ratio');
+  });
+});
+
+describe("a canvas embed's settings, from its menu", () => {
+  it('are written in its mark, its frame and picture kept', () => {
+    const { editor } = openEditor('<!-- bava: embed=f1 -->\n![Box](.bava/attachments/Box.png)\n', { onChange: () => {} });
+    editor.setMediaAttrs(0, mediaSetting('m:set:width:small', editor.blockInfo(0)!.attrs)!);
+    editor.setMediaAttrs(0, { caption: 'The box' });
+    expect(editor.markdown()).toBe('<!-- bava: embed=f1 width=small caption="The box" -->\n![Box](.bava/attachments/Box.png)\n');
   });
 });

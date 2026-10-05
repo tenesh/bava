@@ -233,3 +233,9 @@ could reasonably have gone another way.
 | 2026-10-04 | Every picture in both themes, screens and dialogs included | The user's choice: dark-mode colour faults can be specific to one screen. |
 | 2026-10-04 | Selected text is Bava's `selection` colour, not the system highlight | The user's choice: one look on every platform. An inactive window still dims it, as WebKit does to any selection colour and the minifier refuses the selector that would stop it; pictures leave the selection out. |
 | 2026-10-04 | Each CI build is kept as a download for 14 days | The user's choice, in place of a hosted preview: the real app on real files, tried by hand when a change is worth seeing. |
+| 2026-10-04 | An embedded frame's picture is a PNG at twice size | The user's choice (08.5 decision 1): every app shows it the same way, sharp on high-resolution screens. |
+| 2026-10-04 | The picture is drawn in the theme Bava has when it is saved | The user's choice (08.5 decision 2): it matches the screen; a theme change and a save rewrite the pictures that save touches. |
+| 2026-10-04 | The picture is the frame's area, without the frame | The user's choice (08.5 decision 3): on the canvas background, cut at the frame's edges, no border or label. |
+| 2026-10-04 | An embed takes an image's width, alignment and caption | The user's choice (08.5 decision 4); no ratio, as the frame decides the shape. |
+| 2026-10-04 | A loose page asks to become a Space before it embeds | The user's choice (08.5 decision 5), the rule every picture a page holds follows. |
+| 2026-10-04 | Opening an embed from the Document view shows Both | The user's choice (08.5 decision 6): the page stays, the Canvas opens beside it with the frame selected and in view. |

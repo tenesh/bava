@@ -168,6 +168,8 @@ A paragraph in red on yellow.
 - `wrap` and `caption="…"`: a code block's settings (below).
 - `width`, `ratio`, `align` and `caption="…"`: an image's or a video's
   settings; `poster`, `loop` and `muted`: a video file's (below).
+- `embed=<id>` and `page="<address>"`: a canvas embed, with an image's
+  `width`, `align` and `caption="…"` (below).
 - `card` or `card=extended`, and a web card's `description="…"`,
   `icon="<file>"` and `image="<file>"`: a link shown as a card (below).
 - `color=<swatch>` and `icon=<emoji>` on a note callout: a custom callout
@@ -478,6 +480,54 @@ image, its settings in the mark above.
   address), play opens the video in the browser.
   Obsidian embeds the player; GitHub shows a broken image.
 - The page of any other site stays a kept image, as written.
+
+### Canvas embeds
+A frame of a canvas shown in the page: a picture of it in the attachments,
+written as an image with an `embed` mark above it.
+
+```markdown
+<!-- bava: embed=f3 width=large caption="The write path" -->
+![Ingest pipeline](../.bava/attachments/Architecture%20-%20Ingest%20pipeline.png)
+
+<!-- bava: embed=f7 page="../Engineering/Architecture.md" -->
+![Write path](../.bava/attachments/Architecture%20-%20Write%20path.png)
+```
+
+Both are in a page in a folder (`Marketing/Launch plan.md`): the first
+embeds a frame of that page's own canvas, the second one of
+`Engineering/Architecture.md`'s.
+
+- **Which it is:** a mark with `embed` over a `.png` image in the Space's
+  `.bava/attachments/`. A mark with `embed` over anything else is kept on
+  that block as an unknown key is.
+- **`embed=<id>`:** the frame's element id on its page's canvas.
+- **`page="<address>"`:** the page whose canvas holds the frame, written as
+  a link's address is (relative to this page, encoded the same way), left
+  out when it is this page. A frame from any page in the Space can be
+  embedded; a page in no Space embeds only its own, and asks to become a
+  Space first, as for any media. Moving or renaming that page in Bava
+  rewrites the address, as it rewrites links. An embed is not a link: it is
+  not counted in Linked from.
+- **The image** is the frame's picture, so every other app shows it. The alt
+  text starts as the frame's label; Bava keeps what is written there.
+- **The settings:** `width`, `align` and `caption="…"`, as an image's. No
+  `ratio`: the frame decides the picture's shape.
+- **The picture** is a PNG at twice the frame's size: the frame's area, cut
+  at its edges, on the canvas background, without the frame's own border or
+  label, in the theme Bava had when it was drawn. It is named once, when the
+  frame is first embedded, `<page name> - <frame label>.png`
+  (`<page name> - Frame.png` for a frame with no label), numbered if the
+  name is taken, and never renamed by itself. Every embed of the same frame
+  uses the same picture.
+- **Kept up to date:** in Bava, an embed of the open page's frame is drawn
+  live from its canvas. Saving a page draws again the picture of each of its
+  frames that any page in the Space embeds, and writes it when it changed.
+  A page changed outside Bava gets its pictures drawn again the next time
+  Bava saves it.
+- **A frame that is gone** leaves its embed showing the last picture, marked
+  as deleted; it is never removed. The frame coming back (undo, or the id
+  again in the file) makes it live again. The picture stays in the
+  attachments while a page names it.
 
 ### Cards
 A link alone on its line, with `card` in the mark above, is a card: a file

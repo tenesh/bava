@@ -7,7 +7,19 @@
 import { PARENT, SPACE_ROOT, seedSpace, type FakePage, type FakeSpace } from '../fixtures/space';
 import { linkName } from '../../src/docs/links';
 
-type Op = { kind: string; path: string; folder: string; name: string; index: number; id: string; width: string; attachment?: string; edits?: { path: string; before: string; after: string }[] };
+type Op = {
+  kind: string;
+  path: string;
+  folder: string;
+  name: string;
+  index: number;
+  id: string;
+  width: string;
+  attachment?: string;
+  edits?: { path: string; before: string; after: string }[];
+  data?: string;
+  replace?: boolean;
+};
 
 const PAGE_EXT = '.md';
 const parentOf = (path: string) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '');
@@ -80,6 +92,8 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     objectSnap: false,
   };
   let settingsRead = false;
+  /** Each canvas embed's picture saved, in base64, by its name. */
+  const pictures = new Map<string, string>();
   let trashIds = 100;
 
   const spaceOf = (root: string) => spaces.get(root);
@@ -174,6 +188,25 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         space.trash.unshift({ id, path: op.path, kind: isFolder(space, `\u0000trash/${id}/${op.path}`) ? 'folder' : 'page', deletedAt: '2026-09-27T12:00:00Z', size: 1024 });
         return ok({ id, path: op.path });
       }
+      // A canvas embed's picture, as Go saves it: the first under a free name,
+      // never shared; a redraw in place.
+      case 'savePicture': {
+        const checked = checkName(op.name);
+        if ('code' in checked) return ok(checked);
+        let name = checked.name;
+        const taken = (each: string) => space.attachments.some((entry) => entry.name === each);
+        if (!op.replace && taken(name)) {
+          const dot = name.lastIndexOf('.');
+          const [base, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ''];
+          for (let n = 2; taken(name); n += 1) name = `${base} ${n}${ext}`;
+        }
+        const size = Math.floor(((op.data ?? '').length * 3) / 4);
+        const entry = space.attachments.find((each) => each.name === name);
+        if (entry) entry.size = size;
+        else space.attachments.push({ name, size, modified: '2026-10-04T12:00:00Z' });
+        pictures.set(name, op.data ?? '');
+        return ok({ name });
+      }
       case 'renameAttachment': {
         const file = space.attachments.find((entry) => entry.name === op.attachment);
         if (!file) return ok({ error: `"${op.attachment}" is not an attachment` });
@@ -261,6 +294,8 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     faults,
     /** The settings as last saved, for a test to read what a control changed. */
     settings: () => ({ ...settings }),
+    /** The canvas embeds' pictures saved, in base64, by name. */
+    pictures: () => Object.fromEntries(pictures),
     fileToOpen: '',
     setSource(root: string, path: string, source: string) {
       const space = spaceOf(root);
@@ -271,6 +306,9 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       const space = spaceOf(root);
       if (!space || !(path in space.pages)) throw new Error(`no page ${path}`);
       space.pages[path] = { ...space.pages[path], scene: structuredClone(scene) };
+    },
+    source(root: string, path: string): string | undefined {
+      return spaceOf(root)?.pages[path]?.source;
     },
     scene(root: string, path: string): FakePage['scene'] | undefined {
       const scene = spaceOf(root)?.pages[path]?.scene;

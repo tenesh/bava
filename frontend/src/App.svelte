@@ -12,7 +12,7 @@
   import InsertPanel from './components/InsertPanel.svelte';
   import { createInsert } from './shell/insert.svelte';
   import ContextMenu from './components/ContextMenu.svelte';
-  import { contextMenuFor, contextSelection, overflowMenu, parseOverflowId, type MenuNode } from './canvas/context-menu';
+  import { contextMenuFor, contextSelection, EMBED_IN_DOCUMENT, overflowMenu, parseOverflowId, rightClickHit, type MenuNode } from './canvas/context-menu';
   import { nudged, topLevel } from './canvas/edit';
   import { createScene, isLocked } from './canvas/scene';
   import { carriedWith } from './canvas/containment';
@@ -24,13 +24,17 @@
   import { invalidateAdvanceOnFontLoad } from './canvas/code/advance';
   import { monoAdvance } from './canvas/code/advance';
   import ExportDialog from './components/ExportDialog.svelte';
-  import { topmostAt } from './canvas/eraser';
+  import { base64 } from './canvas/export/fonts';
+  import { framePicture } from './canvas/export/frame-picture';
+  import { embedFrame, frameGroups, redrawPictures, type EmbedIO } from './files/embed-actions';
+  import FramePicker from './components/FramePicker.svelte';
   import { SourcePane } from './editor/source-pane';
   import DocumentPane from './docs/DocumentPane.svelte';
   import { createRenderClient } from './ipc/render.svelte';
   import DiagramDialog from './components/DiagramDialog.svelte';
   import { createDiagramDialog } from './shell/diagram-dialog.svelte';
   import { toElements } from './canvas/import/convert';
+  import { inNewFrame } from './canvas/import/in-frame';
   import { createTheme } from './styles/theme.svelte';
   import Shell from './shell/Shell.svelte';
   import { statusContext, type StatusSide } from './shell/status-context';
@@ -262,8 +266,21 @@
     saveDefault: async (engine) => reportSettingsError(await settingsState.setLayoutEngine(engine)),
   });
 
+  // Opened from the page (`/` Diagram from code): Insert puts the diagram in
+  // a frame of its own and embeds that frame at the caret.
+  let diagramForPage = false;
+
   function openDiagramDialog() {
     if (!canvasShown()) return;
+    diagramForPage = false;
+    diagramOpen = true;
+    diagramDialog.open(DIAGRAM_STARTER);
+  }
+
+  /** `/` Diagram from code, once the page is in a Space. */
+  async function openDiagramForPage() {
+    if (!embedIO.inSpace() && !(await embedIO.offerSpace())) return;
+    diagramForPage = true;
     diagramOpen = true;
     diagramDialog.open(DIAGRAM_STARTER);
   }
@@ -274,6 +291,10 @@
   function insertDiagram() {
     const layout = diagramClient.state.layout;
     if (layout.shapes.length === 0 && layout.connections.length === 0) return;
+    if (diagramForPage) {
+      insertDiagramInPage();
+      return;
+    }
     // Centred on what the user is looking at, at the diagram's own size.
     const centre = viewport.screenToScene({
       x: (canvasHostEl?.clientWidth ?? 0) / 2,
@@ -286,6 +307,18 @@
     commit();
     syncSelection();
   }
+  /** The diagram in a new frame below the canvas's content, embedded at the page's caret. */
+  function insertDiagramInPage() {
+    canvasCommands.insertDiagram(inNewFrame(history.current, toElements(diagramClient.state.layout, { at: { x: 0, y: 0 } }), t('frames.diagram')));
+    void diagramDialog.inserted();
+    diagramOpen = false;
+    diagramForPage = false;
+    commit();
+    // The new frame: the one inserted that no other frame holds.
+    const frame = history.current.elements.find((element) => element.type === 'frame' && element.frame === undefined && selection.has(element.id));
+    if (frame) void embedPicked(frame.id, null);
+  }
+
   // Export: the dialog's settings and what each button does. The drawing
   // itself is pure code under `canvas/export/`.
   const exporter = createExporter({
@@ -331,6 +364,8 @@
       canPaste: canvasCommands.canPaste,
       canPasteStyles: canvasCommands.canPasteStyles,
       hasLocked: canvasCommands.hasLocked,
+      // One frame alone: it can be embedded in the page.
+      frame: selected.length === 1 && selected[0].type === 'frame' && doc.isOpen,
     };
   }
 
@@ -506,6 +541,7 @@
     published = history.current;
     syncSelection();
     if (!changed) return;
+    canvasChanged();
     doc.touch();
     autosave.changed();
   }
@@ -517,7 +553,7 @@
   const autosave = createAutosave({
     settings: () => ({ mode: settingsState.autosave, delayMs: settingsState.autosaveDelayMs }),
     document: doc,
-    save: () => doc.save(currentScene()),
+    save: async () => redrawAfterSave(await doc.save(currentScene())),
   });
 
   // A prompt waiting for an answer, and the resolver its caller awaits.
@@ -542,6 +578,7 @@
     selection.clear();
     syncSelection();
     published = history.current;
+    canvasChanged();
   }
 
   /**
@@ -567,7 +604,7 @@
         if (!result.error) loadScene(result.scene.elements ?? []);
         return result;
       },
-      save: async (scene, options) => toldIfRefused(await doc.save(scene, options)),
+      save: async (scene, options) => redrawAfterSave(toldIfRefused(await doc.save(scene, options))),
       saveAs: async (path, scene) => toldIfRefused(await doc.saveAs(path, scene)),
       close: () => {
         doc.close();
@@ -984,6 +1021,147 @@
       notify,
     });
     await refreshMedia();
+  }
+
+  // Canvas embeds: what each embed on the page watches to redraw, the picker,
+  // and how a frame's picture is read, drawn and written.
+  let canvasWatchers: (() => void)[] = [];
+  const canvasChanged = () => canvasWatchers.forEach((watch) => watch());
+  let framePicker = $state.raw<{ at: { left: number; top: number; bottom: number }; groups: Awaited<ReturnType<typeof frameGroups>> } | null>(null);
+
+  /** Another page's canvas, from its file; null when it cannot be read. */
+  async function readScene(page: string): Promise<SceneData | null> {
+    if (!space.root) return null;
+    const result = await FileService.Open(space.absolute(page));
+    return result.error ? null : { elements: (result.scene.elements ?? []) as unknown as SceneElement[] };
+  }
+
+  /** A frame's picture in the theme Bava has now; another page's code coloured on its own. */
+  async function pictureOf(scene: SceneData, frame: string): Promise<Blob | null> {
+    let runs = codeRuns.all();
+    if (scene !== history.current) {
+      const own = createCodeRuns();
+      await own.update(scene);
+      runs = own.all();
+    }
+    return framePicture(scene, frame, { theme: theme.resolved, codeRuns: runs }).catch((error: unknown) => {
+      void report(error, 'embed-picture');
+      return null;
+    });
+  }
+
+  const embedIO: EmbedIO = {
+    here: () => (space.root ? openRel : null),
+    inSpace: () => space.root !== null && openRel !== null,
+    offerSpace: async () => {
+      const path = doc.path;
+      if (!path || !(await confirm(t('media.needsSpace.title'), t('media.needsSpace.body'), t('tree.openAsSpace')))) return false;
+      return openSpace(path.replace(/[\\/][^\\/]*$/, ''), true);
+    },
+    pages: async () => {
+      const pages = await space.index(true);
+      if (!pages) return null;
+      const now = docPane?.currentMarkdown() ?? null;
+      return pages.filter((page) => !page.unreadable).map((page) => (page.path === openRel && now !== null ? { ...page, text: now } : page));
+    },
+    scene: async (page) => (page === openRel ? history.current : readScene(page)),
+    picture: pictureOf,
+    save: async (name, data, replace) => {
+      const result = await space.apply({ kind: 'savePicture', name, data: base64(await data.arrayBuffer()), replace }, { refresh: false });
+      return result.error ? { error: result.error } : { name: result.name ?? name };
+    },
+    insert: (attrs) => docPane?.insertEmbed(attrs),
+    notify,
+  };
+
+  /** How the page's embeds draw, watch the canvas and open their frame. */
+  const embedContext = {
+    draw: async (frame: string) => {
+      const blob = await pictureOf(history.current, frame);
+      return blob ? URL.createObjectURL(blob) : null;
+    },
+    watchCanvas: (redraw: () => void) => {
+      canvasWatchers = [...canvasWatchers, redraw];
+      return () => void (canvasWatchers = canvasWatchers.filter((watch) => watch !== redraw));
+    },
+    holds: async (page: string, frame: string) => {
+      const scene = await readScene(page);
+      return scene?.elements.some((element) => element.id === frame && element.type === 'frame') ?? false;
+    },
+    open: (frame: string, page: string | null) => void openEmbed(frame, page),
+  };
+
+  /** `/` Embed frame: the picker at the caret, once the page is in a Space. */
+  async function pickFrame(at: { left: number; top: number; bottom: number }) {
+    if (!embedIO.inSpace() && !(await embedIO.offerSpace())) return;
+    const groups = await frameGroups(embedIO, {
+      thumb: async (scene, frame) => {
+        const blob = await pictureOf(scene, frame);
+        return blob ? URL.createObjectURL(blob) : null;
+      },
+    });
+    framePicker = { at, groups };
+  }
+
+  function closeFramePicker() {
+    for (const group of framePicker?.groups ?? []) for (const frame of group.frames) if (frame.thumb) URL.revokeObjectURL(frame.thumb);
+    framePicker = null;
+  }
+
+  /** A frame embedded in the open page: from the picker, or the canvas's right-click. */
+  async function embedPicked(frame: string, page: string | null) {
+    closeFramePicker();
+    await embedFrame(frame, page, embedIO);
+    await refreshMedia();
+  }
+
+  /** The selected frame embedded in the page: shown beside the canvas when it was hidden. */
+  async function embedSelectedFrame() {
+    const [id] = selection.ids;
+    if (id === undefined) return;
+    if (view.mode === 'canvas') {
+      view.setMode('both');
+      await tick();
+    }
+    await embedPicked(id, null);
+  }
+
+  /**
+   * An embed clicked: its frame's page opened if it is another, the canvas
+   * shown beside the page, and the frame selected and brought into view.
+   */
+  async function openEmbed(frame: string, page: string | null) {
+    if (page !== null && page !== openRel) {
+      await openPath(space.absolute(page));
+      if (openRel !== page) return;
+    }
+    if (view.mode === 'document') view.setMode('both');
+    await tick();
+    const element = history.current.elements.find((each) => each.id === frame && each.type === 'frame');
+    if (!element) return;
+    selection.clear();
+    selection.click(element.id);
+    syncSelection();
+    viewport.panToShow(element, { width: canvasHostEl?.clientWidth ?? 0, height: canvasHostEl?.clientHeight ?? 0 });
+    applyView();
+  }
+
+  /** A save of the open page draws again every picture any page embeds of its frames, unless nothing changed. */
+  let picturesDrawn: { page: string; scene: SceneData; theme: string } | null = null;
+  function redrawAfterSave<T extends { saved: boolean }>(outcome: T): T {
+    const page = space.root ? openRel : null;
+    const scene = history.current;
+    const drawn = picturesDrawn;
+    if (outcome.saved && page && !(drawn && drawn.page === page && drawn.scene === scene && drawn.theme === theme.resolved)) {
+      picturesDrawn = { page, scene, theme: theme.resolved };
+      void redrawPictures(page, scene, embedIO)
+        .then(refreshMedia)
+        .catch((error: unknown) => {
+          void report(error, 'embed-redraw');
+          notify(t('embed.redrawFailed'));
+        });
+    }
+    return outcome;
   }
 
   // Media: the Space's attachments, and the pages that use each, read again
@@ -1841,7 +2019,7 @@
     const onContextMenu = (event: MouseEvent) => {
       event.preventDefault();
       if (!canvasShown() || labelEditor?.contains(event.target)) return;
-      const hit = topmostAt(history.current, scenePoint(event as PointerEvent));
+      const hit = rightClickHit(history.current, scenePoint(event as PointerEvent));
       const next = contextSelection(history.current, selection.ids, hit);
       if (next.join(' ') !== selection.ids.join(' ')) {
         selection.clear();
@@ -2153,6 +2331,7 @@
   $effect(() => {
     void theme.resolved;
     canvas.restyle();
+    untrack(canvasChanged);
   });
 
   // Repaint when a new snapshot is published.
@@ -2394,6 +2573,11 @@
         return result.error ? null : (result.name ?? null);
       }}
       onNotify={notify}
+      embeds={embedContext}
+      onCanvas={(what, at) => {
+        if (what === 'embed') void pickFrame(at);
+        else void openDiagramForPage();
+      }}
     />
   {/snippet}
 
@@ -2510,6 +2694,10 @@
     anchor={contextMenu?.anchor ?? null}
     onSelect={(id) => {
       contextMenu = null;
+      if (id === EMBED_IN_DOCUMENT) {
+        void embedSelectedFrame();
+        return;
+      }
       // A control that did not fit the toolbar row acts from the menu; every
       // other entry is a command the native menu has too.
       const choice = parseOverflowId(id);
@@ -2530,6 +2718,10 @@
       if (!open) contextMenu = null;
     }}
   />
+
+{#if framePicker}
+  <FramePicker at={framePicker.at} groups={framePicker.groups} onPick={(frame, page) => void embedPicked(frame, page)} onClose={closeFramePicker} />
+{/if}
 
 {#if !launch.ready}
   <Splash status={t('launch.starting')} />

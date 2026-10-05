@@ -199,6 +199,8 @@ $d-diagram-edge-label: #8b8f8a;
   --opacity-erasing: 0.2;
   // A control that is present but cannot act: Insert with a broken diagram.
   --opacity-disabled: 0.5;
+  // A canvas embed whose frame is gone: its last picture, kept and faded.
+  --opacity-gone: 0.6;
   --color-diagram-bg: #{$l-diagram-bg};
   // A code block: its panel, and the colours `canvas/code/highlight.ts` names.
   --color-code-surface: #{$l-code-surface};

@@ -9,6 +9,10 @@ import { currentPlatform, formatAccelerator, type MenuSpec, type Platform } from
 import { isSwatch, SWATCHES } from './palette';
 import { controlOptions, PROPERTY_OPTIONS } from './property-options';
 import { t } from '../i18n/t';
+import { topmostAt } from './eraser';
+import { containsPoint } from './rotate';
+import { isLocked, type ElementId, type SceneData } from './scene';
+import type { Point } from './viewport';
 import type { ToolbarControl } from './toolbar';
 import type { PropertyKey, PropertyValue, StyleKey } from './style';
 
@@ -27,6 +31,8 @@ export type SelectionInfo = {
   canPasteStyles: boolean;
   /** Whether anything in the scene is locked, for Unlock All. */
   hasLocked: boolean;
+  /** Whether the selection is one frame, which the page can embed. */
+  frame?: boolean;
 };
 
 type SpecEntry = { id?: string; label?: string; accelerator?: string; shortcut?: string; hint?: string; items?: SpecEntry[] };
@@ -46,6 +52,9 @@ function find(id: string): SpecEntry | undefined {
   }
   return undefined;
 }
+
+/** Right-click a frame ▸ Embed in Document: the frame, put in the page at its caret. */
+export const EMBED_IN_DOCUMENT = 'canvas.embedInDocument';
 
 export function contextMenuFor(info: SelectionInfo, platform: Platform = currentPlatform()): MenuNode[] {
   const item = (id: string): MenuNode => {
@@ -72,7 +81,12 @@ export function contextMenuFor(info: SelectionInfo, platform: Platform = current
 
   const groups: MenuNode[][] = [
     [item('edit.cut'), item('edit.copy'), ...paste],
-    [submenu('canvas.copyAs', ['canvas.copyPng', 'canvas.copySvg']), item('canvas.exportSelection')],
+    [
+      submenu('canvas.copyAs', ['canvas.copyPng', 'canvas.copySvg']),
+      item('canvas.exportSelection'),
+      // The canvas's own: no menu bar entry, so its words are here.
+      ...(info.frame ? [{ kind: 'item', id: EMBED_IN_DOCUMENT, label: t('canvas.embedInDocument'), keys: '' } satisfies MenuNode] : []),
+    ],
     [item('canvas.copyStyles'), ...(info.canPasteStyles ? [item('canvas.pasteStyles')] : [])],
     [
       submenu('canvas.arrange', ['canvas.bringToFront', 'canvas.bringForward', 'canvas.sendBackward', 'canvas.sendToBack']),
@@ -197,6 +211,17 @@ export function atPoint(read: () => { x: number; y: number } | null) {
       return point ? { x: point.x, y: point.y, width: 0, height: 0 } : null;
     },
   };
+}
+
+/**
+ * What a right-click lands on: the topmost element drawn there, else the
+ * innermost frame it is inside, which a left click there also takes.
+ */
+export function rightClickHit(scene: SceneData, point: Point): ElementId | undefined {
+  const drawn = topmostAt(scene, point);
+  if (drawn !== undefined) return drawn;
+  const frames = scene.elements.filter((element) => element.type === 'frame' && !isLocked(element) && containsPoint(element, point));
+  return frames.sort((a, b) => b.z - a.z)[0]?.id;
 }
 
 /**

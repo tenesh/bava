@@ -52,6 +52,23 @@
     { "do": "wait", "target": "header", "text": "First page" },
     { "do": "menu", "target": "view.canvas" },
     { "do": "wait", "target": "footer", "text": "Nodes 10" },
-    { "do": "shot", "name": "reopened" }
+    { "do": "shot", "name": "reopened" },
+
+    { "do": "menu", "target": "view.both" },
+    { "do": "wait", "target": ".bava-doc" },
+    { "do": "click", "target": ".bava-doc" },
+    { "do": "type", "text": "/diagram" },
+    { "do": "key", "text": "Enter" },
+    { "do": "wait", "target": ".bava-dialog-content .cm-content" },
+    { "do": "wait", "target": ".bava-diagram-preview svg", "text": "b", "timeoutMs": 20000 },
+    { "do": "click", "target": "text=Insert" },
+    { "do": "gone", "target": ".bava-dialog-content" },
+    { "do": "wait", "target": ".bava-doc figure.embed img" },
+    { "do": "shot", "name": "embedded" },
+    { "do": "menu", "target": "file.save" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "<!-- bava: embed=" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "](.bava/attachments/First%20page%20-%20Diagram.png)" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "\"label\": \"Diagram\"" },
+    { "do": "file", "target": "Smoke/.bava/attachments/First page - Diagram.png", "text": "PNG" }
   ]
 }

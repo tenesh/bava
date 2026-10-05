@@ -51,7 +51,8 @@ export function faceFamily(stack: string): string {
   return first.replace(/^['"]|['"]$/g, '').trim();
 }
 
-function base64(buffer: ArrayBuffer): string {
+/** Bytes as base64. */
+export function base64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';
   // In chunks: a spread of a 68KB array overflows the call stack in WebKit.

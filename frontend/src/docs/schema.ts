@@ -235,6 +235,32 @@ export const schema = new Schema({
     image: media('image'),
     video: media('video'),
     /**
+     * A frame of a canvas shown in the page, as its picture in the
+     * attachments: the frame's id, the page holding it (its address, null
+     * for this page), the picture's address and words, the line as the file
+     * wrote it, and an image's width, alignment and caption.
+     */
+    embed: {
+      group: 'block',
+      atom: true,
+      selectable: true,
+      draggable: true,
+      attrs: {
+        frame: { default: '' },
+        page: { default: null as string | null },
+        src: { default: '' },
+        alt: { default: '' },
+        title: { default: null as string | null },
+        written: { default: null as string | null },
+        width: { default: null as string | null },
+        align: { default: null as string | null },
+        caption: { default: null as string | null },
+        extra: { default: null as string | null },
+      },
+      toDOM: (): DOMOutputSpec => ['figure', { class: 'media embed' }],
+      leafText: (node: Node) => node.attrs.alt as string,
+    },
+    /**
      * A link alone on its line shown as a card: its address, title and words,
      * the line as the file wrote it (kept while it still reads the same), its
      * look (`card` or `extended`), and a web card's saved details.

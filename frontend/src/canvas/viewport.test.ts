@@ -69,4 +69,25 @@ describe('viewport', () => {
     viewport.panBy(5, 5);
     expect(viewport.pan).toEqual({ x: 25, y: -30 });
   });
+
+  it('leaves a box already in view where it is', () => {
+    const viewport = createViewport();
+    viewport.setPan(-100, -50);
+    viewport.panToShow({ x: 150, y: 100, w: 200, h: 100 }, { width: 800, height: 600 });
+    expect(viewport.pan).toEqual({ x: -100, y: -50 });
+  });
+
+  it('centres a box out of view, at the zoom it has', () => {
+    const viewport = createViewport();
+    viewport.setZoom(2);
+    viewport.panToShow({ x: 1000, y: 1000, w: 100, h: 50 }, { width: 800, height: 600 });
+    expect(viewport.zoom).toBe(2);
+    expect(viewport.sceneToScreen({ x: 1050, y: 1025 })).toEqual({ x: 400, y: 300 });
+  });
+
+  it('centres a box only partly in view', () => {
+    const viewport = createViewport();
+    viewport.panToShow({ x: 700, y: 0, w: 200, h: 100 }, { width: 800, height: 600 });
+    expect(viewport.sceneToScreen({ x: 800, y: 50 })).toEqual({ x: 400, y: 300 });
+  });
 });

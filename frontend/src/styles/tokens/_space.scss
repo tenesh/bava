@@ -80,6 +80,11 @@
   --size-emoji-picker: 320px;
   --size-emoji-picker-height: 340px;
   --size-emoji-cell: 32px;
+  // The frame picker (`/` Embed frame): its size, and each frame's thumbnail.
+  --size-frame-picker: 340px;
+  --size-frame-picker-height: 380px;
+  --size-frame-thumb-width: 64px;
+  --size-frame-thumb-height: 44px;
   // A link's card, at its widest, and a day in the date chip's calendar.
   --size-link-card: 360px;
   --size-date-cell: 32px;
