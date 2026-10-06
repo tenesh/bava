@@ -240,3 +240,9 @@ could reasonably have gone another way.
 | 2026-10-04 | A loose page asks to become a Space before it embeds | The user's choice (08.5 decision 5), the rule every picture a page holds follows. |
 | 2026-10-04 | Opening an embed from the Document view shows Both | The user's choice (08.5 decision 6): the page stays, the Canvas opens beside it with the frame selected and in view. |
 | 2026-10-06 | Removing a Space from the list asks, and can delete its `.bava` folder | The user's choice. Removing forgets the Space; a switch in the confirmation, off at first, when turned on also deletes `.bava` (attachments, the Trash with any pages in it, page order and settings) for good. The pages in the Space's folders are kept. Permanent because Bava has no system-Trash support; the warning says so. |
+| 2026-10-06 | 8.6 is built in two parts, tags first | The user's choice (8.6 decision 1): smaller plans and commits; a template can carry tags. |
+| 2026-10-06 | A tag is lowercase with no spaces, converted as typed | The user (8.6 decisions 2 and 3): `Road Map` becomes `road-map`; tags other tools wrote are read the same way and rewritten only when that page's tags change. |
+| 2026-10-06 | Tags sit at the bottom of the page | The user (8.6 decision 4), as Confluence's labels: after the content, before Linked from. Replaces decision 66's "under its title". |
+| 2026-10-06 | Tags filter Files; no Tags section | The user (8.6 decision 5): a tag button in the Files header; the tree shows pages with all the chosen tags. Replaces decision 66's Tags section. |
+| 2026-10-06 | A tag's menu has Rename, Merge into and Delete | The user (8.6 decision 6): Rename refuses a taken name; each rewrites only the pages' `tags` key. |
+| 2026-10-06 | A Tags dialog manages tags, several at once | The user approved the mockups (8.6 decision 7): rename in a row, select several to merge or delete, asked first. |

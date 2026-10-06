@@ -493,8 +493,8 @@ committed on its own, and specifies its file-format changes in
 | 8.3d Adding lines *(committed)* | A block added before or after any block with ⌘Enter and ⇧⌘Enter or the block menu, and an empty line kept at the end of every page (decision 90); toggle headings dropped (decision 91) |
 | 8.4 Media and attachments *(committed)* | In three parts (decision 97): **8.4.1** the attachments folder, images and video files, relinking; **8.4.2** online videos, file and web-link cards; **8.4.3** the Media section and dialog |
 | 8.4a Canvas testing pass *(committed)* | Screen checks of seeded canvases (every shape and style, arrows of every kind and attachment, frames, groups, code blocks, a D2 diagram; selection, rotation, snapping and point-editing states; the pickers and menus; exported PNG and SVG) in both themes and at two zooms; real-app smoke scenarios that draw, connect, move, undo and insert a diagram, then check the saved file's contents. Replaces the 6.x window checks still owed. Before 8.5, so embedding cannot break the canvas unseen |
-| 8.5 Canvas in the Document *(next)* | Live frame embeds, Diagram from Code from the Document; this part carries the exit criterion below |
-| 8.6 Tags and templates | Tags and the Tags section; the Templates dialog |
+| 8.5 Canvas in the Document *(committed)* | Live frame embeds, Diagram from Code from the Document; this part carries the exit criterion below |
+| 8.6 Tags and templates *(next)* | Tags and the Tags section; the Templates dialog |
 
 Export and import moved to Milestone 15, which now follows this one.
 

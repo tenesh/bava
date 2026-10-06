@@ -169,7 +169,7 @@ test('the Space switcher closes on a click elsewhere', async ({ page }) => {
 test("the Files tree's Add menu closes on a click elsewhere", async ({ page }) => {
   await openApp(page, 'light');
   await openSpace(page);
-  await page.locator('.files-button').click();
+  await page.getByRole('button', { name: 'Add to Files' }).click();
   await expect(menus(page)).toBeVisible();
   await clickAway(page, 'outside');
   await expect(menus(page)).toHaveCount(0);

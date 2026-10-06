@@ -723,3 +723,45 @@ test.describe('canvas embeds', () => {
     expect(await pictures(page)).toEqual(['Architecture - Ingest.png']);
   });
 });
+
+test.describe('tags on the page', () => {
+  type SourceHarness = { __bava: { fakes: { harness: { source(root: string, path: string): string | undefined } } } };
+  const PAGE = 'Marketing/Launch plan.md';
+  const savedSource = async (page: Page) => {
+    await menu(page, 'file.save');
+    await expect(page.locator('header .state')).toHaveText('saved');
+    return page.evaluate(([root, at]) => (window as unknown as SourceHarness).__bava.fakes.harness.source(root, at), [SPACE, PAGE] as const);
+  };
+  const tags = (page: Page) => documentPane(page).getByRole('group', { name: 'Tags' });
+
+  test('a tag typed with capitals and a space is added converted, and written in the header', async ({ page }) => {
+    await openDocument(page, 'light', PAGE);
+    await expect(tags(page)).toContainText('launch');
+    await tags(page).getByRole('button', { name: 'Add tag' }).click();
+    const field = tags(page).getByRole('combobox', { name: 'Add tag' });
+    await expect(field).toBeFocused();
+    await page.keyboard.type('Road Map');
+    await expect(field).toHaveValue('road-map');
+    // The Space's own road-map is offered first.
+    await expect(tags(page).getByRole('option')).toHaveText(['road-map']);
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Escape');
+    const saved = await savedSource(page);
+    expect(saved).toContain('tags: [launch, q4, design, road-map]');
+    expect(saved).toContain('# Launch plan\n\nHow we take Bava 1.0');
+  });
+
+  test('a tag removed by its own button', async ({ page }) => {
+    await openDocument(page, 'light', PAGE);
+    await tags(page).getByRole('button', { name: 'Remove q4' }).click();
+    expect(await savedSource(page)).toContain('tags: [launch, design]');
+  });
+
+  test('a locked page shows its tags with no way to change them', async ({ page }) => {
+    await openDocument(page, 'light', PAGE);
+    await page.getByRole('button', { name: 'Page menu' }).click();
+    await page.getByRole('menuitem', { name: 'Lock' }).click();
+    await expect(tags(page)).toContainText('launch');
+    await expect(tags(page).getByRole('button')).toHaveCount(0);
+  });
+});

@@ -6,7 +6,7 @@ import ConfirmDialog from './ConfirmDialog.svelte';
 
 const OPTIONS = [
   { value: 'cancel', label: 'Cancel' },
-  { value: 'remove', label: 'Remove', primary: true },
+  { value: 'remove', label: 'Remove', tone: 'primary' },
 ];
 
 async function setup(extra: Record<string, unknown> = {}) {
@@ -34,5 +34,15 @@ describe('ConfirmDialog', () => {
     flushSync(() => input()!.click());
     button('Remove').click();
     expect(onChoose).toHaveBeenLastCalledWith('remove', true);
+  });
+});
+
+describe('an answer that cannot be undone', () => {
+  it('is drawn in the danger colour, not the accent', async () => {
+    render(ConfirmDialog, { open: true, title: 'Delete?', body: 'Gone for good.', options: [{ value: 'cancel', label: 'Cancel' }, { value: 'yes', label: 'Delete', tone: 'danger' }], onChoose: vi.fn() } as never);
+    await vi.waitFor(() => expect(document.querySelector('.options')).not.toBeNull());
+    const button = [...document.querySelectorAll<HTMLButtonElement>('.options button')].find((b) => b.textContent?.trim() === 'Delete')!;
+    expect(button.classList.contains('danger')).toBe(true);
+    expect(button.classList.contains('primary')).toBe(false);
   });
 });

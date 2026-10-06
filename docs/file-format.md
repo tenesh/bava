@@ -104,7 +104,35 @@ title: Kept as it is
   that held only Bava's settings is not written. One written empty stays.
 - The block ends at a line that is `---` alone. A page that opens with `---`
   and then an empty line opens with a divider, not front matter.
-- Its line endings are written as `\n`.
+- Its line endings are written as `\n`, except when only the header is
+  rewritten (a setting or the tags changed, the prose not): it then takes
+  the page's own line ending, so a page written with `\r\n` keeps them.
+
+#### Tags
+
+A page's tags are a top-level `tags` key, beside `bava:`, so other Markdown
+tools read them too:
+
+```markdown
+---
+tags: [launch, q4, road-map]
+---
+```
+
+- **A tag** is lowercase with no spaces. Bava reads a tag another tool wrote
+  converted: lowercase, each run of spaces a dash (`Road Map` is
+  `road-map`); an empty one and a repeat are dropped.
+- **Read:** a flow list (`tags: [a, b]`, items quoted or not), a block list
+  (`tags:` and then lines of `  - a`) or a single value (`tags: a`).
+- **Written** only when the page's tags are changed in Bava, then as a flow
+  list on the key's own line where the key stood (last in the front matter
+  when the page had none), an item in double quotes when YAML needs it.
+  The key's old lines are replaced, a block list's included. No tags left
+  removes the key; a front matter that then holds nothing is not written,
+  as with Bava's settings.
+- Renaming, merging or deleting a tag across the Space rewrites only this
+  key in each page that has it, every other byte kept. A locked page is
+  left as it is, and named.
 
 ### Bava's Markdown style
 Each block is separated from the next by one blank line; extra blank lines

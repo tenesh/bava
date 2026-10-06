@@ -58,10 +58,11 @@ describe('opening and saving a page', () => {
     expect(editor.markdown()).toBe('# Title\n\nSome **text**.!\n');
   });
 
-  it('gives a changed setting back in tidy Markdown, and an edit undone back as read', () => {
+  // The prose is tidied when it is edited, not when only the header changes.
+  it('gives a changed setting back with the prose as read, and an edit undone back as read', () => {
     const { editor } = open('Some __text__.\n');
     editor.setSettings({ width: 'full' });
-    expect(editor.markdown()).toBe('---\nbava:\n  width: full\n---\nSome **text**.\n');
+    expect(editor.markdown()).toBe('---\nbava:\n  width: full\n---\nSome __text__.\n');
     const second = open('Some __text__.\n').editor;
     toEnd();
     type('!');
@@ -239,6 +240,28 @@ describe('a locked page', () => {
     editor!.setSettings({ locked: false });
     expect(editor!.view!.editable).toBe(true);
     expect(editor!.markdown()).toBe('Text\n');
+  });
+});
+
+describe('tags', () => {
+  it('reads the page\'s tags, and writes a change to them alone, the prose as read', () => {
+    const { editor } = open('---\ntags: [launch]\n---\nSome __text__.\n');
+    expect(editor.tags).toEqual(['launch']);
+    editor.setTags(['launch', 'q4']);
+    expect(editor.tags).toEqual(['launch', 'q4']);
+    expect(editor.markdown()).toBe('---\ntags: [launch, q4]\n---\nSome __text__.\n');
+  });
+
+  it('converts what it is given, and drops repeats', () => {
+    const { editor } = open('Text\n');
+    editor.setTags(['Road Map', 'road-map', ' ']);
+    expect(editor.tags).toEqual(['road-map']);
+  });
+
+  it('is an edit to the page', () => {
+    const { editor, onChange } = open('Text\n');
+    editor.setTags(['q4']);
+    expect(onChange).toHaveBeenCalled();
   });
 });
 

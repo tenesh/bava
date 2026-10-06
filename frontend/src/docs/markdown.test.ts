@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import MarkdownIt from 'markdown-it';
-import { parsePage, writePage } from './markdown';
+import { normaliseTag, parsePage, writePage } from './markdown';
 import { schema } from './schema';
 import { Fragment, Slice } from 'prosemirror-model';
 import { dateAttrs } from './dates';
@@ -352,6 +352,77 @@ describe('front matter', () => {
   it('leaves out a front matter with nothing in it', () => {
     const page = parsePage('---\nbava:\n  locked: true\n---\nText\n');
     expect(writePage(page.doc, { ...page.front, settings: {} })).toBe('Text\n');
+  });
+});
+
+describe('tags', () => {
+  const tagsOf = (markdown: string) => parsePage(markdown).front.tags;
+  const withTags = (markdown: string, tags: string[]) => {
+    const page = parsePage(markdown);
+    return writePage(page.doc, { ...page.front, tags });
+  };
+
+  it('reads a flow list, a block list and a single value, converted', () => {
+    expect(tagsOf('---\ntags: [launch, "Road Map", q4]\n---\nText\n')).toEqual(['launch', 'road-map', 'q4']);
+    expect(tagsOf('---\ntags:\n  - Launch\n  - \'q4\'\ntitle: T\n---\nText\n')).toEqual(['launch', 'q4']);
+    expect(tagsOf('---\ntags: Design\n---\nText\n')).toEqual(['design']);
+    expect(tagsOf('---\ntitle: T\n---\nText\n')).toEqual([]);
+  });
+
+  it('drops an empty tag and a repeat', () => {
+    expect(tagsOf('---\ntags: [a, "", A, "  "]\n---\nText\n')).toEqual(['a']);
+  });
+
+  it('converts a typed tag: lowercase, each run of spaces a dash', () => {
+    expect(normaliseTag('  Road   Map ')).toBe('road-map');
+    expect(normaliseTag('Q4 2026')).toBe('q4-2026');
+    expect(normaliseTag('   ')).toBe('');
+  });
+
+  it('keeps tags it did not change byte for byte, whatever their form', () => {
+    same('---\ntags:\n  - Launch\n  - q4\nbava:\n  width: wide\n---\nText\n');
+    same('---\ntitle: T\ntags: [Road Map]\n---\nText\n');
+  });
+
+  it('writes changed tags as a flow list where the key stood, replacing a block list', () => {
+    expect(withTags('---\ntitle: T\ntags:\n  - a\n  - b\nother: 1\n---\nText\n', ['a', 'c'])).toBe('---\ntitle: T\ntags: [a, c]\nother: 1\n---\nText\n');
+  });
+
+  it('adds the key last when the page had none, and a front matter when it had none', () => {
+    expect(withTags('---\ntitle: T\nbava:\n  width: wide\n---\nText\n', ['q4'])).toBe('---\ntitle: T\nbava:\n  width: wide\ntags: [q4]\n---\nText\n');
+    expect(withTags('Text\n', ['q4'])).toBe('---\ntags: [q4]\n---\nText\n');
+  });
+
+  it('quotes a tag YAML would read otherwise', () => {
+    expect(withTags('Text\n', ['c++', 'a:b', '#x', 'plain-1', 'été'])).toBe('---\ntags: ["c++", "a:b", "#x", plain-1, été]\n---\nText\n');
+  });
+
+  it('removes the key with the last tag, and a front matter left empty', () => {
+    expect(withTags('---\ntags: [a]\ntitle: T\n---\nText\n', [])).toBe('---\ntitle: T\n---\nText\n');
+    expect(withTags('---\ntags: [a]\n---\nText\n', [])).toBe('Text\n');
+  });
+
+  it('round-trips a tag with quotes, a backslash or an apostrophe beside others', () => {
+    for (const tags of [['a"b', 'c'], ['x\\', 'y'], ["it's", 'z']]) {
+      const written = withTags('Text\n', tags);
+      expect(parsePage(written).front.tags).toEqual(tags);
+    }
+    expect(tagsOf("---\ntags: ['it''s', b]\n---\nT\n")).toEqual(["it's", 'b']);
+  });
+
+  it('quotes a tag YAML would read as a boolean, null or number', () => {
+    expect(withTags('Text\n', ['true', 'no', 'null', '~', '2026', '1.5', '1e3', 'q4'])).toBe('---\ntags: ["true", "no", "null", "~", "2026", "1.5", "1e3", q4]\n---\nText\n');
+  });
+
+  it('reads a list with a comment after it', () => {
+    expect(tagsOf('---\ntags: [a, b] # the two\n---\nT\n')).toEqual(['a', 'b']);
+    expect(tagsOf('---\ntags: ["#x", b]\n---\nT\n')).toEqual(['#x', 'b']);
+  });
+
+  it('round-trips what it writes', () => {
+    const written = withTags('Text\n', ['road-map', 'c++']);
+    expect(parsePage(written).front.tags).toEqual(['road-map', 'c++']);
+    same(written);
   });
 });
 

@@ -46,6 +46,8 @@ $l-accent-active: #22517d;
 $l-danger-active: rgba(179, 39, 28, 0.14);
 // A field's placeholder: quieter than what is typed in it.
 $l-placeholder: #8a8a83;
+// A tag's chip: plain grey, as tags have no colours of their own.
+$l-tag: #ebebe7;
 // The chosen segment of a segmented control: raised off its sunken track.
 $l-segment-chosen: #ffffff;
 $l-ok: #4a7c59;
@@ -86,6 +88,7 @@ $d-accent-hover: #93b9e1;
 $d-accent-active: #a8c7e8;
 $d-danger-active: rgba(229, 122, 109, 0.22);
 $d-placeholder: #71746f;
+$d-tag: #2c2f34;
 // Lighter than a hovered or pressed segment's wash, so the choice stays clear.
 $d-segment-chosen: #33363c;
 $d-ok: #8fb89a;
@@ -182,6 +185,7 @@ $d-diagram-edge-label: #8b8f8a;
   --color-accent-hover: #{$l-accent-hover};
   --color-accent-active: #{$l-accent-active};
   --color-placeholder: #{$l-placeholder};
+  --color-tag: #{$l-tag};
   --color-segment-chosen: #{$l-segment-chosen};
   --color-ok: #{$l-ok};
   --color-backdrop: #{$l-backdrop};
@@ -252,6 +256,7 @@ $d-diagram-edge-label: #8b8f8a;
   --color-accent-hover: #{$d-accent-hover};
   --color-accent-active: #{$d-accent-active};
   --color-placeholder: #{$d-placeholder};
+  --color-tag: #{$d-tag};
   --color-segment-chosen: #{$d-segment-chosen};
   --color-ok: #{$d-ok};
   --color-backdrop: #{$d-backdrop};

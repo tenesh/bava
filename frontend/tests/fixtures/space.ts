@@ -39,6 +39,9 @@ const architecture: FakePage = {
 // Links to other pages (one of them missing), to a heading on another page, and dates.
 const roadmap: FakePage = {
   source: [
+    '---',
+    'tags: [launch, road-map]',
+    '---',
     '# Roadmap',
     '',
     'The look is in the [Brand guide](Marketing/Brand%20guide.md); how we work is in [Lists](Team%20handbook.md#lists).',
@@ -52,7 +55,7 @@ const roadmap: FakePage = {
 };
 
 const launchPlan: FakePage = {
-  source: '# Launch plan\n\nHow we take Bava 1.0 to the first thousand users: goals, dates, and who owns what.\n',
+  source: '---\ntags: [launch, q4, design]\n---\n# Launch plan\n\nHow we take Bava 1.0 to the first thousand users: goals, dates, and who owns what.\n',
   scene: { version: 1, elements: [] },
 };
 

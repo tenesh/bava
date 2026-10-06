@@ -82,6 +82,14 @@
   --size-emoji-cell: 32px;
   // The frame picker (`/` Embed frame): its size, and each frame's thumbnail.
   --size-frame-picker: 340px;
+  // The field a tag is typed into, and its suggestions at their narrowest.
+  --size-tag-field: 160px;
+  // The tag list under the Files header, and the box that marks a tag chosen in it.
+  --size-tag-filter: 260px;
+  --size-tag-filter-height: 360px;
+  --size-check: 14px;
+  // The Tags dialog's page count column.
+  --size-tag-count: 70px;
   --size-frame-picker-height: 380px;
   --size-frame-thumb-width: 64px;
   --size-frame-thumb-height: 44px;
