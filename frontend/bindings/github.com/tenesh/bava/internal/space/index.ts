@@ -4,5 +4,6 @@
 export type {
     Attachment,
     Entry,
+    Template,
     TrashItem
 } from "./models.js";

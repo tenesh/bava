@@ -15,6 +15,8 @@ import { SpaceService } from "../../bindings/github.com/tenesh/bava/internal/app
 import type { Operation } from "../../bindings/github.com/tenesh/bava/internal/app/models";
 import { t } from "../i18n/t";
 import { spaceMessage } from "./space-helpers";
+import type { TemplateRef } from "./templates";
+import type { Scene } from "../../bindings/github.com/tenesh/bava/internal/format/models";
 
 export type EntryKind = "page" | "folder";
 export type SpaceEntry = { name: string; path: string; kind: EntryKind };
@@ -81,7 +83,16 @@ export type SpaceIO = {
     code?: string;
   }>;
   reveal(root: string, path: string): Promise<{ error: string; code?: string }>;
+  templates(root: string): Promise<{ templates: TemplateRef[] | null; error: string; code?: string }>;
+  saveTemplate(root: string, group: string, name: string, source: string, scene: Scene, replace: boolean): Promise<{ path: string; error: string; code?: string }>;
+  createPageFrom(root: string, folder: string, name: string, source: string, scene: Scene): Promise<{ path: string; error: string; code?: string }>;
 };
+
+/** A page's text and canvas, as a template holds them. */
+export type PageContent = { source: string; scene: Scene };
+
+/** A row being named: its kind and folder, and for a page made from a template, the name it starts with and the template. */
+export type PendingNew = { kind: EntryKind; folder: string; name?: string; template?: string };
 
 export type TrashEntry = {
   id: string;
@@ -126,6 +137,11 @@ const overIPC: SpaceIO = {
   chooseFolder: (title) => SpaceService.ChooseFolder(title),
   create: (parent, name) => SpaceService.Create(parent, name),
   reveal: (root, path) => SpaceService.Reveal(root, path),
+  templates: (root) => SpaceService.Templates(root) as unknown as ReturnType<SpaceIO["templates"]>,
+  saveTemplate: (root, group, name, source, scene, replace) =>
+    SpaceService.SaveTemplate(root, group, name, source, scene, replace),
+  createPageFrom: (root, folder, name, source, scene) =>
+    SpaceService.CreatePageFrom(root, folder, name, source, scene),
 };
 
 const EXPANDED_KEY = "bava.space.expanded:";
@@ -144,7 +160,7 @@ export function createSpace(
   // Listed folders by path ("" is the top), and which are open.
   let folders = $state.raw<Record<string, SpaceEntry[]>>({});
   let expanded = $state.raw<string[]>([]);
-  let pending = $state.raw<{ kind: EntryKind; folder: string } | null>(null);
+  let pending = $state.raw<PendingNew | null>(null);
   let lastPage = $state.raw<string | null>(null);
   // Each refresh's id: an older listing that lands after a newer one is dropped.
   let listing = 0;
@@ -308,9 +324,9 @@ export function createSpace(
       await listFolder(folder);
     },
 
-    /** Start naming a new page or folder in a folder. */
-    beginNew(kind: EntryKind, folder: string) {
-      pending = { kind, folder };
+    /** Start naming a new page or folder in a folder; `from` a template, with the name it starts with. */
+    beginNew(kind: EntryKind, folder: string, from?: { name: string; template: string }) {
+      pending = from ? { kind, folder, ...from } : { kind, folder };
       if (folder !== "" && !expanded.includes(folder)) {
         setExpanded([...expanded, folder]);
         void listFolder(folder);
@@ -322,9 +338,20 @@ export function createSpace(
     },
 
     /** Make the page or folder being named. Resolves with its path, or an error. */
-    async commitNew(typed: string): Promise<OpOutcome> {
+    async commitNew(typed: string, content?: PageContent): Promise<OpOutcome> {
       const naming = pending;
       if (!naming) return { path: "", error: t("space.nothingNamed") };
+      if (content && naming.kind === "page" && root) {
+        // Made from a template: the page holds its text and canvas from the start.
+        pending = null;
+        const made = await io.createPageFrom(root, naming.folder, typed, content.source, content.scene);
+        if (made.error) {
+          pending = { ...naming };
+          return { path: "", error: spaceMessage(made) };
+        }
+        await refresh();
+        return { path: made.path, error: "" };
+      }
       const kind = naming.kind === "page" ? "createPage" : "createFolder";
       // Naming stops before the tree is re-read, so the tree never sees the
       // new listing with the row still there and starts naming it again.
@@ -339,6 +366,22 @@ export function createSpace(
       // Refused: a new row object, so the tree starts naming it again.
       if (result.error) pending = { ...naming };
       return { path: result.path, error: result.error };
+    },
+
+    /** The Space's templates, by group; null when they could not be read. */
+    async templates(): Promise<TemplateRef[] | null> {
+      if (!root) return [];
+      const listed = await Promise.resolve()
+        .then(() => io.templates(root!))
+        .catch(() => null);
+      return !listed || listed.error ? null : (listed.templates ?? []);
+    },
+
+    /** Saves a page's text and canvas as a template: its path, or why not (`taken` when the name is). */
+    async saveTemplate(group: string, name: string, content: PageContent, replace: boolean): Promise<{ path: string; error: string; taken: boolean }> {
+      if (!root) return { path: "", error: t("space.noneOpen"), taken: false };
+      const saved = await io.saveTemplate(root, group, name, content.source, content.scene, replace);
+      return saved.error ? { path: "", error: spaceMessage(saved), taken: saved.code === "exists" } : { path: saved.path, error: "", taken: false };
     },
 
     /** Deletes a Space's `.bava` folder for good, the pages in its folders kept: why not, or null. */

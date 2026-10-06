@@ -21,6 +21,7 @@ function openPane(markdown: string) {
     onCounts: vi.fn(),
     onDuplicatePage: vi.fn(),
     onTrashPage: vi.fn(),
+    onSaveTemplate: vi.fn(),
     onCopyText: vi.fn(),
     here: null,
     mediaPlace: null,

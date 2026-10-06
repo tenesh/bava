@@ -63,6 +63,28 @@ for (const theme of THEMES) {
       await shotDialog(page, shot('dialogs', 'tags', 'delete-asked', theme), page.getByRole('dialog', { name: /Delete/ }).or(page.getByRole('alertdialog')));
     });
 
+    test('the Templates dialog', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await page.locator('.bava-space-switcher').click();
+      await page.getByRole('menuitem', { name: 'Templates' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Templates' });
+      await expect(dialog.locator('.templates-list .name')).toHaveText(['Weekly sync', 'Bug report']);
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'templates', 'list', theme), dialog);
+    });
+
+    test('Save as template', async ({ page }) => {
+      await openApp(page, theme);
+      await openPage(page, 'Marketing/Launch plan.md');
+      await page.getByRole('button', { name: 'Page menu' }).click();
+      await page.getByRole('menuitem', { name: 'Save as template' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Save as template' });
+      await dialog.getByRole('button', { name: 'Meetings' }).click();
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'save-template', 'group-chosen', theme), dialog);
+    });
+
     test('the Media dialog', async ({ page }) => {
       await openApp(page, theme);
       await openSpace(page);

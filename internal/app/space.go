@@ -11,6 +11,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
+	"github.com/tenesh/bava/internal/format"
 	"github.com/tenesh/bava/internal/space"
 	"github.com/tenesh/bava/internal/web"
 )
@@ -64,7 +65,8 @@ type SpaceList struct {
 // Operation is one change to a Space. Kind is createPage, createFolder,
 // rename, move, duplicate, trash, restore, deleteForever, emptyTrash,
 // renameSpace, setPageWidth, relink, attach, attachData, renameAttachment,
-// trashAttachment, savePicture or deleteSpaceData;
+// trashAttachment, savePicture, deleteSpaceData, renameTemplate,
+// moveTemplate (to the group in Folder), duplicateTemplate or deleteTemplate;
 // the other fields are what it needs.
 type Operation struct {
 	Kind   string `json:"kind"`
@@ -207,6 +209,14 @@ func (s *SpaceService) Apply(root string, op Operation) OpResult {
 		err = sp.EmptyTrash()
 	case "deleteSpaceData":
 		err = sp.DeleteData()
+	case "renameTemplate":
+		res.Path, err = sp.RenameTemplate(op.Path, op.Name)
+	case "moveTemplate":
+		res.Path, err = sp.MoveTemplate(op.Path, op.Folder)
+	case "duplicateTemplate":
+		res.Path, err = sp.DuplicateTemplate(op.Path)
+	case "deleteTemplate":
+		err = sp.DeleteTemplate(op.Path)
 	case "renameSpace":
 		var next space.Space
 		next, err = sp.RenameSpace(op.Name)
@@ -435,4 +445,60 @@ func (s *SpaceService) Attachments(root string) AttachmentList {
 		return AttachmentList{Attachments: []space.Attachment{}, Error: err.Error()}
 	}
 	return AttachmentList{Attachments: list}
+}
+
+// TemplateList is the Space's templates.
+type TemplateList struct {
+	Templates []space.Template `json:"templates"`
+	Error     string           `json:"error"`
+	Code      string           `json:"code"`
+}
+
+// Templates lists the Space's page templates, each group's by name, then
+// those in no group.
+func (s *SpaceService) Templates(root string) TemplateList {
+	sp, err := space.Load(root)
+	if err == nil {
+		var list []space.Template
+		if list, err = sp.Templates(); err == nil {
+			return TemplateList{Templates: list}
+		}
+	}
+	return TemplateList{Templates: []space.Template{}, Error: err.Error(), Code: space.Code(err)}
+}
+
+// SaveTemplate writes a page's text and scene as a template named name in
+// group ("" for none); a name the group has is refused unless replace.
+func (s *SpaceService) SaveTemplate(root, group, name, source string, scene format.Scene, replace bool) OpResult {
+	sp, err := space.Load(root)
+	if err != nil {
+		return OpResult{Error: err.Error(), Code: space.Code(err)}
+	}
+	rendered, err := format.Write(format.File{Source: source, Scene: scene})
+	if err != nil {
+		return OpResult{Error: fmt.Sprintf("render: %v", err)}
+	}
+	p, err := sp.SaveTemplate(group, name, []byte(rendered), replace)
+	if err != nil {
+		return OpResult{Error: err.Error(), Code: space.Code(err)}
+	}
+	return OpResult{Path: p}
+}
+
+// CreatePageFrom makes a page named name in folder holding text and scene:
+// a page made from a template.
+func (s *SpaceService) CreatePageFrom(root, folder, name, source string, scene format.Scene) OpResult {
+	sp, err := space.Load(root)
+	if err != nil {
+		return OpResult{Error: err.Error(), Code: space.Code(err)}
+	}
+	rendered, err := format.Write(format.File{Source: source, Scene: scene})
+	if err != nil {
+		return OpResult{Error: fmt.Sprintf("render: %v", err)}
+	}
+	p, err := sp.CreatePageWith(folder, name, []byte(rendered))
+	if err != nil {
+		return OpResult{Error: err.Error(), Code: space.Code(err)}
+	}
+	return OpResult{Path: p}
 }

@@ -61,6 +61,10 @@
     onCounts: (counts: { words: number; characters: number }) => void;
     onDuplicatePage: () => void;
     onTrashPage: () => void;
+    /** Save as template, from the page menu. */
+    onSaveTemplate: () => void;
+    /** A template is open: the page menu keeps only what a template can do (lock, width). */
+    isTemplate?: boolean;
     /** Text for the clipboard: a code block's Copy. */
     onCopyText: (text: string) => void;
     /** This page's path in its Space; null outside a Space. */
@@ -99,7 +103,7 @@
     onCanvas?: (what: 'embed' | 'diagram', at: { left: number; top: number; bottom: number }) => void;
   };
 
-  let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage, onCopyText, here, mediaPlace, readIndex, onFollow, onOpenPage, onChooseMedia, onOpenFile, fileDetails, fetchCard, onPasteImage, onReplaceMedia, onRenameAttachment, onRevealFile, onAttachPoster, onNotify, embeds, onCanvas }: Props = $props();
+  let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage, onSaveTemplate, isTemplate = false, onCopyText, here, mediaPlace, readIndex, onFollow, onOpenPage, onChooseMedia, onOpenFile, fileDetails, fetchCard, onPasteImage, onReplaceMedia, onRenameAttachment, onRevealFile, onAttachPoster, onNotify, embeds, onCanvas }: Props = $props();
 
   const editor = new DocEditor();
   let host: HTMLDivElement;
@@ -645,15 +649,16 @@
       items: [
         item('lock', editor.locked ? t('doc.unlock') : t('doc.lock')),
         { kind: 'submenu', id: 'width', label: t('doc.width'), items: widths },
-        { kind: 'separator' },
-        item('duplicate', t('doc.duplicatePage')),
-        item('trash', t('doc.trashPage')),
+        ...(isTemplate
+          ? []
+          : [{ kind: 'separator' } satisfies MenuNode, item('duplicate', t('doc.duplicatePage')), item('saveTemplate', t('tree.saveTemplate')), item('trash', t('doc.trashPage'))]),
       ],
       run: (id) => {
         if (id === 'lock') editor.setSettings({ locked: !editor.locked });
         else if (id.startsWith('width:')) editor.setSettings({ width: id.slice(6) || undefined });
         else if (id === 'duplicate') onDuplicatePage();
         else if (id === 'trash') onTrashPage();
+        else if (id === 'saveTemplate') onSaveTemplate();
         settings = editor.settings;
         pageTags = editor.tags;
       },

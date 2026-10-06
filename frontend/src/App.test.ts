@@ -33,6 +33,9 @@ vi.mock('../bindings/github.com/tenesh/bava/internal/app', () => ({
     Create: vi.fn().mockResolvedValue({ root: '/w/Beta', name: 'Beta', pageWidth: '', error: '' }),
     Index: vi.fn().mockResolvedValue({ pages: [], backlinks: [], error: '' }),
     Attachments: vi.fn().mockResolvedValue({ attachments: [], error: '' }),
+    Templates: vi.fn().mockResolvedValue({ templates: [], error: '', code: '' }),
+    SaveTemplate: vi.fn().mockResolvedValue({ path: '', error: '' }),
+    CreatePageFrom: vi.fn().mockResolvedValue({ path: '', error: '' }),
   },
   LogService: {
     Report: vi.fn().mockResolvedValue(undefined),

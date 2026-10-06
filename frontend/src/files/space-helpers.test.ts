@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { MenuNode } from '../canvas/context-menu';
 import { folderOf, followMove, linksMissedMessage, formatBytes, launchTarget, pageTitle, saveSpaceSettings, spaceChoices, spaceMessage, treeMenu, unsavedBody, within } from './space-helpers';
 
 describe('the open page when something moves', () => {
@@ -45,11 +46,24 @@ describe('the Files tree\'s menu', () => {
   const ids = (items: ReturnType<typeof treeMenu>) => items.flatMap((i) => (i.kind === 'item' ? [i.id] : []));
 
   it('offers every action on a page', () => {
-    expect(ids(treeMenu('page', (k) => k))).toEqual(['tree.newPage', 'tree.newFolder', 'tree.rename', 'tree.duplicate', 'tree.reveal', 'tree.trash']);
+    expect(ids(treeMenu('page', (k) => k))).toEqual(['tree.newPage', 'tree.newFolder', 'tree.rename', 'tree.duplicate', 'tree.saveTemplate', 'tree.reveal', 'tree.trash']);
   });
 
   it('cannot duplicate a folder', () => {
     expect(ids(treeMenu('folder', (k) => k))).not.toContain('tree.duplicate');
+  });
+
+  it('offers New page from template after New page, on empty space and on a folder, when there are templates', () => {
+    const fromTemplate: MenuNode = { kind: 'submenu', id: 'tree.newFromTemplate', label: 'From', items: [] };
+    const top = (items: ReturnType<typeof treeMenu>) => items.flatMap((i) => (i.kind === 'separator' ? [] : [i.id]));
+    expect(top(treeMenu(null, (k) => k, fromTemplate)).slice(0, 3)).toEqual(['tree.newPage', 'tree.newFromTemplate', 'tree.newFolder']);
+    expect(top(treeMenu('folder', (k) => k, fromTemplate))).toContain('tree.newFromTemplate');
+    expect(top(treeMenu(null, (k) => k, null))).not.toContain('tree.newFromTemplate');
+  });
+
+  it('offers Save as template on a page only', () => {
+    expect(ids(treeMenu('page', (k) => k))).toContain('tree.saveTemplate');
+    expect(ids(treeMenu('folder', (k) => k))).not.toContain('tree.saveTemplate');
   });
 
   it('only makes things on empty space', () => {

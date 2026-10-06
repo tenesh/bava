@@ -99,6 +99,21 @@ describe('a Space', () => {
     expect(space.rows.some((r) => r.entry.path === 'Marketing/Budget.md')).toBe(true);
   });
 
+  it('names a page from a template, starting with the template\'s name, and makes it from the template\'s text', async () => {
+    const io = fakeIO(tree());
+    const createPageFrom = vi.fn(async (_root: string, folder: string, name: string) => ({ path: `${folder}/${name}.md`, id: '', root: '', error: '' }));
+    Object.assign(io, { createPageFrom });
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    space.beginNew('page', 'Marketing', { name: 'Weekly sync', template: '.bava/templates/Meetings/Weekly sync.md' });
+    expect(space.pending).toEqual({ kind: 'page', folder: 'Marketing', name: 'Weekly sync', template: '.bava/templates/Meetings/Weekly sync.md' });
+    const scene = { version: 1, elements: [] } as never;
+    const made = await space.commitNew('Monday', { source: '# Weekly sync\n', scene });
+    expect(made).toEqual({ path: 'Marketing/Monday.md', error: '' });
+    expect(createPageFrom).toHaveBeenCalledWith('/w/Acme', 'Marketing', 'Monday', '# Weekly sync\n', scene);
+    expect(io.apply).not.toHaveBeenCalledWith('/w/Acme', expect.objectContaining({ kind: 'createPage' }));
+  });
+
   it('cancels naming a new page', async () => {
     const space = createSpace(fakeIO(tree()), { storage: memoryStorage() });
     await space.open('/w/Acme');

@@ -37,6 +37,18 @@ for (const theme of THEMES) {
       await shotFloating(page, button, list, shot('space', 'tags', 'list', theme));
     });
 
+    test('New page from template in the Add menu', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      const add = page.getByRole('button', { name: 'Add to Files' });
+      await add.click();
+      await page.getByRole('menuitem', { name: 'New page from template' }).click();
+      await page.getByRole('menuitem', { name: 'Meetings' }).hover();
+      await expect(page.getByRole('menuitem', { name: 'Weekly sync' })).toBeVisible();
+      await restPointer(page);
+      await shotFloating(page, add, page.locator('.bava-menu').filter({ visible: true }), shot('space', 'add', 'from-template', theme));
+    });
+
     test('the Files section folded', async ({ page }) => {
       await openApp(page, theme);
       await openSpace(page);

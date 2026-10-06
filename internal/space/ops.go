@@ -12,6 +12,12 @@ import (
 // CreatePage makes an empty page in a folder, at the end of its order.
 // Returns its path. A name that exists is refused.
 func (s Space) CreatePage(folder, name string) (string, error) {
+	return s.CreatePageWith(folder, name, nil)
+}
+
+// CreatePageWith makes a page holding content (a page made from a template),
+// as CreatePage does; a page whose content cannot be written is removed.
+func (s Space) CreatePageWith(folder, name string, content []byte) (string, error) {
 	dir, err := s.resolve(folder)
 	if err != nil {
 		return "", err
@@ -29,8 +35,13 @@ func (s Space) CreatePage(folder, name string) (string, error) {
 		}
 		return "", fmt.Errorf("new page: %w", err)
 	}
-	if err := created.Close(); err != nil {
-		return "", fmt.Errorf("new page: %w", err)
+	_, werr := created.Write(content)
+	if cerr := created.Close(); werr == nil {
+		werr = cerr
+	}
+	if werr != nil {
+		_ = os.Remove(s.abs(rel))
+		return "", fmt.Errorf("new page: %w", werr)
 	}
 	return rel, s.update(func(f *File) error {
 		f.Order[dir] = appendOnce(s.arranged(f, dir), file)

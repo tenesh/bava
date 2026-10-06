@@ -12,6 +12,7 @@ export const COMMAND_IDS = [
   'file.new',
   'file.newFolder',
   'file.openSpace',
+  'space.templates',
   'space.trash',
   'file.spaceSettings',
   'file.open',

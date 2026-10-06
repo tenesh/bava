@@ -18,7 +18,7 @@
     folders: Record<string, SpaceEntry[]>;
     rows: TreeRow[];
     expanded: string[];
-    pending: { kind: EntryKind; folder: string } | null;
+    pending: { kind: EntryKind; folder: string; name?: string } | null;
     activePath: string | null;
     unsavedPath: string | null;
     /** A path to start renaming, from the right-click menu; the caller clears it. */

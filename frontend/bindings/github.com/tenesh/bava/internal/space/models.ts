@@ -25,6 +25,16 @@ export interface Entry {
 }
 
 /**
+ * Template is one of the Space's page templates: its group ("" for none),
+ * its name without .md, and its path relative to the Space's root.
+ */
+export interface Template {
+    "group": string;
+    "name": string;
+    "path": string;
+}
+
+/**
  * TrashItem is a page, a folder or an attachment in the Trash
  * (docs/file-format.md, "Spaces").
  */

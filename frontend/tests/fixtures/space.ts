@@ -245,6 +245,12 @@ export function seedSpace(): FakeSpace {
       'Marketing/Brand guide.md': blank(),
       'Marketing/Press release.md': blank(),
       'Engineering/Architecture.md': architecture,
+      // Templates, kept with the pages under their own paths (the stand-in's way).
+      '.bava/templates/Meetings/Weekly sync.md': {
+        source: '---\ntags: [meeting]\n---\n# Weekly sync\n\nSee the [Roadmap](../../../Roadmap.md).\n\n![Logo](../../attachments/logo.png)\n',
+        scene: { version: 1, elements: [{ id: 'agenda', type: 'rect', z: 1, x: 120, y: 120, w: 160, h: 70, label: 'Agenda' }] },
+      },
+      '.bava/templates/Bug report.md': { source: '# Bug report\n\nWhat happened, and what was expected.\n', scene: { version: 1, elements: [] } },
       'Engineering/Release checklist.md': checklist,
       'Engineering/Blocks.md': blocks,
       'Engineering/Tables.md': tablesPage,
