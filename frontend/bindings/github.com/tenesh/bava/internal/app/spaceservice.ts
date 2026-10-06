@@ -14,6 +14,10 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as format$0 from "../format/models.js";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
 /**
@@ -46,6 +50,14 @@ export function ChooseFolder(title: string): $CancellablePromise<$models.DialogR
  */
 export function Create(parent: string, name: string): $CancellablePromise<$models.SpaceInfo> {
     return $Call.ByID(579321623, parent, name);
+}
+
+/**
+ * CreatePageFrom makes a page named name in folder holding text and scene:
+ * a page made from a template.
+ */
+export function CreatePageFrom(root: string, folder: string, name: string, source: string, scene: format$0.Scene): $CancellablePromise<$models.OpResult> {
+    return $Call.ByID(3882340324, root, folder, name, source, scene);
 }
 
 /**
@@ -87,6 +99,22 @@ export function Open(dir: string): $CancellablePromise<$models.SpaceInfo> {
  */
 export function Reveal(root: string, path: string): $CancellablePromise<$models.Problem> {
     return $Call.ByID(1424773362, root, path);
+}
+
+/**
+ * SaveTemplate writes a page's text and scene as a template named name in
+ * group ("" for none); a name the group has is refused unless replace.
+ */
+export function SaveTemplate(root: string, group: string, name: string, source: string, scene: format$0.Scene, replace: boolean): $CancellablePromise<$models.OpResult> {
+    return $Call.ByID(3547581276, root, group, name, source, scene, replace);
+}
+
+/**
+ * Templates lists the Space's page templates, each group's by name, then
+ * those in no group.
+ */
+export function Templates(root: string): $CancellablePromise<$models.TemplateList> {
+    return $Call.ByID(1465367162, root);
 }
 
 /**

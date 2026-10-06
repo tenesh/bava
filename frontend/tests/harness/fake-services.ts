@@ -137,7 +137,37 @@ export function createFakes(first: FakeSpace = seedSpace()) {
   }
 
   function apply(space: FakeSpace, op: Op) {
+    const TEMPLATES = '.bava/templates/';
+    const templateAt = (group: string, name: string) => `${TEMPLATES}${group ? `${group}/` : ''}${name}${PAGE_EXT}`;
     switch (op.kind) {
+      // Templates, kept with the pages under their own paths so they open and save as pages do.
+      case 'renameTemplate':
+      case 'moveTemplate': {
+        const page = space.pages[op.path];
+        if (!op.path.startsWith(TEMPLATES) || !page) return ok(refusal('outside', 'not a template'));
+        const parts = op.path.slice(TEMPLATES.length).split('/');
+        const name = op.kind === 'renameTemplate' ? op.name.trim() : parts[parts.length - 1].replace(/\.md$/, '');
+        const group = op.kind === 'moveTemplate' ? op.folder.trim() : parts.length === 2 ? parts[0] : '';
+        const to = templateAt(group, name);
+        if (to !== op.path && space.pages[to]) return ok(refusal('exists', `"${name}" already exists`));
+        delete space.pages[op.path];
+        space.pages[to] = page;
+        return ok({ path: to });
+      }
+      case 'duplicateTemplate': {
+        const page = space.pages[op.path];
+        if (!op.path.startsWith(TEMPLATES) || !page) return ok(refusal('outside', 'not a template'));
+        const base = op.path.replace(/\.md$/, '');
+        let to = `${base} 2${PAGE_EXT}`;
+        for (let n = 3; space.pages[to]; n += 1) to = `${base} ${n}${PAGE_EXT}`;
+        space.pages[to] = structuredClone(page);
+        return ok({ path: to });
+      }
+      case 'deleteTemplate': {
+        if (!op.path.startsWith(TEMPLATES) || !space.pages[op.path]) return ok(refusal('outside', 'not a template'));
+        delete space.pages[op.path];
+        return ok();
+      }
       case 'createPage':
       case 'createFolder': {
         const checked = checkName(op.name);
@@ -376,6 +406,36 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       async Apply(root: string, op: Op) {
         const space = spaceOf(root);
         return space ? apply(space, op) : ok(refusal('notSpace', 'not a Space'));
+      },
+      async Templates(root: string) {
+        const space = spaceOf(root);
+        if (!space) return { templates: [], ...refusal('notSpace', 'not a Space') };
+        const templates = Object.keys(space.pages)
+          .filter((path) => path.startsWith('.bava/templates/'))
+          .map((path) => {
+            const parts = path.slice('.bava/templates/'.length).split('/');
+            return { group: parts.length === 2 ? parts[0] : '', name: parts[parts.length - 1].replace(/\.md$/, ''), path };
+          })
+          .sort((a, b) => Number(a.group === '') - Number(b.group === '') || a.group.localeCompare(b.group) || a.name.localeCompare(b.name));
+        return { templates, error: '', code: '' };
+      },
+      async SaveTemplate(root: string, group: string, name: string, source: string, scene: FakePage['scene'], replace: boolean) {
+        const space = spaceOf(root);
+        if (!space) return ok(refusal('notSpace', 'not a Space'));
+        const checked = checkName(name);
+        if ('code' in checked) return ok(checked);
+        const path = `.bava/templates/${group.trim() ? `${group.trim()}/` : ''}${checked.name}${PAGE_EXT}`;
+        if (space.pages[path] && !replace) return ok(refusal('exists', `"${checked.name}" already exists`));
+        space.pages[path] = { source, scene: structuredClone(scene) };
+        return ok({ path });
+      },
+      async CreatePageFrom(root: string, folder: string, name: string, source: string, scene: FakePage['scene']) {
+        const space = spaceOf(root);
+        if (!space) return ok(refusal('notSpace', 'not a Space'));
+        const made = apply(space, { kind: 'createPage', folder, name } as Op);
+        if (made.error) return made;
+        space.pages[made.path] = { source, scene: structuredClone(scene) };
+        return made;
       },
       async Index(root: string, withText: boolean) {
         const space = spaceOf(root);

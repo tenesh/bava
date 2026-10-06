@@ -230,6 +230,9 @@ check both before building either by hand.
 | `SpaceSettingsDialog` ✓ | Rename the Space, its default page width, show its folder. |
 | `SectionTabs` ✓ | Sections chosen from a list on the left, one shown at a time (Settings), each with an icon, under an optional heading; wraps Ark's Tabs, vertical. |
 | `ConfirmDialog` ✓ | A question with fixed answers. Dismissing it is a cancel, never an accident. An optional `check` adds a `Toggle`, off at first, with a warning under it; its state comes with the answer. An answer with `tone: 'danger'` (it cannot be undone) is drawn in the danger colour. |
+| `TemplatesDialog` ✓ | The Space's templates over `Dialog` (`size="trash"`): each group's under its name, then those in no group, searchable (first focus); New template in the header; per template Edit, Rename (in its row; a name its group has is refused there; Escape leaves the rename, not the dialog), Duplicate, and a ⋯ menu to move it to another group or delete it. |
+| `SaveTemplateDialog` ✓ | Save as template, and New template (`title`): a name (the page's to start with) and a group typed or picked from the Space's groups, empty for none; a name the caller refuses comes back as `refusal`. |
+| `TemplateBar` ✓ | Above a template being edited: that it is a template, its group and name, and Done. |
 | `TagsDialog` ✓ | The Space's tags over `Dialog` (`size="trash"`): search, sort by name or pages, rename in a row (a taken name refused there; Escape leaves the rename, not the dialog), boxes to select several and a bar to merge them into one tag or delete them; each row's ⋯ for one tag. Mounted while open, so a rename it opens for has the first focus. |
 | `CanvasControls` ✓ | The zoom readout and its buttons. |
 | `CanvasSection` ✓ | Settings ▸ Canvas: attach arrows to shapes, snap ends to side middles, snap to objects (`settings/`). |

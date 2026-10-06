@@ -246,3 +246,8 @@ could reasonably have gone another way.
 | 2026-10-06 | Tags filter Files; no Tags section | The user (8.6 decision 5): a tag button in the Files header; the tree shows pages with all the chosen tags. Replaces decision 66's Tags section. |
 | 2026-10-06 | A tag's menu has Rename, Merge into and Delete | The user (8.6 decision 6): Rename refuses a taken name; each rewrites only the pages' `tags` key. |
 | 2026-10-06 | A Tags dialog manages tags, several at once | The user approved the mockups (8.6 decision 7): rename in a row, select several to merge or delete, asked first. |
+| 2026-10-07 | A template's group is a folder | The user (8.6 decision 8): `.bava/templates/<group>/<name>.md`; visible in any file manager and shared with the Space. |
+| 2026-10-07 | New page from template is a submenu in Add | The user (8.6 decision 9): in the Files Add menu and a folder's right-click menu, by group. |
+| 2026-10-07 | A template is copied as it is | The user (8.6 decision 10): no fill-ins such as `{{date}}`. |
+| 2026-10-07 | A template is edited like a page | The user (8.6 decision 11): opened in the main area under a bar with Done; never in the Files tree. |
+| 2026-10-07 | A deleted template is gone for good, after asking | The user (8.6 decision 12): it does not go to the Space's Trash. |

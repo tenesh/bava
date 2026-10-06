@@ -57,6 +57,7 @@
         <Menu.Item value="space.open" class="bava-menu-item"><ToolIcon id="folder" size="sm" /><span class="bava-menu-label">{t('space.open')}</span></Menu.Item>
         <Menu.Item value="file.open" class="bava-menu-item"><ToolIcon id="page" size="sm" /><span class="bava-menu-label">{t('space.openFile')}</span></Menu.Item>
         <Menu.Separator class="bava-menu-separator" />
+        <Menu.Item value="space.templates" class="bava-menu-item"><ToolIcon id="page" size="sm" /><span class="bava-menu-label">{t('templates.title')}</span></Menu.Item>
         <Menu.Item value="space.tags" class="bava-menu-item"><ToolIcon id="tag" size="sm" /><span class="bava-menu-label">{t('tags.manageItem')}</span></Menu.Item>
         <Menu.Item value="space.trash" class="bava-menu-item"><ToolIcon id="delete" size="sm" /><span class="bava-menu-label">{t('space.trash')}</span></Menu.Item>
         <Menu.Item value="space.settings" class="bava-menu-item"><ToolIcon id="settings" size="sm" /><span class="bava-menu-label">{t('space.settings')}</span></Menu.Item>

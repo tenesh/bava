@@ -31,6 +31,17 @@ for (const theme of THEMES) {
       await expect(page).toHaveScreenshot(shot('shell', 'main', 'both', theme));
     });
 
+    test('a template being edited, under its bar', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await page.locator('.bava-space-switcher').click();
+      await page.getByRole('menuitem', { name: 'Templates' }).click();
+      await page.getByRole('dialog', { name: 'Templates' }).getByRole('button', { name: 'Edit Weekly sync' }).click();
+      await expect(page.locator('.template-bar')).toContainText('Meetings / Weekly sync');
+      await restPointer(page);
+      await expect(page).toHaveScreenshot(shot('shell', 'main', 'template', theme));
+    });
+
     test('the Document view', async ({ page }) => {
       await openApp(page, theme);
       await openPage(page, 'Marketing/Launch plan.md');

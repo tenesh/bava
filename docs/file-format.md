@@ -865,6 +865,7 @@ My Space/
   .bava/
     space.json
     attachments/
+    templates/
     trash/
 ```
 
@@ -946,6 +947,34 @@ the whole Space.
 - A file renamed or removed outside Bava leaves its media missing; Bava
   offers to relink it to a file of the same name here, and changes nothing
   until asked.
+
+### `.bava/templates/`
+
+The Space's page templates. Bava makes the folder the first time a template
+is saved.
+
+```
+.bava/templates/
+  Meetings/
+    Weekly sync.md
+    Retro.md
+  Bug report.md
+```
+
+- **A template** is a page file (`.md`): front matter, prose and canvas
+  block, read and written as a page is. Its name is its file's name
+  without `.md`, under the rules a page's name follows.
+- **A group** is a folder directly in `templates/`, named under the same
+  rules; a template directly in `templates/` is in no group. Deeper
+  folders, and files that are not `.md`, are not read. A group left with
+  no templates is removed.
+- **Addresses** (links, images, embeds) in a template are written relative
+  to the template's own place, as a page's are to its own. A page made
+  from a template, and a template saved from a page, has them rewritten
+  for where it lands, so each still reaches what it reached.
+- A page made from a template is the template's file, copied (tags, prose
+  and canvas), with nothing filled in. Deleting a template removes its
+  file for good; it does not go to the Trash.
 
 ## What is not in a file
 

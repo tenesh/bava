@@ -36,15 +36,16 @@ export function launchTarget(lastSpace: string | null, exists: boolean): 'space'
 }
 
 /** The Files tree's right-click menu for a page, a folder, or empty space (null). */
-export function treeMenu(kind: EntryKind | null, label: (key: string) => string): MenuNode[] {
+export function treeMenu(kind: EntryKind | null, label: (key: string) => string, fromTemplate: MenuNode | null = null): MenuNode[] {
   const item = (id: string): MenuNode => ({ kind: 'item', id, label: label(id), keys: '' });
-  const make = [item('tree.newPage'), item('tree.newFolder')];
+  // New page from template sits beside New page, where a page is made: empty space or a folder.
+  const make = [item('tree.newPage'), ...(fromTemplate && kind !== 'page' ? [fromTemplate] : []), item('tree.newFolder')];
   if (kind === null) return make;
   return [
     ...make,
     { kind: 'separator' },
     item('tree.rename'),
-    ...(kind === 'page' ? [item('tree.duplicate')] : []),
+    ...(kind === 'page' ? [item('tree.duplicate'), item('tree.saveTemplate')] : []),
     item('tree.reveal'),
     { kind: 'separator' },
     item('tree.trash'),

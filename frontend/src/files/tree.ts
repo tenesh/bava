@@ -21,7 +21,7 @@ export type DropZone = 'before' | 'inside' | 'after';
 /** The TreeView's root: each listed folder's entries, with the row being named. */
 export function treeRoot(
   folders: Record<string, SpaceEntry[]>,
-  pending: { kind: EntryKind; folder: string } | null,
+  pending: { kind: EntryKind; folder: string; name?: string } | null,
   /** The placeholder names a new row starts with, in the user's language. */
   labels: { page: string; folder: string },
 ): { value: string; name: string; kind: EntryKind; children: TreeNodeData[] } {
@@ -32,7 +32,7 @@ export function treeRoot(
       return { value: entry.path, name: entry.name, kind: entry.kind, children, childrenCount: children.length };
     });
     if (pending && pending.folder === folder) {
-      nodes.push({ value: PENDING, name: pending.kind === 'page' ? labels.page : labels.folder, kind: pending.kind });
+      nodes.push({ value: PENDING, name: pending.name ?? (pending.kind === 'page' ? labels.page : labels.folder), kind: pending.kind });
     }
     return nodes;
   };

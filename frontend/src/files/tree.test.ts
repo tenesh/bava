@@ -75,3 +75,11 @@ describe('the row being named, in the user\'s language', () => {
     expect(root.children[0].name).toBe('Nouveau dossier');
   });
 });
+
+describe('a page being named from a template', () => {
+  it('starts with the template\'s name', () => {
+    const root = treeRoot({ '': [] }, { kind: 'page', folder: '', name: 'Weekly sync' }, { page: 'Untitled', folder: 'New folder' });
+    expect(root.children[0]).toMatchObject({ value: PENDING, name: 'Weekly sync' });
+  });
+});
+

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/tenesh/bava/internal/app"
+	"github.com/tenesh/bava/internal/format"
 	"github.com/tenesh/bava/internal/testutil"
 	"github.com/tenesh/bava/internal/web"
 )
@@ -384,5 +385,50 @@ func TestDeleteSpaceDataKeepsThePages(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, "Roadmap.md")); err != nil {
 		t.Errorf("the page went: %v", err)
+	}
+}
+
+func TestTemplatesSavedListedChangedAndUsed(t *testing.T) {
+	root := t.TempDir()
+	s := spaceService(nil)
+	s.Open(root)
+	scene := format.Scene{Version: format.Version, Elements: []format.Element{{ID: "e1", Type: "rect", W: 10, H: 10, Z: 1}}}
+
+	saved := s.SaveTemplate(root, "Meetings", "Weekly sync", "---\ntags: [meeting]\n---\n# Weekly sync\n", scene, false)
+	if saved.Error != "" || saved.Path != ".bava/templates/Meetings/Weekly sync.md" {
+		t.Fatalf("SaveTemplate = %+v", saved)
+	}
+	if again := s.SaveTemplate(root, "Meetings", "Weekly sync", "x", scene, false); again.Code != "exists" {
+		t.Errorf("a taken name = %+v, want the exists refusal", again)
+	}
+	list := s.Templates(root)
+	if list.Error != "" || len(list.Templates) != 1 || list.Templates[0].Group != "Meetings" {
+		t.Fatalf("Templates = %+v", list)
+	}
+
+	made := s.CreatePageFrom(root, "", "Monday", "---\ntags: [meeting]\n---\n# Weekly sync\n", scene)
+	if made.Error != "" || made.Path != "Monday.md" {
+		t.Fatalf("CreatePageFrom = %+v", made)
+	}
+	opened := app.NewFileService(app.FileServiceOptions{}).Open(filepath.Join(root, "Monday.md"))
+	if opened.Source != "---\ntags: [meeting]\n---\n# Weekly sync\n" || len(opened.Scene.Elements) != 1 {
+		t.Errorf("the page made = %q, %d elements", opened.Source, len(opened.Scene.Elements))
+	}
+	if entries := s.List(root, "").Entries; len(entries) != 1 || entries[0].Path != "Monday.md" {
+		t.Errorf("the page is not in the tree: %+v", entries)
+	}
+
+	for _, op := range []app.Operation{
+		{Kind: "renameTemplate", Path: ".bava/templates/Meetings/Weekly sync.md", Name: "Daily"},
+		{Kind: "moveTemplate", Path: ".bava/templates/Meetings/Daily.md", Folder: "Rituals"},
+		{Kind: "duplicateTemplate", Path: ".bava/templates/Rituals/Daily.md"},
+		{Kind: "deleteTemplate", Path: ".bava/templates/Rituals/Daily 2.md"},
+	} {
+		if result := s.Apply(root, op); result.Error != "" {
+			t.Fatalf("%s = %+v", op.Kind, result)
+		}
+	}
+	if list := s.Templates(root); len(list.Templates) != 1 || list.Templates[0].Path != ".bava/templates/Rituals/Daily.md" {
+		t.Errorf("after the changes = %+v", list.Templates)
 	}
 }

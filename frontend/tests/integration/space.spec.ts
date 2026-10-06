@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { SPACE, menu, menus, openApp, openSpace, restPointer, rightClick, sidePane, statusMessage } from '../helpers';
+import { SPACE, menu, menus, newLineAtEnd, openApp, openPage, openSpace, restPointer, rightClick, sidePane, statusMessage } from '../helpers';
 
 const RECENTS = [
   { path: '/Users/you/Documents/Acme Product', kind: 'space', openedAt: Date.UTC(2026, 8, 26) },
@@ -19,6 +19,15 @@ test.describe('the side pane at work', () => {
     await expect(menus(page)).toHaveCount(1);
     await restPointer(page);
     await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
+  });
+
+  test('New page from the Add menu is named in place, the menu gone', async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    await page.getByRole('button', { name: 'Add to Files' }).click();
+    await page.getByRole('menuitem', { name: 'New page', exact: true }).click();
+    await expect(menus(page)).toHaveCount(0);
+    await expect(page.locator('input.rename').filter({ visible: true })).toBeFocused();
   });
 
   test('naming a new page', async ({ page }) => {
@@ -45,7 +54,7 @@ test.describe('the side pane at work', () => {
     const box = (await sidePane(page).locator('.space-tree .tree').boundingBox())!;
     await page.mouse.click(box.x + box.width / 2, box.y + box.height - 4, { button: 'right' });
     await expect(menus(page)).toHaveCount(1);
-    await expect(menus(page).getByRole('menuitem')).toHaveText(['New page', 'New folder']);
+    await expect(menus(page).getByRole('menuitem')).toHaveText(['New page', 'New page from template', 'New folder']);
     await restPointer(page);
     await expect(menus(page).locator('[data-highlighted]')).toHaveCount(0);
     await expect(sidePane(page).locator('[data-menu]')).toHaveCount(0);
@@ -136,7 +145,7 @@ test.describe('tags', () => {
     await tagButton(page).click();
     await tagList(page).getByRole('option', { name: /launch/ }).hover();
     await tagList(page).getByRole('button', { name: 'More for launch' }).click();
-    await page.getByRole('menuitem', { name: 'Rename…' }).click();
+    await page.getByRole('menuitem', { name: 'Rename' }).click();
     const field = page.getByRole('textbox', { name: 'New name for launch' });
     await expect(field).toBeFocused();
     await field.fill('Release');
@@ -153,7 +162,7 @@ test.describe('tags', () => {
     const dialog = page.getByRole('dialog', { name: 'Tags' });
     await dialog.getByRole('checkbox', { name: 'Select launch' }).check();
     await dialog.getByRole('checkbox', { name: 'Select road-map' }).check();
-    await dialog.getByRole('button', { name: 'Merge into…' }).click();
+    await dialog.getByRole('button', { name: 'Merge into' }).click();
     await page.getByRole('menuitem', { name: 'q4' }).click();
     const ask = page.getByRole('alertdialog').or(page.getByRole('dialog', { name: /Merge/ }));
     await expect(ask).toContainText('Merge launch, road-map into q4?');
@@ -169,5 +178,85 @@ test.describe('tags', () => {
     await expect.poll(() => source(page, 'Marketing/Launch plan.md')).toContain('tags: [q4]\n');
     // The page's own words are untouched.
     expect(await source(page, 'Marketing/Launch plan.md')).toContain('# Launch plan\n\nHow we take Bava 1.0');
+  });
+});
+
+// Templates: a page made from one, a page saved as one, one edited and one deleted.
+test.describe('templates', () => {
+  type Harness = { __bava: { fakes: { harness: { source(root: string, path: string): string | undefined }; SpaceService: { Templates(root: string): Promise<{ templates: { path: string }[] }> } } } };
+  const source = (page: Page, path: string) => page.evaluate(([root, at]) => (window as unknown as Harness).__bava.fakes.harness.source(root, at), [SPACE, path] as const);
+  const templatePaths = async (page: Page) =>
+    (await page.evaluate((root) => (window as unknown as Harness).__bava.fakes.SpaceService.Templates(root), SPACE)).templates.map((each) => each.path);
+  const openTemplates = async (page: Page) => {
+    await page.locator('.bava-space-switcher').click();
+    await page.getByRole('menuitem', { name: 'Templates' }).click();
+    return page.getByRole('dialog', { name: 'Templates' });
+  };
+
+  test('a page made from a template, named in place, its links and image still reaching what they did', async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    await page.getByRole('button', { name: 'Add to Files' }).click();
+    await page.getByRole('menuitem', { name: 'New page from template' }).click();
+    await page.getByRole('menuitem', { name: 'Meetings' }).click();
+    await page.getByRole('menuitem', { name: 'Weekly sync' }).click();
+    const field = page.locator('input.rename').filter({ visible: true });
+    await expect(field).toBeFocused();
+    await expect(field).toHaveValue('Weekly sync');
+    await field.fill('Monday');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('header')).toContainText('Monday');
+    const made = await source(page, 'Monday.md');
+    expect(made).toContain('tags: [meeting]');
+    expect(made).toContain('[Roadmap](Roadmap.md)');
+    expect(made).toContain('![Logo](.bava/attachments/logo.png)');
+  });
+
+  test('a page saved as a template in a group, and asked before replacing one', async ({ page }) => {
+    await openApp(page, 'light');
+    await openPage(page, 'Marketing/Launch plan.md');
+    await page.getByRole('button', { name: 'Page menu' }).click();
+    await page.getByRole('menuitem', { name: 'Save as template' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Save as template' });
+    await expect(dialog.getByRole('textbox', { name: 'Name' })).toHaveValue('Launch plan');
+    await dialog.getByRole('button', { name: 'Meetings' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).toHaveCount(0);
+    expect(await templatePaths(page)).toContain('.bava/templates/Meetings/Launch plan.md');
+    expect(await source(page, '.bava/templates/Meetings/Launch plan.md')).toContain('# Launch plan');
+
+    await page.getByRole('button', { name: 'Page menu' }).click();
+    await page.getByRole('menuitem', { name: 'Save as template' }).click();
+    await dialog.getByRole('button', { name: 'Meetings' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByRole('alertdialog').or(page.getByRole('dialog', { name: /Replace/ }))).toContainText('Replace Launch plan?');
+  });
+
+  test('a template edited like a page under its bar, and Done brings the Templates back', async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    const dialog = await openTemplates(page);
+    await dialog.getByRole('button', { name: 'Edit Weekly sync' }).click();
+    const bar = page.locator('.template-bar');
+    await expect(bar).toContainText('Meetings / Weekly sync');
+    await menu(page, 'view.document');
+    await newLineAtEnd(page);
+    await page.keyboard.type('Added to the template');
+    await bar.getByRole('button', { name: 'Done' }).click();
+    await expect(page.getByRole('dialog', { name: 'Templates' })).toBeVisible();
+    await expect.poll(() => source(page, '.bava/templates/Meetings/Weekly sync.md')).toContain('Added to the template');
+  });
+
+  test('a template deleted, asked first', async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    const dialog = await openTemplates(page);
+    await dialog.getByRole('listitem').filter({ hasText: 'Bug report' }).hover();
+    await dialog.getByRole('button', { name: 'More for Bug report' }).click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
+    const ask = page.getByRole('alertdialog').or(page.getByRole('dialog', { name: /Delete Bug report/ }));
+    await expect(ask).toContainText('deleted for good');
+    await ask.getByRole('button', { name: 'Delete' }).click();
+    await expect.poll(() => templatePaths(page)).not.toContain('.bava/templates/Bug report.md');
   });
 });

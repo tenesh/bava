@@ -261,8 +261,8 @@ History belongs in each plan's As built, not here.
 ### Milestones
 
 - **Committed through 8.5** and removing a Space (CI green 2026-10-06).
-  **8.6a** (tags) is built and gated, uncommitted; **8.6b** (templates)
-  follows, then Milestone 15 (export, import and
+  **8.6a** (tags) is committed; **8.6b** (templates) is built and gated,
+  uncommitted; then Milestone 15 (export, import and
   search). The roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **CI** builds a downloadable app per system on every run (artifacts
   `bava-<os>-<commit>`, 14 days) from 08.4e on; its first run is the check.
@@ -317,9 +317,9 @@ History belongs in each plan's As built, not here.
 | `go test ./internal/render -run Golden` | exit 0 (inside the run above); 2 fixtures under `testdata/golden/`, light and dark |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 2,738 tests passed and 1 skipped, in 211 files |
+| `npm test` | exit 0; 2,759 tests passed and 1 skipped, in 214 files |
 | `npm run build` | CI's first frontend step. The production minifier rejects some CSS the dev server and the browser tests accept (WebKit-only selectors such as `::selection:window-inactive`) |
-| `npm run browser` | last full runs 2026-10-06: 449 passed, twice in a row; 262 references in `testdata/visual/` |
+| `npm run browser` | last full runs 2026-10-07: 462 passed, twice in a row; 270 references in `testdata/visual/` |
 | CI end-to-end | `create`, `reopen` and `canvas` on all three platforms; see Milestones for the last run |
 | `wails3 build` | CI only |
 

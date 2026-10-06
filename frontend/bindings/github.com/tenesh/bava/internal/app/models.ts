@@ -144,7 +144,8 @@ export interface OpenResult {
  * Operation is one change to a Space. Kind is createPage, createFolder,
  * rename, move, duplicate, trash, restore, deleteForever, emptyTrash,
  * renameSpace, setPageWidth, relink, attach, attachData, renameAttachment,
- * trashAttachment, savePicture or deleteSpaceData;
+ * trashAttachment, savePicture, deleteSpaceData, renameTemplate,
+ * moveTemplate (to the group in Folder), duplicateTemplate or deleteTemplate;
  * the other fields are what it needs.
  */
 export interface Operation {
@@ -253,6 +254,15 @@ export interface SpaceInfo {
  */
 export interface SpaceList {
     "entries": space$0.Entry[] | null;
+    "error": string;
+    "code": string;
+}
+
+/**
+ * TemplateList is the Space's templates.
+ */
+export interface TemplateList {
+    "templates": space$0.Template[] | null;
     "error": string;
     "code": string;
 }

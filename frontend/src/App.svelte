@@ -28,9 +28,13 @@
   import { framePicture } from './canvas/export/frame-picture';
   import { embedFrame, frameGroups, redrawPictures, type EmbedIO } from './files/embed-actions';
   import { filteredRows, foldersOf, lockedWith, pagesWith, tagEdits, tagsIn } from './files/tags';
+  import { movedText, templateMenu, TEMPLATE_ITEM, type TemplateRef } from './files/templates';
   import type { PageText } from './files/embeds';
   import TagFilter from './components/TagFilter.svelte';
   import TagChip from './components/TagChip.svelte';
+  import SaveTemplateDialog from './components/SaveTemplateDialog.svelte';
+  import TemplatesDialog from './components/TemplatesDialog.svelte';
+  import TemplateBar from './components/TemplateBar.svelte';
   import TagsDialog from './components/TagsDialog.svelte';
   import FramePicker from './components/FramePicker.svelte';
   import { SourcePane } from './editor/source-pane';
@@ -45,7 +49,7 @@
   import { statusContext, type StatusSide } from './shell/status-context';
   import { statusLocation } from './shell/status-location';
   import { createDocument, sceneToSave } from './files/document.svelte';
-  import { createSpace, type TrashEntry } from './files/space.svelte';
+  import { createSpace, type PageContent, type TrashEntry } from './files/space.svelte';
   import { folderOf, followMove, formatBytes, linksMissedMessage, launchTarget, pageTitle, saveSpaceSettings, spaceChoices, treeMenu, unsavedBody, within } from './files/space-helpers';
   import { createHistory } from './canvas/history';
   import { createSelection } from './canvas/selection';
@@ -793,9 +797,156 @@
     space.beginNew('folder', folderOf(openRel));
   }
 
+  // The Space's templates, read when it opens and after any is changed.
+  let templates = $state.raw<TemplateRef[]>([]);
+
+  async function refreshTemplates() {
+    const read = await space.templates();
+    if (read) templates = read;
+  }
+
+  $effect(() => {
+    void space.root;
+    untrack(() => void refreshTemplates());
+  });
+
+  /** Add's and a folder's New page from template submenu, or none with no templates. */
+  const fromTemplate = $derived(templateMenu(templates, t('tree.newFromTemplate')));
+
+  /** A page from a template: named in the tree first, starting with the template's name. */
+  function startFromTemplate(path: string, folder: string) {
+    const template = templates.find((each) => each.path === path);
+    if (!template) return;
+    showFiles();
+    space.beginNew('page', folder, { name: template.name, template: path });
+  }
+
+  /** A template's text and canvas, read for the place a page or template made from it lands. */
+  async function contentFor(template: string, target: string): Promise<PageContent | null> {
+    const opened = await FileService.Open(space.absolute(template));
+    if (opened.error) {
+      notify(opened.error);
+      return null;
+    }
+    return { source: movedText(opened.source, template, target), scene: opened.scene };
+  }
+
+  // Save as template: the page's text and canvas, held while its name and group are asked.
+  // A new template has no page behind it; it opens to be edited once saved.
+  let savingTemplate = $state.raw<{ page: string | null; name: string; content: PageContent; refusal: string | null } | null>(null);
+
+  /** The page's text and canvas: the open one as it is now, another from its file. */
+  async function pageContent(page: string): Promise<PageContent | null> {
+    if (page === openRel) {
+      const source = docPane?.currentMarkdown() ?? doc.source;
+      return { source, scene: currentScene() };
+    }
+    const opened = await FileService.Open(space.absolute(page));
+    if (opened.error) {
+      notify(opened.error);
+      return null;
+    }
+    return { source: opened.source, scene: opened.scene };
+  }
+
+  /** Asks for a template's name and group, saving the page as one; a loose page is asked to become a Space first. */
+  async function saveAsTemplate(page: string | null) {
+    if (page === null) {
+      if (!doc.path || !(await embedIO.offerSpace())) return;
+      page = openRel;
+      if (page === null) return;
+    }
+    const content = await pageContent(page);
+    if (!content) return;
+    savingTemplate = { page, name: pageTitle(page) ?? page, content, refusal: null };
+  }
+
+  async function saveTemplateAs(name: string, group: string) {
+    const saving = savingTemplate;
+    if (!saving) return;
+    const target = `.bava/templates/${group ? `${group}/` : ''}${name}.md`;
+    const content = saving.page === null ? saving.content : { source: movedText(saving.content.source, saving.page, target), scene: saving.content.scene };
+    let saved = await space.saveTemplate(group, name, content, false);
+    if (saved.taken) {
+      if (!(await confirm(t('templates.replace.title').replace('{name}', name), t('templates.replace.body'), t('templates.replace.confirm')))) return;
+      saved = await space.saveTemplate(group, name, content, true);
+    }
+    if (saved.error) {
+      savingTemplate = { ...saving, refusal: saved.error };
+      return;
+    }
+    savingTemplate = null;
+    await refreshTemplates();
+    if (saving.page === null) await editTemplate(saved.path);
+    else notify(t('templates.saved').replace('{name}', name));
+  }
+
+  // The Templates dialog, and the template being edited in the main area.
+  let templatesOpen = $state.raw(false);
+  const editingTemplate = $derived.by(() => {
+    if (!openRel?.startsWith('.bava/templates/')) return null;
+    const parts = openRel.slice('.bava/templates/'.length).replace(/\.md$/i, '').split('/');
+    return parts.length === 2 ? { group: parts[0], name: parts[1] } : { group: '', name: parts[0] };
+  });
+
+  function openTemplates() {
+    if (!space.root) return;
+    templatesOpen = true;
+    void refreshTemplates();
+  }
+
+  function newTemplate() {
+    templatesOpen = false;
+    savingTemplate = { page: null, name: '', content: { source: '', scene: sceneToSave({}, []) }, refusal: null };
+  }
+
+  /** A template opened in the main area like a page, under its bar; never in the Files tree. */
+  async function editTemplate(path: string) {
+    templatesOpen = false;
+    if (await fileActions.open(space.absolute(path))) autosave.resume();
+  }
+
+  /** Done: the template closed, its changes saved as a page's are, and the dialog back. */
+  async function doneWithTemplate() {
+    if (doc.dirty && !(await fileActions.save())) return;
+    if (!(await fileActions.close())) return;
+    loadScene([]);
+    openTemplates();
+  }
+
+  /** A template renamed, moved or duplicated; the open one follows its file. */
+  async function changeTemplate(op: { kind: 'renameTemplate' | 'moveTemplate' | 'duplicateTemplate'; path: string; name?: string; folder?: string }) {
+    const result = await space.apply(op, { refresh: false });
+    if (result.error) {
+      notify(result.error);
+      return;
+    }
+    if (op.kind !== 'duplicateTemplate' && openRel === op.path) doc.moved(space.absolute(result.path));
+    await refreshTemplates();
+  }
+
+  async function deleteTemplate(path: string) {
+    const template = templates.find((each) => each.path === path);
+    if (!template || !(await confirm(t('templates.delete.title').replace('{name}', template.name), t('templates.delete.body'), t('templates.delete.confirm'), true))) return;
+    if (openRel === path) {
+      if (!(await fileActions.close())) return;
+      loadScene([]);
+    }
+    const result = await space.apply({ kind: 'deleteTemplate', path }, { refresh: false });
+    if (result.error) notify(result.error);
+    await refreshTemplates();
+  }
+
   async function commitNew(name: string) {
     const kind = space.pending?.kind;
-    const made = await space.commitNew(name);
+    const naming = space.pending;
+    let content: PageContent | undefined;
+    if (naming?.template) {
+      const read = await contentFor(naming.template, (naming.folder ? `${naming.folder}/${name.trim()}.md` : `${name.trim()}.md`));
+      if (!read) return;
+      content = read;
+    }
+    const made = await space.commitNew(name, content);
     if (made.error) {
       notify(made.error);
       return;
@@ -924,19 +1075,35 @@
     return space.rows.find((row) => row.entry.path === path)?.entry.kind ?? null;
   });
 
+  /**
+   * What a Files menu starts that names something in the tree, run once the
+   * menu has closed: its close gives focus back to what opened it, which
+   * would take it from the field and end the naming at once.
+   */
+  let afterMenu: (() => void) | null = null;
+  function runAfterMenu() {
+    const run = afterMenu;
+    afterMenu = null;
+    run?.();
+  }
+
   function onTreeMenu(id: string) {
     const target = treeMenuAt?.path ?? null;
     treeMenuAt = null;
     const folder = target === null ? '' : treeMenuKind === 'folder' ? target : folderOf(target);
+    if (id.startsWith(TEMPLATE_ITEM)) {
+      afterMenu = () => startFromTemplate(id.slice(TEMPLATE_ITEM.length), folder);
+      return;
+    }
     switch (id) {
       case 'tree.newPage':
-        space.beginNew('page', folder);
+        afterMenu = () => space.beginNew('page', folder);
         break;
       case 'tree.newFolder':
-        space.beginNew('folder', folder);
+        afterMenu = () => space.beginNew('folder', folder);
         break;
       case 'tree.rename':
-        renameRequest = target;
+        afterMenu = () => (renameRequest = target);
         break;
       case 'tree.duplicate':
         if (target) void duplicatePath(target);
@@ -946,6 +1113,9 @@
         break;
       case 'tree.trash':
         if (target) void trashPath(target);
+        break;
+      case 'tree.saveTemplate':
+        if (target) void saveAsTemplate(target);
         break;
     }
   }
@@ -1782,6 +1952,7 @@
     'file.openSpace': chooseSpace,
     'file.open': openFile,
     'space.trash': openTrash,
+    'space.templates': openTemplates,
     'file.spaceSettings': () => {
       if (space.root) spaceSettingsOpen = true;
     },
@@ -1970,7 +2141,14 @@
   let docCounts = $state.raw({ words: 0, characters: 0 });
   // Where the open page is, for the page header: its folders, then its name.
   const pageCrumbs = $derived(
-    !doc.isOpen ? [] : openRel ? openRel.replace(/\.md$/i, '').split('/') : [pageTitle(doc.path) ?? t('file.untitled')],
+    !doc.isOpen
+      ? []
+      : editingTemplate
+        ? // A template's place reads as Templates and its group, never the hidden folder.
+          [t('templates.title'), ...(editingTemplate.group ? [editingTemplate.group] : []), editingTemplate.name]
+        : openRel
+          ? openRel.replace(/\.md$/i, '').split('/')
+          : [pageTitle(doc.path) ?? t('file.untitled')],
   );
   const documentCounts = $derived(docCounts);
   $effect(() => {
@@ -2669,6 +2847,7 @@
           else if (id === 'space.open') void chooseSpace();
           else if (id === 'file.open') void openFile();
           else if (id === 'space.trash') void openTrash();
+          else if (id === 'space.templates') openTemplates();
           else if (id === 'space.settings') spaceSettingsOpen = true;
           else if (id === 'space.remove' && space.root) void removeSpace(space.root);
           else if (id === 'space.tags') openTagsDialog();
@@ -2705,6 +2884,9 @@
     {/if}
   {/snippet}
   {#snippet document()}
+    {#if editingTemplate}
+      <TemplateBar group={editingTemplate.group} name={editingTemplate.name} onDone={() => void doneWithTemplate()} />
+    {/if}
     <DocumentPane
       bind:this={docPane}
       crumbs={pageCrumbs}
@@ -2717,6 +2899,8 @@
       onCounts={(counts) => (docCounts = counts)}
       onDuplicatePage={() => openRel && void duplicatePath(openRel)}
       onTrashPage={() => openRel && void trashPath(openRel)}
+      onSaveTemplate={() => void saveAsTemplate(openRel)}
+      isTemplate={editingTemplate !== null}
       onCopyText={(text) => void Clipboard.SetText(text)}
       here={space.root ? openRel : null}
       {mediaPlace}
@@ -2923,6 +3107,34 @@
   }}
 />
 
+{#if savingTemplate}
+  <SaveTemplateDialog
+    open
+    title={savingTemplate.page === null ? t('templates.newTitle') : t('templates.saveTitle')}
+    name={savingTemplate.name}
+    groups={[...new Set(templates.map((each) => each.group).filter((group) => group !== ''))]}
+    refusal={savingTemplate.refusal}
+    onSave={(name, group) => void saveTemplateAs(name, group)}
+    onOpenChange={(open) => {
+      if (!open) savingTemplate = null;
+    }}
+  />
+{/if}
+
+{#if templatesOpen}
+  <TemplatesDialog
+    open
+    {templates}
+    onNew={newTemplate}
+    onEdit={(path) => void editTemplate(path)}
+    onRename={(path, name) => void changeTemplate({ kind: 'renameTemplate', path, name })}
+    onMove={(path, group) => void changeTemplate({ kind: 'moveTemplate', path, folder: group })}
+    onDuplicate={(path) => void changeTemplate({ kind: 'duplicateTemplate', path })}
+    onDelete={(path) => void deleteTemplate(path)}
+    onOpenChange={(open) => (templatesOpen = open)}
+  />
+{/if}
+
 {#if tagsDialog}
   <TagsDialog
     open
@@ -3027,27 +3239,30 @@
 />
 
 <ContextMenu
-  items={treeMenu(null, (key) => t(key as MessageKey))}
+  items={treeMenu(null, (key) => t(key as MessageKey), fromTemplate)}
   open={filesMenuAt !== null}
   anchor={filesMenuAt}
   onSelect={(id) => {
     filesMenuAt = null;
-    if (id === 'tree.newPage') void newPage();
-    else if (id === 'tree.newFolder') newFolder();
+    if (id === 'tree.newPage') afterMenu = () => void newPage();
+    else if (id === 'tree.newFolder') afterMenu = newFolder;
+    else if (id.startsWith(TEMPLATE_ITEM)) afterMenu = () => startFromTemplate(id.slice(TEMPLATE_ITEM.length), folderOf(openRel));
   }}
+  onClosed={runAfterMenu}
   onOpenChange={(open) => {
     if (!open) filesMenuAt = null;
   }}
 />
 
 <ContextMenu
-  items={treeMenu(treeMenuKind, (key) => t(key as MessageKey))}
+  items={treeMenu(treeMenuKind, (key) => t(key as MessageKey), fromTemplate)}
   open={treeMenuAt !== null}
   anchor={treeMenuAt?.anchor ?? null}
   onSelect={onTreeMenu}
   onOpenChange={(open) => {
     if (!open) treeMenuAt = null;
   }}
+  onClosed={runAfterMenu}
 />
 
 {#if confirming}
