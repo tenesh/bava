@@ -27,6 +27,11 @@
   import { base64 } from './canvas/export/fonts';
   import { framePicture } from './canvas/export/frame-picture';
   import { embedFrame, frameGroups, redrawPictures, type EmbedIO } from './files/embed-actions';
+  import { filteredRows, foldersOf, lockedWith, pagesWith, tagEdits, tagsIn } from './files/tags';
+  import type { PageText } from './files/embeds';
+  import TagFilter from './components/TagFilter.svelte';
+  import TagChip from './components/TagChip.svelte';
+  import TagsDialog from './components/TagsDialog.svelte';
   import FramePicker from './components/FramePicker.svelte';
   import { SourcePane } from './editor/source-pane';
   import DocumentPane from './docs/DocumentPane.svelte';
@@ -993,10 +998,11 @@
   }
 
   // A yes-or-no question: for what cannot be undone, or (`yes`) what else it asks.
-  let confirming = $state.raw<{ title: string; body: string; yes: string; resolve: (yes: boolean) => void } | null>(null);
-  function confirm(title: string, body: string, yes = t('trash.confirm')): Promise<boolean> {
+  let confirming = $state.raw<{ title: string; body: string; yes: string; danger: boolean; resolve: (yes: boolean) => void } | null>(null);
+  /** Asks first; `danger` draws the answer for something that cannot be undone in red. */
+  function confirm(title: string, body: string, yes = t('trash.confirm'), danger = false): Promise<boolean> {
     return new Promise((resolve) => {
-      confirming = { title, body, yes, resolve };
+      confirming = { title, body, yes, danger, resolve };
     });
   }
 
@@ -1150,6 +1156,8 @@
   /** A save of the open page draws again every picture any page embeds of its frames, unless nothing changed. */
   let picturesDrawn: { page: string; scene: SceneData; theme: string } | null = null;
   function redrawAfterSave<T extends { saved: boolean }>(outcome: T): T {
+    // The tags a save may have changed, where they are shown.
+    if (outcome.saved && (chosenTags.length > 0 || tagsDialog !== null || tagFilterAt !== null)) void refreshTags();
     const page = space.root ? openRel : null;
     const scene = history.current;
     const drawn = picturesDrawn;
@@ -1374,6 +1382,109 @@
       // Nothing to forget.
     }
     if (last === path) rememberLastSpace(null);
+  }
+
+  // Tags: the Space's pages read for them, the tags chosen to narrow the
+  // tree, the tag list under the Files header, and the Tags dialog.
+  let tagPages = $state.raw<PageText[]>([]);
+  let chosenTags = $state.raw<string[]>([]);
+  let tagFilterAt = $state.raw<{ left: number; top: number; bottom: number } | null>(null);
+  let tagMenu = $state.raw<{ tag: string; anchor: { x: number; y: number } } | null>(null);
+  // The tag the open menu acts on; kept past its close, which can come
+  // before the choice made in it.
+  let tagMenuFor: string | null = null;
+  let tagMenuOffer = $state.raw<MenuNode[]>([]);
+  let tagsDialog = $state.raw<{ renaming: string | null } | null>(null);
+  let tagReads = 0;
+  const tagUses = $derived(tagsIn(tagPages));
+  const tagCounts = $derived(tagUses.map((use) => ({ tag: use.tag, count: use.pages.length })));
+
+  /** The Space's pages read again for their tags, the open page as it is now. */
+  async function refreshTags() {
+    const asked = (tagReads += 1);
+    if (!space.root) {
+      tagPages = [];
+      return;
+    }
+    const pages = await space.index(true);
+    if (asked !== tagReads || !pages) return;
+    const now = openRel !== null ? (docPane?.currentMarkdown() ?? null) : null;
+    tagPages = pages.filter((page) => !page.unreadable).map((page) => (page.path === openRel && now !== null ? { ...page, text: now } : page));
+  }
+
+  // Another Space, or none: its tags read afresh, and no filter carried over.
+  $effect(() => {
+    void space.root;
+    untrack(() => {
+      chosenTags = [];
+      void refreshTags();
+    });
+  });
+
+  /** The tree's rows while tags are chosen: the pages with all of them, their folders opened. */
+  const filteredTree = $derived(
+    chosenTags.length === 0 ? null : filteredRows(tagPages, chosenTags, (folder) => space.folders[folder]?.map((entry) => entry.name)),
+  );
+
+  function toggleTag(tag: string) {
+    chosenTags = chosenTags.includes(tag) ? chosenTags.filter((each) => each !== tag) : [...chosenTags, tag];
+  }
+
+  function openTagFilter(button: HTMLElement) {
+    const box = button.getBoundingClientRect();
+    tagFilterAt = { left: box.left, top: box.top, bottom: box.bottom };
+    void refreshTags();
+  }
+
+  function openTagsDialog(renaming: string | null = null) {
+    tagFilterAt = null;
+    tagsDialog = { renaming };
+    void refreshTags();
+  }
+
+  const listOfTags = (tags: string[]) => tags.join(t('list.separator'));
+
+  /**
+   * Each of `from` made `to` (or taken off, for null) on every page that has
+   * it: the open page in its editor, the others written only if they still
+   * read as they did. Delete and merge ask first.
+   */
+  async function changeTags(from: string[], to: string | null) {
+    if (!space.root || from.length === 0) return;
+    const count = pagesWith(tagUses, from);
+    const pagesPhrase = count === 1 ? t('tags.pageCount.one') : t('tags.pageCount').replace('{count}', String(count));
+    if (to === null) {
+      const body = (from.length === 1 ? t('tags.delete.bodyOne') : t('tags.delete.body')).replace('{pages}', pagesPhrase);
+      if (!(await confirm(t('tags.delete.title').replace('{tags}', listOfTags(from)), body, t('tags.delete.confirm'), true))) return;
+    } else if (!(from.length === 1 && !tagUses.some((use) => use.tag === to))) {
+      const title = t('tags.merge.title').replace('{tags}', listOfTags(from)).replace('{into}', to);
+      if (!(await confirm(title, t('tags.merge.body').replaceAll('{into}', to).replace('{pages}', pagesPhrase), t('tags.merge.confirm')))) return;
+    }
+    const pages = await space.index(true);
+    if (!pages) {
+      notify(t('links.missedSpace'));
+      return;
+    }
+    if (openRel !== null) docPane?.retagPage(from, to);
+    const edits = tagEdits(pages.filter((page) => !page.unreadable), openRel, from, to);
+    const written = edits.length > 0 ? await space.apply({ kind: 'relink', edits }, { refresh: false }) : { missed: [], error: '' };
+    const missed = written.error ? edits.map((edit) => edit.path) : (written.missed ?? []);
+    const locked = lockedWith(pages, from);
+    if (missed.length > 0) notify(t('tags.missed').replace('{pages}', missed.map(pageTitle).join(t('list.separator'))));
+    else if (locked.length > 0) notify(t('tags.locked').replace('{pages}', locked.map(pageTitle).join(t('list.separator'))));
+    chosenTags = [...new Set(chosenTags.flatMap((tag) => (from.includes(tag) ? (to === null ? [] : [to]) : [tag])))];
+    await refreshTags();
+    await docPane?.refreshLinks();
+  }
+
+  function tagMenuItems(tag: string): MenuNode[] {
+    const others = tagUses.filter((use) => use.tag !== tag).map((use) => ({ kind: 'item', id: `merge:${use.tag}`, label: use.tag, keys: '' }) satisfies MenuNode);
+    return [
+      { kind: 'item', id: 'rename', label: t('tags.renameItem'), keys: '' },
+      ...(others.length > 0 ? [{ kind: 'submenu', id: 'merge', label: t('tags.mergeMenu'), items: others } satisfies MenuNode] : []),
+      { kind: 'separator' },
+      { kind: 'item', id: 'delete', label: t('tags.deleteItem'), keys: '' },
+    ];
   }
 
   // Space settings.
@@ -2382,6 +2493,17 @@
       <button
         type="button"
         class="bava-icon-button files-button"
+        aria-label={t('tags.filter')}
+        title={t('tags.filter')}
+        aria-haspopup="dialog"
+        aria-pressed={chosenTags.length > 0}
+        onclick={(event) => openTagFilter(event.currentTarget)}
+      >
+        <ToolIcon id="tag" size="sm" />
+      </button>
+      <button
+        type="button"
+        class="bava-icon-button files-button"
         aria-label={t('tree.add')}
         title={t('tree.add')}
         aria-haspopup="menu"
@@ -2394,23 +2516,37 @@
       </button>
     </div>
     {#if !view.filesFolded}
+      {#if chosenTags.length > 0}
+        <div class="tag-chips">
+          {#each chosenTags as tag (tag)}
+            <TagChip {tag} removeLabel={t('tags.removeFilter').replace('{tag}', tag)} onRemove={() => toggleTag(tag)} />
+          {/each}
+          <button type="button" class="tag-clear" onclick={() => (chosenTags = [])}>{t('tags.clear')}</button>
+          <span class="tag-count">{t('tags.filtered').replace('{count}', String(filteredTree?.filter((row) => row.entry.kind === 'page').length ?? 0)).replace('{total}', String(tagPages.length))}</span>
+        </div>
+      {/if}
       <div class="side-scroll">
       <SpaceTree
-        folders={space.folders}
-        rows={space.rows}
-        expanded={space.expanded}
+        folders={filteredTree ? foldersOf(filteredTree) : space.folders}
+        rows={filteredTree ?? space.rows}
+        expanded={filteredTree ? filteredTree.filter((row) => row.entry.kind === 'folder').map((row) => row.entry.path) : space.expanded}
         pending={space.pending}
         activePath={openRel}
         unsavedPath={doc.dirty ? openRel : null}
         {renameRequest}
         menuPath={treeMenuAt?.path ?? null}
         onRenameStarted={() => (renameRequest = null)}
-        onToggle={(folder) => void space.toggle(folder)}
+        onToggle={(folder) => {
+          if (!filteredTree) void space.toggle(folder);
+        }}
         onOpen={(path) => void openPath(space.absolute(path))}
         onRename={(path, name) => void relocate({ kind: 'rename', path, name })}
         onCommitNew={(name) => void commitNew(name)}
         onCancelNew={() => space.cancelNew()}
-        onMove={(path, folder, index) => void relocate({ kind: 'move', path, folder, index })}
+        onMove={(path, folder, index) => {
+          // Nothing moves while the tree shows only some pages.
+          if (!filteredTree) void relocate({ kind: 'move', path, folder, index });
+        }}
         onTrash={(path) => void trashPath(path)}
         onContextMenu={(path, anchor) => (treeMenuAt = { path, anchor })}
       />
@@ -2535,6 +2671,7 @@
           else if (id === 'space.trash') void openTrash();
           else if (id === 'space.settings') spaceSettingsOpen = true;
           else if (id === 'space.remove' && space.root) void removeSpace(space.root);
+          else if (id === 'space.tags') openTagsDialog();
         }}
       />
       <div class="side-sections">
@@ -2753,6 +2890,54 @@
     }}
   />
 
+{#if tagFilterAt}
+  <TagFilter
+    at={tagFilterAt}
+    tags={tagCounts}
+    chosen={chosenTags}
+    onToggle={toggleTag}
+    onMenu={(tag, anchor) => {
+      tagMenuFor = tag;
+      tagMenuOffer = tagMenuItems(tag);
+      setTimeout(() => (tagMenu = { tag, anchor }));
+    }}
+    onManage={() => openTagsDialog()}
+    onClose={() => (tagFilterAt = null)}
+  />
+{/if}
+
+<ContextMenu
+  items={tagMenuOffer}
+  open={tagMenu !== null}
+  anchor={tagMenu?.anchor ?? null}
+  onSelect={(id) => {
+    const tag = tagMenuFor;
+    tagMenu = null;
+    if (!tag) return;
+    if (id === 'rename') openTagsDialog(tag);
+    else if (id === 'delete') void changeTags([tag], null);
+    else if (id.startsWith('merge:')) void changeTags([tag], id.slice('merge:'.length));
+  }}
+  onOpenChange={(open) => {
+    if (!open) tagMenu = null;
+  }}
+/>
+
+{#if tagsDialog}
+  <TagsDialog
+    open
+    tags={tagCounts}
+    pages={new Set(tagUses.flatMap((use) => use.pages)).size}
+    renaming={tagsDialog?.renaming ?? null}
+    onRename={(tag, next) => void changeTags([tag], next)}
+    onMerge={(tags, into) => void changeTags(tags, into)}
+    onDelete={(tags) => void changeTags(tags, null)}
+    onOpenChange={(open) => {
+      if (!open) tagsDialog = null;
+    }}
+  />
+{/if}
+
 {#if framePicker}
   <FramePicker at={framePicker.at} groups={framePicker.groups} onPick={(frame, page) => void embedPicked(frame, page)} onClose={closeFramePicker} />
 {/if}
@@ -2872,7 +3057,7 @@
     body={confirming.body}
     options={[
       { value: 'cancel', label: t('file.cancel') },
-      { value: 'yes', label: confirming.yes, primary: true },
+      { value: 'yes', label: confirming.yes, tone: confirming.danger ? 'danger' : 'primary' },
     ]}
     onChoose={(choice) => {
       const pending = confirming;
@@ -2890,7 +3075,7 @@
     options={[
       { value: 'cancel', label: t('file.cancel') },
       { value: 'discard', label: t('file.unsaved.discard') },
-      { value: 'save', label: t('file.unsaved.save'), primary: true },
+      { value: 'save', label: t('file.unsaved.save'), tone: 'primary' },
     ]}
     onChoose={answer}
   />
@@ -2901,7 +3086,7 @@
     body={t('space.remove.body')}
     options={[
       { value: 'cancel', label: t('file.cancel') },
-      { value: 'remove', label: t('space.remove.confirm'), primary: true },
+      { value: 'remove', label: t('space.remove.confirm'), tone: 'primary' },
     ]}
     check={removing.missing ? undefined : { label: t('space.remove.deleteData'), hint: t('space.remove.deleteDataHint') }}
     onChoose={(choice, checked) => {
@@ -2918,7 +3103,7 @@
     options={[
       { value: 'cancel', label: t('file.cancel') },
       { value: 'reload', label: t('file.conflict.reload') },
-      { value: 'overwrite', label: t('file.conflict.overwrite'), primary: true },
+      { value: 'overwrite', label: t('file.conflict.overwrite'), tone: 'primary' },
     ]}
     onChoose={answer}
   />
@@ -3003,6 +3188,63 @@
     width: var(--size-row);
     height: var(--size-row);
     margin-inline-start: auto;
+  }
+
+  .files-button + .files-button {
+    margin-inline-start: 0;
+  }
+
+  .files-button[aria-pressed='true'] {
+    background: var(--color-selection);
+    color: var(--color-text-primary);
+  }
+
+  /* The tags the tree is narrowed to, above it. */
+  .tag-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 0 var(--space-2) var(--space-2);
+  }
+
+
+  .tag-clear {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    cursor: pointer;
+  }
+
+
+
+  .tag-clear {
+    padding: 0 var(--space-1);
+    border-radius: var(--radius-sm);
+    color: var(--color-accent);
+    font-size: var(--text-meta);
+  }
+
+  .tag-clear:hover {
+    background: var(--color-control-hover);
+  }
+
+  .tag-clear:active {
+    background: var(--color-control-active);
+  }
+
+  .tag-clear:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+    outline-offset: var(--focus-halo-width);
+  }
+
+  .tag-count {
+    flex-basis: 100%;
+    color: var(--color-text-muted);
+    font-size: var(--text-meta);
   }
 
   /* A loose page: the prompt to open its folder as a Space. */

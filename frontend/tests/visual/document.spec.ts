@@ -167,6 +167,19 @@ for (const theme of THEMES) {
     }
   });
 
+  test.describe(`a page's tags, ${theme}`, () => {
+    test('adding one: what is typed, and the Space\'s tags it may be', async ({ page }) => {
+      await openDocument(page, theme, 'Marketing/Launch plan.md');
+      const tags = documentPane(page).getByRole('group', { name: 'Tags' });
+      await tags.getByRole('button', { name: 'Add tag' }).click();
+      await page.keyboard.type('Ro');
+      const choices = tags.getByRole('listbox');
+      await expect(choices.getByRole('option')).toHaveText(['road-map', 'Add "ro"']);
+      await restPointer(page);
+      await shotFloating(page, tags, choices, shot('document', 'tags', 'adding', theme));
+    });
+  });
+
   // Each sheet in a window tall enough to hold its page whole.
   test.describe(`the Document's sheets, ${theme}`, () => {
     test.use({ viewport: { width: 1280, height: 2600 } });

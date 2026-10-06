@@ -43,6 +43,8 @@
   import type { EmbedContext } from './embed-view';
   import type { FileDetails } from './card';
   import MediaViewer from '../components/MediaViewer.svelte';
+  import PageTags from '../components/PageTags.svelte';
+  import { tagsIn } from '../files/tags';
   import { pressAway } from '../components/press-away';
   import { LANGUAGES } from '../canvas/code/languages';
 
@@ -104,6 +106,9 @@
   let scroller: HTMLDivElement;
 
   let settings = $state.raw<PageSettings>({});
+  // The page's tags, and every tag in its Space for suggestions.
+  let pageTags = $state.raw<string[]>([]);
+  let knownTags = $state.raw<string[]>([]);
   let slash = $state.raw<SlashInfo | null>(null);
   let bubble = $state.raw<{ left: number; top: number } | null>(null);
   // Alt+F10 moved focus into the bubble: it stays while focus is there.
@@ -162,12 +167,16 @@
     if (asked === null) {
       editor.setSpacePages(null, null);
       backlinks = [];
+      knownTags = [];
       return;
     }
     const pages = await readIndex(withBacklinks);
     if (here !== asked || !pages) return;
     if (read.pagesCurrent()) editor.setSpacePages(asked, pages);
-    if (read.backlinksCurrent()) backlinks = findBacklinks(pages, asked);
+    if (read.backlinksCurrent()) {
+      backlinks = findBacklinks(pages, asked);
+      knownTags = tagsIn(pages).map((use) => use.tag);
+    }
   }
 
   /** The open page's text as it is now, saved or not; null before a page is shown. */
@@ -178,6 +187,14 @@
   /** Adds attachments as media blocks: where files were dropped (`at`, a point on screen), else at the caret. */
   export function insertMedia(names: string[], at?: { x: number; y: number }) {
     editor.insertMedia(names, at ? (editor.posAtPoint(at.x, at.y) ?? undefined) : undefined);
+  }
+
+  /** Each of `from` made `to` (or taken off, for null) among this page's tags: an edit to the page; a locked page keeps its own. */
+  export function retagPage(from: string[], to: string | null) {
+    if (editor.locked) return;
+    const gone = new Set(from);
+    const next = editor.tags.flatMap((tag) => (gone.has(tag) ? (to === null ? [] : [to]) : [tag]));
+    if (next.join() !== editor.tags.join()) editor.setTags(next);
   }
 
   /** Puts a canvas embed at the caret, or at the page's end when it has had none. */
@@ -223,6 +240,7 @@
         // The handle's block moved with the edit; it comes back on the next pointer move.
         hovered = null;
         settings = editor.settings;
+        pageTags = editor.tags;
         onEdit();
         refreshSelection();
       },
@@ -283,6 +301,7 @@
   export function setPage(markdown: string, page: string | null = null) {
     editor.setPage(markdown, page);
     settings = editor.settings;
+    pageTags = editor.tags;
     slash = null;
     equation = null;
     emojiSuggest = null;
@@ -636,6 +655,7 @@
         else if (id === 'duplicate') onDuplicatePage();
         else if (id === 'trash') onTrashPage();
         settings = editor.settings;
+        pageTags = editor.tags;
       },
     };
   }
@@ -727,6 +747,11 @@
   >
     <!-- Files from the desktop are taken here, and added where they land. -->
     <div class="host" bind:this={host} data-file-drop-target></div>
+    {#if pageTags.length > 0 || settings.locked !== true}
+      <div class="tags">
+        <PageTags tags={pageTags} known={knownTags} readonly={settings.locked === true} onChange={(next) => editor.setTags(next)} />
+      </div>
+    {/if}
     {#if backlinks.length > 0}
       <nav class="backlinks" aria-label={t('backlinks.label')}>
         <h2>{t('backlinks.label')}</h2>
@@ -988,6 +1013,16 @@
   }
 
   /* The page's text column, its rule as wide as the text. */
+  /* The page's tags, in the page's column, after its content. */
+  .tags {
+    box-sizing: border-box;
+    width: calc(100% - 2 * var(--size-doc-gutter));
+    max-width: var(--page-width, var(--size-page-wide));
+    margin: 0 auto;
+    padding: var(--space-3) 0 var(--space-4);
+    border-top: var(--border-width) solid var(--color-border-subtle);
+  }
+
   .backlinks {
     box-sizing: border-box;
     width: calc(100% - 2 * var(--size-doc-gutter));

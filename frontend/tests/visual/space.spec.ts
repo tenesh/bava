@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { THEMES, hovered, imagesLoaded, openApp, openSpace, restPointer, shot, shotPane, sidePane } from '../helpers';
+import { THEMES, hovered, imagesLoaded, openApp, openSpace, restPointer, shot, shotFloating, shotPane, sidePane } from '../helpers';
 
 for (const theme of THEMES) {
   test.describe(`the side pane, ${theme}`, () => {
@@ -10,6 +10,31 @@ for (const theme of THEMES) {
       await restPointer(page);
       await expect(page.locator('[data-path="Marketing/Launch plan.md"]')).toBeVisible();
       await shotPane(sidePane(page), shot('space', 'files', 'folder-open', theme));
+    });
+
+    test('the Files tree narrowed to two tags', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      const list = page.getByRole('dialog', { name: 'Filter by tag' });
+      await page.getByRole('button', { name: 'Filter by tag' }).click();
+      await list.getByRole('option', { name: /launch/ }).click();
+      await list.getByRole('option', { name: /q4/ }).click();
+      await page.keyboard.press('Escape');
+      await expect(list).toHaveCount(0);
+      await restPointer(page);
+      await expect(page.locator('[data-path="Marketing/Launch plan.md"]').first()).toBeVisible();
+      await shotPane(sidePane(page), shot('space', 'files', 'tag-filter', theme));
+    });
+
+    test('the tag list under the Files header', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      const button = page.getByRole('button', { name: 'Filter by tag' });
+      await button.click();
+      const list = page.getByRole('dialog', { name: 'Filter by tag' });
+      await list.getByRole('option', { name: /launch/ }).click();
+      await restPointer(page);
+      await shotFloating(page, button, list, shot('space', 'tags', 'list', theme));
     });
 
     test('the Files section folded', async ({ page }) => {

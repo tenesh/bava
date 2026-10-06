@@ -32,7 +32,93 @@ export type FrontMatter = {
   bavaAt: number | null;
   bavaLines: string[];
   settings: PageSettings;
+  /** The page's tags, converted (`normaliseTag`). */
+  tags: string[];
+  /** The `tags` key's lines as written, and where among `lines` it sat; null when there was none. */
+  tagsLines: string[] | null;
+  tagsAt: number | null;
+  /** Where each key stood in the file, so two at one place keep their order. */
+  order: { bava: number; tags: number };
 };
+
+/** A tag as Bava keeps it: lowercase, each run of spaces a dash. */
+export function normaliseTag(tag: string): string {
+  return tag.trim().toLowerCase().replace(/\s+/g, '-');
+}
+
+/** Tags converted, with empty ones and repeats dropped. */
+function settleTags(tags: string[]): string[] {
+  const out: string[] = [];
+  for (const tag of tags.map(normaliseTag)) if (tag !== '' && !out.includes(tag)) out.push(tag);
+  return out;
+}
+
+/** A YAML scalar's text: its quotes taken off. */
+function unquote(value: string): string {
+  const v = value.trim();
+  if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) return v.slice(1, -1).replace(/\\(["\\])/g, '$1');
+  if (v.length >= 2 && v.startsWith("'") && v.endsWith("'")) return v.slice(1, -1).replace(/''/g, "'");
+  return v;
+}
+
+/** A flow list's items, split at commas outside quotes (`\\"` in double quotes, `''` in single, kept in). */
+function flowItems(inner: string): string[] {
+  const items: string[] = [];
+  let current = '';
+  let quote: string | null = null;
+  for (let i = 0; i < inner.length; i += 1) {
+    const c = inner[i];
+    if (quote === '"' && c === '\\') {
+      current += c + (inner[i + 1] ?? '');
+      i += 1;
+    } else if (quote === "'" && c === "'" && inner[i + 1] === "'") {
+      current += "''";
+      i += 1;
+    } else if (quote) {
+      current += c;
+      if (c === quote) quote = null;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+      current += c;
+    } else if (c === ',') {
+      items.push(current);
+      current = '';
+    } else current += c;
+  }
+  items.push(current);
+  return items.map(unquote);
+}
+
+/** A value without a YAML comment after it: ` #` and on, outside quotes. */
+function withoutComment(value: string): string {
+  let quote: string | null = null;
+  for (let i = 0; i < value.length; i += 1) {
+    const c = value[i];
+    if (quote === '"' && c === '\\') i += 1;
+    else if (quote) {
+      if (c === quote) quote = null;
+    } else if (c === '"' || c === "'") quote = c;
+    else if (c === '#' && (i === 0 || /\s/.test(value[i - 1]))) return value.slice(0, i).trimEnd();
+  }
+  return value;
+}
+
+/** The tags a `tags` key's lines hold, in any form it may be written in. */
+function tagsFrom(lines: string[]): string[] {
+  const value = withoutComment(lines[0].replace(/^tags:/, '').trim());
+  if (value.startsWith('[') && value.endsWith(']')) return settleTags(flowItems(value.slice(1, -1)));
+  if (value === '') return settleTags(lines.slice(1).map((line) => unquote(line.replace(/^\s*-\s?/, ''))));
+  return settleTags([unquote(value)]);
+}
+
+/** Words and numbers YAML would read as something other than text. */
+const YAML_NOT_TEXT = /^(true|false|yes|no|on|off|y|n|null|~|[-+]?(\d[\d_]*)?\.?\d+([eE][-+]?\d+)?|0x[\da-f]+|0o[0-7]+|\.inf|\.nan)$/i;
+
+/** A tag as YAML reads it back as text: plain when it can be, else in double quotes. */
+function yamlTag(tag: string): string {
+  const plain = /^[\p{L}\p{N}][\p{L}\p{N}_./-]*$/u.test(tag) && !YAML_NOT_TEXT.test(tag);
+  return plain ? tag : `"${tag.replace(/["\\]/g, '\\$&')}"`;
+}
 
 /**
  * Splits off front matter: a first line of `---`, a next line with something
@@ -52,8 +138,11 @@ function splitFront(markdown: string): { inner: string[]; rest: string } | null 
 
 const KNOWN = /^\s+(locked|width):\s*(.*?)\s*$/;
 
+/** A page with no front matter. */
+export const EMPTY_FRONT: FrontMatter = { lines: null, bavaAt: null, bavaLines: [], settings: {}, tags: [], tagsLines: null, tagsAt: null, order: { bava: Infinity, tags: Infinity } };
+
 function readFront(markdown: string): { front: FrontMatter; body: string } {
-  const empty: FrontMatter = { lines: null, bavaAt: null, bavaLines: [], settings: {} };
+  const empty = EMPTY_FRONT;
   const split = splitFront(markdown);
   if (!split) return { front: empty, body: markdown };
   const all = split.inner;
@@ -61,9 +150,24 @@ function readFront(markdown: string): { front: FrontMatter; body: string } {
   const settings: PageSettings = {};
   const bavaLines: string[] = [];
   let bavaAt: number | null = null;
+  let tagsLines: string[] | null = null;
+  let tagsAt: number | null = null;
+  const order = { bava: Infinity, tags: Infinity };
   for (let i = 0; i < all.length; i += 1) {
+    if (tagsLines === null && /^tags:/.test(all[i])) {
+      tagsAt = lines.length;
+      order.tags = i;
+      tagsLines = [all[i]];
+      // A block list's items, when the key's own line holds nothing.
+      if (all[i].replace(/^tags:/, '').trim() === '') {
+        for (i += 1; i < all.length && /^\s*-(\s|$)/.test(all[i]); i += 1) tagsLines.push(all[i]);
+        i -= 1;
+      }
+      continue;
+    }
     if (/^bava:\s*$/.test(all[i])) {
       bavaAt = lines.length;
+      order.bava = i;
       for (i += 1; i < all.length && /^\s+\S/.test(all[i]); i += 1) {
         const pair = KNOWN.exec(all[i]);
         if (pair?.[1] === 'locked' && (pair[2] === 'true' || pair[2] === 'false')) settings.locked = pair[2] === 'true';
@@ -75,7 +179,8 @@ function readFront(markdown: string): { front: FrontMatter; body: string } {
     }
     lines.push(all[i]);
   }
-  return { front: { lines, bavaAt, bavaLines, settings }, body: split.rest };
+  const tags = tagsLines ? tagsFrom(tagsLines) : [];
+  return { front: { lines, bavaAt, bavaLines, settings, tags, tagsLines, tagsAt, order }, body: split.rest };
 }
 
 /** The lines under `bava:`: each known key rewritten where it stood, the rest as written. */
@@ -103,12 +208,26 @@ function bavaBlock(front: FrontMatter): string[] {
   return out;
 }
 
+/** The `tags` key's lines: as written when the tags are the same, else a flow list; none for no tags. */
+function tagsBlock(front: FrontMatter): string[] {
+  if (front.tagsLines && sameTags(tagsFrom(front.tagsLines), front.tags)) return front.tagsLines;
+  return front.tags.length > 0 ? [`tags: [${front.tags.map(yamlTag).join(', ')}]`] : [];
+}
+
+const sameTags = (a: string[], b: string[]) => a.length === b.length && a.every((tag, i) => tag === b[i]);
+
 function writeFront(front: FrontMatter): string {
-  const bava = bavaBlock(front);
   const lines = [...(front.lines ?? [])];
-  if (bava.length > 0) lines.splice(front.bavaAt ?? lines.length, 0, 'bava:', ...bava);
-  // A header written with nothing in it stays; one that held only Bava's settings goes with them.
-  const keptEmpty = front.lines !== null && front.lines.length === 0 && front.bavaAt === null;
+  // Each key back where it stood (a new one last), two at one place in their order.
+  const blocks = [
+    { at: front.bavaAt ?? lines.length, order: front.bavaAt === null ? Infinity : front.order.bava, lines: bavaBlock(front), head: ['bava:'] },
+    { at: front.tagsAt ?? lines.length, order: front.tagsAt === null ? Infinity : front.order.tags, lines: tagsBlock(front), head: [] as string[] },
+  ].sort((a, b) => a.at - b.at || a.order - b.order);
+  for (const block of blocks.reverse()) {
+    if (block.lines.length > 0) lines.splice(block.at, 0, ...block.head, ...block.lines);
+  }
+  // A header written with nothing in it stays; one that held only Bava's keys goes with them.
+  const keptEmpty = front.lines !== null && front.lines.length === 0 && front.bavaAt === null && front.tagsLines === null;
   if (lines.length === 0) return keptEmpty ? '---\n---\n' : '';
   return `---\n${lines.join('\n')}\n---\n`;
 }
@@ -1433,7 +1552,8 @@ const serializer = new MarkdownSerializer(
 
 // ---- the page ---------------------------------------------------------------
 
-export type Page = { doc: Node; front: FrontMatter };
+/** A page read: its document, its front matter, and the text after the front matter as written. */
+export type Page = { doc: Node; front: FrontMatter; body: string };
 
 /**
  * Lists side by side that Bava would write the same way are one list: written
@@ -1819,7 +1939,7 @@ export function wordsOf(written: string, html: boolean): string {
 /** Reads a page's prose: its front matter and its document. */
 export function parsePage(markdown: string): Page {
   const { front, body } = readFront(markdown);
-  return { doc: settleTables(joinLists(parser.parse(body))), front };
+  return { doc: settleTables(joinLists(parser.parse(body))), front, body };
 }
 
 /**
@@ -1835,6 +1955,18 @@ function settleTables(doc: Node): Node {
 /** Reads Markdown that is not a whole page (pasted text): no front matter. */
 export function parseBody(markdown: string): Node {
   return settleTables(joinLists(parser.parse(markdown)));
+}
+
+/** A page's front matter and the text after it, without reading the document: for tags across a Space. */
+export function frontOf(markdown: string): { front: FrontMatter; body: string } {
+  return readFront(markdown);
+}
+
+/** A page whose document did not change: its front matter written, its text after it as read. */
+export function withFront(front: FrontMatter, body: string): string {
+  // A page written with Windows line endings keeps them, in its header too.
+  const head = writeFront(front);
+  return (body.includes('\r\n') ? head.replace(/\n/g, '\r\n') : head) + body;
 }
 
 /** Writes a page's prose in Bava's style: front matter, then the document. */

@@ -11,7 +11,7 @@
       body: 'It leaves the Trash and cannot be restored.',
       options: [
         { value: 'cancel', label: 'Cancel' },
-        { value: 'delete', label: 'Delete', primary: true },
+        { value: 'delete', label: 'Delete', tone: 'primary' },
       ],
     },
     three: {
@@ -20,7 +20,7 @@
       options: [
         { value: 'discard', label: 'Do not save' },
         { value: 'cancel', label: 'Cancel' },
-        { value: 'save', label: 'Save', primary: true },
+        { value: 'save', label: 'Save', tone: 'primary' },
       ],
     },
   };

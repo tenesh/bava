@@ -21,7 +21,7 @@ import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
 import { t } from '../i18n/t';
 import { countText } from '../shell/status-context';
 import { keys } from './keymap';
-import { lineMark, mediaKind, parseBody, parsePage, writePage, type FrontMatter, type PageSettings } from './markdown';
+import { EMPTY_FRONT, lineMark, mediaKind, normaliseTag, parseBody, parsePage, withFront, writePage, type FrontMatter, type PageSettings } from './markdown';
 import { shortcuts } from './rules';
 import { dropPosition } from './handle';
 import { commands, currentKind, topBlock } from './commands';
@@ -151,7 +151,7 @@ function withALine(doc: Node): Node {
   return doc.copy(doc.content.addToStart(schema.nodes.paragraph.create()));
 }
 
-const emptyFront: FrontMatter = { lines: null, bavaAt: null, bavaLines: [], settings: {} };
+const emptyFront: FrontMatter = EMPTY_FRONT;
 
 /** The marks the formatting bubble has a button for. */
 export type BubbleMark = 'bold' | 'italic' | 'underline' | 'strike' | 'code' | 'link' | 'textColor' | 'highlight';
@@ -266,7 +266,7 @@ export class DocEditor {
   view: EditorView | null = null;
   #front: FrontMatter = emptyFront;
   /** The page as it was read, to give back unchanged while nothing in it changes. */
-  #loaded: { source: string; doc: Node; front: FrontMatter } | null = null;
+  #loaded: { source: string; doc: Node; front: FrontMatter; body: string } | null = null;
   #foldMemory: string | null = null;
   /** Cells selected when a right-click began, for its menu to act on. */
   #heldCells: CellSelection | null = null;
@@ -677,7 +677,7 @@ export class DocEditor {
     const page = parsePage(markdown);
     const doc = endsWithALine(withALine(page.doc));
     this.#front = page.front;
-    this.#loaded = { source: markdown, doc, front: page.front };
+    this.#loaded = { source: markdown, doc, front: page.front, body: page.body };
     this.view?.updateState(this.#state(doc));
     this.view?.setProps({ editable: () => !this.locked });
   }
@@ -690,7 +690,11 @@ export class DocEditor {
     const loaded = this.#loaded;
     if (!this.view || !loaded) return null;
     const doc = this.view.state.doc;
-    if (this.#front === loaded.front && doc.eq(loaded.doc)) return loaded.source;
+    if (doc.eq(loaded.doc)) {
+      if (this.#front === loaded.front) return loaded.source;
+      // Only the header changed: the prose stays as read, tidied only when it is edited.
+      return withFront(this.#front, loaded.body);
+    }
     return writePage(withoutDroppedNotes(doc, loaded.doc), this.#front);
   }
 
@@ -700,6 +704,19 @@ export class DocEditor {
 
   get locked(): boolean {
     return this.#front.settings.locked === true;
+  }
+
+  /** The page's tags, converted. */
+  get tags(): string[] {
+    return [...this.#front.tags];
+  }
+
+  /** Changes the page's tags, converting each and dropping repeats: an edit to the page. */
+  setTags(next: string[]): void {
+    const tags: string[] = [];
+    for (const tag of next.map(normaliseTag)) if (tag !== '' && !tags.includes(tag)) tags.push(tag);
+    this.#front = { ...this.#front, tags };
+    this.#options?.onChange();
   }
 
   /** Changes the page's own settings (lock, width): an edit to the page. */

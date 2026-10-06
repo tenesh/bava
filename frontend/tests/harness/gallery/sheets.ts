@@ -5,7 +5,7 @@
  */
 export const SHEETS = {
   controls: ['Segments', 'Toggle', 'ViewSwitcher', 'SectionTabs', 'LayoutEnginePicker', 'Splitter', 'Pane', 'Icon', 'ToolIcon', 'Mark'],
-  pickers: ['OptionPicker', 'OpacityPicker', 'StyleBar', 'DatePicker', 'EmojiPicker', 'FramePicker'],
+  pickers: ['OptionPicker', 'OpacityPicker', 'StyleBar', 'DatePicker', 'EmojiPicker', 'FramePicker', 'TagFilter'],
   menus: ['ContextMenu', 'SlashMenu', 'SpaceSwitcher', 'Tooltip'],
   fields: ['LinkField', 'EquationField', 'FindBar'],
   'canvas-chrome': ['ToolRail', 'SelectionToolbar', 'CanvasControls', 'InsertPanel'],
@@ -29,10 +29,13 @@ export const IN_SCREENS: Record<string, string> = {
   ExportDialog: 'dialogs',
   MediaDialog: 'dialogs',
   MediaViewer: 'document',
+  PageTags: 'document',
+  TagChip: 'document',
   NewSpaceDialog: 'dialogs',
   ShortcutsDialog: 'dialogs',
   SpaceSettingsDialog: 'dialogs',
   TrashDialog: 'dialogs',
+  TagsDialog: 'dialogs',
   StartScreen: 'start',
   Splash: 'shell',
 };

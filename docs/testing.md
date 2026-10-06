@@ -206,21 +206,23 @@ Pictures, about 120 per theme (`testdata/visual/`):
 |---|---|---|
 | `components` | Eight sheets (controls, pickers, menus, fields, canvas chrome, side pane, document floating, feedback), every state of each component side by side; and each piece that opens on a press, opened: the arrowheads picker and its More, the opacity slider, the colour swatches, the right-click menu, the Space switcher, tooltips; the Files tree naming a page | `harness/gallery.test.ts`: every component is on a sheet or in a screen, once |
 | `canvas` | Every seeded scene (`fixtures/canvas-scenes.ts`), two also at about 200%; the empty canvas; one element of each kind of selection chrome selected; everything selected; a handle hovered, also at 200%; a turned shape; long labels; a label and a code block edited; a detached arrow end; the eraser, a marquee, rotating, point editing, snap guides and an arrow's end over a shape, each mid-drag | `fixtures/canvas-scenes.test.ts`: every element type is drawn in a scene |
-| `document` | Sheets of every block, every inline piece and mark, every block unable to draw, and every block empty (`fixtures/document-blocks.ts`); media at each width, tables in both forms, cells selected and merged, a node selected, a canvas embed from another page and one whose frame is gone, a code caption edited, a selection under the bubble, a block's handle and menu, the placeholder, a locked page, Linked from, find, page widths, media full screen | `fixtures/document-blocks.test.ts`: every schema type is on a sheet |
-| `dialogs` | Each dialog in its main state, and the variants with a layout of their own: Trash with attachments and empty, Media chosen, as a list and renaming, a delete asked first, an error without details, the export previews, a name taken, code D2 cannot read | |
-| `settings`, `shell`, `space`, `start` | Each settings tab; the window in each view, with no page, with the AI pane, a loose page, the splash, a failed pane, a status notice; the side pane open and folded, Media, a page dragged onto a folder and between rows; the start screen with and without recents | |
+| `document` | Sheets of every block, every inline piece and mark, every block unable to draw, and every block empty (`fixtures/document-blocks.ts`); media at each width, tables in both forms, cells selected and merged, a node selected, a canvas embed from another page and one whose frame is gone, a tag being added, a code caption edited, a selection under the bubble, a block's handle and menu, the placeholder, a locked page, Linked from, find, page widths, media full screen | `fixtures/document-blocks.test.ts`: every schema type is on a sheet |
+| `dialogs` | Each dialog in its main state, and the variants with a layout of their own: the Tags dialog managing several and its delete asked, Trash with attachments and empty, Media chosen, as a list and renaming, a delete asked first, an error without details, the export previews, a name taken, code D2 cannot read | |
+| `settings`, `shell`, `space`, `start` | Each settings tab; the window in each view, with no page, with the AI pane, a loose page, the splash, a failed pane, a status notice; the side pane open and folded, the tree narrowed by tags and the tag list, Media, a page dragged onto a folder and between rows; the start screen with and without recents | |
 
 Behaviour in a real browser (`integration/`): what the canvas does, read from
 the saved file; components reached by keys and pointer; the page typed and
 pointed at; dialogs as they change; settings changed; the window's notices
-and splitter; the side pane's menus, renaming and moves; canvas embeds made from `/` and
-from a frame's right-click, their picture saved and their mark written, and
+and splitter; the side pane's menus, renaming and moves; tags added on a page and written to its
+header, the tree narrowed by tags, and tags renamed, merged and deleted in
+other pages' files from the tag list and the Tags dialog; canvas embeds
+made from `/` and from a frame's right-click, their picture saved and their mark written, and
 one clicked opening its frame selected beside the page; anything floating
 closing on a press elsewhere.
 
 The end-to-end scenarios follow one chain on one scratch folder. `create` makes the
 Space, writes a page with a link, maths, code, an image, a file card, an
-online video and a table, draws a shape, saves, and reads the file back for
+online video, a table and a tag, draws a shape, saves, and reads the file back for
 each. `reopen` opens that Space, checks the page, Media and a
 rename's link, and reads back the rewritten link. `canvas` draws on that page,
 inserts a diagram, saves, and reads back the shapes, bindings and labels;

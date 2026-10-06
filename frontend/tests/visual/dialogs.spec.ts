@@ -44,6 +44,25 @@ for (const theme of THEMES) {
       await shotDialog(page, shot('dialogs', 'trash', 'with-items', theme));
     });
 
+    test('the Tags dialog: a rename refused, three selected', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await page.locator('.bava-space-switcher').click();
+      await page.getByRole('menuitem', { name: 'Tags' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Tags' });
+      for (const tag of ['design', 'q4', 'road-map']) await dialog.getByRole('checkbox', { name: `Select ${tag}` }).check();
+      await dialog.getByRole('button', { name: 'Rename launch' }).click();
+      await dialog.getByRole('textbox', { name: 'New name for launch' }).fill('q4');
+      await page.keyboard.press('Enter');
+      await expect(dialog.getByRole('alert')).toContainText('q4 is already a tag');
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'tags', 'managing', theme), dialog);
+      await page.keyboard.press('Escape');
+      await dialog.getByRole('button', { name: 'Delete 3 tags' }).click();
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'tags', 'delete-asked', theme), page.getByRole('dialog', { name: /Delete/ }).or(page.getByRole('alertdialog')));
+    });
+
     test('the Media dialog', async ({ page }) => {
       await openApp(page, theme);
       await openSpace(page);

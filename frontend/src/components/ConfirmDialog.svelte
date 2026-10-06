@@ -12,8 +12,11 @@
   type Option = {
     value: string;
     label: string;
-    /** The action a user should reach for; drawn with the accent. */
-    primary?: boolean;
+    /**
+     * `primary`: the action a user should reach for, drawn with the accent;
+     * `danger`: one that cannot be undone, drawn in the danger colour.
+     */
+    tone?: 'primary' | 'danger';
   };
 
   type Props = {
@@ -53,7 +56,8 @@
       <button
         type="button"
         class="bava-button"
-        class:primary={option.primary}
+        class:primary={option.tone === 'primary'}
+        class:danger={option.tone === 'danger'}
         onclick={() => onChoose(option.value, check !== undefined && checked)}
       >
         {option.label}

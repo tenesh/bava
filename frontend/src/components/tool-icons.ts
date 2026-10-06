@@ -64,6 +64,7 @@ import Ellipsis from '@lucide/svelte/icons/ellipsis';
 import Eraser from '@lucide/svelte/icons/eraser';
 import File from '@lucide/svelte/icons/file';
 import Hash from '@lucide/svelte/icons/hash';
+import Tag from '@lucide/svelte/icons/tag';
 import Hexagon from '@lucide/svelte/icons/hexagon';
 import Layers from '@lucide/svelte/icons/layers';
 import Minus from '@lucide/svelte/icons/minus';
@@ -197,6 +198,7 @@ export const LUCIDE_ICONS = {
   // Settings' sections.
   appearance: Contrast,
   grid: Hash,
+  tag: Tag,
   // The Document: the formatting bubble, the block handle, find.
   bold: Bold,
   italic: Italic,
