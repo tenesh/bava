@@ -429,7 +429,7 @@ references elsewhere ("Milestone 6.5") still name them:
 | 6.6, 6.11 | Diagram from code: D2 typed in a dialog, previewed and inserted as ordinary shapes; the dialog's engines and direction |
 | 6.7, 6.9 | Code blocks: highlighted, in Geist Mono, edited in place *(moved forward from Milestone 15)* |
 | 6.8 | Feel fixes: styles at their size, tools that let go, zoom-steady distances |
-| 6.10, 6.12 to 6.16 | Every line and arrow behaviour in `.claude/work/specs/research/excalidraw-lines-inventory.md` (90 rows): bends, elbows, pinned ends, point editing, click-by-click lines, heads, labels, attaching settings |
+| 6.10, 6.12 to 6.16 | Every line and arrow behaviour Excalidraw has (a 90-row inventory; B3 in part, B22 kept as Bava's rule): bends, elbows, pinned ends, point editing, click-by-click lines, heads, labels, attaching settings |
 | 6.17 | A code block's language and font size; arrow labels typed in place and along the arrow; the false "changed on disk" prompt and the right-click Reload fixed |
 
 **Exit criterion:**
@@ -475,12 +475,12 @@ restores the attachment.
 
 ---
 
-## Milestone 8: Documents *(in progress; 8.1 to 8.4a built and committed, 8.5 next)*
+## Milestone 8: Documents *(complete; 8.1 to 8.6c committed, CI green 2026-10-10)*
 
 **Discussed and decided (2026-09-27):** 97 decisions in
 `.claude/work/specs/08-documents.md`, mockups in Bava Design
 (https://claude.ai/artifact/RMvLeKBkbF4N2Hv89HSude). Planned in six parts,
-with 8.1a, 8.3d and 8.4a added along the way; each is planned, gated and
+with 8.1a, 8.3d, 8.4a to 8.4e, 8.5a and 8.6c added along the way; each is planned, gated and
 committed on its own, and specifies its file-format changes in
 `docs/file-format.md` first:
 
@@ -493,8 +493,11 @@ committed on its own, and specifies its file-format changes in
 | 8.3d Adding lines *(committed)* | A block added before or after any block with ⌘Enter and ⇧⌘Enter or the block menu, and an empty line kept at the end of every page (decision 90); toggle headings dropped (decision 91) |
 | 8.4 Media and attachments *(committed)* | In three parts (decision 97): **8.4.1** the attachments folder, images and video files, relinking; **8.4.2** online videos, file and web-link cards; **8.4.3** the Media section and dialog |
 | 8.4a Canvas testing pass *(committed)* | Screen checks of seeded canvases (every shape and style, arrows of every kind and attachment, frames, groups, code blocks, a D2 diagram; selection, rotation, snapping and point-editing states; the pickers and menus; exported PNG and SVG) in both themes and at two zooms; real-app smoke scenarios that draw, connect, move, undo and insert a diagram, then check the saved file's contents. Replaces the 6.x window checks still owed. Before 8.5, so embedding cannot break the canvas unseen |
+| 8.4b to 8.4e Testing *(committed)* | One testing standard (8.4b); every component, element, block and surface pictured (8.4c); tests laid out by layer (8.4d); pictures as sheets per family (8.4e) |
 | 8.5 Canvas in the Document *(committed)* | Live frame embeds, Diagram from Code from the Document; this part carries the exit criterion below |
-| 8.6 Tags and templates *(next)* | Tags and the Tags section; the Templates dialog |
+| 8.5a Remove a Space *(committed)* | Remove a Space from the list (start screen, switcher), optionally deleting its `.bava` data |
+| 8.6 Tags and templates *(committed)* | In two parts (08.6 decision 1): **8.6a** tags at the page's bottom, a tag filter in Files and the Tags dialog; **8.6b** templates in groups, New page from template, Save as template, the Templates dialog |
+| 8.6c Dropdowns *(committed)* | `Select` (Ark wrapped) for the Media dialog's Type and Sort and the Tags dialog's Sort; menus take the keys, also inside dialogs |
 
 Export and import moved to Milestone 15, which now follows this one.
 
@@ -509,14 +512,14 @@ go test ./internal/format -run RoundTrip \
   && (cd frontend && npm run check && npm run lint && npm test)
 ```
 
-green, with tests that activating an embed selects its elements on the canvas,
+green, with tests that activating an embed selects its frame on the canvas,
 and a round trip of a document containing an embed.
 
 **Depends on:** Milestone 5, Milestone 6.5.
 
 ---
 
-## Milestone 15: Export, import and search *(moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
+## Milestone 15: Export, import and search *(next; moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
 
 **Goal:** Get work out of Bava and into it, and find things across a Space.
 
@@ -532,8 +535,8 @@ decisions 48, 49 and 58):
 - **Search** across a Space, with results, jump-to-match, and the
   `EmptyState` the design system already assumes exists for it.
 
-**Canvas work with no other home**, from the ranked list in
-`.claude/work/specs/research/excalidraw-comparison.md`, none built yet:
+**Canvas work with no other home** (chosen 2026-09-26 from a comparison
+with Excalidraw), none built yet:
 - Zoom to fit and zoom to selection.
 - A command palette.
 - Paste from other apps onto the canvas: text as a text element, and Bava
@@ -806,3 +809,14 @@ a local build.
   dissolved on 2026-09-17: a converted diagram's nodes are ordinary elements.
   Tab is not a canvas key; it is left to the browser's focus
   (`frontend/src/canvas/keymap.test.ts`).
+
+---
+
+## After the last milestone: a documentation clean-up
+
+Asked by the user on 2026-10-10. Once every milestone is built, go through
+every Markdown file (`docs/`, `.ai/rules/`, `.claude/`, `CLAUDE.md`, the
+README): fold what still matters into the specs and docs it belongs in,
+drop what only recorded how the work went, and remove `research/` once its
+studies are folded in or no longer cited.
+

@@ -8,7 +8,7 @@ through one Go render path, with stale responses dropped.
 **Specs:**
 - `CLAUDE.md`: architecture, stack, non-negotiables
 - `.claude/plan/roadmap.md`: Milestone 1 scope and exit criterion
-- `.claude/work/specs/archive/render-ipc.md`: the contract, decided 2026-09-16
+- `render-ipc.md`: the contract, decided 2026-09-16 (removed 2026-10-10 with the specs' archive folder; in git history)
 - `.ai/rules/ipc.md`, `canvas.md`, `d2.md`, `editors.md`, `svelte.md`,
   `testing.md`, `wails.md`
 

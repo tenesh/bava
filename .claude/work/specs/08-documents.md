@@ -269,6 +269,10 @@ it changes, shapes added later included. To embed something, draw a frame
 round it. So Diagram from Code started in the Document (decision 25) places
 its diagram inside a new frame, and embeds that frame.
 
+*Refined 2026-10-10 (08.5 decisions 3 and 5 in
+`08.5-canvas-in-the-document.md`):* the embed's picture is everything drawn
+over the frame's area, not only what belongs to the frame.
+
 ### 27. An embed whose frame is deleted keeps its last picture (2026-09-27)
 
 It shows the last image with a small "frame deleted" mark, never removed
@@ -443,6 +447,12 @@ page offers them by group, and a page's menu has Save as template. Each
 template is an ordinary page file (Document and Canvas), so it diffs like
 the rest.
 
+*Settled further 2026-10-07 (decisions 8 to 12 of
+`08.6-tags-and-templates.md`):* a group is a folder in `.bava/templates/`;
+New page from template is a submenu in Add; no fill-ins; a template is
+edited like a page; a deleted template is gone for good, after asking.
+Built in 8.6b.
+
 ### 48. Export a page, a folder or the Space, as PDF or a Markdown zip (2026-09-27, revisited)
 
 Revisited with the user the same day; this replaces the first answer (PDF,
@@ -569,6 +579,9 @@ same actions on the page's right-click menu in the Files tree. The **word
 count** sits in the status bar while the Document is shown: the page's
 words, or the selection's when text is selected.
 
+*Changed 2026-10-10 by the user:* Copy link is dropped; pages link to each
+other from inside a page.
+
 ### 61. Embedding a frame: from either side, from any page in the Space (2026-09-27)
 
 - **In the Document:** `/` then Embed frame lists frames by name with
@@ -579,6 +592,9 @@ words, or the selection's when text is selected.
   page on its Canvas with the frame selected; renaming or moving that page
   in Bava keeps the embed. A loose page (decision 4) embeds only its own
   frames.
+
+*Changed 2026-10-04 (08.5 decision 5):* a loose page asks to become a
+Space before it embeds, as for any media.
 
 ### 62. The Canvas does not show Documents (2026-09-27)
 
@@ -594,7 +610,8 @@ File ▸ Trash) and from the Space switcher's menu; the side pane has no
 buttons for them.*
 
 Buttons at the bottom of the side pane open a large **Trash** dialog (browse,
-restore, delete for good, empty; items older than 30 days go by themselves)
+restore, delete for good, empty; items older than 30 days go by themselves,
+*no longer: decision 70*)
 and the **Templates** dialog (decision 47), in the same pattern as the Media
 dialog (decision 11).
 
@@ -625,6 +642,12 @@ added under its title and stored in the page's front matter as a plain list
   (from every page; the pages stay).
 - Inside a Space; a loose page keeps its tags but has no Tags section.
 
+*Changed 2026-10-06 (decisions 2 to 5 and 7 of
+`08.6-tags-and-templates.md`):* tags are lowercase with no spaces,
+converted as typed; they sit at the bottom of the page; they are a filter
+in Files, not a section of their own; a Tags dialog manages several at
+once. Built in 8.6a.
+
 ## Cloud, discussed (2026-09-27, no decision)
 
 The user asked what cloud features (sync, sharing, live collaboration) would
@@ -645,8 +668,10 @@ attachments; 8.5 the Canvas in the Document (carrying the roadmap's exit
 criterion); 8.6 tags and templates. Each is planned, gated and committed on
 its own, its file-format changes specified first. The roadmap lists them.
 
-Later added: 8.1a (testing layers), 8.3d (adding lines) and 8.4a (canvas
-testing), each planned and committed on its own.
+Later added: 8.1a (testing layers), 8.3d (adding lines), 8.4a to 8.4e
+(canvas testing, test layout, visual sheets), 8.5a (removing a Space),
+8.6a and 8.6b (tags, then templates) and 8.6c (dropdowns), each planned and
+committed on its own. Complete 2026-10-10.
 
 ### 68. Export and import go to Milestone 15, moved up to follow Milestone 8 (2026-09-27)
 
@@ -717,8 +742,9 @@ the Space, so folder sync and Git carry it until emptied.
 - Lock and the page's own width (decision 45) are written in the page's
   front matter, the lines between `---` marks at the very top, under a
   `bava:` key (`locked: true`, `width: wide`). Other editors hide it or show
-  it as a small table; Obsidian calls it Properties. Tags (decision 66) will
-  go in the same header, as a plain `tags:` list other tools read too.
+  it as a small table; Obsidian calls it Properties. Tags (decision 66) go
+  in the same header, as a plain `tags:` list other tools read too (built
+  in 8.6a).
 - Keys Bava does not know are kept as they are.
 
 ### 76. Formatting Markdown lacks is written as invisible marks and small HTML (2026-09-27)

@@ -159,7 +159,7 @@ docs/                       file format, IPC, shortcuts, testing, decisions
 .ai/rules/                  committed, glob-scoped rules (index.md maps them)
 .claude/plan/               roadmap
 .claude/work/plans/         per-milestone plans, each with an As built
-.claude/work/specs/         design specs (research/ and archive/ for history)
+.claude/work/specs/         design specs (research/ for studies of other apps)
 .claude/skills/             build-step, the build loop
 .claude/agents/             spec-reviewer, auditor, visual-reviewer
 internal/                   Go: app (bound services, menus), render and layout
