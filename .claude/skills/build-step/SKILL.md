@@ -267,8 +267,10 @@ History belongs in each plan's As built, not here.
   15.1 (search, find on the Canvas) and 15.2a (a proof that each system
   prints a PDF: `internal/pdfprint`, the `export-proof` walk) are committed,
   CI green on all three systems 2026-10-11 (run 38089701163). 15.2b (the
-  export dialogs, the Markdown zip) is built, its `zip` step in the `reopen`
-  walk not yet seen on CI. **Next is 15.2c** (PDF export), then 15.3
+  export dialogs, the Markdown zip) is committed, CI green with the `zip`
+  step on all three systems 2026-10-11 (run 38094792440; the browser job
+  passed on a rerun after the Tags dialog's row-menu picture timed out
+  once). **Next is 15.2c** (PDF export), then 15.3
   import, 15.4 the canvas work. The
   roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **CI** builds a downloadable app per system on every run (artifacts
