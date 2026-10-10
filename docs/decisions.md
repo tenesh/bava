@@ -254,3 +254,4 @@ could reasonably have gone another way.
 | 2026-10-10 | An embed's picture is everything in the frame's area | The user, settling 8.5 decision 3: every shape, line and arrow over the frame's rectangle, cut at its edges, not only those that belong to the frame; a frame drawn around existing shapes shows them. |
 | 2026-10-10 | No Copy link in the page menu | The user: dropped from decision 60; pages link to each other from inside a page. |
 | 2026-10-10 | No menu state for unsaved changes or undo, no Clear Recent, no native About panel | The user: the three items left from the menus are dropped; About stays an in-app dialog. |
+| 2026-10-11 | Bava looks quiet and precise, in black and white | The user, rethinking the whole UI before Milestone 15: chosen from four feels and three palettes; no accent setting; decisions in `.claude/work/specs/look.md`, built as Milestone 8.7. |

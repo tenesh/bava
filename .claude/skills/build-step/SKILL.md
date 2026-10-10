@@ -262,7 +262,8 @@ History belongs in each plan's As built, not here.
 
 - **Milestone 8 is complete**: 8.1 to 8.6c committed, with the fixes after
   (a block dropped in a gap, embed pictures), CI green 2026-10-10.
-  **Next is Milestone 15** (export, import and search). The
+  **Next is Milestone 8.7** (the look, `.claude/work/specs/look.md`),
+  then Milestone 15 (export, import and search). The
   roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **CI** builds a downloadable app per system on every run (artifacts
   `bava-<os>-<commit>`, 14 days).

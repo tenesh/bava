@@ -499,7 +499,7 @@ committed on its own, and specifies its file-format changes in
 | 8.6 Tags and templates *(committed)* | In two parts (08.6 decision 1): **8.6a** tags at the page's bottom, a tag filter in Files and the Tags dialog; **8.6b** templates in groups, New page from template, Save as template, the Templates dialog |
 | 8.6c Dropdowns *(committed)* | `Select` (Ark wrapped) for the Media dialog's Type and Sort and the Tags dialog's Sort; menus take the keys, also inside dialogs |
 
-Export and import moved to Milestone 15, which now follows this one.
+Export and import moved to Milestone 15, which follows this one after 8.7 (the look).
 
 **Goal:** Prose alongside the canvas, with parts of the canvas embedded in the
 text. How embeds work (a frame, kept up to date as an image, from either side)
@@ -519,7 +519,37 @@ and a round trip of a document containing an embed.
 
 ---
 
-## Milestone 15: Export, import and search *(next; moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
+## Milestone 8.7: The look *(next; added 2026-10-11, before Milestone 15)*
+
+**Goal:** Bava looks like itself: quiet and precise, in black and white,
+across every screen, with nothing it does changed.
+
+**Why now:** asked by the user on 2026-10-11, before more screens are
+added: "It just doesn't feel polished or unique like its missing its
+personality." The design pass owed since the Milestone 8 discussion folds
+into this one.
+
+**Scope:** `.claude/work/specs/look.md`: the black-and-white palette in both
+themes, the shape swatches and canvas dots retuned to it, mono for data and
+section labels, no one-sided coloured edges, hairlines and floating-only
+shadows, the four small touches (saved dot, `#` on tags, position while
+dragging, keys in menus). Tokens first, then components, then screens;
+every picture in `testdata/visual/` retaken and read in both themes.
+
+**Exit criterion:**
+
+```sh
+(cd frontend && npm run check && npm run lint && npm test && npm run browser)
+```
+
+green, with every changed picture read in both themes, `no-literals` still
+holding, and the file format unchanged (`go test ./internal/format`).
+
+**Depends on:** Milestone 8.
+
+---
+
+## Milestone 15: Export, import and search *(after 8.7; moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
 
 **Goal:** Get work out of Bava and into it, and find things across a Space.
 
