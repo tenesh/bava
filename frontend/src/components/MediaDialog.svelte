@@ -13,6 +13,7 @@
    */
   import Dialog from './Dialog.svelte';
   import Segments from './Segments.svelte';
+  import Select from './Select.svelte';
   import ToolIcon from './ToolIcon.svelte';
   import MediaThumb from './MediaThumb.svelte';
   import { localDay, shownItems, type MediaFilter, type MediaItem, type MediaSort } from '../files/media';
@@ -136,7 +137,7 @@
   <div class="media-dialog" bind:this={root}>
     <div class="bar">
       <input class="bava-field search" type="search" data-autofocus bind:value={search} placeholder={t('media.search')} aria-label={t('media.search')} />
-      <Segments
+      <Select
         label={t('media.filter')}
         value={filter}
         options={[
@@ -149,8 +150,9 @@
         ]}
         onValueChange={(value) => (filter = value)}
       />
-      <Segments
+      <Select
         label={t('media.sort')}
+        prefix={t('list.sortPrefix')}
         value={sort}
         options={[
           { value: 'name', label: t('media.sort.name') },

@@ -45,6 +45,17 @@ const names = (dialog: HTMLElement) => [...dialog.querySelectorAll('.media-item-
 const click = (el: Element) => flushSync(() => (el as HTMLElement).click());
 const button = (dialog: HTMLElement, name: string) => [...dialog.querySelectorAll('button, [data-part="item"]')].find((b) => b.textContent?.trim() === name || b.getAttribute('aria-label') === name)!;
 
+/** Picks an option from one of the dialog's dropdowns, by the dropdown's name. */
+async function pick(dialog: HTMLElement, dropdown: string, option: string) {
+  click(dialog.querySelector(`.bava-select[data-name="${dropdown}"] .bava-select-trigger`)!);
+  const item = await vi.waitFor(() => {
+    const found = [...document.querySelectorAll<HTMLElement>('.bava-select-item')].find((each) => each.textContent?.trim() === option && each.closest('[data-state="open"]'));
+    if (!found) throw new Error(`no ${option} in ${dropdown}`);
+    return found;
+  });
+  click(item);
+}
+
 describe('MediaDialog', () => {
   it('shows every file in a grid by name, and as a list', async () => {
     const { dialog } = await setup();
@@ -54,14 +65,16 @@ describe('MediaDialog', () => {
     expect(dialog.querySelector('.media-items')!.getAttribute('data-view')).toBe('list');
   });
 
-  it('filters by kind and to the unused, and sorts by size or date', async () => {
+  it('filters by kind and to the unused, and sorts by size or date, from two dropdowns', async () => {
     const { dialog } = await setup();
-    click(button(dialog, 'Unused'));
+    await pick(dialog, 'Type', 'Unused');
     expect(names(dialog)).toEqual(['notes.pdf', 'old.png']);
-    click(button(dialog, 'All'));
-    click(button(dialog, 'Size'));
+    await pick(dialog, 'Type', 'Images');
+    expect(names(dialog)).toEqual(['logo.png', 'old.png']);
+    await pick(dialog, 'Type', 'All types');
+    await pick(dialog, 'Sort by', 'Size');
     expect(names(dialog)[0]).toBe('demo.mp4');
-    click(button(dialog, 'Date'));
+    await pick(dialog, 'Sort by', 'Date');
     expect(names(dialog)).toEqual(['demo.mp4', 'notes.pdf', 'logo.png', 'old.png']);
   });
 

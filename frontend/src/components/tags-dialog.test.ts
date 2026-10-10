@@ -31,8 +31,14 @@ describe('TagsDialog', () => {
   it('lists every tag with its page count, by name, or by pages', async () => {
     await setup();
     expect(names()).toEqual(['design', 'launch', 'q4']);
-    flushSync(() => [...document.querySelectorAll<HTMLElement>('.bava-segment')].find((b) => b.textContent?.trim() === 'Pages')!.querySelector('input')!.click());
-    await vi.waitFor(() => expect(names()).toEqual(['q4', 'design', 'launch']));
+    flushSync(() => document.querySelector<HTMLElement>('.bava-select[data-name="Sort by"] .bava-select-trigger')!.click());
+    const pages = await vi.waitFor(() => {
+      const found = [...document.querySelectorAll<HTMLElement>('.bava-select-item')].find((item) => item.textContent?.trim() === 'Pages');
+      if (!found) throw new Error('no list');
+      return found;
+    });
+    flushSync(() => pages.click());
+    expect(names()).toEqual(['q4', 'design', 'launch']);
   });
 
   it('narrows the list as the search is typed', async () => {

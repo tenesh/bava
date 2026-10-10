@@ -11,7 +11,7 @@
   import { tick } from 'svelte';
   import Dialog from './Dialog.svelte';
   import ContextMenu from './ContextMenu.svelte';
-  import Segments from './Segments.svelte';
+  import Select from './Select.svelte';
   import ToolIcon from './ToolIcon.svelte';
   import TagChip from './TagChip.svelte';
   import { t } from '../i18n/t';
@@ -165,9 +165,10 @@
   <div class="tags-body">
     <div class="tools">
       <input class="bava-field search" type="search" placeholder={t('tags.search')} aria-label={t('tags.search')} bind:value={query} />
-      <Segments
+      <Select
         value={sort}
         label={t('tags.sort')}
+        prefix={t('list.sortPrefix')}
         options={[
           { value: 'name', label: t('tags.byName') },
           { value: 'pages', label: t('tags.byPages') },
@@ -248,17 +249,20 @@
       </div>
     {/if}
   </div>
+  <!-- Inside the dialog, so Ark counts the menu as part of it: the dialog's
+       focus trap then lets the menu take the keys. -->
+  <ContextMenu
+    within
+    items={menuItems}
+    open={menu !== null}
+    anchor={menu?.anchor ?? null}
+    onSelect={chosen}
+    onOpenChange={(next) => {
+      if (!next) menu = null;
+    }}
+  />
 </Dialog>
 
-<ContextMenu
-  items={menuItems}
-  open={menu !== null}
-  anchor={menu?.anchor ?? null}
-  onSelect={chosen}
-  onOpenChange={(next) => {
-    if (!next) menu = null;
-  }}
-/>
 
 <style>
   .tags-body {
