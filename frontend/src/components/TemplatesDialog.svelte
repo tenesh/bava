@@ -176,17 +176,20 @@
       {/if}
     </div>
   </div>
+  <!-- Inside the dialog, so Ark counts the menu as part of it: the dialog's
+       focus trap then lets the menu take the keys. -->
+  <ContextMenu
+    within
+    items={menuItems}
+    open={menu !== null}
+    anchor={menu?.anchor ?? null}
+    onSelect={chosen}
+    onOpenChange={(next) => {
+      if (!next) menu = null;
+    }}
+  />
 </Dialog>
 
-<ContextMenu
-  items={menuItems}
-  open={menu !== null}
-  anchor={menu?.anchor ?? null}
-  onSelect={chosen}
-  onOpenChange={(next) => {
-    if (!next) menu = null;
-  }}
-/>
 
 <style>
   .templates-body {

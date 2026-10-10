@@ -4,7 +4,7 @@
  * or pictured in a screen of the app instead (`IN_SCREENS`).
  */
 export const SHEETS = {
-  controls: ['Segments', 'Toggle', 'ViewSwitcher', 'SectionTabs', 'LayoutEnginePicker', 'Splitter', 'Pane', 'Icon', 'ToolIcon', 'Mark'],
+  controls: ['Segments', 'Select', 'Toggle', 'ViewSwitcher', 'SectionTabs', 'LayoutEnginePicker', 'Splitter', 'Pane', 'Icon', 'ToolIcon', 'Mark'],
   pickers: ['OptionPicker', 'OpacityPicker', 'StyleBar', 'DatePicker', 'EmojiPicker', 'FramePicker', 'TagFilter'],
   menus: ['ContextMenu', 'SlashMenu', 'SpaceSwitcher', 'Tooltip'],
   fields: ['LinkField', 'EquationField', 'FindBar'],

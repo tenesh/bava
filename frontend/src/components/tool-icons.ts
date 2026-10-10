@@ -182,6 +182,7 @@ export const LUCIDE_ICONS = {
   labelAlong: MoveUpRight,
   // The line actions and the tool lock.
   finishLine: Check,
+  check: Check,
   editPoints: PencilLine,
   closeLine: Pentagon,
   openLine: Waypoints,

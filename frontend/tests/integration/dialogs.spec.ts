@@ -18,6 +18,43 @@ import {
 /** The log file of a session that ended unexpectedly, as Go names it. */
 const LAST_SESSION = '2026-09-26T18-42-07-4182.log';
 
+// The Media dialog's Type and Sort are dropdowns: by keys, by pointer, and
+// Escape closing one without closing the dialog.
+test('Media\'s Type and Sort dropdowns, by keys and by pointer', async ({ page }) => {
+  await openApp(page, 'light');
+  await openSpace(page);
+  await page.getByRole('button', { name: 'Open Media' }).click();
+  const dialog = openDialog(page);
+  const items = dialog.locator('.media-item');
+  await expect(items).toHaveCount(9);
+  const type = dialog.getByRole('combobox', { name: 'Type' });
+  await type.focus();
+  await page.keyboard.press('Enter');
+  const list = page.locator('.bava-select-content').filter({ visible: true });
+  await expect(list.getByRole('option')).toHaveText(['All types', 'Images', 'Videos', 'PDFs', 'Other', 'Unused']);
+  // The list opens on the current choice, and the keys move from there.
+  await expect(list.locator('.bava-select-item[data-highlighted]')).toHaveText('All types');
+  await expect(list).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(list.locator('.bava-select-item[data-highlighted]')).toHaveText('Images');
+  await page.keyboard.press('Enter');
+  await expect(type).toContainText('Images');
+  await expect(type).toBeFocused();
+  await expect(items.filter({ hasText: '.mp4' })).toHaveCount(0);
+
+  const sort = dialog.getByRole('combobox', { name: 'Sort by' });
+  await sort.click();
+  await list.getByRole('option', { name: 'Size' }).click();
+  await expect(sort).toContainText('Sort: Size');
+
+  await sort.click();
+  await expect(list).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(list).toHaveCount(0);
+  await expect(sort).toBeFocused();
+  await expect(dialog).toBeVisible();
+});
+
 // Escape while renaming once closed the whole Media dialog: it leaves the
 // rename, keeps the dialog, and gives the keyboard back to Rename.
 test('Escape while renaming in Media leaves the rename, not the dialog', async ({ page }) => {

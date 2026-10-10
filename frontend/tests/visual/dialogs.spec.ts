@@ -14,6 +14,7 @@ import {
   restPointer,
   shot,
   shotDialog,
+  shotFloating,
 } from '../helpers';
 
 for (const theme of THEMES) {
@@ -63,6 +64,33 @@ for (const theme of THEMES) {
       await shotDialog(page, shot('dialogs', 'tags', 'delete-asked', theme), page.getByRole('dialog', { name: /Delete/ }).or(page.getByRole('alertdialog')));
     });
 
+    test('a tag\'s menu, open inside the Tags dialog', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await page.locator('.bava-space-switcher').click();
+      await page.getByRole('menuitem', { name: 'Tags' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Tags' });
+      await dialog.getByRole('button', { name: 'More for launch' }).click();
+      const menu = page.locator('.bava-menu').filter({ visible: true });
+      await expect(menu).toBeFocused();
+      await menu.getByRole('menuitem', { name: 'Merge into' }).hover();
+      await expect(page.getByRole('menuitem', { name: 'q4' })).toBeVisible();
+      await restPointer(page);
+      // The menu and its submenu reach past the dialog's edge: framed on them, not the dialog.
+      await shotFloating(page, dialog.getByRole('button', { name: 'More for launch' }), page.locator('.bava-menu').filter({ visible: true }), shot('dialogs', 'tags', 'row-menu', theme));
+    });
+
+    test('the Media dialog\'s Type list, open', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await page.getByRole('button', { name: 'Open Media' }).click();
+      const type = openDialog(page).getByRole('combobox', { name: 'Type' });
+      await type.click();
+      const list = page.locator('.bava-select-content').filter({ visible: true });
+      await list.getByRole('option', { name: 'Images', exact: true }).hover();
+      await shotFloating(page, type, list, shot('dialogs', 'media', 'type-list', theme));
+    });
+
     test('the Templates dialog', async ({ page }) => {
       await openApp(page, theme);
       await openSpace(page);
@@ -101,7 +129,8 @@ for (const theme of THEMES) {
       await expect(dialog.locator('.media-used-by button')).toHaveText(['Media']);
       await shotDialog(page, shot('dialogs', 'media', 'chosen', theme));
       await dialog.getByText('List', { exact: true }).click();
-      await dialog.getByText('Unused', { exact: true }).click();
+      await dialog.getByRole('combobox', { name: 'Type' }).click();
+      await page.locator('.bava-select-content').getByRole('option', { name: 'Unused', exact: true }).click();
       await restPointer(page);
       await expect(dialog.locator('.media-item')).toHaveCount(2);
       await shotDialog(page, shot('dialogs', 'media', 'unused-list', theme));

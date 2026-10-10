@@ -145,6 +145,7 @@ test.describe('tags', () => {
     await tagButton(page).click();
     await tagList(page).getByRole('option', { name: /launch/ }).hover();
     await tagList(page).getByRole('button', { name: 'More for launch' }).click();
+    await expect(menus(page)).toBeFocused();
     await page.getByRole('menuitem', { name: 'Rename' }).click();
     const field = page.getByRole('textbox', { name: 'New name for launch' });
     await expect(field).toBeFocused();
@@ -163,6 +164,9 @@ test.describe('tags', () => {
     await dialog.getByRole('checkbox', { name: 'Select launch' }).check();
     await dialog.getByRole('checkbox', { name: 'Select road-map' }).check();
     await dialog.getByRole('button', { name: 'Merge into' }).click();
+    // Ark takes the keys into a menu once it is ready for a choice; a click
+    // before then counts as one outside it, faster than any person.
+    await expect(menus(page)).toBeFocused();
     await page.getByRole('menuitem', { name: 'q4' }).click();
     const ask = page.getByRole('alertdialog').or(page.getByRole('dialog', { name: /Merge/ }));
     await expect(ask).toContainText('Merge launch, road-map into q4?');
@@ -247,12 +251,27 @@ test.describe('templates', () => {
     await expect.poll(() => source(page, '.bava/templates/Meetings/Weekly sync.md')).toContain('Added to the template');
   });
 
+  test('a menu opened from a button gives the keys back to it on Escape', async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    const dialog = await openTemplates(page);
+    await dialog.getByRole('listitem').filter({ hasText: 'Bug report' }).hover();
+    const more = dialog.getByRole('button', { name: 'More for Bug report' });
+    await more.click();
+    await expect(menus(page)).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(menus(page)).toHaveCount(0);
+    await expect(more).toBeFocused();
+    await expect(dialog).toBeVisible();
+  });
+
   test('a template deleted, asked first', async ({ page }) => {
     await openApp(page, 'light');
     await openSpace(page);
     const dialog = await openTemplates(page);
     await dialog.getByRole('listitem').filter({ hasText: 'Bug report' }).hover();
     await dialog.getByRole('button', { name: 'More for Bug report' }).click();
+    await expect(menus(page)).toBeFocused();
     await page.getByRole('menuitem', { name: 'Delete' }).click();
     const ask = page.getByRole('alertdialog').or(page.getByRole('dialog', { name: /Delete Bug report/ }));
     await expect(ask).toContainText('deleted for good');

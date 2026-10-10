@@ -30,3 +30,8 @@ afterEach(async () => {
   vi.useRealTimers();
   await teardown();
 });
+
+// jsdom draws nothing, so it has no scrolling; Ark scrolls a dropdown's list
+// to its choice as it opens.
+if (typeof Element !== 'undefined') Element.prototype.scrollTo ??= () => {};
+
