@@ -62,3 +62,43 @@ describe('ContextMenu', () => {
     });
   });
 });
+
+// The menu's owner gives the keys back its own way first (the page restores
+// its selection with them); only when nothing took them does the menu put
+// them back where they were.
+describe('ContextMenu closing', () => {
+  it('lets its owner take the keys first, refocusing nothing itself then', async () => {
+    const before = document.createElement('input');
+    const owner = document.createElement('button');
+    document.body.append(before, owner);
+    before.focus();
+    const refocused = vi.fn();
+    before.addEventListener('focus', refocused);
+    const props = $state({ items, open: true, anchor: { x: 40, y: 60 }, onSelect: vi.fn(), onOpenChange: vi.fn(), onClosed: vi.fn(() => owner.focus()) });
+    render(ContextMenu, props);
+    await vi.waitFor(() => expect(content()).not.toBeNull());
+    await vi.waitFor(() => expect(content().contains(document.activeElement)).toBe(true));
+    props.open = false;
+    flushSync();
+    await vi.waitFor(() => expect(props.onClosed).toHaveBeenCalled());
+    expect(document.activeElement).toBe(owner);
+    expect(refocused).not.toHaveBeenCalled();
+    before.remove();
+    owner.remove();
+  });
+
+  it('puts the keys back where they were when its owner does not take them', async () => {
+    const before = document.createElement('input');
+    document.body.append(before);
+    before.focus();
+    const props = $state({ items, open: true, anchor: { x: 40, y: 60 }, onSelect: vi.fn(), onOpenChange: vi.fn(), onClosed: vi.fn() });
+    render(ContextMenu, props);
+    await vi.waitFor(() => expect(content()).not.toBeNull());
+    await vi.waitFor(() => expect(content().contains(document.activeElement)).toBe(true));
+    props.open = false;
+    flushSync();
+    await vi.waitFor(() => expect(props.onClosed).toHaveBeenCalled());
+    expect(document.activeElement).toBe(before);
+    before.remove();
+  });
+});

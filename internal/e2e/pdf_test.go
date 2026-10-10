@@ -56,3 +56,15 @@ func TestWhatAPDFMustHoldIsCheckedToTheMillimetre(t *testing.T) {
 		t.Error("an unreadable expectation was accepted")
 	}
 }
+
+// A walk's end closes the session before the process exits: a session left
+// open reads as a crash to the next walk's launch, whose notice then covers
+// the window.
+func TestQuittingClosesTheSessionFirst(t *testing.T) {
+	var order []string
+	quit := QuitAfter(func() { order = append(order, "close") }, func(code int) { order = append(order, "exit") })
+	quit(1)
+	if len(order) != 2 || order[0] != "close" || order[1] != "exit" {
+		t.Errorf("order = %v; want the session closed, then the exit", order)
+	}
+}

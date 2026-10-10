@@ -63,7 +63,7 @@ func main() {
 	folders := app.NewOpenedFolders()
 	menus := app.NewMenuService()
 	// Only a -tags e2e build has a driver and answers pickers itself.
-	driver, answers := smokeRun(current.Load)
+	driver, answers := smokeRun(current.Load, func() { _ = session.Close() })
 	services := []application.Service{
 		application.NewService(app.NewRenderService()),
 		application.NewService(app.NewFileService(app.FileServiceOptions{

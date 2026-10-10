@@ -98,3 +98,14 @@ func (s *Service) Done(failure string) {
 	fmt.Print(result)
 	s.options.Quit(code)
 }
+
+// QuitAfter is how a walk ends: the log session closed, then the process
+// exits with the walk's code. A session left open reads as a crash to the
+// next walk's launch, whose notice would cover the window, depending only on
+// whether the old process had gone by then.
+func QuitAfter(closeSession func(), exit func(code int)) func(code int) {
+	return func(code int) {
+		closeSession()
+		exit(code)
+	}
+}

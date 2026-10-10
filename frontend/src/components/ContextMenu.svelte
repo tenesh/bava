@@ -42,12 +42,16 @@
     if (open) before = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
   });
 
+  // The owner gives the keys back its own way first (the page restores its
+  // selection with them); a plain focus here would let the browser put its
+  // own caret in the page instead. Only when nothing took them does the menu
+  // put them back where they were.
   function closed() {
     const back = before;
     before = null;
+    onClosed?.();
     const lost = document.activeElement === null || document.activeElement === document.body;
     if (lost && back?.isConnected) back.focus({ preventScroll: true });
-    onClosed?.();
   }
 
   $effect(() => {

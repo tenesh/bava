@@ -15,7 +15,7 @@ import (
 // folder pickers answered from the scenario. BAVA_E2E_SCENARIO names the
 // scenario, BAVA_E2E_OUT where screenshots go, BAVA_E2E_SCRATCH the folder
 // the scenario may make Spaces in, and the only folder a "file" step may read.
-func smokeRun(_ func() *application.App) (application.Service, pickers) {
+func smokeRun(_ func() *application.App, closeSession func()) (application.Service, pickers) {
 	// The run starts in the repository, whose test files a scenario may pick.
 	repo, _ := os.Getwd()
 	vars := map[string]string{"SCRATCH": os.Getenv("BAVA_E2E_SCRATCH"), "REPO": repo}
@@ -31,9 +31,10 @@ func smokeRun(_ func() *application.App) (application.Service, pickers) {
 		Out:      os.Getenv("BAVA_E2E_OUT"),
 		Scratch:  os.Getenv("BAVA_E2E_SCRATCH"),
 		Capture:  e2e.Capture,
-		// Straight to exit with the run's code: asking the app to quit first
-		// ends the process with 0 on some platforms, so a failed run would pass.
-		Quit: func(code int) { os.Exit(code) },
+		// Straight to exit with the run's code, the session closed first:
+		// asking the app to quit ends the process with 0 on some platforms, so
+		// a failed run would pass.
+		Quit: e2e.QuitAfter(closeSession, os.Exit),
 		// A "pdf" step prints through the system's webview, on the main thread.
 		RunOnMain: application.InvokeSync,
 	})
