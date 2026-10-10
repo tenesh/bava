@@ -537,6 +537,17 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     },
 
     /**
+     * The elements a move is carrying, for the stage to show where they are.
+     * Empty for any other drag (a resize, a rotation, an end or a point) and
+     * when nothing is being dragged.
+     */
+    get moving(): ElementId[] {
+      if (!drag || drag.inert || drag.resize || drag.rotate || drag.endpoint) return [];
+      if (drag.bend || drag.segment || drag.focus || drag.label || drag.points || drag.append || drag.pointMarquee) return [];
+      return drag.moving;
+    },
+
+    /**
      * The guides for the snap the pointer made, for the stage to draw: while
      * a drag snaps, or while a tool that places a box hovers. Empty otherwise.
      */

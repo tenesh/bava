@@ -1,6 +1,7 @@
 <script lang="ts">
   /**
-   * One tag, as a plain grey chip, with a remove button when `onRemove` is
+   * One tag, as a plain chip reading `#launch` (the `#` is drawn, not part
+   * of the tag), with a remove button when `onRemove` is
    * given (`removeLabel` names it). Every tag in Bava is drawn by this.
    *
    * Presentational: it reports a remove.
@@ -19,7 +20,7 @@
 </script>
 
 <span class="tag-chip" class:removable={onRemove !== undefined} {ondblclick} role="presentation">
-  {tag}
+  <span class="name"><span class="hash" aria-hidden="true">#</span>{tag}</span>
   {#if onRemove}
     <button type="button" class="remove" aria-label={removeLabel} title={removeLabel} onclick={onRemove}>
       <ToolIcon id="close" size="sm" />
@@ -34,11 +35,17 @@
     gap: var(--space-1);
     height: var(--size-row-sm);
     padding: 0 var(--space-2);
-    border-radius: var(--radius-full);
-    background: var(--color-tag);
-    color: var(--color-text-primary);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    font-family: var(--font-data);
     font-size: var(--text-meta);
     white-space: nowrap;
+  }
+
+  .hash {
+    color: var(--color-text-faint);
   }
 
   .tag-chip.removable {

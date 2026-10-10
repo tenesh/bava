@@ -303,6 +303,7 @@
     color: var(--color-text-muted);
     font-size: var(--text-label);
     font-weight: var(--weight-semibold);
+    font-family: var(--font-label);
     letter-spacing: var(--tracking-label);
     text-align: left;
     text-transform: uppercase;
@@ -339,6 +340,7 @@
     width: var(--size-tag-count);
     text-align: right;
     color: var(--color-text-secondary);
+    font-family: var(--font-data);
     font-variant-numeric: tabular-nums;
   }
 

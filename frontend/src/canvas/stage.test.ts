@@ -241,6 +241,41 @@ describe('CanvasStage', () => {
     expect(stage.marquee()).toBeNull();
   });
 
+  // Where a moving selection is, below it, screen-sized.
+  describe('the position while moving', () => {
+    const readoutTheme = reader({ '--size-readout-gap': '8px', '--text-mono-status': '11px', '--font-data': 'Mono', '--color-text-muted': 'grey' });
+
+    it('reads the top-left, sits a screen gap below, and is drawn at screen size', () => {
+      const stage = newStage({ read: readoutTheme });
+      stage.mount(host());
+      stage.setViewport({ zoom: 2, pan: { x: 0, y: 0 } });
+      stage.setReadout({ x: 519.6, y: 320, w: 100, h: 40 });
+      const text = stage.readout()!;
+      expect(text.text()).toBe('x 520 · y 320');
+      expect([text.x(), text.y()]).toEqual([519.6, 364]);
+      expect(text.scaleX()).toBe(0.5);
+    });
+
+    // A turned shape's drawn box reaches below its own: the text goes under
+    // what is drawn, still reading the shape's own corner.
+    it('sits below the drawn box when one is given', () => {
+      const stage = newStage({ read: readoutTheme });
+      stage.mount(host());
+      stage.setReadout({ x: 100, y: 100, w: 50, h: 50 }, { x: 90, y: 90, w: 70, h: 70 });
+      const text = stage.readout()!;
+      expect(text.text()).toBe('x 100 · y 100');
+      expect([text.x(), text.y()]).toEqual([90, 168]);
+    });
+
+    it('is gone once cleared', () => {
+      const stage = newStage({ read: readoutTheme });
+      stage.mount(host());
+      stage.setReadout({ x: 0, y: 0, w: 10, h: 10 });
+      stage.setReadout(null);
+      expect(stage.readout()).toBeNull();
+    });
+  });
+
   // The guides snapping draws, Excalidraw's, screen-sized.
   describe('snap guides', () => {
     const guideTheme = reader({

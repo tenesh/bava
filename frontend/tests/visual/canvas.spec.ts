@@ -216,6 +216,15 @@ for (const theme of THEMES) {
       await shotPane(canvasPane(page), shot(AREA, 'points', 'editing', theme));
     });
 
+    // While a shape moves, its position shows below it.
+    test('a shape moving, with its position', async ({ page }) => {
+      await openCanvas(page, theme, CANVAS_PAGE, row());
+      // The third box, carried down and to the right, freely.
+      await dragScene(page, { x: 580, y: 200 }, { x: 640, y: 260 }, { hold: true });
+      await shotPane(canvasPane(page), shot(AREA, 'shape', 'moving', theme));
+      await page.mouse.up();
+    });
+
     test('snap guides while a ⌘ or Ctrl drag lines a box up', async ({ page }) => {
       await openCanvas(page, theme, CANVAS_PAGE, row());
       // The third box, dragged to sit level with the others, as far from the

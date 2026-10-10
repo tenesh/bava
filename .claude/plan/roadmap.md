@@ -519,7 +519,7 @@ and a round trip of a document containing an embed.
 
 ---
 
-## Milestone 8.7: The look *(next; added 2026-10-11, before Milestone 15)*
+## Milestone 8.7: The look *(built and gated 2026-10-11; added that day, before Milestone 15)*
 
 **Goal:** Bava looks like itself: quiet and precise, in black and white,
 across every screen, with nothing it does changed.
@@ -549,7 +549,7 @@ holding, and the file format unchanged (`go test ./internal/format`).
 
 ---
 
-## Milestone 15: Export, import and search *(after 8.7; moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
+## Milestone 15: Export, import and search *(next; moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
 
 **Goal:** Get work out of Bava and into it, and find things across a Space.
 

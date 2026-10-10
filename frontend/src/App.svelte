@@ -13,7 +13,7 @@
   import { createInsert } from './shell/insert.svelte';
   import ContextMenu from './components/ContextMenu.svelte';
   import { contextMenuFor, contextSelection, EMBED_IN_DOCUMENT, overflowMenu, parseOverflowId, rightClickHit, type MenuNode } from './canvas/context-menu';
-  import { nudged, topLevel } from './canvas/edit';
+  import { boundsOf, drawnBoundsOf, nudged, topLevel } from './canvas/edit';
   import { createScene, isLocked } from './canvas/scene';
   import { carriedWith } from './canvas/containment';
   import { angleOfElement } from './canvas/rotate';
@@ -2247,7 +2247,13 @@
       }
       // Live feedback: the drag's result drawn as it would be committed, or the
       // scene as it is when the drag would change nothing.
-      canvas.render(pointer.preview(point, { shift, alt, mod }) ?? history.current);
+      const preview = pointer.preview(point, { shift, alt, mod });
+      canvas.render(preview ?? history.current);
+      // Where a moving selection is, once it has moved.
+      const moving = new Set(pointer.moving);
+      const carried = preview && moving.size > 0 ? preview.elements.filter((e) => moving.has(e.id)) : [];
+      if (carried.length > 0) canvas.setReadout(boundsOf(carried), drawnBoundsOf(carried));
+      else canvas.setReadout(null);
       canvas.setMarquee(pointer.marquee);
       canvas.setSnapGuides(pointer.snapGuides);
       // The shapes this arrow would attach to, shown while it is drawn.
@@ -2325,6 +2331,7 @@
       }
       canvas.setMarquee(null);
       canvas.setSnapGuides([]);
+      canvas.setReadout(null);
       canvas.setErasing(new Set(), []);
       canvas.setBindingCandidates([]);
       commit();
@@ -3369,6 +3376,7 @@
   .files-title {
     font-size: var(--text-label);
     font-weight: var(--weight-semibold);
+    font-family: var(--font-label);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-text-muted);

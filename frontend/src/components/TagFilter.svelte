@@ -105,7 +105,7 @@
             onkeydown={() => {}}
           >
             <span class="box" class:on={chosen.includes(row.tag)} aria-hidden="true">{#if chosen.includes(row.tag)}<ToolIcon id="finishLine" size="sm" />{/if}</span>
-            <span class="name">{row.tag}</span>
+            <span class="name"><span class="hash" aria-hidden="true">#</span>{row.tag}</span>
             <span class="count">{row.count}</span>
             <button type="button" class="more" aria-label={t('tags.more').replace('{tag}', row.tag)} title={t('tags.more').replace('{tag}', row.tag)} onclick={(event) => more(event, row.tag)}>
               <ToolIcon id="more" size="sm" />
@@ -185,7 +185,12 @@
     color: var(--color-accent-contrast);
   }
 
+  .hash {
+    color: var(--color-text-faint);
+  }
+
   .name {
+    font-family: var(--font-data);
     flex: 1;
     min-width: 0;
     overflow: hidden;
@@ -196,6 +201,7 @@
   .count {
     color: var(--color-text-muted);
     font-size: var(--text-meta);
+    font-family: var(--font-data);
     font-variant-numeric: tabular-nums;
   }
 

@@ -1,10 +1,13 @@
 // Shadows, verbatim from the mockups: a soft spread plus a 1px contact
 // shadow; and the focus ring recipe.
 :root {
-  --shadow-floating: 0 8px 24px rgba(20, 20, 18, 0.12), 0 1px 2px rgba(20, 20, 18, 0.08);
-  --shadow-overlay: 0 16px 48px rgba(20, 20, 18, 0.18), 0 1px 2px rgba(20, 20, 18, 0.08);
-  // The chosen option of a segmented control, lifted off its track.
+  --shadow-floating: 0 8px 24px rgba(10, 10, 10, 0.12), 0 1px 2px rgba(10, 10, 10, 0.08);
+  --shadow-overlay: 0 16px 48px rgba(10, 10, 10, 0.18), 0 1px 2px rgba(10, 10, 10, 0.08);
+  // A small label raised off what it sits on (a picture's badge in a page).
   --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.08);
+  // The chosen option of a segmented control: outlined, not lifted, as only
+  // what floats casts a shadow.
+  --shadow-outlined: inset 0 0 0 var(--border-width) var(--color-border-strong);
 
   // 1px accent border plus a 2px halo. Inside dense rows use
   // `outline-offset: -2px` so the ring does not overlap the neighbour.

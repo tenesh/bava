@@ -8,7 +8,7 @@
    */
   import Mark from './Mark.svelte';
   import ToolIcon from './ToolIcon.svelte';
-  import { spaceInitial as initial, tileFill, tileText } from './space-tile';
+  import { spaceInitial as initial, TILE_FILL, TILE_TEXT } from './space-tile';
   import { t } from '../i18n/t';
 
   type Recent = { path: string; name: string; when: string; missing?: boolean };
@@ -48,7 +48,7 @@
         {#each recents as recent (recent.path)}
           <div class="entry" data-missing={recent.missing ? '' : undefined}>
             <button type="button" class="recent" disabled={recent.missing} onclick={() => onOpenRecent(recent.path)}>
-              <span class="tile" style:background={tileFill(recent.name)} style:color={tileText(recent.name)} aria-hidden="true">{initial(recent.name)}</span>
+              <span class="tile" style:background={TILE_FILL} style:color={TILE_TEXT} aria-hidden="true">{initial(recent.name)}</span>
               <span class="text">
                 <span class="name">{recent.name}</span>
                 <span class="path">{recent.missing ? t('start.missing') : recent.path}</span>
@@ -142,6 +142,7 @@
     padding: 0 var(--space-3);
     font-size: var(--text-label);
     font-weight: var(--weight-semibold);
+    font-family: var(--font-label);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-text-muted);
@@ -222,14 +223,17 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-family: var(--font-mono);
     font-size: var(--text-mono-status);
     color: var(--color-text-muted);
+    font-family: var(--font-data);
+    font-variant-numeric: tabular-nums;
   }
 
   .when {
     font-size: var(--text-meta);
     color: var(--color-text-muted);
+    font-family: var(--font-data);
+    font-variant-numeric: tabular-nums;
   }
 
   .note {

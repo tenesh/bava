@@ -155,6 +155,8 @@
     flex: none;
     color: var(--color-text-muted);
     font-size: var(--text-meta);
+    font-family: var(--font-data);
+    font-variant-numeric: tabular-nums;
   }
 
   .media-empty {

@@ -42,6 +42,10 @@
   --text-code-language: 11px;
   --leading-code: 1.5;
   --font-mono: 'Geist Mono', ui-monospace, monospace;
+  // Section labels, and anything that is data (sizes, dates, paths, counts,
+  // keys): the mono face carries the app's precise look.
+  --font-label: var(--font-mono);
+  --font-data: var(--font-mono);
 
   --text-body: 13px;
   // The Document's reading type: a page is read, not scanned like chrome.
@@ -93,5 +97,8 @@
   --tracking-wordmark: -0.01em;
 
   // Small-caps labels: pane headers, settings and shortcut group headings.
-  --tracking-label: 0.06em;
+  --tracking-label: 0.08em;
+  // A page's smallest heading: capitals in the page's own face, which is
+  // the writer's text, not one of the app's labels.
+  --tracking-doc-h6: 0.06em;
 }

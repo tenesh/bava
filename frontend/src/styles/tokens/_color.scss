@@ -5,96 +5,97 @@
 // literal. The test is that switching to dark mode should never require
 // touching a file outside this directory.
 //
-// Values are the design's palette, verbatim. Two tokens are additions, both
-// evidenced by usage in the mockups rather than invented (see the comments).
+// Black and white: the accent is the ink, and the neutrals are pure greys.
+// A few values sit between their neighbours (see the comments).
 
 // -- light ------------------------------------------------------------------
-$l-surface: #f7f7f5;
+$l-surface: #ffffff;
 $l-surface-raised: #ffffff;
-$l-surface-sunken: #efefec;
+$l-surface-sunken: #f5f5f5;
 $l-surface-overlay: #ffffff;
-$l-surface-nav: #f2f2ef;
-$l-border-subtle: #e2e2dd;
-$l-border-strong: #cbcbc4;
-$l-border-hairline: #f1f1ee;
-$l-text-primary: #1b1b19;
-$l-text-secondary: #55554f;
-$l-text-muted: #8a8a83;
-$l-text-faint: #7d7d76;
+$l-surface-nav: #fafafa;
+$l-border-subtle: #ebebeb;
+$l-border-strong: #dcdcdc;
+$l-border-hairline: #f3f3f3;
+$l-text-primary: #0a0a0a;
+$l-text-secondary: #2b2b2b;
+$l-text-muted: #7a7a7a;
+$l-text-faint: #a6a6a6;
 // Addition: document body copy, softer than text-primary. 27 uses in the
 // mockups, all as `color:` on prose.
-$l-text-prose: #2e2e28;
-$l-accent: #2f6ba3;
+$l-text-prose: #1f1f1f;
+$l-accent: #0a0a0a;
 $l-accent-contrast: #ffffff;
-$l-accent-subtle: rgba(47, 107, 163, 0.07);
-$l-selection: rgba(47, 107, 163, 0.18);
+$l-accent-subtle: #f0f0f0;
+$l-selection: rgba(10, 10, 10, 0.12);
 // Addition: find's matches in a page, and the one it is on.
 $l-find-match: rgba(180, 154, 46, 0.22);
 $l-find-match-active: rgba(180, 154, 46, 0.5);
-$l-focus-ring: #2f6ba3;
+$l-focus-ring: #0a0a0a;
 // Addition: the halo the design's focus recipe describes in prose but never
 // names: "1px accent border plus a 2px 22-25% halo".
-$l-focus-halo: rgba(47, 107, 163, 0.22);
+$l-focus-halo: rgba(10, 10, 10, 0.15);
 $l-danger: #b3271c;
 $l-danger-subtle: rgba(179, 39, 28, 0.06);
 // A control under the pointer, and pressed: a wash of ink over its surface.
-$l-control-hover: rgba(20, 20, 18, 0.05);
-$l-control-active: rgba(20, 20, 18, 0.1);
-// The accent button under the pointer and pressed: a step darker each.
-$l-accent-hover: #285e90;
-$l-accent-active: #22517d;
+$l-control-hover: rgba(10, 10, 10, 0.05);
+$l-control-active: rgba(10, 10, 10, 0.1);
+// The accent button under the pointer and pressed: on light the ink eases
+// a step, then another.
+$l-accent-hover: #2b2b2b;
+$l-accent-active: #3d3d3d;
 $l-danger-active: rgba(179, 39, 28, 0.14);
 // A field's placeholder: quieter than what is typed in it.
-$l-placeholder: #8a8a83;
-// A tag's chip: plain grey, as tags have no colours of their own.
-$l-tag: #ebebe7;
+$l-placeholder: #7a7a7a;
 // The chosen segment of a segmented control: raised off its sunken track.
 $l-segment-chosen: #ffffff;
 $l-ok: #4a7c59;
-$l-backdrop: rgba(20, 20, 18, 0.45);
-$l-canvas-bg: #efefec;
-$l-canvas-dot: #d4d4cd;
+// Unsaved: the dot before the title bar's state while a page has changes.
+$l-pending: #c98a12;
+$l-backdrop: rgba(10, 10, 10, 0.4);
+$l-canvas-bg: #ffffff;
+$l-canvas-dot: #d4d4d4;
 $l-note-fill: #f8f2dc;
 $l-note-border: #e8dfba;
 
 // -- dark -------------------------------------------------------------------
-$d-surface: #191a1c;
-$d-surface-raised: #202226;
-$d-surface-sunken: #131416;
-$d-surface-overlay: #24272b;
-$d-surface-nav: #151619;
-$d-border-subtle: #2b2d31;
-$d-border-strong: #3c3f45;
-$d-border-hairline: #232529;
-$d-text-primary: #e6e6e3;
-$d-text-secondary: #a2a49f;
-$d-text-muted: #71746f;
-$d-text-faint: #8a8d88;
-$d-text-prose: #cfcfcb;
-$d-accent: #7fabd9;
-$d-accent-contrast: #10161c;
-$d-accent-subtle: rgba(127, 171, 217, 0.14);
-$d-selection: rgba(127, 171, 217, 0.22);
+$d-surface: #0a0a0a;
+$d-surface-raised: #171717;
+$d-surface-sunken: #151515;
+$d-surface-overlay: #171717;
+$d-surface-nav: #101010;
+$d-border-subtle: #1f1f1f;
+$d-border-strong: #2c2c2c;
+$d-border-hairline: #1b1b1b;
+$d-text-primary: #f4f4f4;
+$d-text-secondary: #cfcfcf;
+$d-text-muted: #7c7c7c;
+$d-text-faint: #575757;
+$d-text-prose: #dcdcdc;
+$d-accent: #f4f4f4;
+$d-accent-contrast: #0a0a0a;
+$d-accent-subtle: #1e1e1e;
+$d-selection: rgba(244, 244, 244, 0.2);
 $d-find-match: rgba(209, 184, 82, 0.2);
 $d-find-match-active: rgba(209, 184, 82, 0.45);
-$d-focus-ring: #7fabd9;
-$d-focus-halo: rgba(127, 171, 217, 0.25);
+$d-focus-ring: #f4f4f4;
+$d-focus-halo: rgba(244, 244, 244, 0.25);
 $d-danger: #e57a6d;
 $d-danger-subtle: rgba(229, 122, 109, 0.1);
 $d-control-hover: rgba(255, 255, 255, 0.06);
 $d-control-active: rgba(255, 255, 255, 0.11);
-// On dark the accent is light: a step lighter each.
-$d-accent-hover: #93b9e1;
-$d-accent-active: #a8c7e8;
+// On dark the ink is light: brighter under the pointer, a step dimmer pressed.
+$d-accent-hover: #ffffff;
+$d-accent-active: #dcdcdc;
 $d-danger-active: rgba(229, 122, 109, 0.22);
-$d-placeholder: #71746f;
-$d-tag: #2c2f34;
+$d-placeholder: #7c7c7c;
 // Lighter than a hovered or pressed segment's wash, so the choice stays clear.
-$d-segment-chosen: #33363c;
+$d-segment-chosen: #2c2c2c;
 $d-ok: #8fb89a;
-$d-backdrop: rgba(10, 11, 12, 0.58);
-$d-canvas-bg: #131416;
-$d-canvas-dot: #33373c;
+$d-pending: #e0a93a;
+$d-backdrop: rgba(0, 0, 0, 0.6);
+$d-canvas-bg: #0a0a0a;
+$d-canvas-dot: #2e2e2e;
 $d-note-fill: #33301f;
 $d-note-border: #4a4630;
 
@@ -102,7 +103,6 @@ $d-note-border: #4a4630;
 // Additions beyond the design sheet, from the v2 brand handover. The mark is
 // paper on ink, always: it never inverts to ink on a light page. On a light
 // ground it brings its own ink tile; on a dark ground the tile disappears.
-// Never the accent: that is reserved for selection and focus.
 $brand-paper: #e6e6e3;
 $brand-ink: #131416;
 
@@ -185,9 +185,9 @@ $d-diagram-edge-label: #8b8f8a;
   --color-accent-hover: #{$l-accent-hover};
   --color-accent-active: #{$l-accent-active};
   --color-placeholder: #{$l-placeholder};
-  --color-tag: #{$l-tag};
   --color-segment-chosen: #{$l-segment-chosen};
   --color-ok: #{$l-ok};
+  --color-pending: #{$l-pending};
   --color-backdrop: #{$l-backdrop};
   --color-canvas-bg: #{$l-canvas-bg};
   --color-canvas-dot: #{$l-canvas-dot};
@@ -256,9 +256,9 @@ $d-diagram-edge-label: #8b8f8a;
   --color-accent-hover: #{$d-accent-hover};
   --color-accent-active: #{$d-accent-active};
   --color-placeholder: #{$d-placeholder};
-  --color-tag: #{$d-tag};
   --color-segment-chosen: #{$d-segment-chosen};
   --color-ok: #{$d-ok};
+  --color-pending: #{$d-pending};
   --color-backdrop: #{$d-backdrop};
   --color-canvas-bg: #{$d-canvas-bg};
   --color-canvas-dot: #{$d-canvas-dot};

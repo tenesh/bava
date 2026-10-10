@@ -251,7 +251,7 @@ Catch yourself thinking any of these and stop. The thought is the signal.
 
 ## Current repo state
 
-Facts that affect the gates, **verified 2026-10-10**. This is the only place
+Facts that affect the gates, **verified 2026-10-11**. This is the only place
 volatile facts live: `CLAUDE.md` and `.ai/rules/` state intent and settled
 decisions; this section states what is true in the tree today. Re-verify
 before trusting any line; every session that trusts a stale line starts from
@@ -262,8 +262,9 @@ History belongs in each plan's As built, not here.
 
 - **Milestone 8 is complete**: 8.1 to 8.6c committed, with the fixes after
   (a block dropped in a gap, embed pictures), CI green 2026-10-10.
-  **Next is Milestone 8.7** (the look, `.claude/work/specs/look.md`),
-  then Milestone 15 (export, import and search). The
+  **Milestone 8.7** (the look: black and white, `.claude/work/specs/look.md`)
+  is built and gated, uncommitted. **Next is Milestone 15** (export, import
+  and search). The
   roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **CI** builds a downloadable app per system on every run (artifacts
   `bava-<os>-<commit>`, 14 days).
@@ -309,7 +310,7 @@ History belongs in each plan's As built, not here.
   walks `tests/e2e/` (`create`, `reopen`, `canvas`) on all three
   platforms. Never launch the app locally, `wails3 dev` included.
 
-### Gate status: 2026-10-10
+### Gate status: 2026-10-11
 
 | Gate | Result |
 |---|---|
@@ -318,9 +319,9 @@ History belongs in each plan's As built, not here.
 | `go test ./internal/render -run Golden` | exit 0 (inside the run above); 2 fixtures under `testdata/golden/`, light and dark |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 2,765 tests passed and 1 skipped, in 214 files |
+| `npm test` | exit 0; 2,780 tests passed and 1 skipped, in 219 files |
 | `npm run build` | CI's first frontend step. The production minifier rejects some CSS the dev server and the browser tests accept (WebKit-only selectors such as `::selection:window-inactive`) |
-| `npm run browser` | last full runs 2026-10-10: 473 passed, twice in a row; 276 references in `testdata/visual/` |
+| `npm run browser` | last full runs 2026-10-11: 475 passed, twice in a row; 278 references in `testdata/visual/` |
 | CI end-to-end | `create`, `reopen` and `canvas` on all three platforms; see Milestones for the last run |
 | `wails3 build` | CI only |
 
@@ -338,6 +339,8 @@ What no test can see, still waiting for a person, in both themes:
   opening the browser.
 - The canvas checks kept at the window, listed with reasons in
   `.claude/work/plans/08.4a-canvas-testing.md` (As built).
+- The look in both themes on each platform's webview, and the position
+  shown while moving a shape (08.7's As built).
 - Milestone 8's later parts: the lists in the As built of 08.5 (embeds),
   08.5a (removing a Space), 08.6a (tags), 08.6b (templates) and 08.6c
   (dropdowns and menus inside dialogs).

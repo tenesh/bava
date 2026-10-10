@@ -581,6 +581,8 @@ export const messages = {
   'swatch.purple': 'Purple',
   'swatch.pink': 'Pink',
   'canvas.tools': 'Tools',
+  // Beside a selection while it moves: its top-left corner, in canvas units.
+  'canvas.position': 'x {x} · y {y}',
   'rail.insert': 'Insert',
   'rail.closeInsert': 'Close insert panel',
   'insert.search': 'Insert item',
