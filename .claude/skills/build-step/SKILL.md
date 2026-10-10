@@ -263,8 +263,8 @@ History belongs in each plan's As built, not here.
 - **Milestone 8 is complete**: 8.1 to 8.6c committed, with the fixes after
   (a block dropped in a gap, embed pictures), CI green 2026-10-10.
   **Milestone 8.7** (the look: black and white, `.claude/work/specs/look.md`)
-  is built and gated, uncommitted. **Next is Milestone 15** (export, import
-  and search). The
+  is committed (2026-10-11). **Next is Milestone 15** (export, import and
+  search). The
   roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **CI** builds a downloadable app per system on every run (artifacts
   `bava-<os>-<commit>`, 14 days).
@@ -331,7 +331,7 @@ What no test can see, still waiting for a person, in both themes:
 - The keyboard passes: the Space tree, switcher, start screen, Space dialogs
   and section tabs; the `/` menu, bubble, block handle, find bar and page
   menu; the error dialog; the Media section and dialog.
-- The look after the restyle; the icons at 16px and 1024px.
+- The icons at 16px and 1024px.
 - The native menus on each platform (Windows and Linux unseen).
 - A forced panic and a frontend exception found in the log folder in a
   release build.
@@ -353,6 +353,10 @@ What no test can see, still waiting for a person, in both themes:
 - **Browser tests see WebKit in a container, not the real webviews.** They
   catch layout and styling faults in both themes; how each platform's webview
   draws, and how anything feels, is still seen only at a running window.
+- **A drag the system cuts off never ends.** Nothing handles
+  `pointercancel` or lost pointer capture, so a gesture that takes the
+  pointer leaves the marquee, snap guides and position readout drawn until
+  the next drag. Picked up by Milestone 15's canvas work.
 
 ### Traps
 

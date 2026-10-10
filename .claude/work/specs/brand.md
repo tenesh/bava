@@ -33,7 +33,9 @@ the roadmap's v1 wording ("ink on light, paper on dark").
 - The mark itself is always paper (`#e6e6e3`).
 - On a dark ground it sits bare. On a light ground it sits in its own
   near-black tile (`#131416`). There is no ink-on-paper version.
-- Never the product accent: that is reserved for selection and focus.
+- Never recoloured to the product accent (since 2026-10-11 the ink, used for
+  selection, focus, primary buttons and handles); the tile is the brand ink,
+  `#131416`.
 - Misuse (from sheet 5a): no stretching, rotating, recolouring, mid-tone
   grounds, or inverting.
 

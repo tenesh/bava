@@ -21,8 +21,7 @@ $l-text-primary: #0a0a0a;
 $l-text-secondary: #2b2b2b;
 $l-text-muted: #7a7a7a;
 $l-text-faint: #a6a6a6;
-// Addition: document body copy, softer than text-primary. 27 uses in the
-// mockups, all as `color:` on prose.
+// Document body copy: a step softer than text-primary.
 $l-text-prose: #1f1f1f;
 $l-accent: #0a0a0a;
 $l-accent-contrast: #ffffff;
@@ -32,8 +31,8 @@ $l-selection: rgba(10, 10, 10, 0.12);
 $l-find-match: rgba(180, 154, 46, 0.22);
 $l-find-match-active: rgba(180, 154, 46, 0.5);
 $l-focus-ring: #0a0a0a;
-// Addition: the halo the design's focus recipe describes in prose but never
-// names: "1px accent border plus a 2px 22-25% halo".
+// The halo round a focus ring: a 1px ink ring with a 2px halo of the ink,
+// lighter on light than on dark.
 $l-focus-halo: rgba(10, 10, 10, 0.15);
 $l-danger: #b3271c;
 $l-danger-subtle: rgba(179, 39, 28, 0.06);
@@ -47,7 +46,7 @@ $l-accent-active: #3d3d3d;
 $l-danger-active: rgba(179, 39, 28, 0.14);
 // A field's placeholder: quieter than what is typed in it.
 $l-placeholder: #7a7a7a;
-// The chosen segment of a segmented control: raised off its sunken track.
+// The chosen segment of a segmented control: outlined on its sunken track.
 $l-segment-chosen: #ffffff;
 $l-ok: #4a7c59;
 // Unsaved: the dot before the title bar's state while a page has changes.

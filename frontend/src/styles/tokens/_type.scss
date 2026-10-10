@@ -4,7 +4,8 @@
 // `.ai/rules/canvas.md` requires it, and a desktop app cannot assume a font is
 // installed. Variable woff2, so one file covers every weight.
 //
-// Geist for chrome, Geist Mono for code and the source editor. To make the app
+// Geist for chrome, Geist Mono for code and the source editor, and for section
+// labels and data (--font-label, --font-data). To make the app
 // monospace throughout, point --font-ui at the mono stack; nothing else needs
 // touching.
 
@@ -96,7 +97,7 @@
   --text-wordmark: 22px;
   --tracking-wordmark: -0.01em;
 
-  // Small-caps labels: pane headers, settings and shortcut group headings.
+  // Mono capital labels: pane headers, settings and shortcut group headings.
   --tracking-label: 0.08em;
   // A page's smallest heading: capitals in the page's own face, which is
   // the writer's text, not one of the app's labels.
