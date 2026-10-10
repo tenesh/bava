@@ -543,8 +543,8 @@ embeds a frame of that page's own canvas, the second one of
   text starts as the frame's label; Bava keeps what is written there.
 - **The settings:** `width`, `align` and `caption="…"`, as an image's. No
   `ratio`: the frame decides the picture's shape.
-- **The picture** is a PNG at twice the frame's size: the frame's area, cut
-  at its edges, on the canvas background, without the frame's own border or
+- **The picture** is a PNG at twice the frame's size: the frame's area with
+  everything drawn over it, cut at its edges, on the canvas background, without the frame's own border or
   label, in the theme Bava had when it was drawn. It is named once, when the
   frame is first embedded, `<page name> - <frame label>.png`
   (`<page name> - Frame.png` for a frame with no label), numbered if the

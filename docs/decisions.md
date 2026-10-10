@@ -235,7 +235,7 @@ could reasonably have gone another way.
 | 2026-10-04 | Each CI build is kept as a download for 14 days | The user's choice, in place of a hosted preview: the real app on real files, tried by hand when a change is worth seeing. |
 | 2026-10-04 | An embedded frame's picture is a PNG at twice size | The user's choice (08.5 decision 1): every app shows it the same way, sharp on high-resolution screens. |
 | 2026-10-04 | The picture is drawn in the theme Bava has when it is saved | The user's choice (08.5 decision 2): it matches the screen; a theme change and a save rewrite the pictures that save touches. |
-| 2026-10-04 | The picture is the frame's area, without the frame | The user's choice (08.5 decision 3): on the canvas background, cut at the frame's edges, no border or label. |
+| 2026-10-04 | The picture is the frame's area, without the frame | The user's choice (08.5 decision 3): on the canvas background, cut at the frame's edges, no border or label. Settled further 2026-10-10 (below). |
 | 2026-10-04 | An embed takes an image's width, alignment and caption | The user's choice (08.5 decision 4); no ratio, as the frame decides the shape. |
 | 2026-10-04 | A loose page asks to become a Space before it embeds | The user's choice (08.5 decision 5), the rule every picture a page holds follows. |
 | 2026-10-04 | Opening an embed from the Document view shows Both | The user's choice (08.5 decision 6): the page stays, the Canvas opens beside it with the frame selected and in view. |
@@ -252,3 +252,5 @@ could reasonably have gone another way.
 | 2026-10-07 | A template is edited like a page | The user (8.6 decision 11): opened in the main area under a bar with Done; never in the Files tree. |
 | 2026-10-07 | A deleted template is gone for good, after asking | The user (8.6 decision 12): it does not go to the Space's Trash. |
 | 2026-10-10 | An embed's picture is everything in the frame's area | The user, settling 8.5 decision 3: every shape, line and arrow over the frame's rectangle, cut at its edges, not only those that belong to the frame; a frame drawn around existing shapes shows them. |
+| 2026-10-10 | No Copy link in the page menu | The user: dropped from decision 60; pages link to each other from inside a page. |
+| 2026-10-10 | No menu state for unsaved changes or undo, no Clear Recent, no native About panel | The user: the three items left from the menus are dropped; About stays an in-app dialog. |

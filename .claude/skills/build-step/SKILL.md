@@ -251,7 +251,7 @@ Catch yourself thinking any of these and stop. The thought is the signal.
 
 ## Current repo state
 
-Facts that affect the gates, **verified 2026-10-04**. This is the only place
+Facts that affect the gates, **verified 2026-10-10**. This is the only place
 volatile facts live: `CLAUDE.md` and `.ai/rules/` state intent and settled
 decisions; this section states what is true in the tree today. Re-verify
 before trusting any line; every session that trusts a stale line starts from
@@ -260,12 +260,12 @@ History belongs in each plan's As built, not here.
 
 ### Milestones
 
-- **Committed through 8.5** and removing a Space (CI green 2026-10-06).
-  **8.6a** (tags) is committed; **8.6b** (templates) is built and gated,
-  uncommitted; then Milestone 15 (export, import and
-  search). The roadmap (`.claude/plan/roadmap.md`) holds the sequence.
+- **Milestone 8 is complete**: 8.1 to 8.6c committed, with the fixes after
+  (a block dropped in a gap, embed pictures), CI green 2026-10-10.
+  **Next is Milestone 15** (export, import and search). The
+  roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **CI** builds a downloadable app per system on every run (artifacts
-  `bava-<os>-<commit>`, 14 days) from 08.4e on; its first run is the check.
+  `bava-<os>-<commit>`, 14 days).
 - Each plan under `.claude/work/plans/` has an "As built" section with its
   deviations, its review outcome and the checks left to a person at a running
   window (feel, native menus, each platform's webview).
@@ -289,7 +289,7 @@ History belongs in each plan's As built, not here.
   `vitest.config.ts` sets `resolve.conditions: ['browser']`, without which
   `mount` throws `lifecycle_function_unavailable` under jsdom.
 - Go packages under `internal/`: `app` (with `app/menu`), `config`, `e2e`,
-  `format`, `layout`, `logs`, `render`, `space`, `store`, `web`.
+  `format`, `layout`, `logs`, `render`, `space`, `store`, `web`; `testutil` (tests only).
 - Bindings are regenerated with
   `wails3 generate bindings -f '' -clean=true -ts -i` after any bound Go
   change, including comments (the generated TypeScript copies them). The
@@ -308,7 +308,7 @@ History belongs in each plan's As built, not here.
   walks `tests/e2e/` (`create`, `reopen`, `canvas`) on all three
   platforms. Never launch the app locally, `wails3 dev` included.
 
-### Gate status: 2026-10-04
+### Gate status: 2026-10-10
 
 | Gate | Result |
 |---|---|
@@ -317,9 +317,9 @@ History belongs in each plan's As built, not here.
 | `go test ./internal/render -run Golden` | exit 0 (inside the run above); 2 fixtures under `testdata/golden/`, light and dark |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 2,759 tests passed and 1 skipped, in 214 files |
+| `npm test` | exit 0; 2,765 tests passed and 1 skipped, in 214 files |
 | `npm run build` | CI's first frontend step. The production minifier rejects some CSS the dev server and the browser tests accept (WebKit-only selectors such as `::selection:window-inactive`) |
-| `npm run browser` | last full runs 2026-10-07: 462 passed, twice in a row; 270 references in `testdata/visual/` |
+| `npm run browser` | last full runs 2026-10-10: 473 passed, twice in a row; 276 references in `testdata/visual/` |
 | CI end-to-end | `create`, `reopen` and `canvas` on all three platforms; see Milestones for the last run |
 | `wails3 build` | CI only |
 
@@ -337,6 +337,9 @@ What no test can see, still waiting for a person, in both themes:
   opening the browser.
 - The canvas checks kept at the window, listed with reasons in
   `.claude/work/plans/08.4a-canvas-testing.md` (As built).
+- Milestone 8's later parts: the lists in the As built of 08.5 (embeds),
+  08.5a (removing a Space), 08.6a (tags), 08.6b (templates) and 08.6c
+  (dropdowns and menus inside dialogs).
 
 ### Open problems
 
