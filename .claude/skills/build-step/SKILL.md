@@ -264,10 +264,11 @@ History belongs in each plan's As built, not here.
   (a block dropped in a gap, embed pictures), CI green 2026-10-10.
   **Milestone 8.7** (the look: black and white, `.claude/work/specs/look.md`)
   is committed (2026-10-11). **Milestone 15** is under way in four parts:
-  15.1 (search, find on the Canvas) committed. **15.2a** (a proof that each
-  system prints a PDF, `internal/pdfprint` and the `export-proof` walk) is
-  built and gated on the host, uncommitted, its native code waiting for its
-  first CI run; then 15.2b, 15.2c, 15.3, 15.4. The
+  15.1 (search, find on the Canvas) and **15.2a** (a proof that each system
+  prints a PDF: `internal/pdfprint`, the `export-proof` walk) are committed,
+  CI green on all three systems 2026-10-11 (run 38089701163). **Next is
+  15.2b** (the export dialogs, the Markdown zip, the canvas as today), then
+  15.2c (PDF export), 15.3 import, 15.4 the canvas work. The
   roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **CI** builds a downloadable app per system on every run (artifacts
   `bava-<os>-<commit>`, 14 days).

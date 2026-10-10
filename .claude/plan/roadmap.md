@@ -549,7 +549,7 @@ holding, and the file format unchanged (`go test ./internal/format`).
 
 ---
 
-## Milestone 15: Export, import and search *(under way: 15.1 built 2026-10-11; moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
+## Milestone 15: Export, import and search *(under way: 15.1 and 15.2a committed 2026-10-11; moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
 
 **Goal:** Get work out of Bava and into it, and find things across a Space.
 
