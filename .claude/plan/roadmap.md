@@ -554,7 +554,9 @@ holding, and the file format unchanged (`go test ./internal/format`).
 **Goal:** Get work out of Bava and into it, and find things across a Space.
 
 **Built in four parts** (`.claude/work/specs/search.md` decision 1): **15.1**
-search across a Space, with find on the Canvas; **15.2** export; **15.3**
+search across a Space, with find on the Canvas; **15.2** export, itself in three parts
+(`export.md` decision 6: 15.2a a proof of PDF printing on every system,
+15.2b the dialogs and the Markdown zip, 15.2c PDF export); **15.3**
 import; **15.4** the canvas work below. Search is settled in `search.md`.
 
 **Scope:** From the Milestone 8 discussion (`.claude/work/specs/documents.md`,

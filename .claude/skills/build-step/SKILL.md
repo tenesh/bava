@@ -264,8 +264,10 @@ History belongs in each plan's As built, not here.
   (a block dropped in a gap, embed pictures), CI green 2026-10-10.
   **Milestone 8.7** (the look: black and white, `.claude/work/specs/look.md`)
   is committed (2026-10-11). **Milestone 15** is under way in four parts:
-  **15.1** (search and find on the Canvas) is built and gated, uncommitted;
-  then 15.2 export, 15.3 import, 15.4 the canvas work. The
+  15.1 (search, find on the Canvas) committed. **15.2a** (a proof that each
+  system prints a PDF, `internal/pdfprint` and the `export-proof` walk) is
+  built and gated on the host, uncommitted, its native code waiting for its
+  first CI run; then 15.2b, 15.2c, 15.3, 15.4. The
   roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **CI** builds a downloadable app per system on every run (artifacts
   `bava-<os>-<commit>`, 14 days).
@@ -308,7 +310,7 @@ History belongs in each plan's As built, not here.
   `tests/docker/browser.Dockerfile`).
   On this Mac, Docker is OrbStack and must be running (`docs/testing.md`).
 - **The real app (end-to-end) runs only on CI:** the e2e build (`-tags e2e`)
-  walks `tests/e2e/` (`create`, `reopen`, `canvas`) on all three
+  walks `tests/e2e/` (`create`, `reopen`, `canvas`, `export-proof`) on all three
   platforms. Never launch the app locally, `wails3 dev` included.
 
 ### Gate status: 2026-10-11

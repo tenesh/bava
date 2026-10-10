@@ -1,0 +1,9 @@
+{
+  "name": "export-proof",
+  "steps": [
+    { "do": "wait", "target": "header", "timeoutMs": 30000 },
+    { "do": "pdf", "target": "a4-portrait.pdf", "name": "A4/portrait/normal", "text": "pages=2 size=210x297" },
+    { "do": "pdf", "target": "letter-landscape.pdf", "name": "Letter/landscape/narrow", "text": "pages=2 size=279.4x215.9" },
+    { "do": "pdf", "target": "a3-no-margins.pdf", "name": "A3/portrait/none", "text": "pages=2 size=297x420" }
+  ]
+}

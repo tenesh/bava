@@ -18,6 +18,9 @@ type Options struct {
 	Scratch  string
 	Capture  func(path string) error
 	Quit     func(code int)
+	// RunOnMain runs a function on the app's main thread, for a "pdf" step's
+	// printing.
+	RunOnMain func(func())
 }
 
 // Service is bound to the page in a -tags e2e build: the page's driver asks

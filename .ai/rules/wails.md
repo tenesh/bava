@@ -192,3 +192,12 @@ in memory twice. The page loads them from `/bava-file/`, an
 against the folders the user opened (`app.OpenedFolders`). A new kind of file
 the page must show goes through that route and its checks, never around them.
 Wails' clipboard reads text only; an image comes from `FileService.ClipboardImage`.
+
+## Printing to PDF reaches into Wails on Windows
+`internal/pdfprint` on Windows prints through a hidden Wails window's
+WebView2, which Wails keeps unexported: it reads `WebviewWindow.impl` (a
+`*windowsWebviewWindow`), its `chromium` field (an `*edge.Chromium`) and
+calls `CallDevTools("Page.printToPDF", ...)`. At every Wails bump, the
+`export-proof` end-to-end walk on CI is the check: a moved field fails the
+print with a message, never the app. macOS and Linux make webviews of
+their own and touch nothing of Wails.

@@ -34,6 +34,8 @@ func smokeRun(_ func() *application.App) (application.Service, pickers) {
 		// Straight to exit with the run's code: asking the app to quit first
 		// ends the process with 0 on some platforms, so a failed run would pass.
 		Quit: func(code int) { os.Exit(code) },
+		// A "pdf" step prints through the system's webview, on the main thread.
+		RunOnMain: application.InvokeSync,
 	})
 	return application.NewService(service), pickers{chooseFolder: folders.Next, chooseFiles: files.Next}
 }

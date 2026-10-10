@@ -259,3 +259,6 @@ could reasonably have gone another way.
 | 2026-10-11 | Milestone 15 is built in four parts, search first | The user's choice (`search.md` decision 1): 15.1 search, 15.2 export, 15.3 import, 15.4 the canvas work. |
 | 2026-10-11 | Search: a palette on ⇧⌘F over names, page text and canvas text, one row per page | The user (`search.md` decisions 2 to 13): every word matched, anywhere; results open at their match with the find bar; only the Space's pages; ⌘K stays Link. |
 | 2026-10-11 | The Canvas gets a find bar | The user (`search.md` decision 9): ⌘F on the Canvas outlines every element whose text matches and steps through them; find only. |
+| 2026-10-11 | A PDF is made by each system's own page printing | The user (`export.md` decision 1): real, selectable text drawn as Bava draws the page; work per system, proven on CI; nothing leaves the machine. |
+| 2026-10-11 | Export is grouped by what is exported: Page, Canvas, Space | The user (`export.md` decisions 2 to 5): each with only its own formats; common paper sizes and Custom; margins None to Wide and Custom; a page's Canvas on its own PDF page, fitted. |
+| 2026-10-11 | Export is built in three parts, PDF proven first | The user (`export.md` decision 6): 15.2a proves PDF printing on all three systems on CI before 15.2b (dialogs, zip) and 15.2c (PDF export). |

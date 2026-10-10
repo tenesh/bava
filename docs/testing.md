@@ -79,17 +79,22 @@ for example `testdata/visual/dialogs/trash--with-items--dark.png`.
 
 ### End-to-end
 
-A test build of Bava (`-tags e2e`) follows three scenarios (`tests/e2e/`) in turn, each a
+A test build of Bava (`-tags e2e`) follows four scenarios (`tests/e2e/`) in turn, each a
 fresh launch, taking screenshots on the way:
 
 - `create`: make a Space in a scratch folder and two pages, write in the
   Document (a page link, an equation, a code block, an image, a file, an
   online video, a table), draw a shape on the canvas, and save.
-- `reopen`: open that Space again, check Media, rename a page, and show the
-  canvas.
+- `reopen`: open that Space again, check Media, rename a page, show the
+  canvas, and search the Space, opening a match in its page.
 - `canvas`: draw shapes and an attached arrow, move, undo and redo, insert a
   diagram with Diagram from Code, save, and read the saved file back for the
   shapes, the bindings and the diagram's labels.
+- `export-proof`: the system's own printing writes a sample page to a PDF
+  as A4 portrait, Letter landscape and A3 with no margins (a `pdf` step:
+  the file, its setup as `paper/orientation/margins`, and what it must
+  hold, `pages=2 size=210x297`), each read back for its page count and
+  paper size. The PDFs are kept with the run's downloads.
 
 It answers the native pickers from the scenario. It runs on GitHub's Linux,
 macOS and Windows machines after a push; the screenshots are attached to the
