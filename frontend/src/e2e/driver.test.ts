@@ -215,6 +215,17 @@ describe('the smoke driver', () => {
     const unreadable = { ...env(), readFile: vi.fn(async () => ({ text: '', error: 'outside the scratch folder' })) };
     expect(await runScenario([{ do: 'file', target: '../a.md', text: 'x' }], unreadable)).toMatch(/outside the scratch folder/);
   });
+
+  // The host prints a sample page to a PDF and reads it back; the step
+  // passes on the host's empty answer and fails with its reason.
+  it('has the host print a PDF and passes or fails on its answer', async () => {
+    const printSample = vi.fn(async () => '');
+    const e = { ...env(), printSample };
+    expect(await runScenario([{ do: 'pdf', target: 'a4.pdf', name: 'A4/portrait/normal', text: 'pages=2 size=210x297' }], e)).toBe('');
+    expect(printSample).toHaveBeenCalledWith('a4.pdf', 'A4/portrait/normal', 'pages=2 size=210x297');
+    const failing = { ...env(), printSample: vi.fn(async () => '1 pages, not 2') };
+    expect(await runScenario([{ do: 'pdf', target: 'a4.pdf', name: 'A4/portrait/normal', text: 'pages=2 size=210x297' }], failing)).toMatch(/1 pages, not 2/);
+  });
 });
 
 // The driver ships only in a smoke test build: the app loads it behind the

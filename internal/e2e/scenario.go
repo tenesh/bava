@@ -13,7 +13,9 @@ import (
 )
 
 // Step is one thing the driver does in the page. Target is a CSS selector,
-// a menu command id for "menu", or a path in the scratch folder for "file";
+// a menu command id for "menu", a path in the scratch folder for "file",
+// or the PDF's file name for "pdf" (whose Name is its setup, as
+// "A4/portrait/normal", and Text what it must hold, "pages=2 size=210x297");
 // Text is what to type, the key to press, or the text a "wait" expects inside
 // its target or a "file" in the file. Modifiers are the keys a "key" or
 // "drag" holds: shift, alt, and mod (⌘ on macOS, Ctrl elsewhere).
@@ -132,6 +134,10 @@ func check(step Step) error {
 	case "file":
 		if step.Target == "" || step.Text == "" {
 			return errors.New(`"file" needs a target and the text it must hold`)
+		}
+	case "pdf":
+		if step.Target == "" || step.Name == "" || step.Text == "" {
+			return errors.New(`"pdf" needs a target file, its setup as the name, and what it must hold`)
 		}
 	default:
 		return fmt.Errorf("unknown step %q", step.Do)

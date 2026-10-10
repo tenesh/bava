@@ -10,7 +10,7 @@ import { Call } from '@wailsio/runtime';
 export type Modifier = 'shift' | 'alt' | 'mod';
 
 export type Step = {
-  do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag' | 'pause' | 'paste' | 'file';
+  do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag' | 'pause' | 'paste' | 'file' | 'pdf';
   /**
    * What a click, wait or drag acts on; for a key, what it is pressed on (else
    * whatever has focus); for a file, its path in the scratch folder.
@@ -29,6 +29,8 @@ export type DriverEnv = {
   shot(name: string): Promise<string>;
   /** A file in the scratch folder, read by the host: its text, or why it could not be. */
   readFile?(path: string): Promise<{ text: string; error: string }>;
+  /** The host prints a sample page to a PDF and reads it back: '' when it holds what it must, else why not. */
+  printSample?(file: string, setup: string, expect: string): Promise<string>;
   timeoutMs: number;
   /** Whether a found element counts as showing; the page's layout by default. */
   visible?: (el: HTMLElement) => boolean;
@@ -249,6 +251,11 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
+    // The system's own printing, proven: the host prints and checks the file.
+    case 'pdf': {
+      if (!env.printSample) return 'no way to print';
+      return env.printSample(s.target!, s.name!, s.text!);
+    }
   }
 }
 
@@ -286,6 +293,7 @@ export async function start(): Promise<void> {
       }),
     shot: async (name) => (await Call.ByName(`${SERVICE}.Shot`, name)) as string,
     readFile: async (path) => (await Call.ByName(`${SERVICE}.ReadFile`, path)) as { text: string; error: string },
+    printSample: async (file, setup, expect) => (await Call.ByName(`${SERVICE}.PrintSample`, file, setup, expect)) as string,
     timeoutMs: 10_000,
   }).catch((error: unknown) => `the driver failed: ${String(error)}`);
   await Call.ByName(`${SERVICE}.Done`, failure);

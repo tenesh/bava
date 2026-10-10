@@ -293,7 +293,7 @@ jobs:
           }
           # Each run must leave a PASS: the exit code alone is not trusted, and a
           # run that crashed before reporting leaves no result at all.
-          for scenario in create reopen canvas; do
+          for scenario in create reopen canvas export-proof; do
             run "$scenario" || true
             result="$out/$scenario-result.txt"
             if [[ ! -f "$result" ]]; then echo "::error::$scenario left no result"; exit 1; fi
