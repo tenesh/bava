@@ -1,7 +1,7 @@
 # Arrows you can shape (Milestone 06.10)
 
 > Historical: implemented (or superseded); kept as the record.
-> Decisions 2, 4, 5 and 7 are superseded by `06.12-arrows-and-code.md`
+> Decisions 2, 4, 5 and 7 are superseded by `arrows-and-code.md`
 > (decisions 7 to 9) and `docs/decisions.md`.
 
 Decisions made with the user, recorded as they are made. Background and

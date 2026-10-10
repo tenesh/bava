@@ -1,11 +1,11 @@
 # Lines and arrows: Excalidraw against Bava, a complete inventory
 
-The checklist decision 11 of `06.12-arrows-and-code.md` asks for: every
+The checklist decision 11 of `arrows-and-code.md` asks for: every
 behaviour of Excalidraw's lines and arrows (sharp, round, elbow; lines,
 including closed ones), and whether Bava already does it. Read 2026-09-26
 from Excalidraw (MIT) at commit `5db42c3` and from Bava's working tree after
 commit `bbe5aa9` (06.13). Decisions already recorded in `arrows.md` and
-`06.12-arrows-and-code.md` are taken as given; a row that restates one says so.
+`arrows-and-code.md` are taken as given; a row that restates one says so.
 
 Out of scope, as asked: touch and pen, collaboration, roughness and
 sloppiness, grid mode. Behaviour behind Excalidraw's `COMPLEX_BINDINGS`

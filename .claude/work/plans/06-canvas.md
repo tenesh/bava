@@ -1,5 +1,7 @@
 # 06: Canvas
 
+> Historical: built and committed; see the roadmap for what followed.
+
 > The window checks this file calls owed were settled by the 8.4a canvas
 > testing pass. Its As built (`08.4a-canvas-testing.md`) maps each one to the
 > test that covers it, or names it as still needing a person at a window.
@@ -16,7 +18,7 @@ the whole free-placement canvas: styles, rotation, export, attached arrows
 and frames, diagrams from D2 as ordinary shapes, code blocks, and every line
 and arrow behaviour in `.claude/work/specs/research/excalidraw-lines-inventory.md`
 (90 rows, all same or built by 6.16; B22 kept by the `CLAUDE.md` detached
-rule). Decisions along the way live in `.claude/work/specs/06.12-arrows-and-code.md`
+rule). Decisions along the way live in `.claude/work/specs/arrows-and-code.md`
 (1 to 16), `diagrams-as-shapes.md` and `docs/decisions.md`.
 
 Every part is committed. Each part's "Verification" section was owed at a
@@ -3690,7 +3692,7 @@ dragging points feels like Excalidraw; elbow arrows keep the side they were
 attached on and route around shapes.
 
 **Specs:**
-- `.claude/work/specs/06.12-arrows-and-code.md`: decisions 1 to 6 (06.12
+- `.claude/work/specs/arrows-and-code.md`: decisions 1 to 6 (06.12
   carries 1, 2, 3, 5, 6 and the drag details of 4)
 - `.claude/work/specs/research/excalidraw-elbow-routing.md`: the routing algorithm,
   constants and file:line references
@@ -3905,7 +3907,7 @@ dropped inside a shape is pinned there, lines and arrows have a point-edit
 mode, and a line or arrow can be drawn click by click.
 
 **Specs:**
-- `.claude/work/specs/06.12-arrows-and-code.md`: decisions 4, 7, 8 and 9
+- `.claude/work/specs/arrows-and-code.md`: decisions 4, 7, 8 and 9
 - `.claude/work/specs/research/excalidraw-comparison.md` section 3; Excalidraw at
   `5db42c3`, file:line references in the decisions
 - `docs/file-format.md` ("Attachment and containment", style table; changed
@@ -4068,7 +4070,7 @@ duplicate/paste bug (B23), and a code block's height.
 **Specs:**
 - `.claude/work/specs/research/excalidraw-lines-inventory.md`: sections 2 (S), 4 (E)
   and row B23, with Excalidraw file:line for every item
-- `.claude/work/specs/06.12-arrows-and-code.md`: decisions 10, 11, 12
+- `.claude/work/specs/arrows-and-code.md`: decisions 10, 11, 12
 - `.claude/work/specs/research/excalidraw-elbow-routing.md`
 - `docs/file-format.md` (changed first, by Task 1), `docs/decisions.md`,
   `docs/shortcuts.md`
@@ -4277,7 +4279,7 @@ needs.
 **Specs:**
 - `.claude/work/specs/research/excalidraw-lines-inventory.md`: sections 1 (C) and 3
   (P), row V2, with Excalidraw file:line for every item
-- `.claude/work/specs/06.12-arrows-and-code.md`: decisions 12 to 15 (13 to 15
+- `.claude/work/specs/arrows-and-code.md`: decisions 12 to 15 (13 to 15
   are recorded by Task 1 from the user's answers of 2026-09-27)
 - `docs/file-format.md` (changed first, by Task 1), `docs/decisions.md`,
   `docs/shortcuts.md`, `internal/app/menu/spec.json`
@@ -4341,7 +4343,7 @@ the 8 px closing zone reuses `--size-line-confirm`.
 
 #### Task 1: Specs first
 **Files:** `docs/file-format.md`, `docs/decisions.md`, `docs/shortcuts.md`,
-`.claude/work/specs/06.12-arrows-and-code.md` (decisions 13 to 15),
+`.claude/work/specs/arrows-and-code.md` (decisions 13 to 15),
 `internal/format/roundtrip_test.go`, `frontend/src/files/document.test.ts`.
 - [x] `closed` and line `fill` specified; the curved default written per
   element; V2 recorded; round-trip fixtures carry `closed: true` and a filled
@@ -4519,7 +4521,7 @@ not already the same or built, so the inventory is complete.
 **Specs:**
 - `.claude/work/specs/research/excalidraw-lines-inventory.md`: sections 5 (B), 6 (H),
   7 (L), 9 (T), 10 (X), 11 (O), with Excalidraw file:line for every item
-- `.claude/work/specs/06.12-arrows-and-code.md`: decisions 12 and 16
+- `.claude/work/specs/arrows-and-code.md`: decisions 12 and 16
 - `docs/file-format.md` (changed first, by Task 1), `docs/decisions.md`,
   `docs/shortcuts.md`, `docs/ipc.md` (settings)
 - `.ai/rules/canvas.md`, `design-system.md`, `svelte.md`, `file-format.md`,
