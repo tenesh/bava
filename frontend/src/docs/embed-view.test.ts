@@ -92,6 +92,15 @@ describe('a canvas embed on the page', () => {
     await vi.waitFor(() => expect((dom as HTMLElement).dataset.deleted).toBe(''));
   });
 
+  it('shows its picture at the frame\'s own size: the picture is drawn at twice size', () => {
+    const { ctx } = context();
+    const { dom } = embedView(embed({ page: 'Other.md' }), view, () => 0, ctx);
+    const img = picture(dom as HTMLElement);
+    Object.defineProperty(img, 'naturalWidth', { value: 800 });
+    img.dispatchEvent(new Event('load'));
+    expect((dom as HTMLElement).style.getPropertyValue('--embed-width')).toBe('400px');
+  });
+
   it('takes an image’s width, alignment and caption', () => {
     const { ctx } = context();
     const { dom, update } = embedView(embed({ width: 'large', align: 'left', caption: 'The write path' }), view, () => 0, ctx);

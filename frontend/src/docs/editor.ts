@@ -889,10 +889,24 @@ export class DocEditor {
   /** Moves the top-level block at `from` to where the pointer is. */
   dropBlock(from: number, x: number, y: number): void {
     const view = this.view;
+    if (!view || this.locked) return;
     const target = this.blockAt(x, y);
-    if (!view || !target || this.locked) return;
-    const half = y < target.rect.top + target.rect.height / 2 ? 'top' : 'bottom';
-    commands.moveBlock(from, dropPosition(view.state.doc, target.pos, half))(view.state, view.dispatch);
+    const half = target && (y < target.rect.top + target.rect.height / 2 ? 'top' : 'bottom');
+    // On a block, before or after it by the half; in the gap between two, there.
+    const to = target && half ? dropPosition(view.state.doc, target.pos, half) : this.#gapAt(x, y);
+    if (to === null) return;
+    commands.moveBlock(from, to)(view.state, view.dispatch);
+  }
+
+  /** The place between two top-level blocks under the pointer, never after the notes; null inside a block. */
+  #gapAt(x: number, y: number): number | null {
+    const view = this.view;
+    const hit = view?.posAtCoords({ left: x, top: y });
+    if (!view || !hit) return null;
+    const doc = view.state.doc;
+    if (doc.resolve(hit.pos).depth !== 0) return null;
+    const notes = doc.lastChild?.type === schema.nodes.footnotes ? doc.content.size - doc.lastChild.nodeSize : doc.content.size;
+    return Math.min(hit.pos, notes);
   }
 
   /** The handle's `+` with ⌥: a line before the block at `pos`, with the `/` menu open on it. */

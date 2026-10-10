@@ -852,6 +852,12 @@ $callout-swatches: (
     cursor: pointer;
   }
 
+  // With no width chosen, the frame's own size (the picture is drawn at
+  // twice it), up to the column.
+  .embed:not([data-width]) .media-file {
+    width: var(--embed-width, auto);
+  }
+
   .embed-deleted {
     display: none;
   }

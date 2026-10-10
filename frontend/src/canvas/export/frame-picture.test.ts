@@ -20,13 +20,20 @@ describe('a frame’s picture', () => {
     expect(frameArea(scene, 'f1')!.box).toEqual({ x: 100, y: 50, w: 400, h: 300 });
   });
 
-  it('draws what the frame holds, frames inside it too, in paint order, without the frame itself', () => {
+  it('draws everything in the frame\'s area, frames inside it too, in paint order, without the frame itself', () => {
     expect(frameArea(scene, 'f1')!.elements.map((e) => e.id)).toEqual(['inner', 'a', 'b']);
   });
 
-  it('leaves out what the frame does not hold, even where it overlaps', () => {
-    const overlapping = { elements: [...scene.elements, el({ id: 'over', type: 'rect', x: 150, y: 60, z: 6 })] };
-    expect(frameArea(overlapping, 'f1')!.elements.map((e) => e.id)).not.toContain('over');
+  it('draws what is over the area though the frame does not hold it, and what crosses its edge', () => {
+    const drawnBefore = el({ id: 'drawn', type: 'rect', x: 150, y: 60, z: 6 });
+    const acrossEdge = el({ id: 'edge', type: 'rect', x: 490, y: 340, w: 40, h: 40, z: 7 });
+    const ids = frameArea({ elements: [...scene.elements, drawnBefore, acrossEdge] }, 'f1')!.elements.map((e) => e.id);
+    expect(ids).toContain('drawn');
+    expect(ids).toContain('edge');
+  });
+
+  it('leaves out what is wholly outside the area', () => {
+    expect(frameArea(scene, 'f1')!.elements.map((e) => e.id)).not.toContain('outside');
   });
 
   it('is none for a frame not in the scene, or an element that is not a frame', () => {
