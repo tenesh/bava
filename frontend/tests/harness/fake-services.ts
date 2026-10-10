@@ -7,6 +7,7 @@
 import { PARENT, SPACE_ROOT, seedSpace, type FakePage, type FakeSpace } from '../fixtures/space';
 import { linkName } from '../../src/docs/links';
 import { fakeSearch, type FakeOpenPage } from './fake-search';
+import { fakeZipPlan, type FakeZipScope } from './fake-zip';
 
 type Op = {
   kind: string;
@@ -323,10 +324,13 @@ export function createFakes(first: FakeSpace = seedSpace()) {
   // What the walks reach past the app: words and scenes put into pages
   // before they open, scenes read back after a save, and every export kept.
   const exports: { path: string; contentsBase64: string }[] = [];
+  // The Markdown zips written: where, and what each held.
+  const zips: { out: string; scope: FakeZipScope; files: string[] }[] = [];
   // A page on its own, in no Space, and what Open File's picker answers.
   const loose: Record<string, FakePage> = { [`${PARENT}/Notes.md`]: { source: '# Notes\n\nA page kept on its own, in no Space.\n', scene: { version: 1, elements: [] } } };
   const harness = {
     exports,
+    zips,
     faults,
     /** The settings as last saved, for a test to read what a control changed. */
     settings: () => ({ ...settings }),
@@ -457,6 +461,20 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         const space = spaceOf(root);
         if (!space) return { hits: [], more: false, ...refusal('notSpace', 'not a Space') };
         return { ...fakeSearch(space, query, open), error: '', code: '' };
+      },
+      async ZipPlan(root: string, scope: FakeZipScope) {
+        const space = spaceOf(root);
+        if (!space) return { files: [], ...refusal('notSpace', 'not a Space') };
+        const plan = fakeZipPlan(space, scope);
+        return Array.isArray(plan) ? { files: plan, error: '', code: '' } : { files: [], ...refusal(plan.code, plan.error) };
+      },
+      async ExportZip(root: string, scope: FakeZipScope, out: string) {
+        const space = spaceOf(root);
+        if (!space) return refusal('notSpace', 'not a Space');
+        const plan = fakeZipPlan(space, scope);
+        if (!Array.isArray(plan)) return refusal(plan.code, plan.error);
+        zips.push({ out, scope, files: plan.map((f) => f.path) });
+        return { error: '', code: '' };
       },
       async Trash(root: string) {
         const space = spaceOf(root);

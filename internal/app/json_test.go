@@ -38,6 +38,7 @@ func TestServiceTypesKeepTheirJSONKeys(t *testing.T) {
 		{"AttachmentList", app.AttachmentList{}, []string{"attachments", "error"}},
 		{"TemplateList", app.TemplateList{}, []string{"code", "error", "templates"}},
 		{"SpaceSearch", app.SpaceSearch{}, []string{"code", "error", "hits", "more"}},
+		{"ZipPlanResult", app.ZipPlanResult{}, []string{"code", "error", "files"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

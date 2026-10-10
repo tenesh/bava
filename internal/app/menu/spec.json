@@ -37,7 +37,16 @@
         { "kind": "command", "id": "file.save", "label": "Save", "accelerator": "CmdOrCtrl+S" },
         { "kind": "command", "id": "file.saveAs", "label": "Save As", "accelerator": "Shift+CmdOrCtrl+S" },
         { "kind": "separator" },
-        { "kind": "command", "id": "file.export", "label": "Export" },
+        {
+          "kind": "submenu",
+          "id": "file.exportMenu",
+          "label": "Export",
+          "items": [
+            { "kind": "command", "id": "file.exportPage", "label": "Page" },
+            { "kind": "command", "id": "file.export", "label": "Canvas" },
+            { "kind": "command", "id": "file.exportSpace", "label": "Space" }
+          ]
+        },
         { "kind": "separator" },
         { "kind": "command", "id": "insert.diagram", "label": "Diagram from Code" },
         { "kind": "separator", "platforms": ["windows", "linux"] },

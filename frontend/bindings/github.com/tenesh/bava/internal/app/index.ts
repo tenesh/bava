@@ -36,5 +36,6 @@ export type {
     SpaceList,
     SpaceSearch,
     TemplateList,
-    TrashList
+    TrashList,
+    ZipPlanResult
 } from "./models.js";

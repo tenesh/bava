@@ -12,6 +12,7 @@ import FileText from '@lucide/svelte/icons/file-text';
 import LayoutGrid from '@lucide/svelte/icons/layout-grid';
 import ListIcon from '@lucide/svelte/icons/list';
 import Upload from '@lucide/svelte/icons/upload';
+import Download from '@lucide/svelte/icons/download';
 import Maximize2 from '@lucide/svelte/icons/maximize-2';
 import Bold from '@lucide/svelte/icons/bold';
 import Italic from '@lucide/svelte/icons/italic';
@@ -220,6 +221,8 @@ export const LUCIDE_ICONS = {
   viewGrid: LayoutGrid,
   viewList: ListIcon,
   upload: Upload,
+  // Export: what Bava writes out (a zip, a PDF).
+  export: Download,
   expand: Maximize2,
 } satisfies Record<string, Component>;
 

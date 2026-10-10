@@ -37,7 +37,9 @@ type Scenario struct {
 	Name    string     `json:"name"`
 	Folders []string   `json:"folders,omitempty"`
 	Files   [][]string `json:"files,omitempty"`
-	Steps   []Step     `json:"steps"`
+	// Saves answer the save dialog, a path each, in order.
+	Saves []string `json:"saves,omitempty"`
+	Steps []Step   `json:"steps"`
 }
 
 var variable = regexp.MustCompile(`\$\{([A-Z_]+)\}`)
@@ -69,6 +71,12 @@ func Parse(data []byte, vars map[string]string) (Scenario, error) {
 	for i, folder := range sc.Folders {
 		var err error
 		if sc.Folders[i], err = expand(folder, vars); err != nil {
+			return sc, err
+		}
+	}
+	for i, save := range sc.Saves {
+		var err error
+		if sc.Saves[i], err = expand(save, vars); err != nil {
 			return sc, err
 		}
 	}
@@ -135,6 +143,10 @@ func check(step Step) error {
 		if step.Target == "" || step.Text == "" {
 			return errors.New(`"file" needs a target and the text it must hold`)
 		}
+	case "zip":
+		if step.Target == "" || step.Text == "" {
+			return errors.New(`"zip" needs a target and what it holds or lacks`)
+		}
 	case "pdf":
 		if step.Target == "" || step.Name == "" || step.Text == "" {
 			return errors.New(`"pdf" needs a target file, its setup as the name, and what it must hold`)
@@ -150,11 +162,18 @@ func check(step Step) error {
 type FolderQueue struct {
 	mu      sync.Mutex
 	answers []string
+	// picker names the dialog in a scenario error.
+	picker string
 }
 
 // NewFolderQueue holds a scenario's folder answers.
 func NewFolderQueue(answers []string) *FolderQueue {
-	return &FolderQueue{answers: append([]string(nil), answers...)}
+	return &FolderQueue{answers: append([]string(nil), answers...), picker: "folder picker"}
+}
+
+// NewSaveQueue holds a scenario's save dialog answers, a path each.
+func NewSaveQueue(answers []string) *FolderQueue {
+	return &FolderQueue{answers: append([]string(nil), answers...), picker: "save dialog"}
 }
 
 // Next is the next answer; a picker shown with none left is a scenario error.
@@ -162,7 +181,7 @@ func (q *FolderQueue) Next(title string) (string, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if len(q.answers) == 0 {
-		return "", fmt.Errorf("e2e: the folder picker %q was shown with no answer left", title)
+		return "", fmt.Errorf("e2e: the %s %q was shown with no answer left", q.picker, title)
 	}
 	next := q.answers[0]
 	q.answers = q.answers[1:]

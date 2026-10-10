@@ -315,3 +315,30 @@ func TestOnlyTheKeptShortcutsAreBound(t *testing.T) {
 		}
 	}
 }
+
+// Export is grouped by what is exported: File ▸ Export ▸ Page, Canvas, Space.
+func TestFileExportIsASubmenuOfWhatIsExported(t *testing.T) {
+	for _, m := range load(t).Menus {
+		if m.ID != "file" {
+			continue
+		}
+		for _, item := range m.Items {
+			if item.ID != "file.exportMenu" {
+				continue
+			}
+			if item.Kind != menu.KindSubmenu {
+				t.Fatalf("File ▸ Export is a %s, not a submenu", item.Kind)
+			}
+			var got []string
+			for _, sub := range item.Items {
+				got = append(got, sub.ID+" "+sub.Label)
+			}
+			want := []string{"file.exportPage Page", "file.export Canvas", "file.exportSpace Space"}
+			if strings.Join(got, ", ") != strings.Join(want, ", ") {
+				t.Errorf("File ▸ Export holds %q; want %q", got, want)
+			}
+			return
+		}
+	}
+	t.Error("the File menu has no Export submenu")
+}

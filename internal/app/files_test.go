@@ -271,3 +271,16 @@ func TestFileRouteServesASitesIcon(t *testing.T) {
 		t.Errorf("served %d %q", rec.Code, rec.Header().Get("Content-Type"))
 	}
 }
+
+// The smoke build answers the save dialog from its scenario.
+func TestChooseFileToSaveTakesItsAnswerWhenGivenOne(t *testing.T) {
+	var asked string
+	s := app.NewFileService(app.FileServiceOptions{ChooseSave: func(name string) (string, error) {
+		asked = name
+		return "/out/Space.zip", nil
+	}})
+	got := s.ChooseFileToSave("Acme Product.zip")
+	if got.Error != "" || got.Path != "/out/Space.zip" || asked != "Acme Product.zip" {
+		t.Errorf("ChooseFileToSave = %+v, asked %q", got, asked)
+	}
+}

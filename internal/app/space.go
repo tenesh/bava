@@ -315,6 +315,40 @@ func (s *SpaceService) Search(root, query string, open *space.OpenPage) SpaceSea
 	return SpaceSearch{Hits: hits, More: more}
 }
 
+// ZipPlanResult is what a Markdown zip will hold, for its preview.
+type ZipPlanResult struct {
+	Files []space.ZipFile `json:"files"`
+	Error string          `json:"error"`
+	Code  string          `json:"code"`
+}
+
+// ZipPlan lists what a Markdown zip of scope will hold: a page, a folder
+// or the whole Space, as space.Space.ZipPlan describes.
+func (s *SpaceService) ZipPlan(root string, scope space.ZipScope) ZipPlanResult {
+	sp, err := space.Load(root)
+	if err != nil {
+		return ZipPlanResult{Files: []space.ZipFile{}, Error: err.Error(), Code: space.Code(err)}
+	}
+	files, err := sp.ZipPlan(scope)
+	if err != nil {
+		return ZipPlanResult{Files: []space.ZipFile{}, Error: err.Error(), Code: space.Code(err)}
+	}
+	return ZipPlanResult{Files: files}
+}
+
+// ExportZip writes the Markdown zip of scope to out, a path the user chose.
+// The Space is only read.
+func (s *SpaceService) ExportZip(root string, scope space.ZipScope, out string) Problem {
+	sp, err := space.Load(root)
+	if err != nil {
+		return Problem{Error: err.Error(), Code: space.Code(err)}
+	}
+	if err := sp.WriteZip(scope, out); err != nil {
+		return Problem{Error: err.Error(), Code: space.Code(err)}
+	}
+	return Problem{}
+}
+
 // Trash lists the Space's Trash, most recently deleted first.
 func (s *SpaceService) Trash(root string) TrashList {
 	sp, err := space.Load(root)

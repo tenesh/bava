@@ -61,7 +61,7 @@ export interface Match {
     "text": string;
 
     /**
-     * Word is the typed word the text holds first, as typed.
+     * Word is the typed word the text holds first, lowered.
      */
     "word": string;
 
@@ -116,4 +116,23 @@ export interface TrashItem {
      * Size is its size on disk in bytes; not stored.
      */
     "size": number;
+}
+
+/**
+ * ZipFile is one file of a zip: its path there and its size.
+ */
+export interface ZipFile {
+    "path": string;
+    "size": number;
+}
+
+/**
+ * ZipScope is what a Markdown zip exports. A folder or a page carries the
+ * attachments its pages use, by name, as the frontend reads them; a Space
+ * carries everything.
+ */
+export interface ZipScope {
+    "kind": string;
+    "path": string;
+    "attachments": string[] | null;
 }

@@ -40,6 +40,11 @@ export type IndexPage = { name: string; path: string; text: string; unreadable?:
 export type SearchMatch = { where: 'name' | 'document' | 'canvas'; text: string; word: string; occurrence: number; element: string };
 /** A page or folder a search found, as `SpaceService.Search` answers. */
 export type SearchHit = { kind: 'page' | 'folder'; path: string; name: string; folder: string; count: number; best: SearchMatch };
+/** What a Markdown zip exports: the Space, a folder or a page, with the attachments its pages use. */
+export type ZipScope = { kind: 'space' | 'folder' | 'page'; path: string; attachments: string[] };
+/** One file of a zip, at its path there. */
+export type ZipFile = { path: string; size: number };
+
 /** The open page as the window holds it, searched in place of its file. */
 export type SearchOpenPage = { path: string; source: string; scene: Scene } | null;
 
@@ -71,6 +76,8 @@ export type SpaceIO = {
   }>;
   index(root: string, withText: boolean): Promise<{ pages: IndexPage[] | null; error: string }>;
   search(root: string, query: string, open: SearchOpenPage): Promise<{ hits: SearchHit[] | null; more: boolean; error: string }>;
+  zipPlan(root: string, scope: ZipScope): Promise<{ files: ZipFile[] | null; error: string; code?: string }>;
+  exportZip(root: string, scope: ZipScope, out: string): Promise<{ error: string; code?: string }>;
   trash(
     root: string,
   ): Promise<{
@@ -142,6 +149,8 @@ const overIPC: SpaceIO = {
     SpaceService.Index(root, withText) as unknown as ReturnType<SpaceIO["index"]>,
   search: (root, query, open) =>
     SpaceService.Search(root, query, open) as unknown as ReturnType<SpaceIO["search"]>,
+  zipPlan: (root, scope) => SpaceService.ZipPlan(root, scope) as unknown as ReturnType<SpaceIO["zipPlan"]>,
+  exportZip: (root, scope, out) => SpaceService.ExportZip(root, scope, out),
   trash: (root) =>
     SpaceService.Trash(root) as unknown as ReturnType<SpaceIO["trash"]>,
   chooseFolder: (title) => SpaceService.ChooseFolder(title),
@@ -451,6 +460,20 @@ export function createSpace(
       const result = await io.search(root, query, open).catch(() => null);
       if (!result || result.error) return null;
       return { hits: result.hits ?? [], more: result.more };
+    },
+
+    /** What a Markdown zip of `scope` will hold, or why it cannot be made. */
+    async zipPlan(scope: ZipScope): Promise<{ files: ZipFile[]; error: string }> {
+      if (!root) return { files: [], error: t("export.noSpace") };
+      const result = await io.zipPlan(root, scope).catch((error: unknown) => ({ files: null, error: String(error) }));
+      return { files: result.files ?? [], error: result.error ? spaceMessage(result as { error: string; code?: string }) : "" };
+    },
+
+    /** Writes the Markdown zip of `scope` to `out`; '' when written, else why not. */
+    async exportZip(scope: ZipScope, out: string): Promise<string> {
+      if (!root) return t("export.noSpace");
+      const result = await io.exportZip(root, scope, out).catch((error: unknown) => ({ error: String(error) }));
+      return result.error ? spaceMessage(result as { error: string; code?: string }) : "";
     },
 
     /** A folder moved or was renamed: keep it, and what is open inside it, open. */

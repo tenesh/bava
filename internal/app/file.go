@@ -33,6 +33,9 @@ type FileServiceOptions struct {
 	// one: the smoke test build takes its answers from the scenario. Nil
 	// shows the native picker.
 	ChooseFiles func(kind string) ([]string, error)
+	// ChooseSave answers the save dialog instead of showing the native one,
+	// as ChooseFiles does the media picker. Nil shows the native dialog.
+	ChooseSave func(suggestedName string) (string, error)
 	// Open opens a file in its own app; nil uses the platform's.
 	Open func(path string) error
 	// Reveal shows a file in its folder; nil uses the platform's file manager.
@@ -193,6 +196,13 @@ func (s *FileService) ChooseFileToOpen() DialogResult {
 
 // ChooseFileToSave shows the native save dialog.
 func (s *FileService) ChooseFileToSave(suggestedName string) DialogResult {
+	if s.options.ChooseSave != nil {
+		path, err := s.options.ChooseSave(suggestedName)
+		if err != nil {
+			return DialogResult{Error: err.Error()}
+		}
+		return DialogResult{Path: path}
+	}
 	dialog := application.Get().Dialog.SaveFile()
 	dialog.SetMessage("Save As")
 	if suggestedName != "" {

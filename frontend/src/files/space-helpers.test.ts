@@ -46,7 +46,7 @@ describe('the Files tree\'s menu', () => {
   const ids = (items: ReturnType<typeof treeMenu>) => items.flatMap((i) => (i.kind === 'item' ? [i.id] : []));
 
   it('offers every action on a page', () => {
-    expect(ids(treeMenu('page', (k) => k))).toEqual(['tree.newPage', 'tree.newFolder', 'tree.rename', 'tree.duplicate', 'tree.saveTemplate', 'tree.reveal', 'tree.trash']);
+    expect(ids(treeMenu('page', (k) => k))).toEqual(['tree.newPage', 'tree.newFolder', 'tree.rename', 'tree.duplicate', 'tree.saveTemplate', 'tree.export', 'tree.reveal', 'tree.trash']);
   });
 
   it('cannot duplicate a folder', () => {
@@ -64,6 +64,13 @@ describe('the Files tree\'s menu', () => {
   it('offers Save as template on a page only', () => {
     expect(ids(treeMenu('page', (k) => k))).toContain('tree.saveTemplate');
     expect(ids(treeMenu('folder', (k) => k))).not.toContain('tree.saveTemplate');
+  });
+
+  // A page exports as a page, a folder as a part of the Space.
+  it('offers Export on a page and on a folder, not on empty space', () => {
+    expect(ids(treeMenu('page', (k) => k))).toContain('tree.export');
+    expect(ids(treeMenu('folder', (k) => k))).toContain('tree.export');
+    expect(ids(treeMenu(null, (k) => k))).not.toContain('tree.export');
   });
 
   it('only makes things on empty space', () => {

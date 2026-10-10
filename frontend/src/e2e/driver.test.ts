@@ -216,6 +216,16 @@ describe('the smoke driver', () => {
     expect(await runScenario([{ do: 'file', target: '../a.md', text: 'x' }], unreadable)).toMatch(/outside the scratch folder/);
   });
 
+  // A zip the app wrote, read back by the host until it holds what it must.
+  it('reads a zip back until it holds what it must, and fails with why not', async () => {
+    const answers = ['zip Smoke.zip: no such file', ''];
+    const checkZip = vi.fn(async () => answers.shift() ?? '');
+    expect(await runScenario([{ do: 'zip', target: 'Smoke.zip', text: 'holds=a.md' }], { ...env(), checkZip })).toBe('');
+    expect(checkZip).toHaveBeenCalledWith('Smoke.zip', 'holds=a.md');
+    const never = { ...env(), timeoutMs: 50, checkZip: vi.fn(async () => 'zip Smoke.zip does not hold a.md') };
+    expect(await runScenario([{ do: 'zip', target: 'Smoke.zip', text: 'holds=a.md' }], never)).toMatch(/does not hold a.md/);
+  });
+
   // The host prints a sample page to a PDF and reads it back; the step
   // passes on the host's empty answer and fails with its reason.
   it('has the host print a PDF and passes or fails on its answer', async () => {

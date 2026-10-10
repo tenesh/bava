@@ -63,6 +63,8 @@
     onTrashPage: () => void;
     /** Save as template, from the page menu. */
     onSaveTemplate: () => void;
+    /** Export the page (as a Markdown zip). */
+    onExportPage?: () => void;
     /** A template is open: the page menu keeps only what a template can do (lock, width). */
     isTemplate?: boolean;
     /** Text for the clipboard: a code block's Copy. */
@@ -103,7 +105,7 @@
     onCanvas?: (what: 'embed' | 'diagram', at: { left: number; top: number; bottom: number }) => void;
   };
 
-  let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage, onSaveTemplate, isTemplate = false, onCopyText, here, mediaPlace, readIndex, onFollow, onOpenPage, onChooseMedia, onOpenFile, fileDetails, fetchCard, onPasteImage, onReplaceMedia, onRenameAttachment, onRevealFile, onAttachPoster, onNotify, embeds, onCanvas }: Props = $props();
+  let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage, onSaveTemplate, onExportPage = () => {}, isTemplate = false, onCopyText, here, mediaPlace, readIndex, onFollow, onOpenPage, onChooseMedia, onOpenFile, fileDetails, fetchCard, onPasteImage, onReplaceMedia, onRenameAttachment, onRevealFile, onAttachPoster, onNotify, embeds, onCanvas }: Props = $props();
 
   const editor = new DocEditor();
   let host: HTMLDivElement;
@@ -656,7 +658,7 @@
         { kind: 'submenu', id: 'width', label: t('doc.width'), items: widths },
         ...(isTemplate
           ? []
-          : [{ kind: 'separator' } satisfies MenuNode, item('duplicate', t('doc.duplicatePage')), item('saveTemplate', t('tree.saveTemplate')), item('trash', t('doc.trashPage'))]),
+          : [{ kind: 'separator' } satisfies MenuNode, item('duplicate', t('doc.duplicatePage')), item('saveTemplate', t('tree.saveTemplate')), item('export', t('tree.export')), item('trash', t('doc.trashPage'))]),
       ],
       run: (id) => {
         if (id === 'lock') editor.setSettings({ locked: !editor.locked });
@@ -664,6 +666,7 @@
         else if (id === 'duplicate') onDuplicatePage();
         else if (id === 'trash') onTrashPage();
         else if (id === 'saveTemplate') onSaveTemplate();
+        else if (id === 'export') onExportPage();
         settings = editor.settings;
         pageTags = editor.tags;
       },

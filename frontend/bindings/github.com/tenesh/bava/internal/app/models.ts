@@ -287,3 +287,12 @@ export interface TrashList {
     "error": string;
     "code": string;
 }
+
+/**
+ * ZipPlanResult is what a Markdown zip will hold, for its preview.
+ */
+export interface ZipPlanResult {
+    "files": space$0.ZipFile[] | null;
+    "error": string;
+    "code": string;
+}

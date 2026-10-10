@@ -18,6 +18,8 @@ export const COMMAND_IDS = [
   'file.open',
   'file.openRecent',
   'file.search',
+  'file.exportPage',
+  'file.exportSpace',
   'file.save',
   'file.saveAs',
   'file.export',

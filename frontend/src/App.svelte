@@ -26,6 +26,10 @@
   import { invalidateAdvanceOnFontLoad } from './canvas/code/advance';
   import { monoAdvance } from './canvas/code/advance';
   import ExportDialog from './components/ExportDialog.svelte';
+  import PageExportDialog from './components/PageExportDialog.svelte';
+  import SpaceExportDialog from './components/SpaceExportDialog.svelte';
+  import { attachmentsFor, zipName } from './files/export-zip';
+  import type { ZipFile, ZipScope } from './files/space.svelte';
   import { base64 } from './canvas/export/fonts';
   import { framePicture } from './canvas/export/frame-picture';
   import { embedFrame, frameGroups, redrawPictures, type EmbedIO } from './files/embed-actions';
@@ -52,7 +56,7 @@
   import { statusLocation } from './shell/status-location';
   import { createDocument, sceneToSave } from './files/document.svelte';
   import { createSpace, type PageContent, type TrashEntry } from './files/space.svelte';
-  import { folderOf, followMove, formatBytes, linksMissedMessage, launchTarget, pageTitle, saveSpaceSettings, spaceChoices, treeMenu, unsavedBody, within } from './files/space-helpers';
+  import { folderOf, followMove, formatBytes, linksMissedMessage, launchTarget, pageTitle, saveSpaceSettings, spaceChoices, spaceMessage, treeMenu, unsavedBody, within } from './files/space-helpers';
   import { createHistory } from './canvas/history';
   import { createSelection } from './canvas/selection';
   import { createPointerHandler } from './canvas/pointer';
@@ -1232,8 +1236,10 @@
 
   function onTreeMenu(id: string) {
     const target = treeMenuAt?.path ?? null;
+    // Read before the menu's target is cleared: the kind is worked out from it.
+    const kind = treeMenuKind;
     treeMenuAt = null;
-    const folder = target === null ? '' : treeMenuKind === 'folder' ? target : folderOf(target);
+    const folder = target === null ? '' : kind === 'folder' ? target : folderOf(target);
     if (id.startsWith(TEMPLATE_ITEM)) {
       afterMenu = () => startFromTemplate(id.slice(TEMPLATE_ITEM.length), folder);
       return;
@@ -1259,6 +1265,10 @@
         break;
       case 'tree.saveTemplate':
         if (target) void saveAsTemplate(target);
+        break;
+      case 'tree.export':
+        if (target && kind === 'folder') void openSpaceExport(target);
+        else if (target) void openPageExport(target);
         break;
     }
   }
@@ -1493,6 +1503,93 @@
   let mediaUsageKnown = $state.raw(false);
   let mediaDialogOpen = $state.raw(false);
   let mediaReads = 0;
+
+  // ---- export as a Markdown zip ----------------------------------------------
+  // A page, or the Space or one of its folders: what the zip will hold, from
+  // Go, beside the dialog's Export.
+  type ZipExport = { kind: 'page' | 'space'; page: string; target: string; folders: string[]; plan: { files: ZipFile[]; error: string } | null; scope?: ZipScope };
+  let zipExport = $state<ZipExport | null>(null);
+
+  /**
+   * The scope of the zip the dialog shows, with the attachments its pages
+   * use; or why it cannot be known (Media could not be listed).
+   */
+  async function zipScope(e: ZipExport): Promise<ZipScope | string> {
+    if (e.kind === 'space' && e.target === '') return { kind: 'space', path: '', attachments: [] };
+    const root = space.root;
+    const listed = root ? await SpaceService.Attachments(root) : null;
+    if (listed?.error) return spaceMessage(listed);
+    const pages = (await space.index(true)) ?? [];
+    const paths = e.kind === 'page' ? [e.page] : pages.map((p) => p.path).filter((p) => p.startsWith(`${e.target}/`));
+    const attachments = attachmentsFor(listed?.attachments ?? [], pages, paths);
+    return e.kind === 'page' ? { kind: 'page', path: e.page, attachments } : { kind: 'folder', path: e.target, attachments };
+  }
+
+  async function planZip() {
+    const e = zipExport;
+    if (!e) return;
+    const scope = await zipScope(e);
+    const plan = typeof scope === 'string' ? { files: [], error: scope } : await space.zipPlan(scope);
+    // Only the dialog still showing this choice takes the answer; Export
+    // writes the very scope the preview showed.
+    if (zipExport === e) zipExport = { ...e, plan, scope: typeof scope === 'string' ? undefined : scope };
+  }
+
+  /** Export a page; one on its own offers to open its folder as a Space first. */
+  async function openPageExport(path: string | null = openRel) {
+    if (!space.root) {
+      const file = doc.path;
+      if (!file || !(await confirm(t('media.needsSpace.title'), t('export.needsSpace.body'), t('tree.openAsSpace')))) return;
+      if (!(await openSpace(file.replace(/[\\/][^\\/]*$/, ''), true))) return;
+      path = openRel;
+    }
+    if (!path) return;
+    // A zip holds the files as saved: the open page's last words are saved
+    // first, and nothing is exported when they could not be.
+    if (path === openRel && doc.dirty && !(await savedBeforeExport())) return;
+    zipExport = { kind: 'page', page: path, target: '', folders: [], plan: null };
+    await planZip();
+  }
+
+  /** Saves the open page before an export; false, said, when it could not be. */
+  async function savedBeforeExport(): Promise<boolean> {
+    await save();
+    if (!doc.dirty) return true;
+    notify(t('export.unsaved'));
+    return false;
+  }
+
+  /** Export the Space, or one of its folders. */
+  async function openSpaceExport(folder = '') {
+    if (!space.root) return;
+    if (doc.dirty && !(await savedBeforeExport())) return;
+    const pages = (await space.index(false)) ?? [];
+    const folders = [...new Set(pages.flatMap((p) => p.path.split('/').slice(0, -1).map((_, i, parts) => parts.slice(0, i + 1).join('/'))))].sort();
+    zipExport = { kind: 'space', page: '', target: folder, folders, plan: null };
+    await planZip();
+  }
+
+  async function chooseZipTarget(folder: string) {
+    if (!zipExport) return;
+    zipExport = { ...zipExport, target: folder, plan: null };
+    await planZip();
+  }
+
+  /** The save dialog, then the zip written where it was asked. */
+  async function writeZip() {
+    const e = zipExport;
+    if (!e?.scope || !space.root) return;
+    const name = e.kind === 'page' ? zipName('page', e.page, '') : zipName(e.target ? 'folder' : 'space', e.target, space.name);
+    const chosen = (await FileService.ChooseFileToSave(name)).path;
+    if (!chosen) return;
+    const error = await space.exportZip(e.scope, chosen);
+    if (error) {
+      notify(error);
+      return;
+    }
+    zipExport = null;
+    notify(t('export.done').replace('{name}', chosen.replace(/^.*[\\/]/, '')));
+  }
 
   /**
    * The Space's attachments and what is known of their use, read afresh: the
@@ -2100,6 +2197,8 @@
       if (space.root) spaceSettingsOpen = true;
     },
     'file.search': () => void openSearch(),
+    'file.exportPage': () => void openPageExport(),
+    'file.exportSpace': () => void openSpaceExport(),
     'file.openRecent': async (path) => {
       if (path) await openPath(path);
     },
@@ -3009,6 +3108,7 @@
           else if (id === 'space.settings') spaceSettingsOpen = true;
           else if (id === 'space.remove' && space.root) void removeSpace(space.root);
           else if (id === 'space.tags') openTagsDialog();
+          else if (id === 'space.export') void openSpaceExport();
         }}
       />
       <div class="side-sections">
@@ -3057,6 +3157,7 @@
       onCounts={(counts) => (docCounts = counts)}
       onDuplicatePage={() => openRel && void duplicatePath(openRel)}
       onTrashPage={() => openRel && void trashPath(openRel)}
+      onExportPage={() => void openPageExport()}
       onSaveTemplate={() => void saveAsTemplate(openRel)}
       isTemplate={editingTemplate !== null}
       onCopyText={(text) => void Clipboard.SetText(text)}
@@ -3206,6 +3307,27 @@
     diagramOpen = next;
   }}
 />
+
+{#if zipExport?.kind === 'page'}
+  <PageExportDialog
+    open={true}
+    pageName={zipExport.page.replace(/^.*\//, '').replace(/\.md$/i, '')}
+    plan={zipExport.plan}
+    onExport={() => void writeZip()}
+    onClose={() => (zipExport = null)}
+  />
+{:else if zipExport?.kind === 'space'}
+  <SpaceExportDialog
+    open={true}
+    spaceName={space.name}
+    folders={zipExport.folders}
+    target={zipExport.target}
+    plan={zipExport.plan}
+    onTarget={(folder) => void chooseZipTarget(folder)}
+    onExport={() => void writeZip()}
+    onClose={() => (zipExport = null)}
+  />
+{/if}
 
 <ExportDialog
   open={exporter.isOpen}

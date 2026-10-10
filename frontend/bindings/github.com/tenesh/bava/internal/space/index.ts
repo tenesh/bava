@@ -8,5 +8,7 @@ export type {
     Match,
     OpenPage,
     Template,
-    TrashItem
+    TrashItem,
+    ZipFile,
+    ZipScope
 } from "./models.js";

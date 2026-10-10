@@ -44,6 +44,29 @@ for (const theme of THEMES) {
       await shotDialog(page, shot('dialogs', 'search', 'none', theme), palette);
     });
 
+    // Export as a Markdown zip: a page, and the whole Space.
+    test('export a page', async ({ page }) => {
+      await openApp(page, theme);
+      await openPage(page, 'Marketing/Launch plan.md');
+      await menu(page, 'file.exportPage');
+      const dialog = page.getByRole('dialog', { name: 'Export page' });
+      await expect(dialog).toContainText('Launch plan');
+      await expect(dialog.getByRole('button', { name: 'Export zip' })).toBeEnabled();
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'export-page', 'zip', theme), dialog);
+    });
+
+    test('export the Space', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await menu(page, 'file.exportSpace');
+      const dialog = page.getByRole('dialog', { name: 'Export Space' });
+      await expect(dialog).toContainText('Settings');
+      await expect(dialog.getByRole('button', { name: 'Export zip' })).toBeEnabled();
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'export-space', 'zip', theme), dialog);
+    });
+
     // Find on the Canvas: every match outlined, the current one chosen.
     test('find on the Canvas', async ({ page }) => {
       await openApp(page, theme);

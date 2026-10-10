@@ -68,3 +68,13 @@ func TestQuittingClosesTheSessionFirst(t *testing.T) {
 		t.Errorf("order = %v; want the session closed, then the exit", order)
 	}
 }
+
+func TestAScenarioAnswersTheSaveDialogWithItsVariables(t *testing.T) {
+	sc, err := Parse([]byte(`{"name":"x","saves":["${SCRATCH}/Space.zip"],"steps":[{"do":"wait","target":"header"}]}`), map[string]string{"SCRATCH": "/tmp/s"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sc.Saves) != 1 || sc.Saves[0] != "/tmp/s/Space.zip" {
+		t.Errorf("saves = %q", sc.Saves)
+	}
+}

@@ -1,6 +1,7 @@
 {
   "name": "reopen",
   "folders": ["${SCRATCH}/Smoke"],
+  "saves": ["${SCRATCH}/Smoke.zip"],
   "steps": [
     { "do": "wait", "target": "header", "timeoutMs": 30000 },
     { "do": "menu", "target": "file.openSpace" },
@@ -37,7 +38,6 @@
     { "do": "menu", "target": "view.canvas" },
     { "do": "wait", "target": "footer", "text": "Nodes 1" },
     { "do": "shot", "name": "reopened" },
-
     { "do": "menu", "target": "view.document" },
     { "do": "menu", "target": "file.search" },
     { "do": "wait", "target": ".search-palette input" },
@@ -47,7 +47,11 @@
     { "do": "gone", "target": ".search-palette" },
     { "do": "wait", "target": "[role='search'][aria-label='Find in page'] .position", "text": "1 of" },
     { "do": "key", "text": "Escape" },
-
+    { "do": "menu", "target": "file.exportSpace" },
+    { "do": "wait", "target": "[role='dialog']", "text": "Export Space" },
+    { "do": "click", "target": "[role='dialog'] .bava-button.primary" },
+    { "do": "gone", "target": "[role='dialog']" },
+    { "do": "zip", "target": "Smoke.zip", "text": "holds=First page.md,Goal.md,.bava/attachments/logo.png,.bava/space.json; lacks=.bava/trash" },
     { "do": "file", "target": "Smoke/First page.md", "text": "See [Goal](Goal.md)" }
   ]
 }

@@ -10,7 +10,7 @@ import { Call } from '@wailsio/runtime';
 export type Modifier = 'shift' | 'alt' | 'mod';
 
 export type Step = {
-  do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag' | 'pause' | 'paste' | 'file' | 'pdf';
+  do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag' | 'pause' | 'paste' | 'file' | 'pdf' | 'zip';
   /**
    * What a click, wait or drag acts on; for a key, what it is pressed on (else
    * whatever has focus); for a file, its path in the scratch folder.
@@ -31,6 +31,8 @@ export type DriverEnv = {
   readFile?(path: string): Promise<{ text: string; error: string }>;
   /** The host prints a sample page to a PDF and reads it back: '' when it holds what it must, else why not. */
   printSample?(file: string, setup: string, expect: string): Promise<string>;
+  /** A zip in the scratch folder read back by the host: '' when it holds and lacks what it must, else why not. */
+  checkZip?(path: string, expect: string): Promise<string>;
   timeoutMs: number;
   /** Whether a found element counts as showing; the page's layout by default. */
   visible?: (el: HTMLElement) => boolean;
@@ -251,6 +253,17 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
+    // A zip the app wrote, read back by the host until it is there.
+    case 'zip': {
+      if (!env.checkZip) return 'no way to read zips';
+      const end = Date.now() + timeout;
+      for (;;) {
+        const failure = await env.checkZip(s.target!, s.text!);
+        if (!failure) return '';
+        if (Date.now() > end) return failure;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
     // The system's own printing, proven: the host prints and checks the file.
     case 'pdf': {
       if (!env.printSample) return 'no way to print';
@@ -294,6 +307,7 @@ export async function start(): Promise<void> {
     shot: async (name) => (await Call.ByName(`${SERVICE}.Shot`, name)) as string,
     readFile: async (path) => (await Call.ByName(`${SERVICE}.ReadFile`, path)) as { text: string; error: string },
     printSample: async (file, setup, expect) => (await Call.ByName(`${SERVICE}.PrintSample`, file, setup, expect)) as string,
+    checkZip: async (path, expect) => (await Call.ByName(`${SERVICE}.CheckZip`, path, expect)) as string,
     timeoutMs: 10_000,
   }).catch((error: unknown) => `the driver failed: ${String(error)}`);
   await Call.ByName(`${SERVICE}.Done`, failure);

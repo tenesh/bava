@@ -449,3 +449,29 @@ func TestSearchFindsPagesAndRefusesAnUnknownRoot(t *testing.T) {
 		t.Errorf("Search on no Space = %+v; want an error and an empty list", bad)
 	}
 }
+
+// A zip is planned and written through the Space's own rules: the root is
+// checked, a refusal comes back as data, and the file lands where asked.
+func TestAZipIsPlannedAndWrittenThroughTheSpace(t *testing.T) {
+	root := t.TempDir()
+	s := spaceService(nil)
+	s.Open(root)
+	testutil.WriteTree(t, root, map[string]string{"a.md": "# a\n"})
+	plan := s.ZipPlan(root, space.ZipScope{Kind: space.ZipPage, Path: "a.md"})
+	if plan.Error != "" || len(plan.Files) != 1 || plan.Files[0].Path != "a.md" {
+		t.Fatalf("ZipPlan = %+v; want a.md", plan)
+	}
+	out := filepath.Join(t.TempDir(), "a.zip")
+	if p := s.ExportZip(root, space.ZipScope{Kind: space.ZipPage, Path: "a.md"}, out); p.Error != "" {
+		t.Fatalf("ExportZip = %+v", p)
+	}
+	if _, err := os.Stat(out); err != nil {
+		t.Errorf("no zip written: %v", err)
+	}
+	if bad := s.ZipPlan(root, space.ZipScope{Kind: space.ZipFolder, Path: "../x"}); bad.Error == "" || bad.Code == "" || bad.Files == nil {
+		t.Errorf("ZipPlan outside = %+v; want a refusal with a code and an empty list", bad)
+	}
+	if bad := s.ExportZip(filepath.Join(root, "missing"), space.ZipScope{Kind: space.ZipSpace}, out); bad.Error == "" {
+		t.Error("ExportZip on no Space succeeded")
+	}
+}

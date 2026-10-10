@@ -64,6 +64,14 @@ export function CreatePageFrom(root: string, folder: string, name: string, sourc
 }
 
 /**
+ * ExportZip writes the Markdown zip of scope to out, a path the user chose.
+ * The Space is only read.
+ */
+export function ExportZip(root: string, scope: space$0.ZipScope, out: string): $CancellablePromise<$models.Problem> {
+    return $Call.ByID(2091024444, root, scope, out);
+}
+
+/**
  * FetchCard reads a web page's details for a card, when the user pastes its
  * link or asks for its details again. The icon and picture are saved in the
  * Space's attachments, named by the site; outside a Space (root "") they are
@@ -134,4 +142,12 @@ export function Templates(root: string): $CancellablePromise<$models.TemplateLis
  */
 export function Trash(root: string): $CancellablePromise<$models.TrashList> {
     return $Call.ByID(2780375675, root);
+}
+
+/**
+ * ZipPlan lists what a Markdown zip of scope will hold: a page, a folder
+ * or the whole Space, as space.Space.ZipPlan describes.
+ */
+export function ZipPlan(root: string, scope: space$0.ZipScope): $CancellablePromise<$models.ZipPlanResult> {
+    return $Call.ByID(2908057485, root, scope);
 }

@@ -264,11 +264,12 @@ History belongs in each plan's As built, not here.
   (a block dropped in a gap, embed pictures), CI green 2026-10-10.
   **Milestone 8.7** (the look: black and white, `.claude/work/specs/look.md`)
   is committed (2026-10-11). **Milestone 15** is under way in four parts:
-  15.1 (search, find on the Canvas) and **15.2a** (a proof that each system
+  15.1 (search, find on the Canvas) and 15.2a (a proof that each system
   prints a PDF: `internal/pdfprint`, the `export-proof` walk) are committed,
-  CI green on all three systems 2026-10-11 (run 38089701163). **Next is
-  15.2b** (the export dialogs, the Markdown zip, the canvas as today), then
-  15.2c (PDF export), 15.3 import, 15.4 the canvas work. The
+  CI green on all three systems 2026-10-11 (run 38089701163). 15.2b (the
+  export dialogs, the Markdown zip) is built, its `zip` step in the `reopen`
+  walk not yet seen on CI. **Next is 15.2c** (PDF export), then 15.3
+  import, 15.4 the canvas work. The
   roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **CI** builds a downloadable app per system on every run (artifacts
   `bava-<os>-<commit>`, 14 days).
@@ -323,9 +324,9 @@ History belongs in each plan's As built, not here.
 | `go test ./internal/render -run Golden` | exit 0 (inside the run above); 2 fixtures under `testdata/golden/`, light and dark |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 2,814 tests passed and 1 skipped, in 224 files |
+| `npm test` | exit 0; 2,833 tests passed and 1 skipped, in 227 files |
 | `npm run build` | CI's first frontend step. The production minifier rejects some CSS the dev server and the browser tests accept (WebKit-only selectors such as `::selection:window-inactive`) |
-| `npm run browser` | last full runs 2026-10-11: 490 passed, twice in a row; 286 references in `testdata/visual/` |
+| `npm run browser` | last full runs 2026-10-11: 501 passed, twice in a row; 290 references in `testdata/visual/` |
 | CI end-to-end | `create`, `reopen` and `canvas` on all three platforms; see Milestones for the last run |
 | `wails3 build` | CI only |
 
@@ -337,6 +338,7 @@ What no test can see, still waiting for a person, in both themes:
   menu; the error dialog; the Media section and dialog.
 - The icons at 16px and 1024px.
 - Search and find on the Canvas: the lists in 15.1's As built.
+- Export as a Markdown zip: the list in 15.2b's As built.
 - The native menus on each platform (Windows and Linux unseen).
 - A forced panic and a frontend exception found in the log folder in a
   release build.

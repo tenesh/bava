@@ -65,3 +65,11 @@ chosen paper size and margins, checked on CI on all three; **15.2b** the
 three dialogs, the Markdown zip and the canvas as today; **15.2c** PDF
 export on the proven printing. Should the proof fail on a system, what to
 do there is decided before anything is built on it.
+
+### 7. A zip carries everything but the Trash (2026-10-11)
+
+A Space's Markdown zip holds its pages laid out as in the Space and its
+`.bava` folder without the Trash: the images and files, the templates and
+the settings (page order, page width), so it reopens as the same Space,
+minus what was thrown away. Chosen over an exact copy (the Trash
+included) and over pages with only the images they use.

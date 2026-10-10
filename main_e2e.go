@@ -26,6 +26,7 @@ func smokeRun(_ func() *application.App, closeSession func()) (application.Servi
 	}
 	folders := e2e.NewFolderQueue(scenario.Folders)
 	files := e2e.NewFileQueue(scenario.Files)
+	saves := e2e.NewSaveQueue(scenario.Saves)
 	service := e2e.NewService(e2e.Options{
 		Scenario: scenario,
 		Out:      os.Getenv("BAVA_E2E_OUT"),
@@ -38,5 +39,5 @@ func smokeRun(_ func() *application.App, closeSession func()) (application.Servi
 		// A "pdf" step prints through the system's webview, on the main thread.
 		RunOnMain: application.InvokeSync,
 	})
-	return application.NewService(service), pickers{chooseFolder: folders.Next, chooseFiles: files.Next}
+	return application.NewService(service), pickers{chooseFolder: folders.Next, chooseFiles: files.Next, chooseSave: saves.Next}
 }

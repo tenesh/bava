@@ -70,6 +70,7 @@ func main() {
 			Folders:        folders,
 			ClipboardImage: app.ReadClipboardImage,
 			ChooseFiles:    answers.chooseFiles,
+			ChooseSave:     answers.chooseSave,
 		})),
 		application.NewService(app.NewSpaceService(app.SpaceServiceOptions{
 			Reveal: func(path string, selectFile bool) error {
@@ -123,6 +124,7 @@ func main() {
 type pickers struct {
 	chooseFolder func(title string) (string, error)
 	chooseFiles  func(kind string) ([]string, error)
+	chooseSave   func(suggestedName string) (string, error)
 }
 
 // appOptions is the application's configuration.

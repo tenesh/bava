@@ -30,6 +30,19 @@ test.describe('the side pane at work', () => {
     await expect(page.locator('input.rename').filter({ visible: true })).toBeFocused();
   });
 
+  // A folder's right-click makes the page inside that folder, not beside it.
+  test("New page from a folder's right-click is made in that folder", async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    await rightClick(page, sidePane(page).locator('[data-path="Engineering"]'));
+    await menus(page).getByRole('menuitem', { name: 'New page', exact: true }).click();
+    const field = page.locator('input.rename').filter({ visible: true });
+    await expect(field).toBeFocused();
+    await field.fill('Plan B');
+    await page.keyboard.press('Enter');
+    await expect(sidePane(page).locator('[data-path="Engineering/Plan B.md"]')).toBeVisible();
+  });
+
   test('naming a new page', async ({ page }) => {
     await openApp(page, 'light');
     await openSpace(page);

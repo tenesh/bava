@@ -46,6 +46,7 @@ export function treeMenu(kind: EntryKind | null, label: (key: string) => string,
     { kind: 'separator' },
     item('tree.rename'),
     ...(kind === 'page' ? [item('tree.duplicate'), item('tree.saveTemplate')] : []),
+    item('tree.export'),
     item('tree.reveal'),
     { kind: 'separator' },
     item('tree.trash'),
@@ -101,6 +102,7 @@ const REFUSALS = {
   throughLink: 'space.error.throughLink',
   notSpace: 'space.error.notSpace',
   notAttachment: 'space.error.notAttachment',
+  notPage: 'space.error.notPage',
   revealUnavailable: 'space.error.revealUnavailable',
 } as const;
 
