@@ -9,9 +9,9 @@ that changes an earlier one says so.
 
 ## Design pass
 
-Done 2026-09-27: mockups in **Bava Design**,
-https://claude.ai/artifact/RMvLeKBkbF4N2Hv89HSude. Mockups are reference,
-not spec: the code and these decisions stay the source of truth.
+Done 2026-09-27: mockups in **Bava Design** (since deleted). Mockups are reference,
+not spec: the code and these decisions stay the source of truth. The
+look was redone on 2026-10-11: `look.md`.
 
 ## Decisions
 
@@ -644,6 +644,9 @@ added under its title and stored in the page's front matter as a plain list
 - **A tag's menu:** Rename (on every page), Merge into another tag, Delete
   (from every page; the pages stay).
 - Inside a Space; a loose page keeps its tags but has no Tags section.
+
+*Changed 2026-10-11 (`look.md` decision 10):* a tag reads `#launch` in
+mono, in an outlined chip; still no tag colours; the file keeps `launch`.
 
 *Changed 2026-10-06 (decisions 2 to 5 and 7 of
 `tags-and-templates.md`):* tags are lowercase with no spaces,

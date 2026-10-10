@@ -38,7 +38,8 @@ comments as well as in code. A rule with nothing behind it decays.
 
 ### The set
 
-Emitted as of Milestone 2, values from the design's token sheet:
+The names, from the design's first token sheet; the values since 2026-10-11
+from `.claude/work/specs/look.md`:
 
 `surface`, `surface-raised`, `surface-sunken`, `surface-overlay`,
 `surface-nav` · `border-subtle`, `border-strong`, `border-hairline` ·
@@ -64,7 +65,8 @@ There is no accent setting.
 - **No coloured edge on one side only.** A chosen row (a file, a recent
   Space, a settings section, a menu item) is a full fill (`selection`;
   hover is the lighter `accent-subtle`); emphasis on a block goes on its whole border or its
-  icon. A quote's grey rule is the one left edge, and it is not coloured.
+  icon. A quote's and the contents block's grey rules are the only left
+  edges, and neither is coloured.
 - **Shadows only on what floats:** menus, popovers, the tool rail, the
   selection bar, dialogs. A chosen segment is outlined, not lifted.
 - Corners 3 to 6px on controls (`--radius-sm/md/lg`), 10px on windows and
@@ -80,9 +82,9 @@ describes in prose but never names).
 An inactive window still dims it; a rule for that is refused by the
 production minifier (`::selection:window-inactive`), so there is none.
 
-**Shape colours are not tokens.** The swatches in the design's colour picker
-are content a user chooses per element; they live in the scene file, not
-here.
+**A shape's colour is content.** The file stores a swatch name or a
+`#rrggbb`; what each swatch name means in each theme is a token in
+`_swatches.scss` (below).
 
 **No component writes a literal value.** No hex codes, no `px` outside the
 token files, no one-off shadows. If a value is needed that no token provides,
@@ -222,7 +224,7 @@ check both before building either by hand.
 
 | Component | Why in-house |
 |---|---|
-| `Pane` ✓ | A region of the shell: `titled` shows the small-caps header, `bare` (Document, Canvas) keeps only the accessible name. |
+| `Pane` ✓ | A region of the shell: `titled` shows the mono capitals header, `bare` (Document, Canvas) keeps only the accessible name. |
 | `ViewSwitcher` ✓ | `Document │ Both │ Canvas`, over `Segments`. |
 | `Segments` ✓ | A few exclusive choices, wrapping Ark's SegmentGroup. Use it rather than buttons with `role="radio"`, which lack arrow-key navigation. |
 | `ShortcutsDialog` ✓ | Shortcut groups, as the caller derives them from the menu spec; each key its own keycap (`keycaps.ts`). |
@@ -309,8 +311,8 @@ live once, in `canvas/palette.ts`.
 
 The panda mark is **paper on ink, always** (`--color-mark`,
 `--color-mark-tile`): bare on a dark ground, in its own ink tile on a light
-one. It never inverts to ink on paper and never takes the accent, which is
-the ink, reserved for selection and focus. Use `Mark`, never an `<img>` of the SVG: an
+one. It never inverts to ink on paper and is never recoloured: its tile is the
+brand ink (`--color-mark-tile`), never the `accent` token. Use `Mark`, never an `<img>` of the SVG: an
 image cannot take its colour from a token.
 
 One drawing at every size. Do not stretch, rotate, recolour, redraw for small

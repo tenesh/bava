@@ -103,6 +103,10 @@ Check every item. **Absence of evidence is a finding, not a pass.**
   `.ai/rules/design-system.md` in the same change.
 - A new colour token consumed by the diagram has a matching Go-side theme
   mapping in the same change.
+- **The look** (`.ai/rules/design-system.md`, black and white): flag a
+  coloured border on one side only, a new accent colour (the accent is the
+  ink), a section label not in `--font-label`, and data (sizes, dates,
+  paths, counts, keys) not in `--font-data`.
 
 ## 7. Tests
 

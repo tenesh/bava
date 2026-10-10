@@ -2,9 +2,9 @@
 
 Settled with the user on 2026-10-11, one question at a time, after the user
 asked to rethink the whole UI before Milestone 15: "It just doesn't feel
-polished or unique like its missing its personality." Mockups (reference,
-not spec): https://claude.ai/artifact/MieBYBEHtsfcPgVYi8wHYq. Where a mockup
-shows a control, what the control does stays as built; this spec changes
+polished or unique like its missing its personality." Mockups were drawn
+to choose from (reference, not spec; deleted once decided, as everything
+chosen is written here). Where a mockup showed a control, what the control does stays as built; this spec changes
 how Bava looks, not what it does.
 
 ### 1. Quiet and precise (2026-10-11)
@@ -49,6 +49,11 @@ selected row (a file, a recent Space, a settings section) gets the wash
 across the whole row; a callout has an even hairline all round, its icon
 carrying the emphasis.
 
+*As built (2026-10-11):* a chosen row fills with `selection` (ink at 12%,
+20% in dark), a step above the Wash, which is its hover; a callout keeps
+its fill (its kind's colour) and has no border, its icon carrying the
+emphasis. No coloured edge on one side anywhere.
+
 ### 5. The canvas keeps its dots (2026-10-11)
 
 The dot grid stays, retuned to the new greys. A square grid and no grid
@@ -73,7 +78,7 @@ paths and dates in mono. A card on the canvas dots was offered.
 ### 9. The canvas tools stay on the left (2026-10-11)
 
 A vertical bar, as today, in Both and in Canvas, with each tool's key
-beside it. Bottom and top centre were offered.
+in its corner. Bottom and top centre were offered.
 
 ### 10. Four small touches (2026-10-11)
 
@@ -89,7 +94,7 @@ beside it. Bottom and top centre were offered.
 
 Hairlines separate; panels are not filled to tell them apart. Shadows only
 on what floats: menus, popovers, the tool rail, the selection bar, dialogs.
-Corners 4 to 6px on controls, 10px on windows and dialogs.
+Corners 3 to 6px on controls, 10px on windows and dialogs.
 
 ### 12. What does not change
 

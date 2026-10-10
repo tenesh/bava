@@ -135,7 +135,8 @@ following these.
 ### Frontend unit tests
 
 - `x.test.ts` beside the module; `x.svelte.test.ts` only when the test itself
-  uses runes. Node by default; `// @vitest-environment jsdom` only when the
+  uses runes. A component sharing its name with a module beside it
+  (`Keycaps.svelte`, `keycaps.ts`) tests in `x-component.test.ts`. Node by default; `// @vitest-environment jsdom` only when the
   test needs a page.
 - `describe` names the unit (a component or a function); each `it` is a
   behaviour.
@@ -200,12 +201,12 @@ following these.
 
 ## What the browser tests cover
 
-Pictures, about 120 per theme (`testdata/visual/`):
+Pictures, about 140 per theme (`testdata/visual/`):
 
 | Area | Pictured | Guard |
 |---|---|---|
 | `components` | Eight sheets (controls, pickers, menus, fields, canvas chrome, side pane, document floating, feedback), every state of each component side by side; and each piece that opens on a press, opened: the arrowheads picker and its More, the opacity slider, the colour swatches, the right-click menu, the Space switcher, tooltips; the Files tree naming a page | `harness/gallery.test.ts`: every component is on a sheet or in a screen, once |
-| `canvas` | Every seeded scene (`fixtures/canvas-scenes.ts`), two also at about 200%; the empty canvas; one element of each kind of selection chrome selected; everything selected; a handle hovered, also at 200%; a turned shape; long labels; a label and a code block edited; a detached arrow end; the eraser, a marquee, rotating, point editing, snap guides and an arrow's end over a shape, each mid-drag | `fixtures/canvas-scenes.test.ts`: every element type is drawn in a scene |
+| `canvas` | Every seeded scene (`fixtures/canvas-scenes.ts`), two also at about 200%; the empty canvas; one element of each kind of selection chrome selected; everything selected; a handle hovered, also at 200%; a turned shape; long labels; a label and a code block edited; a detached arrow end; the eraser, a marquee, rotating, point editing, snap guides, a shape moving with its position shown, and an arrow's end over a shape, each mid-drag | `fixtures/canvas-scenes.test.ts`: every element type is drawn in a scene |
 | `document` | Sheets of every block, every inline piece and mark, every block unable to draw, and every block empty (`fixtures/document-blocks.ts`); media at each width, tables in both forms, cells selected and merged, a node selected, a canvas embed from another page and one whose frame is gone, a tag being added, a code caption edited, a selection under the bubble, a block's handle and menu, the placeholder, a locked page, Linked from, find, page widths, media full screen | `fixtures/document-blocks.test.ts`: every schema type is on a sheet |
 | `dialogs` | Each dialog in its main state, and the variants with a layout of their own: the Tags dialog managing several and its delete asked, the Templates dialog, Save as template, Trash with attachments and empty, Media chosen, as a list and renaming, a delete asked first, an error without details, the export previews, a name taken, code D2 cannot read | |
 | `settings`, `shell`, `space`, `start` | Each settings tab; the window in each view, a template being edited under its bar, with no page, with the AI pane, a loose page, the splash, a failed pane, a status notice; the side pane open and folded, the tree narrowed by tags and the tag list, New page from template in Add, Media, a page dragged onto a folder and between rows; the start screen with and without recents | |

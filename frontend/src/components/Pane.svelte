@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * A region of the shell, named by its title. `titled` shows the title in a
-   * small-caps header; `bare` keeps it as the region's accessible name only.
+   * mono capitals header; `bare` keeps it as the region's accessible name only.
    * Presentational: props in, nothing else.
    */
   import type { Snippet } from 'svelte';

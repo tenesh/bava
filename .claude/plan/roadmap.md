@@ -1,6 +1,6 @@
 # Bava roadmap
 
-Milestones 0–16, including half-steps (0.5, 5.5 to 5.8) that exist because
+Milestones 0–16, including half-steps (0.5, 5.5 to 5.8, 8.7) that exist because
 something must land before the milestone that depends on it. Each has one goal,
 one exit criterion provable by running a
 command, and its dependencies. The build loop in
@@ -478,8 +478,8 @@ restores the attachment.
 ## Milestone 8: Documents *(complete; 8.1 to 8.6c committed, CI green 2026-10-10)*
 
 **Discussed and decided (2026-09-27):** 97 decisions in
-`.claude/work/specs/documents.md`, mockups in Bava Design
-(https://claude.ai/artifact/RMvLeKBkbF4N2Hv89HSude). Planned in six parts,
+`.claude/work/specs/documents.md`, with mockups (since deleted; the look is
+now `look.md`). Planned in six parts,
 with 8.1a, 8.3d, 8.4a to 8.4e, 8.5a and 8.6c added along the way; each is planned, gated and
 committed on its own, and specifies its file-format changes in
 `docs/file-format.md` first:
@@ -519,7 +519,7 @@ and a round trip of a document containing an embed.
 
 ---
 
-## Milestone 8.7: The look *(built and gated 2026-10-11; added that day, before Milestone 15)*
+## Milestone 8.7: The look *(complete; committed 2026-10-11, added that day, before Milestone 15)*
 
 **Goal:** Bava looks like itself: quiet and precise, in black and white,
 across every screen, with nothing it does changed.
@@ -571,6 +571,8 @@ with Excalidraw), none built yet:
 - A command palette.
 - Paste from other apps onto the canvas: text as a text element, and Bava
   shapes through the system clipboard.
+- A drag the system cuts off (`pointercancel`, lost capture) ends as a
+  release does, clearing the marquee, guides and position readout.
 - Labels that fit their shape: a text area per shape (diamond, ellipse and
   the outline shapes), and a shape that grows to its label on commit.
 

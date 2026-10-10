@@ -88,7 +88,8 @@ Konva nodes: stroke, fill, points, label text.
 ## All pointer input has one path
 Pressing a selection handle, dragging, marquee and drawing all go through the
 pointer handler as DOM events in scene coordinates. The stage only draws the
-selection outline and handles, on a non-listening overlay layer. Konva's
+selection outline and handles, snap guides and the position while moving, on
+a non-listening overlay layer. Konva's
 Transformer is not used: its anchors take Konva events, and a press would also
 reach the pointer handler and start a move.
 

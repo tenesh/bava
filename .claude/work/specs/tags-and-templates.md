@@ -48,8 +48,7 @@ pages that have the tag.
 
 ### 7. A Tags dialog manages them, several at once (2026-10-06)
 
-From the mockups the user approved
-(https://claude.ai/artifact/NnuULeWaD8MrJDEe7SJY2M, reference, not spec): a
+From the mockups the user approved (reference, not spec; since deleted): a
 **Tags** dialog, like Media, opened from the tag list's "Manage tags" and
 the Space switcher. It lists every tag with its page count, searchable and
 sorted by name or by pages. A tag is renamed in its row (a name another tag
