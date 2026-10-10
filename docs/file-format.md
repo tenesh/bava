@@ -56,7 +56,7 @@ does not recognise.
 This holds with Spaces (below). A Space's `.bava/` folder keeps what belongs
 to the Space as a whole (page order, the Trash and attachments), never a page's text or canvas. The one thing that can be
 separated from a page copied on its own is its attachments: a trade-off
-accepted knowingly (`.claude/work/specs/08-documents.md`, decision 10),
+accepted knowingly (`.claude/work/specs/documents.md`, decision 10),
 never silent (a missing attachment says so), and covered by exporting the
 page with its files.
 

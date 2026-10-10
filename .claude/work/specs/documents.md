@@ -1,5 +1,8 @@
 # Milestone 8: Documents, decisions
 
+> Built in Milestone 8, except decisions 48, 49 and 58 (export, import
+> and search), which Milestone 15 builds.
+
 Worked out with the user one question at a time, before any plan
 (`.claude/plan/roadmap.md`, Milestone 8). Each decision is dated; a later one
 that changes an earlier one says so.
@@ -270,7 +273,7 @@ round it. So Diagram from Code started in the Document (decision 25) places
 its diagram inside a new frame, and embeds that frame.
 
 *Refined 2026-10-10 (08.5 decisions 3 and 5 in
-`08.5-canvas-in-the-document.md`):* the embed's picture is everything drawn
+`canvas-in-the-document.md`):* the embed's picture is everything drawn
 over the frame's area, not only what belongs to the frame.
 
 ### 27. An embed whose frame is deleted keeps its last picture (2026-09-27)
@@ -448,7 +451,7 @@ template is an ordinary page file (Document and Canvas), so it diffs like
 the rest.
 
 *Settled further 2026-10-07 (decisions 8 to 12 of
-`08.6-tags-and-templates.md`):* a group is a folder in `.bava/templates/`;
+`tags-and-templates.md`):* a group is a folder in `.bava/templates/`;
 New page from template is a submenu in Add; no fill-ins; a template is
 edited like a page; a deleted template is gone for good, after asking.
 Built in 8.6b.
@@ -643,7 +646,7 @@ added under its title and stored in the page's front matter as a plain list
 - Inside a Space; a loose page keeps its tags but has no Tags section.
 
 *Changed 2026-10-06 (decisions 2 to 5 and 7 of
-`08.6-tags-and-templates.md`):* tags are lowercase with no spaces,
+`tags-and-templates.md`):* tags are lowercase with no spaces,
 converted as typed; they sit at the bottom of the page; they are a filter
 in Files, not a section of their own; a Tags dialog manages several at
 once. Built in 8.6a.

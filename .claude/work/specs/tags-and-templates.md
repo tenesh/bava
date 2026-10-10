@@ -1,7 +1,9 @@
 # 8.6: Tags and templates, decisions
 
+> Historical: implemented (or superseded); kept as the record.
+
 Settled with the user before the plans, one question at a time. They fill
-holes in decisions 47, 53, 60, 63 and 75 of `08-documents.md`, and replace
+holes in decisions 47, 53, 60, 63 and 75 of `documents.md`, and replace
 parts of decision 66 (decisions 2 to 5 and 7 here).
 
 ### 1. Built in two parts, tags first (2026-10-06)

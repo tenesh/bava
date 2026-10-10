@@ -303,7 +303,7 @@ reopen, and confirm the drawing is intact.
 
 ---
 
-## Milestone 5.6: Chrome *(gated; awaiting the window check; brand shipped in 5.7)*
+## Milestone 5.6: Chrome *(complete; brand shipped in 5.7; the window check is owed, listed in the build skill)*
 
 **Goal:** A real desktop menu bar in place of title-bar buttons, and autosave.
 
@@ -330,7 +330,7 @@ source editor, Copy/Paste work on a canvas selection and in the editor, and
 
 ---
 
-## Milestone 5.7: Brand *(gated; awaiting a human look at the icons and both themes)*
+## Milestone 5.7: Brand *(complete; a human look at the icons is owed, listed in the build skill)*
 
 **Goal:** The mark as app icon, in the title bar, the files empty state and
 About.
@@ -355,7 +355,7 @@ always, never the accent.
 
 ---
 
-## Milestone 5.8: Errors and logs *(gated; awaiting the release-build check)*
+## Milestone 5.8: Errors and logs *(complete; the release-build check is owed, listed in the build skill)*
 
 **Goal:** When something fails, the user sees what happened and can hand us the
 logs, and nothing reaches us unless they send it.
@@ -411,7 +411,7 @@ edits everything a diagram needs, and behaves as Excalidraw does.
 
 **Plans:** one file, `.claude/work/plans/06-canvas.md`: an overview table,
 then each part's plan, as built and spec review in full. Decisions in
-`.claude/work/specs/06.12-arrows-and-code.md` (1 to 16), `canvas-toolbar.md`,
+`.claude/work/specs/arrows-and-code.md` (1 to 16), `canvas-toolbar.md`,
 `diagrams-as-shapes.md`, `launch.md` and `docs/decisions.md`.
 
 **Scope, as built.** Milestone 6 started as "shapes that look right" and grew,
@@ -478,7 +478,7 @@ restores the attachment.
 ## Milestone 8: Documents *(complete; 8.1 to 8.6c committed, CI green 2026-10-10)*
 
 **Discussed and decided (2026-09-27):** 97 decisions in
-`.claude/work/specs/08-documents.md`, mockups in Bava Design
+`.claude/work/specs/documents.md`, mockups in Bava Design
 (https://claude.ai/artifact/RMvLeKBkbF4N2Hv89HSude). Planned in six parts,
 with 8.1a, 8.3d, 8.4a to 8.4e, 8.5a and 8.6c added along the way; each is planned, gated and
 committed on its own, and specifies its file-format changes in
@@ -503,7 +503,7 @@ Export and import moved to Milestone 15, which now follows this one.
 
 **Goal:** Prose alongside the canvas, with parts of the canvas embedded in the
 text. How embeds work (a frame, kept up to date as an image, from either side)
-is settled in decisions 24 to 27 and 61 of `08-documents.md`.
+is settled in decisions 24 to 27 and 61 of `documents.md`.
 
 **Exit criterion:**
 
@@ -523,7 +523,7 @@ and a round trip of a document containing an embed.
 
 **Goal:** Get work out of Bava and into it, and find things across a Space.
 
-**Scope:** From the Milestone 8 discussion (`.claude/work/specs/08-documents.md`,
+**Scope:** From the Milestone 8 discussion (`.claude/work/specs/documents.md`,
 decisions 48, 49 and 58):
 - **Export** a page, a folder or a whole Space as PDF (one combined file or
   one per page; paper size, theme, margins, scale, page numbers) or as a
@@ -552,7 +552,7 @@ colour for shapes was built in 6.3.
 
 ```sh
 go test ./internal/export ./internal/search -v \
-  && go test ./internal/... . && go vet ./... \
+  && go test ./internal/... . && go vet ./internal/... . \
   && (cd frontend && npm run check && npm run lint && npm test)
 ```
 
@@ -663,7 +663,7 @@ and anything else built on shadcn-svelte, because they bring Tailwind.
 **Exit criterion:**
 
 ```sh
-go test ./internal/ai/... -v && go test ./internal/... . && go vet ./... \
+go test ./internal/ai/... -v && go test ./internal/... . && go vet ./internal/... . \
   && (cd frontend && npm run check && npm run lint && npm test)
 ```
 

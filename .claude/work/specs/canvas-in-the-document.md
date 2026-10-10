@@ -1,7 +1,9 @@
 # 8.5: Canvas in the Document, decisions
 
+> Historical: implemented (or superseded); kept as the record.
+
 Settled with the user before the plan, one question at a time. They fill
-holes in decisions 24 to 27 and 61 of `08-documents.md`; decision 5 changes
+holes in decisions 24 to 27 and 61 of `documents.md`; decision 5 changes
 61, and decision 3 (as settled on 2026-10-10) refines 26.
 
 ### 1. The saved picture is a PNG at twice size (2026-10-04)
@@ -36,7 +38,7 @@ picture's shape.
 
 ### 5. A loose page asks to become a Space before it embeds (2026-10-04)
 
-As for any media (decision 52 of `08-documents.md`): embedding a frame on a
+As for any media (decision 52 of `documents.md`): embedding a frame on a
 page in no Space offers to make it a Space, then embeds. One rule for every
 picture a page holds; the picture always goes in `.bava/attachments/`.
 

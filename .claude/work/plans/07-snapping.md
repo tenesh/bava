@@ -1,5 +1,7 @@
 # 07: Snapping and detached arrows
 
+> Historical: built and committed; see the roadmap for what followed.
+
 **Goal:** close Milestone 7: pin its three exit behaviours with tests, and add
 Excalidraw's object snapping (edges, centres and equal spacing, with guides).
 
@@ -9,7 +11,7 @@ Excalidraw's object snapping (edges, centres and equal spacing, with guides).
   rules, values, and the design for Bava this plan follows).
 - The user's answers (2026-09-27): off by default; Alt+S toggles it; every
   element snaps by its box ("use the box rule"), a departure from Excalidraw.
-- `.claude/work/specs/06.12-arrows-and-code.md`, decision 12 (Excalidraw wins
+- `.claude/work/specs/arrows-and-code.md`, decision 12 (Excalidraw wins
   unless the user says otherwise).
 - `docs/decisions.md`, `docs/ipc.md`, `docs/shortcuts.md`
 - `.ai/rules/canvas.md`, `.ai/rules/design-system.md`, `.ai/rules/wails.md`
