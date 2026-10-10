@@ -813,6 +813,19 @@ to Linux: deb/rpm install the 1024px `appicon.png` into `hicolor/128x128`.
 backups kept outside the project, offered at the next launch.
 Also: confirm the public issue tracker and un-hide Help ▸ Report Issue.
 
+**The publisher's name, settled before the first release** (asked by the user
+on 2026-10-11). Today it is `tenesh` everywhere. The app ID
+`dev.tenesh.bava` (`build/config.yml` and the files made from it:
+`Info.plist`, `wails.exe.manifest`, the MSIX manifests) is what macOS and
+Windows know the app by: changing it after release makes it a different app,
+and what was kept under the old ID does not follow. Decide it first. The
+rest can change any time: the company, copyright and vendor
+(`build/config.yml`, `build/windows/info.json`, `build/linux/nfpm/nfpm.yaml`,
+the NSIS defaults), the MSIX `Publisher`, which must match the signing
+certificate, and, if the repository moves, the Go module path
+(`github.com/tenesh/bava`), the bindings folder made from it, and `NOTICE`'s
+link.
+
 **Exit criterion:**
 
 ```sh
@@ -847,6 +860,16 @@ a local build.
   dissolved on 2026-09-17: a converted diagram's nodes are ordinary elements.
   Tab is not a canvas key; it is left to the browser's focus
   (`frontend/src/canvas/keymap.test.ts`).
+
+---
+
+## After Milestone 15: CI setup in one place
+
+Asked by the user on 2026-10-11. Keep the one workflow (`.github/workflows/ci.yml`),
+since its jobs wait on `test` and report one result, but move the setup
+every job repeats (checkout, Linux webview packages, Go, Node, `npm ci`)
+into a local composite action, `.github/actions/setup`. Proved by a green
+CI run on all three systems.
 
 ---
 
