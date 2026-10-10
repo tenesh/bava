@@ -15,6 +15,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as format$0 from "../format/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as space$0 from "../space/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -107,6 +110,15 @@ export function Reveal(root: string, path: string): $CancellablePromise<$models.
  */
 export function SaveTemplate(root: string, group: string, name: string, source: string, scene: format$0.Scene, replace: boolean): $CancellablePromise<$models.OpResult> {
     return $Call.ByID(3547581276, root, group, name, source, scene, replace);
+}
+
+/**
+ * Search finds the Space's pages and folders holding every word of query,
+ * in their names, Documents and Canvases. open, when given, is the page in
+ * the window with what it holds now, searched in place of its file.
+ */
+export function Search(root: string, query: string, open: space$0.OpenPage | null): $CancellablePromise<$models.SpaceSearch> {
+    return $Call.ByID(680926463, root, query, open);
 }
 
 /**

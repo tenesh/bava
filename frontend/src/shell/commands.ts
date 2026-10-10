@@ -17,6 +17,7 @@ export const COMMAND_IDS = [
   'file.spaceSettings',
   'file.open',
   'file.openRecent',
+  'file.search',
   'file.save',
   'file.saveAs',
   'file.export',

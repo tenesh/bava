@@ -46,6 +46,9 @@
   --size-menu-key: 16px;
   // How far below a moving selection its position is shown, on screen.
   --size-readout-gap: 8px;
+  // Find on the Canvas: each match's outline, and how far outside its box.
+  --size-find-outline: 1px;
+  --size-find-gap: 4px;
   // A page's widths in the Document (full is the pane's own width), and the
   // gutter beside it where the block handle and + sit.
   --size-page-narrow: 640px;
@@ -88,6 +91,11 @@
   --size-frame-picker: 340px;
   // The field a tag is typed into, and its suggestions at their narrowest.
   --size-tag-field: 160px;
+  // The search palette: its width, how far below the window's top it sits,
+  // and how tall its results may grow.
+  --size-search-palette: min(600px, 90vw);
+  --size-search-palette-top: 72px;
+  --size-search-results: min(420px, 60vh);
   // The tag list under the Files header, and the box that marks a tag chosen in it.
   --size-tag-filter: 260px;
   --size-tag-filter-height: 360px;

@@ -256,3 +256,6 @@ could reasonably have gone another way.
 | 2026-10-10 | No menu state for unsaved changes or undo, no Clear Recent, no native About panel | The user: the three items left from the menus are dropped; About stays an in-app dialog. |
 | 2026-10-11 | Bava looks quiet and precise, in black and white | The user, rethinking the whole UI before Milestone 15: chosen from four feels and three palettes; no accent setting; decisions in `.claude/work/specs/look.md`, built as Milestone 8.7. |
 | 2026-10-11 | Every Space letter is the ink; the canvas ground is white | Settled in 08.7's plan from `look.md` decision 2: the per-Space swatch colours chosen from the name (8.1) are gone; the canvas sits on the ground colour, not a sunken grey. |
+| 2026-10-11 | Milestone 15 is built in four parts, search first | The user's choice (`search.md` decision 1): 15.1 search, 15.2 export, 15.3 import, 15.4 the canvas work. |
+| 2026-10-11 | Search: a palette on ⇧⌘F over names, page text and canvas text, one row per page | The user (`search.md` decisions 2 to 13): every word matched, anywhere; results open at their match with the find bar; only the Space's pages; ⌘K stays Link. |
+| 2026-10-11 | The Canvas gets a find bar | The user (`search.md` decision 9): ⌘F on the Canvas outlines every element whose text matches and steps through them; find only. |

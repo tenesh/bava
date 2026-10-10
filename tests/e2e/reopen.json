@@ -38,6 +38,16 @@
     { "do": "wait", "target": "footer", "text": "Nodes 1" },
     { "do": "shot", "name": "reopened" },
 
+    { "do": "menu", "target": "view.document" },
+    { "do": "menu", "target": "file.search" },
+    { "do": "wait", "target": ".search-palette input" },
+    { "do": "type", "text": "smoke" },
+    { "do": "wait", "target": ".search-palette [role='option']", "text": "First page" },
+    { "do": "key", "text": "Enter" },
+    { "do": "gone", "target": ".search-palette" },
+    { "do": "wait", "target": "[role='search'][aria-label='Find in page'] .position", "text": "1 of" },
+    { "do": "key", "text": "Escape" },
+
     { "do": "file", "target": "Smoke/First page.md", "text": "See [Goal](Goal.md)" }
   ]
 }

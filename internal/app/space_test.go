@@ -12,6 +12,7 @@ import (
 
 	"github.com/tenesh/bava/internal/app"
 	"github.com/tenesh/bava/internal/format"
+	"github.com/tenesh/bava/internal/space"
 	"github.com/tenesh/bava/internal/testutil"
 	"github.com/tenesh/bava/internal/web"
 )
@@ -430,5 +431,21 @@ func TestTemplatesSavedListedChangedAndUsed(t *testing.T) {
 	}
 	if list := s.Templates(root); len(list.Templates) != 1 || list.Templates[0].Path != ".bava/templates/Rituals/Daily.md" {
 		t.Errorf("after the changes = %+v", list.Templates)
+	}
+}
+
+// Search goes through the Space's own rules: the root is checked, the open
+// page's text is used, and a refusal comes back as data.
+func TestSearchFindsPagesAndRefusesAnUnknownRoot(t *testing.T) {
+	root := t.TempDir()
+	s := spaceService(nil)
+	s.Open(root)
+	testutil.WriteTree(t, root, map[string]string{"a.md": "launch\n", "b.md": "nothing\n"})
+	got := s.Search(root, "launch", &space.OpenPage{Path: "b.md", Source: "launch too\n"})
+	if got.Error != "" || len(got.Hits) != 2 || got.More {
+		t.Fatalf("Search = %+v; want both pages, one by its unsaved text", got)
+	}
+	if bad := s.Search(filepath.Join(root, "missing"), "launch", nil); bad.Error == "" || bad.Hits == nil {
+		t.Errorf("Search on no Space = %+v; want an error and an empty list", bad)
 	}
 }

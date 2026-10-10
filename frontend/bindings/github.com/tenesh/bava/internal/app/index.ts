@@ -34,6 +34,7 @@ export type {
     SpaceIndex,
     SpaceInfo,
     SpaceList,
+    SpaceSearch,
     TemplateList,
     TrashList
 } from "./models.js";

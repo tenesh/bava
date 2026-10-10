@@ -37,7 +37,7 @@ import { readoutAt, readoutText } from './readout';
 import type { Box } from './selection';
 import { handleCentre, rotateHandleCentre } from './resize';
 import { besideLabel, chromeFor, editingFor, elbowSegmentHandles, focusSpots, grown, labelSpotEnds, offersMiddles } from './selection-chrome';
-import { angleOfElement, centreOf, selectionFrame } from './rotate';
+import { angleOfElement, centreOf, rotatedBounds, selectionFrame } from './rotate';
 import type { Guide } from './snapping';
 import { gridDots } from './grid';
 
@@ -156,6 +156,9 @@ export class CanvasStage {
   /** Where a moving selection is, shown below what is drawn of it. */
   #readoutBox: { position: Box; around: Box } | null = null;
   #readout: Konva.Text | null = null;
+  /** What find on the Canvas matched, outlined. */
+  #findIds: ElementId[] = [];
+  #findOutlines: Konva.Rect[] = [];
   #trail: Konva.Line | null = null;
   #markedForErase = new Set<ElementId>();
   #zoom = 1;
@@ -257,6 +260,8 @@ export class CanvasStage {
       this.#pending = scene;
       return;
     }
+    // Find's outlines follow what they outline as it moves.
+    if (this.#findIds.length > 0) this.#drawFindMatches(read);
 
     const seen = new Set<ElementId>();
     // A new group goes on top of the layer, wherever its element belongs.
@@ -848,6 +853,41 @@ export class CanvasStage {
   }
 
   /**
+   * Outline the elements find on the Canvas matched, or clear them with an
+   * empty list: a rectangle a screen gap outside each one's drawn box, in
+   * the ink, screen-sized at every zoom.
+   */
+  setFindMatches(ids: ElementId[]): void {
+    if (ids.length === 0 && this.#findIds.length === 0) return;
+    this.#findIds = [...ids];
+    this.#drawFindMatches(cached(this.#read));
+  }
+
+  /** The find outlines, for tests: what was drawn. */
+  findOutlines(): Konva.Rect[] {
+    return this.#findOutlines;
+  }
+
+  #drawFindMatches(read: ReadVariable): void {
+    this.#findOutlines.forEach((node) => node.destroy());
+    this.#findOutlines = [];
+    if (!this.#overlay) return;
+    const scale = 1 / this.#zoom;
+    const gap = number(read, '--size-find-gap') * scale;
+    const stroke = read('--color-selection-handle').trim();
+    const strokeWidth = number(read, '--size-find-outline') * scale;
+    for (const id of this.#findIds) {
+      const element = this.#last.elements.find((e) => e.id === id);
+      if (!element) continue;
+      const box = rotatedBounds(element);
+      const outline = new Konva.Rect({ x: box.x - gap, y: box.y - gap, width: box.w + gap * 2, height: box.h + gap * 2, stroke, strokeWidth, listening: false });
+      this.#findOutlines.push(outline);
+      this.#overlay.add(outline);
+    }
+    this.#overlay.batchDraw();
+  }
+
+  /**
    * Show a moving selection's position (its box in scene units) below it,
    * or clear it with null. `around` is the box as drawn, rotation included,
    * which the text goes under; it defaults to the position's box.
@@ -993,6 +1033,7 @@ export class CanvasStage {
     // Guides are screen-sized: a zoom while hovering redraws them.
     if (this.#snapGuides.length > 0) this.#drawSnapGuides(cached(this.#read));
     if (this.#readoutBox) this.#drawReadout(cached(this.#read));
+    if (this.#findIds.length > 0) this.#drawFindMatches(cached(this.#read));
     this.#stage?.scale({ x: view.zoom, y: view.zoom });
     this.#stage?.position(view.pan);
     this.#stage?.batchDraw();

@@ -292,6 +292,8 @@ func TestOnlyTheKeptShortcutsAreBound(t *testing.T) {
 		"canvas.snapToObjects": true,
 		// ⌘O opens a Space, ⇧⌘O a file.
 		"file.openSpace": true,
+		// Search across a Space, beside ⌘F (find in this page).
+		"file.search": true,
 	}
 	bound := map[string]bool{}
 	for _, item := range load(t).AllItems() {

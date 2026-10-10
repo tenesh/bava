@@ -389,6 +389,13 @@ describe('find and replace', () => {
     expect(editor!.markdown()).toBe('dog cat cat\n');
   });
 
+  // Search opens a page at the match it found: the word's nth appearance.
+  it('starts at a given match, or at the first when there are fewer', () => {
+    open('Plan the plan.\n\nPLAN B\n');
+    expect(editor!.find('plan', 2)).toEqual({ count: 3, index: 2 });
+    expect(editor!.find('plan', 9)).toEqual({ count: 3, index: 0 });
+  });
+
   it('finds nothing in an empty query, and clears', () => {
     open('Text\n');
     expect(editor!.find('')).toEqual({ count: 0, index: -1 });

@@ -259,6 +259,17 @@ export interface SpaceList {
 }
 
 /**
+ * SpaceSearch is what a search found, and whether there were more than it
+ * returns.
+ */
+export interface SpaceSearch {
+    "hits": space$0.Hit[] | null;
+    "more": boolean;
+    "error": string;
+    "code": string;
+}
+
+/**
  * TemplateList is the Space's templates.
  */
 export interface TemplateList {

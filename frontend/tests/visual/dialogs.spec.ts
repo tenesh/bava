@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import {
   THEMES,
+  canvasPane,
+  shotPane,
   newSpaceFromSwitcher,
   emit,
   emptyTrash,
@@ -24,6 +26,35 @@ for (const theme of THEMES) {
       await page.getByRole('button', { name: 'New Space' }).click();
       await restPointer(page);
       await shotDialog(page, shot('dialogs', 'new-space', 'empty', theme));
+    });
+
+    // The search palette (File ▸ Search): before typing, with results, and with none.
+    test('search', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await menu(page, 'file.search');
+      const palette = page.getByRole('dialog', { name: 'Search' });
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'search', 'empty', theme), palette);
+      await palette.getByRole('searchbox', { name: 'Search' }).fill('launch');
+      await expect(palette.getByRole('option').first()).toContainText('Launch plan');
+      await shotDialog(page, shot('dialogs', 'search', 'results', theme), palette);
+      await palette.getByRole('searchbox', { name: 'Search' }).fill('zzzz');
+      await expect(palette).toContainText('No results');
+      await shotDialog(page, shot('dialogs', 'search', 'none', theme), palette);
+    });
+
+    // Find on the Canvas: every match outlined, the current one chosen.
+    test('find on the Canvas', async ({ page }) => {
+      await openApp(page, theme);
+      await openPage(page, 'Engineering/Architecture.md');
+      await menu(page, 'view.canvas');
+      await menu(page, 'edit.find');
+      const find = canvasPane(page).getByRole('search', { name: 'Find on canvas' });
+      await find.getByRole('searchbox', { name: 'Find' }).fill('e');
+      await expect(find).toContainText('1 of');
+      await restPointer(page);
+      await shotPane(canvasPane(page), shot('dialogs', 'find', 'canvas', theme));
     });
 
     test('Space settings', async ({ page }) => {

@@ -121,6 +121,15 @@ type SpaceIndex struct {
 	Code  string      `json:"code"`
 }
 
+// SpaceSearch is what a search found, and whether there were more than it
+// returns.
+type SpaceSearch struct {
+	Hits  []space.Hit `json:"hits"`
+	More  bool        `json:"more"`
+	Error string      `json:"error"`
+	Code  string      `json:"code"`
+}
+
 // IndexPage is a page: its path, its name without .md, and its text when
 // asked for.
 type IndexPage struct {
@@ -286,6 +295,24 @@ func (s *SpaceService) Index(root string, withText bool) SpaceIndex {
 		index.Pages = append(index.Pages, entry)
 	}
 	return index
+}
+
+// Search finds the Space's pages and folders holding every word of query,
+// in their names, Documents and Canvases. open, when given, is the page in
+// the window with what it holds now, searched in place of its file.
+func (s *SpaceService) Search(root, query string, open *space.OpenPage) SpaceSearch {
+	sp, err := space.Load(root)
+	if err != nil {
+		return SpaceSearch{Hits: []space.Hit{}, Error: err.Error(), Code: space.Code(err)}
+	}
+	hits, more, err := sp.Search(query, open)
+	if err != nil {
+		return SpaceSearch{Hits: []space.Hit{}, Error: err.Error(), Code: space.Code(err)}
+	}
+	if hits == nil {
+		hits = []space.Hit{}
+	}
+	return SpaceSearch{Hits: hits, More: more}
 }
 
 // Trash lists the Space's Trash, most recently deleted first.

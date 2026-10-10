@@ -34,6 +34,8 @@
     onTrash: (path: string) => void;
     onContextMenu: (path: string | null, point: { x: number; y: number }) => void;
     onRenameStarted?: () => void;
+    /** A row to bring into view and focus; a new `at` asks again (search shows a folder it found). */
+    reveal?: { path: string; at: number };
   };
 
   let {
@@ -54,7 +56,22 @@
     onTrash,
     onContextMenu,
     onRenameStarted = () => {},
+    reveal,
   }: Props = $props();
+
+  // Each request is met once, when its row is there: the rows may arrive a
+  // moment later, as the folders unfold. After that the row lets go, or any
+  // change to the tree would pull the keys back to it.
+  let revealed = 0;
+  $effect(() => {
+    if (!reveal?.path || reveal.at === revealed) return;
+    void rows;
+    const row = document.querySelector<HTMLElement>(`.space-tree [data-path="${CSS.escape(reveal.path)}"]`);
+    if (!row) return;
+    revealed = reveal.at;
+    row.scrollIntoView({ block: 'nearest' });
+    row.focus();
+  });
 
   /** A page shows its name without `.md`; renaming it keeps the extension (Go adds it). */
   const label = (node: TreeNodeData) => (node.kind === 'page' ? node.name.replace(/\.md$/i, '') : node.name);

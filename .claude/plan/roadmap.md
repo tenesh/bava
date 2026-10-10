@@ -549,9 +549,13 @@ holding, and the file format unchanged (`go test ./internal/format`).
 
 ---
 
-## Milestone 15: Export, import and search *(next; moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
+## Milestone 15: Export, import and search *(under way: 15.1 built 2026-10-11; moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
 
 **Goal:** Get work out of Bava and into it, and find things across a Space.
+
+**Built in four parts** (`.claude/work/specs/search.md` decision 1): **15.1**
+search across a Space, with find on the Canvas; **15.2** export; **15.3**
+import; **15.4** the canvas work below. Search is settled in `search.md`.
 
 **Scope:** From the Milestone 8 discussion (`.claude/work/specs/documents.md`,
 decisions 48, 49 and 58):

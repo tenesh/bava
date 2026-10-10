@@ -6,6 +6,7 @@
  */
 import { PARENT, SPACE_ROOT, seedSpace, type FakePage, type FakeSpace } from '../fixtures/space';
 import { linkName } from '../../src/docs/links';
+import { fakeSearch, type FakeOpenPage } from './fake-search';
 
 type Op = {
   kind: string;
@@ -451,6 +452,11 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         };
         walk('');
         return { pages, error: '', code: '' };
+      },
+      async Search(root: string, query: string, open: FakeOpenPage) {
+        const space = spaceOf(root);
+        if (!space) return { hits: [], more: false, ...refusal('notSpace', 'not a Space') };
+        return { ...fakeSearch(space, query, open), error: '', code: '' };
       },
       async Trash(root: string) {
         const space = spaceOf(root);
