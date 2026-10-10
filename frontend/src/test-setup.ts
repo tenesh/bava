@@ -32,6 +32,10 @@ afterEach(async () => {
 });
 
 // jsdom draws nothing, so it has no scrolling; Ark scrolls a dropdown's list
-// to its choice as it opens.
-if (typeof Element !== 'undefined') Element.prototype.scrollTo ??= () => {};
+// to its choice as it opens, and a revealed row or highlighted result is
+// scrolled into view.
+if (typeof Element !== 'undefined') {
+  Element.prototype.scrollTo ??= () => {};
+  Element.prototype.scrollIntoView ??= () => {};
+}
 

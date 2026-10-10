@@ -36,6 +36,7 @@ export const IN_SCREENS: Record<string, string> = {
   SpaceSettingsDialog: 'dialogs',
   TrashDialog: 'dialogs',
   TagsDialog: 'dialogs',
+  SearchPalette: 'dialogs',
   SaveTemplateDialog: 'dialogs',
   TemplatesDialog: 'dialogs',
   TemplateBar: 'document',

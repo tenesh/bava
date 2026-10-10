@@ -28,6 +28,8 @@
         { "kind": "command", "id": "file.open", "label": "Open File", "accelerator": "Shift+CmdOrCtrl+O" },
         { "kind": "recents", "id": "file.openRecent", "label": "Open Recent" },
         { "kind": "separator" },
+        { "kind": "command", "id": "file.search", "label": "Search", "accelerator": "Shift+CmdOrCtrl+F" },
+        { "kind": "separator" },
         { "kind": "command", "id": "space.templates", "label": "Templates" },
         { "kind": "command", "id": "space.trash", "label": "Trash" },
         { "kind": "command", "id": "file.spaceSettings", "label": "Space Settings" },

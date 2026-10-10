@@ -18,6 +18,25 @@ const rows: TreeRow[] = [
   { entry: folders[''][1], depth: 0 },
 ];
 
+function base() {
+  return {
+    folders,
+    rows,
+    expanded: ['Marketing'],
+    pending: null,
+    activePath: 'Marketing/Launch plan.md',
+    unsavedPath: 'Marketing/Launch plan.md',
+    onToggle: vi.fn(),
+    onOpen: vi.fn(),
+    onRename: vi.fn(),
+    onCommitNew: vi.fn(),
+    onCancelNew: vi.fn(),
+    onMove: vi.fn(),
+    onTrash: vi.fn(),
+    onContextMenu: vi.fn(),
+  };
+}
+
 function setup(over: Record<string, unknown> = {}) {
   const handlers = {
     onToggle: vi.fn(),
@@ -48,6 +67,40 @@ describe('the Files tree', () => {
     const { target } = setup();
     const names = [...target.querySelectorAll('.name')].map((el) => el.textContent?.trim());
     expect(names).toEqual(['Marketing', 'Launch plan', 'Roadmap']);
+  });
+
+  // Search shows a folder it found: its row brought into view and focused.
+  it('brings a row it is asked to reveal into view, and focuses it', () => {
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {});
+    try {
+      const { target } = setup({ reveal: { path: 'Marketing', at: 1 } });
+      flushSync();
+      const row = target.querySelector<HTMLElement>('[data-path="Marketing"]')!;
+      expect(scroll.mock.contexts).toContain(row);
+      expect(document.activeElement).toBe(row);
+    } finally {
+      scroll.mockRestore();
+    }
+  });
+
+  // Once shown, the row lets go: a later change to the tree must not pull
+  // the keys back to it, where Backspace would trash the folder.
+  it('reveals a row once, not again when the tree changes', () => {
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {});
+    try {
+      const props = $state({ ...base(), reveal: { path: 'Marketing', at: 1 } });
+      render(SpaceTree, props);
+      flushSync();
+      const other = document.createElement('input');
+      document.body.append(other);
+      other.focus();
+      props.rows = [...rows];
+      flushSync();
+      expect(document.activeElement).toBe(other);
+      other.remove();
+    } finally {
+      scroll.mockRestore();
+    }
   });
 
   it('marks the row its right-click menu is open for, and no other', () => {

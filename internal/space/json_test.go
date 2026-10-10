@@ -18,6 +18,9 @@ func TestSpaceTypesKeepTheirJSONKeys(t *testing.T) {
 		{"Attachment", space.Attachment{}, []string{"modified", "name", "size"}},
 		{"TrashItem", space.TrashItem{}, []string{"deletedAt", "id", "kind", "path", "size"}},
 		{"Template", space.Template{}, []string{"group", "name", "path"}},
+		{"Hit", space.Hit{}, []string{"best", "count", "folder", "kind", "name", "path"}},
+		{"Match", space.Match{}, []string{"element", "occurrence", "text", "where", "word"}},
+		{"OpenPage", space.OpenPage{}, []string{"path", "scene", "source"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

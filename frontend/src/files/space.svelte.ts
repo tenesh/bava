@@ -36,6 +36,13 @@ export type OpOutcome = {
 /** A page of the Space; `unreadable` when its text could not be read (so its links are not known). */
 export type IndexPage = { name: string; path: string; text: string; unreadable?: boolean };
 
+/** Where a search result is best shown: its name, a Document line, or a canvas element. */
+export type SearchMatch = { where: 'name' | 'document' | 'canvas'; text: string; word: string; occurrence: number; element: string };
+/** A page or folder a search found, as `SpaceService.Search` answers. */
+export type SearchHit = { kind: 'page' | 'folder'; path: string; name: string; folder: string; count: number; best: SearchMatch };
+/** The open page as the window holds it, searched in place of its file. */
+export type SearchOpenPage = { path: string; source: string; scene: Scene } | null;
+
 export type SpaceIO = {
   open(
     dir: string,
@@ -63,6 +70,7 @@ export type SpaceIO = {
     code?: string;
   }>;
   index(root: string, withText: boolean): Promise<{ pages: IndexPage[] | null; error: string }>;
+  search(root: string, query: string, open: SearchOpenPage): Promise<{ hits: SearchHit[] | null; more: boolean; error: string }>;
   trash(
     root: string,
   ): Promise<{
@@ -132,6 +140,8 @@ const overIPC: SpaceIO = {
     }),
   index: (root, withText) =>
     SpaceService.Index(root, withText) as unknown as ReturnType<SpaceIO["index"]>,
+  search: (root, query, open) =>
+    SpaceService.Search(root, query, open) as unknown as ReturnType<SpaceIO["search"]>,
   trash: (root) =>
     SpaceService.Trash(root) as unknown as ReturnType<SpaceIO["trash"]>,
   chooseFolder: (title) => SpaceService.ChooseFolder(title),
@@ -429,6 +439,18 @@ export function createSpace(
       const result = await io.index(root, withText).catch(() => null);
       if (!result || result.error) return null;
       return result.pages ?? [];
+    },
+
+    /**
+     * The Space's pages and folders holding every word of `query`, and
+     * whether there were more than were returned. Null when the search
+     * failed.
+     */
+    async search(query: string, open: SearchOpenPage): Promise<{ hits: SearchHit[]; more: boolean } | null> {
+      if (!root) return { hits: [], more: false };
+      const result = await io.search(root, query, open).catch(() => null);
+      if (!result || result.error) return null;
+      return { hits: result.hits ?? [], more: result.more };
     },
 
     /** A folder moved or was renamed: keep it, and what is open inside it, open. */

@@ -241,6 +241,45 @@ describe('CanvasStage', () => {
     expect(stage.marquee()).toBeNull();
   });
 
+  // Find on the Canvas outlines every element whose text matches.
+  describe('find matches', () => {
+    const findTheme = reader({ '--color-selection-handle': 'black', '--size-find-outline': '1px', '--size-find-gap': '4px' });
+    const scene = { elements: [{ id: 'a', type: 'rect', x: 0, y: 0, w: 60, h: 40, z: 1 }, { id: 'b', type: 'rect', x: 100, y: 0, w: 20, h: 20, z: 2 }] as SceneElement[] };
+
+    it('outlines each match a screen gap outside its box, in the ink, at screen width', () => {
+      const stage = newStage({ read: findTheme });
+      stage.mount(host());
+      stage.render(scene);
+      stage.setViewport({ zoom: 2, pan: { x: 0, y: 0 } });
+      stage.setFindMatches(['a', 'b']);
+      const outlines = stage.findOutlines();
+      expect(outlines).toHaveLength(2);
+      expect(outlines[0].stroke()).toBe('black');
+      expect(outlines[0].strokeWidth()).toBe(0.5);
+      expect([outlines[0].x(), outlines[0].y(), outlines[0].width(), outlines[0].height()]).toEqual([-2, -2, 64, 44]);
+    });
+
+    it('redraws at a new zoom, and clears with none', () => {
+      const stage = newStage({ read: findTheme });
+      stage.mount(host());
+      stage.render(scene);
+      stage.setFindMatches(['a']);
+      stage.setViewport({ zoom: 4, pan: { x: 0, y: 0 } });
+      expect(stage.findOutlines()[0].strokeWidth()).toBe(0.25);
+      stage.setFindMatches([]);
+      expect(stage.findOutlines()).toHaveLength(0);
+    });
+
+    it('follows a match as it moves', () => {
+      const stage = newStage({ read: findTheme });
+      stage.mount(host());
+      stage.render(scene);
+      stage.setFindMatches(['b']);
+      stage.render({ elements: [scene.elements[0], { ...scene.elements[1], x: 200 }] });
+      expect(stage.findOutlines()[0].x()).toBe(196);
+    });
+  });
+
   // Where a moving selection is, below it, screen-sized.
   describe('the position while moving', () => {
     const readoutTheme = reader({ '--size-readout-gap': '8px', '--text-mono-status': '11px', '--font-data': 'Mono', '--color-text-muted': 'grey' });

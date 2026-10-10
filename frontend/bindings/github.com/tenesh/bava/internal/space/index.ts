@@ -4,6 +4,9 @@
 export type {
     Attachment,
     Entry,
+    Hit,
+    Match,
+    OpenPage,
     Template,
     TrashItem
 } from "./models.js";

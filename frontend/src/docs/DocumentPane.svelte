@@ -124,7 +124,7 @@
   let hovered = $state.raw<{ pos: number; left: number; top: number } | null>(null);
   let menu = $state.raw<{ items: MenuNode[]; anchor: { x: number; y: number }; run: (id: string) => void } | null>(null);
   let finding = $state.raw(false);
-  let findFocus = $state.raw<{ field: 'find' | 'replace'; at: number }>({ field: 'find', at: 0 });
+  let findFocus = $state.raw<{ field: 'find' | 'replace'; at: number; text?: string }>({ field: 'find', at: 0 });
   let found = $state.raw({ count: 0, index: -1 });
   let emojiSuggest = $state.raw<EmojiInfo | null>(null);
   let mention = $state.raw<MentionInfo | null>(null);
@@ -329,10 +329,15 @@
   export const deleteSelection = () => editor.deleteSelection();
   export const paste = (text: string) => editor.paste(text);
 
-  /** Opens find, or Find and Replace with the caret in the replace field. */
-  export function openFind(replace = false) {
+  /**
+   * Opens find, or Find and Replace with the caret in the replace field.
+   * With `text`, the bar opens filled with it and the page scrolls to its
+   * match at `occurrence` (from 0), as search opens a page at a match.
+   */
+  export function openFind(replace = false, text?: string, occurrence = 0) {
     finding = true;
-    findFocus = { field: replace ? 'replace' : 'find', at: findFocus.at + 1 };
+    findFocus = { field: replace ? 'replace' : 'find', at: findFocus.at + 1, text };
+    if (text !== undefined) found = editor.find(text, occurrence);
   }
 
   // ---- menus ---------------------------------------------------------------

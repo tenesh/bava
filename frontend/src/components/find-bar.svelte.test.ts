@@ -8,7 +8,7 @@ function setup() {
   const props = $state({
     count: 0,
     index: -1,
-    focus: { field: 'find' as 'find' | 'replace', at: 1 },
+    focus: { field: 'find' as 'find' | 'replace', at: 1 } as { field: 'find' | 'replace'; at: number; text?: string },
     onFind: vi.fn(),
     onNext: vi.fn(),
     onPrevious: vi.fn(),
@@ -58,5 +58,24 @@ describe('FindBar', () => {
     expect(position()).toBe('No matches');
     expect(button('Previous match').disabled).toBe(true);
     expect(button('Next match').disabled).toBe(true);
+  });
+});
+
+describe('FindBar, opened with a word', () => {
+  // Search opens a page with its bar filled with the word it found.
+  it('shows the word it is given when asked to focus with one', () => {
+    const { find, props } = setup();
+    props.focus = { field: 'find', at: 2, text: 'launch' };
+    flushSync();
+    expect(find.value).toBe('launch');
+  });
+});
+
+describe('FindBar, find only', () => {
+  it('has no replace field or buttons, and names what it finds in', () => {
+    const { target } = render(FindBar, { count: 0, index: -1, focus: { field: 'find', at: 1 }, replace: false, label: 'Find on canvas', onFind: vi.fn(), onNext: vi.fn(), onPrevious: vi.fn(), onClose: vi.fn() });
+    expect(target.querySelectorAll('input')).toHaveLength(1);
+    expect([...target.querySelectorAll('button')].some((b) => b.textContent?.includes('Replace'))).toBe(false);
+    expect(target.querySelector('[role="search"]')!.getAttribute('aria-label')).toBe('Find on canvas');
   });
 });

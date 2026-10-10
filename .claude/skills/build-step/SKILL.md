@@ -263,8 +263,9 @@ History belongs in each plan's As built, not here.
 - **Milestone 8 is complete**: 8.1 to 8.6c committed, with the fixes after
   (a block dropped in a gap, embed pictures), CI green 2026-10-10.
   **Milestone 8.7** (the look: black and white, `.claude/work/specs/look.md`)
-  is committed (2026-10-11). **Next is Milestone 15** (export, import and
-  search). The
+  is committed (2026-10-11). **Milestone 15** is under way in four parts:
+  **15.1** (search and find on the Canvas) is built and gated, uncommitted;
+  then 15.2 export, 15.3 import, 15.4 the canvas work. The
   roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **CI** builds a downloadable app per system on every run (artifacts
   `bava-<os>-<commit>`, 14 days).
@@ -319,9 +320,9 @@ History belongs in each plan's As built, not here.
 | `go test ./internal/render -run Golden` | exit 0 (inside the run above); 2 fixtures under `testdata/golden/`, light and dark |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 2,780 tests passed and 1 skipped, in 219 files |
+| `npm test` | exit 0; 2,814 tests passed and 1 skipped, in 224 files |
 | `npm run build` | CI's first frontend step. The production minifier rejects some CSS the dev server and the browser tests accept (WebKit-only selectors such as `::selection:window-inactive`) |
-| `npm run browser` | last full runs 2026-10-11: 475 passed, twice in a row; 278 references in `testdata/visual/` |
+| `npm run browser` | last full runs 2026-10-11: 490 passed, twice in a row; 286 references in `testdata/visual/` |
 | CI end-to-end | `create`, `reopen` and `canvas` on all three platforms; see Milestones for the last run |
 | `wails3 build` | CI only |
 
@@ -332,6 +333,7 @@ What no test can see, still waiting for a person, in both themes:
   and section tabs; the `/` menu, bubble, block handle, find bar and page
   menu; the error dialog; the Media section and dialog.
 - The icons at 16px and 1024px.
+- Search and find on the Canvas: the lists in 15.1's As built.
 - The native menus on each platform (Windows and Linux unseen).
 - A forced panic and a frontend exception found in the log folder in a
   release build.

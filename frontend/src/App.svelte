@@ -16,7 +16,9 @@
   import { boundsOf, drawnBoundsOf, nudged, topLevel } from './canvas/edit';
   import { createScene, isLocked } from './canvas/scene';
   import { carriedWith } from './canvas/containment';
-  import { angleOfElement } from './canvas/rotate';
+  import { angleOfElement, rotatedBounds } from './canvas/rotate';
+  import { findOnCanvas } from './canvas/find';
+  import FindBar from './components/FindBar.svelte';
   import { createExporter, exportIO } from './canvas/export/exporter.svelte';
   import { CodeEditor, commitCode, fitToCode } from './canvas/code/editor';
   import { createCodeRuns } from './canvas/code/runs';
@@ -121,6 +123,9 @@
   import { addMedia, type MediaFile } from './docs/add-media';
   import { ExportService, FileService, LogService, MenuService, SpaceService } from '../bindings/github.com/tenesh/bava/internal/app';
   import { t } from './i18n/t';
+  import { createSearch } from './files/search.svelte';
+  import type { SearchHit } from './files/space.svelte';
+  import SearchPalette from './components/SearchPalette.svelte';
   import type { MessageKey } from './i18n/messages';
 
   const theme = createTheme();
@@ -550,6 +555,8 @@
     published = history.current;
     syncSelection();
     if (!changed) return;
+    // Find on the Canvas follows what is drawn: its matches and count stay true.
+    if (canvasFinding) refreshCanvasFind();
     canvasChanged();
     doc.touch();
     autosave.changed();
@@ -558,6 +565,142 @@
   // The opened scene's version and unknown top-level keys travel back with
   // the elements, so a save keeps what a newer Bava wrote.
   const currentScene = () => sceneToSave(doc.sceneExtra, history.current.elements);
+
+  // Search across the Space (File ▸ Search): the open page is searched as it
+  // is on screen, unsaved words and drawing included.
+  let searchOpen = $state(false);
+  let searchReturn: HTMLElement | null = null;
+  const spaceSearch = createSearch({
+    search: (query, open) => space.search(query, open),
+    open: () => (openRel && doc.isOpen ? { path: openRel, source: docPane?.markdown() ?? doc.source, scene: currentScene() } : null),
+  });
+
+  async function openSearch() {
+    if (!space.root) {
+      // A page on its own: search needs its folder opened as a Space first.
+      const path = doc.path;
+      if (!path || !(await confirm(t('media.needsSpace.title'), t('search.needsSpace.body'), t('tree.openAsSpace')))) return;
+      if (!(await openSpace(path.replace(/[\\/][^\\/]*$/, ''), true))) return;
+    }
+    searchReturn = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    searchOpen = true;
+  }
+
+  /** The palette closed without opening anything: the keys go back where they were. */
+  function closeSearch() {
+    searchOpen = false;
+    spaceSearch.reset();
+    searchReturn?.focus();
+    searchReturn = null;
+  }
+
+  async function openHit(hit: SearchHit) {
+    searchOpen = false;
+    spaceSearch.reset();
+    searchReturn = null;
+    if (hit.kind === 'folder') {
+      await revealFolder(hit.path);
+      return;
+    }
+    if (openRel !== hit.path) {
+      await openPath(space.absolute(hit.path));
+      if (openRel !== hit.path) return;
+    }
+    if (hit.best.where === 'document') {
+      if (!view.showsDocument) view.setMode('both');
+      await tick();
+      docPane?.openFind(false, hit.best.word, hit.best.occurrence);
+    } else if (hit.best.where === 'canvas') {
+      if (!view.showsCanvas) view.setMode('both');
+      await tick();
+      openCanvasFind(hit.best.word, hit.best.element);
+    }
+  }
+
+  // ---- find on the Canvas --------------------------------------------------
+  let canvasFinding = $state(false);
+  let canvasQuery = '';
+  let canvasFindPage: string | null = null;
+  let canvasFindFocus = $state.raw<{ field: 'find' | 'replace'; at: number; text?: string }>({ field: 'find', at: 0 });
+  let canvasFound = $state({ count: 0, index: -1 });
+  let canvasMatches: string[] = [];
+
+  /** Select a match and bring it into view. */
+  function showCanvasMatch(index: number) {
+    const element = history.current.elements.find((each) => each.id === canvasMatches[index]);
+    if (!element) return;
+    selection.clear();
+    selection.click(element.id);
+    syncSelection();
+    viewport.panToShow(rotatedBounds(element), { width: canvasHostEl?.clientWidth ?? 0, height: canvasHostEl?.clientHeight ?? 0 });
+    applyView();
+    canvasFound = { count: canvasMatches.length, index };
+  }
+
+  /** Find on the Canvas: outline every match, starting at `from` (an element's id) or the first. */
+  function canvasFind(text: string, from?: string) {
+    canvasQuery = text;
+    canvasMatches = findOnCanvas(history.current.elements, text);
+    canvas.setFindMatches(canvasMatches);
+    if (canvasMatches.length === 0) {
+      canvasFound = { count: 0, index: -1 };
+      return;
+    }
+    showCanvasMatch(Math.max(0, from ? canvasMatches.indexOf(from) : 0));
+  }
+
+  /** The scene changed: the matches again, the current one kept where it still matches. */
+  function refreshCanvasFind() {
+    const current = canvasMatches[canvasFound.index];
+    canvasMatches = findOnCanvas(history.current.elements, canvasQuery);
+    canvas.setFindMatches(canvasMatches);
+    canvasFound = { count: canvasMatches.length, index: current ? canvasMatches.indexOf(current) : -1 };
+  }
+
+  function stepCanvasFind(by: number) {
+    if (canvasMatches.length === 0) return;
+    showCanvasMatch((canvasFound.index + by + canvasMatches.length) % canvasMatches.length);
+  }
+
+  /** Opens find on the Canvas; with `text`, filled with it and at `from`'s match. */
+  function openCanvasFind(text?: string, from?: string) {
+    canvasFinding = true;
+    canvasFindPage = openRel;
+    canvasFindFocus = { field: 'find', at: canvasFindFocus.at + 1, text };
+    if (text !== undefined) canvasFind(text, from);
+  }
+
+  function closeCanvasFind() {
+    canvasFinding = false;
+    canvasQuery = '';
+    canvasMatches = [];
+    canvas.setFindMatches([]);
+    canvasFound = { count: 0, index: -1 };
+    // The canvas takes no focus of its own: it holds the keys when nothing
+    // else does, so leaving the bar's field gives them back to it.
+    (document.activeElement as HTMLElement | null)?.blur?.();
+  }
+
+  // Another page, or the Canvas hidden: its find closes, as its matches were
+  // of what is no longer shown.
+  $effect(() => {
+    const page = openRel;
+    const shown = view.showsCanvas;
+    untrack(() => {
+      if (canvasFinding && (!shown || page !== canvasFindPage)) closeCanvasFind();
+    });
+  });
+
+  /** A folder search found: the Files tree shown, the folder unfolded and its row brought into view. */
+  async function revealFolder(path: string) {
+    // A tag filter would hide the folder's row: the whole tree is shown.
+    chosenTags = [];
+    showFiles();
+    await showInTree(path);
+    await space.expand(path);
+    revealing = { path, at: revealing.at + 1 };
+  }
+  let revealing = $state.raw<{ path: string; at: number }>({ path: '', at: 0 });
 
   const autosave = createAutosave({
     settings: () => ({ mode: settingsState.autosave, delayMs: settingsState.autosaveDelayMs }),
@@ -1956,6 +2099,7 @@
     'file.spaceSettings': () => {
       if (space.root) spaceSettingsOpen = true;
     },
+    'file.search': () => void openSearch(),
     'file.openRecent': async (path) => {
       if (path) await openPath(path);
     },
@@ -2004,9 +2148,15 @@
           syncSelection();
         },
       }),
-    // Find in the page, when a page shows in the Document.
+    // Find: on the Canvas when it holds the keys (nothing else is focused, or
+    // its own find bar is) or the Document is hidden; otherwise in the page.
     'edit.find': () => {
-      if (doc.isOpen && view.showsDocument) docPane?.openFind();
+      if (!doc.isOpen) return;
+      const focused = document.activeElement;
+      const canvasHasKeys = !focused || focused === document.body || Boolean(focused.closest('.canvas-region'));
+      const toCanvas = view.showsCanvas && (!view.showsDocument || canvasHasKeys);
+      if (toCanvas) openCanvasFind();
+      else if (view.showsDocument) docPane?.openFind();
     },
     'edit.replace': () => {
       if (doc.isOpen && view.showsDocument) docPane?.openFind(true);
@@ -2717,6 +2867,7 @@
         expanded={filteredTree ? filteredTree.filter((row) => row.entry.kind === 'folder').map((row) => row.entry.path) : space.expanded}
         pending={space.pending}
         activePath={openRel}
+        reveal={revealing}
         unsavedPath={doc.dirty ? openRel : null}
         {renameRequest}
         menuPath={treeMenuAt?.path ?? null}
@@ -2946,6 +3097,22 @@
   {#snippet canvas()}
     <div class="canvas-region">
       <div class="fill" bind:this={canvasHost}></div>
+      {#if canvasFinding}
+        <div class="canvas-find">
+          <FindBar
+            count={canvasFound.count}
+            index={canvasFound.index}
+            focus={canvasFindFocus}
+            replace={false}
+            look="floating"
+            label={t('find.canvasLabel')}
+            onFind={(text) => canvasFind(text)}
+            onNext={() => stepCanvasFind(1)}
+            onPrevious={() => stepCanvasFind(-1)}
+            onClose={closeCanvasFind}
+          />
+        </div>
+      {/if}
       {#if toolbar.visible}
         <div class="selection-toolbar">
           <SelectionToolbar
@@ -3272,6 +3439,20 @@
   onClosed={runAfterMenu}
 />
 
+{#if searchOpen}
+  <SearchPalette
+    query={spaceSearch.query}
+    hits={spaceSearch.hits}
+    more={spaceSearch.more}
+    failed={spaceSearch.failed}
+    highlighted={spaceSearch.highlighted}
+    onQuery={(query) => spaceSearch.setQuery(query)}
+    onMove={(by) => spaceSearch.move(by)}
+    onChoose={(hit) => void openHit(hit)}
+    onClose={closeSearch}
+  />
+{/if}
+
 {#if confirming}
   <ConfirmDialog
     open
@@ -3507,5 +3688,13 @@
     position: relative;
     height: 100%;
     background: var(--color-canvas-bg);
+  }
+
+  /* At the top right, clear of the tool rail on the left. */
+  .canvas-find {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    z-index: var(--z-chrome);
   }
 </style>

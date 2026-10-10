@@ -42,6 +42,7 @@ Shortcuts) lists the rest.
 | File | New Page | `⌘N` | `Ctrl+N` |
 | File | Open Space | `⌘O` | `Ctrl+O` |
 | File | Open File | `⇧⌘O` | `Ctrl+Shift+O` |
+| File | Search | `⇧⌘F` | `Ctrl+Shift+F` |
 | File | Save | `⌘S` | `Ctrl+S` |
 | File | Save As | `⇧⌘S` | `Ctrl+Shift+S` |
 | File: Preferences | Settings | none | `Ctrl+,` |
@@ -225,6 +226,7 @@ Typed inside a line: `$x^2$` makes an inline equation.
 
 | Gesture | Action |
 |---|---|
+| `⌘F` / `Ctrl+F` with the Canvas holding the keys, or the Document hidden | Find on the Canvas: every element whose text holds what is typed is outlined, the current one selected and brought into view; `Enter` and `⇧Enter` step, `Esc` closes. Find only |
 | Drag with a shape tool | Create that shape; hold `⇧` for a square (a circle, a square box) |
 | Drag with Line or Arrow | Draw it (a drag of at least 20 px); hold `⇧` to snap to 15° steps |
 | Drag with Arrow onto a shape | Attach the arrow to it: ended inside the shape it is pinned there, just outside it attaches to the edge; hold `⌥` to pin it, `⌘` / `Ctrl` to leave it free (with attaching off in Settings ▸ Canvas, `⌘` / `Ctrl` attaches it); what each end does is read when it is placed, the start at the press |

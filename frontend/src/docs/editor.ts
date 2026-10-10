@@ -763,13 +763,24 @@ export class DocEditor {
     view.dispatch(setSearchState(view.state.tr, new SearchQuery({ search: text, replace, caseSensitive: false })));
   }
 
-  /** Looks for text in the page, selecting the first match. */
-  find(text: string): { count: number; index: number } {
+  /**
+   * Looks for text in the page, selecting a match: the first, or the one at
+   * `occurrence` (counted from 0) when the page has that many, as search
+   * opens a page at the match it found.
+   */
+  find(text: string, occurrence = 0): { count: number; index: number } {
     const view = this.view;
     if (!view) return { count: 0, index: -1 };
     this.#setQuery(text);
     if (text) {
-      const match = getSearchState(view.state)?.query.findNext(view.state, 0);
+      const query = getSearchState(view.state)?.query;
+      let match = query?.findNext(view.state, 0) ?? null;
+      const first = match;
+      for (let i = 0; match && i < occurrence; i += 1) {
+        const at: number = match.to > match.from ? match.to : match.from + 1;
+        match = query?.findNext(view.state, at) ?? null;
+      }
+      match = match ?? first;
       if (match) view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, match.from, match.to)).scrollIntoView());
     }
     return this.#findState();
