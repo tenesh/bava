@@ -17,7 +17,13 @@ async function setup(extra: Record<string, unknown> = {}) {
   return props;
 }
 
-const names = () => [...document.querySelectorAll('.tags-table tbody .tag-chip')].map((cell) => cell.textContent?.trim());
+// A tag's name as read out: the drawn # is hidden from screen readers.
+const spoken = (el: Element) => {
+  const copy = el.cloneNode(true) as Element;
+  copy.querySelectorAll('[aria-hidden="true"]').forEach((hidden) => hidden.remove());
+  return copy.textContent?.trim();
+};
+const names = () => [...document.querySelectorAll('.tags-table tbody .tag-chip')].map(spoken);
 const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find((b) => (b.getAttribute('aria-label') ?? b.textContent?.trim()) === label)!;
 const box = (tag: string) => document.querySelector<HTMLInputElement>(`input[type="checkbox"][aria-label="Select ${tag}"]`)!;
 const renameField = () => document.querySelector<HTMLInputElement>('.tags-table input.rename')!;

@@ -149,11 +149,42 @@ describe('token emission', () => {
     }
   });
 
-  it('carries the design palette values verbatim', () => {
-    expect(block(':root')).toContain('--color-surface: #f7f7f5');
-    expect(block(':root')).toContain('--color-accent: #2f6ba3');
-    expect(block(':root[data-theme=dark]')).toContain('--color-surface: #191a1c');
-    expect(block(':root[data-theme=dark]')).toContain('--color-accent: #7fabd9');
+  // The look: quiet and precise, in black and white. The accent is the ink.
+  it('carries the black and white palette', () => {
+    const l = block(':root');
+    const d = block(':root[data-theme=dark]');
+    for (const [name, lv, dv] of [
+      ['surface', '#ffffff', '#0a0a0a'],
+      ['surface-nav', '#fafafa', '#101010'],
+      ['surface-sunken', '#f5f5f5', '#151515'],
+      ['surface-raised', '#ffffff', '#171717'],
+      ['border-subtle', '#ebebeb', '#1f1f1f'],
+      ['border-strong', '#dcdcdc', '#2c2c2c'],
+      ['text-primary', '#0a0a0a', '#f4f4f4'],
+      ['text-secondary', '#2b2b2b', '#cfcfcf'],
+      ['text-muted', '#7a7a7a', '#7c7c7c'],
+      ['text-faint', '#a6a6a6', '#575757'],
+      ['accent-subtle', '#f0f0f0', '#1e1e1e'],
+    ]) {
+      expect(l).toContain(`--color-${name}: ${lv};`);
+      expect(d).toContain(`--color-${name}: ${dv};`);
+    }
+  });
+
+  it('makes the accent the ink in both themes', () => {
+    const value = (b: string, name: string) => b.match(new RegExp(`--color-${name}: ([^;]+);`))?.[1];
+    for (const b of [block(':root'), block(':root[data-theme=dark]')]) {
+      expect(value(b, 'accent')).toBe(value(b, 'text-primary'));
+      expect(value(b, 'focus-ring')).toBe(value(b, 'text-primary'));
+      expect(value(b, 'selection-handle')).toBe(value(b, 'text-primary'));
+      expect(value(b, 'snap-guide')).toBe(value(b, 'text-primary'));
+      expect(value(b, 'binding-highlight')).toBe(value(b, 'text-primary'));
+    }
+  });
+
+  it('has an unsaved colour in each theme', () => {
+    expect(light).toContain('--color-pending');
+    expect(dark).toContain('--color-pending');
   });
 
   it('emits the non-colour scales', () => {
@@ -212,6 +243,40 @@ describe('type tokens', () => {
   it('exposes both family stacks as tokens', () => {
     expect(light).toContain('--font-ui');
     expect(light).toContain('--font-mono');
+  });
+
+  // Section labels and data (sizes, dates, paths, counts, keys) are set in
+  // the mono face.
+  it('sets labels and data in the mono stack', () => {
+    expect(block(':root')).toContain('--font-label: var(--font-mono);');
+    expect(block(':root')).toContain('--font-data: var(--font-mono);');
+  });
+});
+
+// WCAG relative luminance, for the contrast of a swatch's label on its fill.
+function luminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+describe('the shape swatches', () => {
+  it("keeps every swatch's label readable on its fill, in both themes", () => {
+    for (const b of [block(':root'), block(':root[data-theme=dark]')]) {
+      for (const name of SWATCHES) {
+        const fill = b.match(new RegExp(`--swatch-${name}-fill: (#[0-9a-f]{6})`))?.[1];
+        const text = b.match(new RegExp(`--swatch-${name}-text: (#[0-9a-f]{6})`))?.[1];
+        expect(fill, name).toBeDefined();
+        expect(contrast(fill!, text!), name).toBeGreaterThanOrEqual(4.5);
+      }
+    }
   });
 });
 
@@ -303,7 +368,7 @@ describe('the mockup tokens', () => {
   const css = compile(fileURLToPath(new URL('./index.scss', import.meta.url)), { style: 'expanded' }).css;
   it.each([
     ['--text-title', 15],
-    ['--radius-xl', 8],
+    ['--radius-xl', 10],
     ['--size-field', 30],
     ['--size-field-gap', 6],
     ['--size-field-padding', 10],

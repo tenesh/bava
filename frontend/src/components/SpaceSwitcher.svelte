@@ -8,7 +8,7 @@
   import { Menu, Portal } from '@ark-ui/svelte';
   import { portalRoot } from './portal-root';
   import ToolIcon from './ToolIcon.svelte';
-  import { spaceInitial as initial, tileFill, tileText } from './space-tile';
+  import { spaceInitial as initial, TILE_FILL, TILE_TEXT } from './space-tile';
   import { t } from '../i18n/t';
 
   type Props = {
@@ -33,7 +33,7 @@
 
 <Menu.Root onSelect={(details) => onSelect(details.value)} positioning={{ placement: 'bottom-start', gutter }}>
   <Menu.Trigger class="bava-space-switcher" aria-label={t('space.switch')}>
-    <span class="tile" style:background={tileFill(name)} style:color={tileText(name)} aria-hidden="true">{initial(name)}</span>
+    <span class="tile" style:background={TILE_FILL} style:color={TILE_TEXT} aria-hidden="true">{initial(name)}</span>
     <span class="name">{name}</span>
     <span class="caret"><ToolIcon id="chevronDown" size="sm" /></span>
   </Menu.Trigger>
@@ -45,7 +45,7 @@
             <Menu.ItemGroupLabel class="bava-menu-group">{t('space.recent')}</Menu.ItemGroupLabel>
             {#each recents as recent (recent.path)}
               <Menu.Item value={`recent:${recent.path}`} class="bava-menu-item">
-                <span class="tile small" style:background={tileFill(recent.name)} style:color={tileText(recent.name)} aria-hidden="true">{initial(recent.name)}</span>
+                <span class="tile small" style:background={TILE_FILL} style:color={TILE_TEXT} aria-hidden="true">{initial(recent.name)}</span>
                 <span class="bava-menu-label">{recent.name}</span>
                 {#if recent.path === root}<span class="current"><ToolIcon id="finishLine" size="sm" /></span>{/if}
               </Menu.Item>
@@ -154,6 +154,7 @@
     padding: var(--size-row-gap) var(--space-2) var(--space-1);
     font-size: var(--text-label);
     font-weight: var(--weight-semibold);
+    font-family: var(--font-label);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-text-muted);

@@ -42,6 +42,10 @@
   --size-keycap-padding: 5px;
   --size-keycap-gap: 3px;
   --size-keycap-edge: 2px;
+  // A key box beside a menu item: small enough to sit inside the row.
+  --size-menu-key: 16px;
+  // How far below a moving selection its position is shown, on screen.
+  --size-readout-gap: 8px;
   // A page's widths in the Document (full is the pane's own width), and the
   // gutter beside it where the block handle and + sit.
   --size-page-narrow: 640px;

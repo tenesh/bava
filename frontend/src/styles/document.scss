@@ -137,7 +137,7 @@ $callout-swatches: (
     font-size: var(--text-doc-h6);
     color: var(--color-text-secondary);
     text-transform: uppercase;
-    letter-spacing: var(--tracking-label);
+    letter-spacing: var(--tracking-doc-h6);
   }
 
   ul,
@@ -445,6 +445,7 @@ $callout-swatches: (
     font-weight: var(--weight-semibold);
     color: var(--color-text-muted);
     text-transform: uppercase;
+    font-family: var(--font-label);
     letter-spacing: var(--tracking-label);
   }
 

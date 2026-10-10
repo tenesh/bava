@@ -1043,6 +1043,7 @@
     font-weight: var(--weight-semibold);
     color: var(--color-text-muted);
     text-transform: uppercase;
+    font-family: var(--font-label);
     letter-spacing: var(--tracking-label);
   }
 

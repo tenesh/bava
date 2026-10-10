@@ -17,7 +17,13 @@ async function setup(extra: Record<string, unknown> = {}) {
   return { props, search: document.querySelector<HTMLInputElement>('.tag-filter input')! };
 }
 
-const rows = () => [...document.querySelectorAll('.tag-filter [role="option"]')].map((row) => [row.querySelector('.name')!.textContent, row.querySelector('.count')!.textContent, row.getAttribute('aria-selected')]);
+// A tag's name as read out: the drawn # is hidden from screen readers.
+const spoken = (el: Element) => {
+  const copy = el.cloneNode(true) as Element;
+  copy.querySelectorAll('[aria-hidden="true"]').forEach((hidden) => hidden.remove());
+  return copy.textContent?.trim();
+};
+const rows = () => [...document.querySelectorAll('.tag-filter [role="option"]')].map((row) => [spoken(row.querySelector('.name')!), row.querySelector('.count')!.textContent, row.getAttribute('aria-selected')]);
 const key = (target: Element, name: string) => flushSync(() => target.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true })));
 
 describe('TagFilter', () => {

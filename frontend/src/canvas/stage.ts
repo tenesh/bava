@@ -33,6 +33,8 @@ import { columnsFor, wrapRuns } from './code/wrap';
 import { canvasLineWidth } from './text-measure';
 import { LABEL_CLEARANCE, drawHead, endSegment, headAt, headDash, labelCorners, labelLayout, middlesAlong, pathOf } from './arrows';
 import { readRootVariable, resolveStyle, type ReadVariable } from './palette';
+import { readoutAt, readoutText } from './readout';
+import type { Box } from './selection';
 import { handleCentre, rotateHandleCentre } from './resize';
 import { besideLabel, chromeFor, editingFor, elbowSegmentHandles, focusSpots, grown, labelSpotEnds, offersMiddles } from './selection-chrome';
 import { angleOfElement, centreOf, selectionFrame } from './rotate';
@@ -151,6 +153,9 @@ export class CanvasStage {
   /** The guides snapping to objects draws, and their lines. */
   #snapGuides: Guide[] = [];
   #snapGuideLines: Konva.Line[] = [];
+  /** Where a moving selection is, shown below what is drawn of it. */
+  #readoutBox: { position: Box; around: Box } | null = null;
+  #readout: Konva.Text | null = null;
   #trail: Konva.Line | null = null;
   #markedForErase = new Set<ElementId>();
   #zoom = 1;
@@ -842,6 +847,45 @@ export class CanvasStage {
     this.#drawSnapGuides(cached(this.#read));
   }
 
+  /**
+   * Show a moving selection's position (its box in scene units) below it,
+   * or clear it with null. `around` is the box as drawn, rotation included,
+   * which the text goes under; it defaults to the position's box.
+   * Screen-sized at every zoom, as the guides are.
+   */
+  setReadout(position: Box | null, around?: Box): void {
+    if (position === null && this.#readoutBox === null) return;
+    this.#readoutBox = position ? { position, around: around ?? position } : null;
+    this.#drawReadout(cached(this.#read));
+  }
+
+  /** The position shown while moving, for tests: null when none is. */
+  readout(): Konva.Text | null {
+    return this.#readout;
+  }
+
+  #drawReadout(read: ReadVariable): void {
+    this.#readout?.destroy();
+    this.#readout = null;
+    if (!this.#overlay || !this.#readoutBox) {
+      this.#overlay?.batchDraw();
+      return;
+    }
+    const at = readoutAt(this.#readoutBox.around, this.#zoom, number(read, '--size-readout-gap'));
+    this.#readout = new Konva.Text({
+      ...at,
+      text: readoutText(this.#readoutBox.position),
+      fontFamily: read('--font-data').trim(),
+      fontSize: number(read, '--text-mono-status'),
+      fill: read('--color-text-muted').trim(),
+      scaleX: 1 / this.#zoom,
+      scaleY: 1 / this.#zoom,
+      listening: false,
+    });
+    this.#overlay.add(this.#readout);
+    this.#overlay.batchDraw();
+  }
+
   /** The snap guides' lines, for tests: what was drawn. */
   snapGuideLines(): Konva.Line[] {
     return this.#snapGuideLines;
@@ -948,6 +992,7 @@ export class CanvasStage {
     this.#zoom = view.zoom;
     // Guides are screen-sized: a zoom while hovering redraws them.
     if (this.#snapGuides.length > 0) this.#drawSnapGuides(cached(this.#read));
+    if (this.#readoutBox) this.#drawReadout(cached(this.#read));
     this.#stage?.scale({ x: view.zoom, y: view.zoom });
     this.#stage?.position(view.pan);
     this.#stage?.batchDraw();

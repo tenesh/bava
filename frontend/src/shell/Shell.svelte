@@ -100,7 +100,7 @@
       <span class="filename">
         {#if pageOpen}
           {title}
-          <span class="state">{dirty ? t('file.dirty') : t('file.saved')}</span>
+          <span class="state" data-state={dirty ? 'dirty' : 'saved'}><span class="dot" aria-hidden="true"></span>{dirty ? t('file.dirty') : t('file.saved')}</span>
         {:else if open}
           {t('empty.noPage.title')}
         {:else}
@@ -218,11 +218,25 @@
   }
 
   .state {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
     margin-inline-start: var(--space-2);
-    font-family: var(--font-ui);
-    font-size: var(--text-meta);
+    font-family: var(--font-data);
+    font-size: var(--text-mono-status);
     font-weight: var(--weight-regular);
     color: var(--color-text-muted);
+  }
+
+  .state .dot {
+    width: var(--size-unsaved-dot);
+    height: var(--size-unsaved-dot);
+    border-radius: var(--radius-full);
+    background: var(--color-ok);
+  }
+
+  .state[data-state='dirty'] .dot {
+    background: var(--color-pending);
   }
 
   .identity {

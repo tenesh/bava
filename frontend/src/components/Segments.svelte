@@ -73,7 +73,7 @@
   :global(.bava-segment[data-state='checked']) {
     background: var(--color-segment-chosen);
     color: var(--color-text-primary);
-    box-shadow: var(--shadow-raised);
+    box-shadow: var(--shadow-outlined);
   }
 
   /* Keyboard focus only: Ark marks a press as focus-visible too, so not

@@ -3893,3 +3893,32 @@ describe('snapping to objects', () => {
     expect(handler.snapGuides).toEqual([]);
   });
 });
+
+// The stage shows where a moving selection is; it asks the pointer what a
+// move carries.
+describe('what a move carries', () => {
+  function drawn() {
+    const kit = harness('rect');
+    kit.handler.down(at(10, 10));
+    kit.handler.move(at(60, 50));
+    kit.handler.up(at(60, 50));
+    kit.tools.activate('select');
+    return { ...kit, id: kit.history.current.elements[0].id };
+  }
+
+  it('names the elements while a move is under way, and none after', () => {
+    const { handler, id } = drawn();
+    handler.down(at(30, 30));
+    handler.move(at(80, 70));
+    expect(handler.moving).toEqual([id]);
+    handler.up(at(80, 70));
+    expect(handler.moving).toEqual([]);
+  });
+
+  it('names nothing while resizing', () => {
+    const { handler } = drawn();
+    handler.down(at(60, 50));
+    handler.move(at(90, 90));
+    expect(handler.moving).toEqual([]);
+  });
+});

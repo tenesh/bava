@@ -44,8 +44,31 @@ Emitted as of Milestone 2, values from the design's token sheet:
 `surface-nav` · `border-subtle`, `border-strong`, `border-hairline` ·
 `text-primary`, `text-secondary`, `text-muted`, `text-faint`, `text-prose` ·
 `accent`, `accent-contrast`, `accent-subtle` · `selection` · `focus-ring`,
-`focus-halo` · `danger`, `danger-subtle` · `ok` · `backdrop` · `canvas-bg`,
-`canvas-dot` · `note-fill`, `note-border` · the seven `diagram-*`.
+`focus-halo` · `danger`, `danger-subtle` · `ok`, `pending` · `backdrop` ·
+`canvas-bg`, `canvas-dot` · `note-fill`, `note-border` · the seven `diagram-*`.
+
+**The look is quiet and precise, in black and white**
+(`.claude/work/specs/look.md`). The accent is the ink (`accent` equals
+`text-primary`, in both themes), and so are the focus ring, the canvas's
+selection handles, attach outline and snapping guides; `tokens.test.ts`
+holds them equal. Neutrals are pure greys. Red is only for what deletes and
+green for saved, amber (`pending`) for unsaved; none of them is an accent.
+There is no accent setting.
+
+- **Section labels and data are mono.** A label (pane headers, settings and
+  dialog groups, menu headings) is `--font-label` with `--tracking-label`,
+  in capitals; `styles/labels.test.ts` fails a tracked label in any other
+  face. Sizes, dates, paths, counts and keys are `--font-data`, with
+  `tabular-nums` where they line up. A page's own h6 is the writer's text,
+  not a label: it keeps the page face (`--tracking-doc-h6`).
+- **No coloured edge on one side only.** A chosen row (a file, a recent
+  Space, a settings section, a menu item) is a full fill (`selection`;
+  hover is the lighter `accent-subtle`); emphasis on a block goes on its whole border or its
+  icon. A quote's grey rule is the one left edge, and it is not coloured.
+- **Shadows only on what floats:** menus, popovers, the tool rail, the
+  selection bar, dialogs. A chosen segment is outlined, not lifted.
+- Corners 3 to 6px on controls (`--radius-sm/md/lg`), 10px on windows and
+  dialogs (`--radius-xl`).
 
 Two are additions rather than design values, both evidenced by usage rather
 than invented: **`text-prose`** (document body copy, softer than
@@ -217,7 +240,7 @@ check both before building either by hand.
 | `EquationField` ✓ | The field over an equation: its TeX, the equation drawn live below by the caller's `render`, Enter to save, Shift+Enter for a new line, Escape to leave it. |
 | `EmojiPicker` ✓ | A search and every emoji under its group; a pick gives the character, Escape or a press outside closes it. The caller supplies the emoji and group names; until they arrive it shows an indeterminate `Progress` bar. |
 | `FramePicker` ✓ | `/` Embed frame: a search, then the frames a page can embed by name with a thumbnail, this page's first and each other page's under its name. Arrows move, Enter or a click picks (the frame and its page), Escape or a press outside closes it. The caller supplies the frames and thumbnails. |
-| `TagChip` ✓ | One tag as a plain grey chip (`--color-tag`), with a remove button when given `onRemove` (named by `removeLabel`). Every tag is drawn by it: a page's, the Files filter's, the Tags dialog's. |
+| `TagChip` ✓ | One tag as a plain outlined chip reading `#launch` in mono (the `#` drawn and hidden from screen readers; the file keeps `launch`), with a remove button when given `onRemove` (named by `removeLabel`). Every tag is drawn by it: a page's, the Files filter's, the Tags dialog's. |
 | `PageTags` ✓ | A page's tags at its bottom, in the page's column: `TagChip`s each with a remove button, then Add tag, a field that writes what is typed as a tag is kept (lowercase, a dash for a space) and suggests the Space's tags above it. Read-only on a locked page, and gone there when it has none. Reports the tags as they are to be. |
 | `TagFilter` ✓ | The Space's tags under the Files header's tag button: a search, each tag with its page count and a box when chosen, its own ⋯ for the tag's menu, then Manage tags. Arrows move, Enter chooses, Escape or a press outside closes it. |
 | `LinkCard` ✓ | The card under a clicked link: its address, Open, Edit, Remove; a missing page says so and offers the one page with its name. Escape or a press outside closes it; focus stays in the page. |
@@ -240,6 +263,7 @@ check both before building either by hand.
 | `ToolRail` ✓ | The canvas tool rail: grouped icon buttons, a key letter in each corner, a tooltip naming each; one panel, the tool lock (`Q`) last, behind a hairline. Layout in `canvas/rail.ts`. |
 | `InsertPanel` ✓ | Search, category rows (right chevron clear of the text), a category's tile grid, footer hint. State in `shell/insert.svelte.ts`. |
 | `SelectionToolbar` ✓ | Bottom-centre toolbar for a selection: `StyleBar` pickers, line actions (Edit points, Close or Open line; Done alone while a line is drawn by clicks), align and distribute, More. Model in `canvas/toolbar.ts`. |
+| `Keycaps` ✓ | A shortcut as one small mono key box per key (`keycaps.ts` splits it), read out once as the whole shortcut. At the right of a `ContextMenu` item. |
 | `ContextMenu` ✓ | A menu opened at a point, wrapping Ark's Menu, with nested submenus. Used for right-click and More. It takes the keys when it opens (Ark leaves focus where it was). A dialog's own menus pass `within`: drawn inside the dialog, placed against the window, so the dialog's focus trap lets them keep the keys. Tree in `canvas/context-menu.ts`. The menu look (`.bava-menu`, `-item`, `-label`, `-separator`) is shared with `SlashMenu` and `SpaceSwitcher` and lives in `styles/menus.scss`. |
 | `Tooltip` ✓ | Names a control (and its key) on hover and keyboard focus, wrapping Ark's Tooltip. It renders the button itself, or wraps a control the caller renders through `trigger`, which avoids a button inside a button. |
 | `ToolIcon` ✓ | Interface icons by id: Lucide (ISC), plus the icons drawn in-house in Lucide's stroke style on its 24-unit grid (`DRAWN_ICONS` in `tool-icons.ts`: the parallelogram and the arrowhead choices). |
@@ -286,7 +310,7 @@ live once, in `canvas/palette.ts`.
 The panda mark is **paper on ink, always** (`--color-mark`,
 `--color-mark-tile`): bare on a dark ground, in its own ink tile on a light
 one. It never inverts to ink on paper and never takes the accent, which is
-reserved for selection and focus. Use `Mark`, never an `<img>` of the SVG: an
+the ink, reserved for selection and focus. Use `Mark`, never an `<img>` of the SVG: an
 image cannot take its colour from a token.
 
 One drawing at every size. Do not stretch, rotate, recolour, redraw for small

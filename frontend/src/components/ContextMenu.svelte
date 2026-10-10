@@ -10,6 +10,7 @@
   import { atPoint, type MenuNode } from '../canvas/context-menu';
   import { portalRoot } from './portal-root';
   import ToolIcon from './ToolIcon.svelte';
+  import Keycaps from './Keycaps.svelte';
 
   type Props = {
     items: MenuNode[];
@@ -66,7 +67,7 @@
     {:else if node.kind === 'item'}
       <Menu.Item value={node.id} class="bava-menu-item">
         <span class="bava-menu-label">{node.label}</span>
-        {#if node.keys}<span class="keys">{node.keys}</span>{/if}
+        {#if node.keys}<span class="keys"><Keycaps keys={node.keys} /></span>{/if}
       </Menu.Item>
     {:else}
       <Menu.Root onSelect={(details) => onSelect(details.value)} positioning={{ placement: 'right-start', gutter: 2, ...(within ? { strategy: 'fixed' as const } : {}) }}>
@@ -123,9 +124,8 @@
 <style>
   /* The menu, its items and separators are styled in `styles/menus.scss`. */
   .keys {
-    font-family: var(--font-mono);
-    font-size: var(--text-menu-keys);
-    color: var(--color-text-muted);
+    display: flex;
+    margin-inline-start: auto;
   }
 
   .chevron {

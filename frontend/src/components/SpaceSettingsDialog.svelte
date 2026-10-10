@@ -111,6 +111,7 @@
   .heading {
     font-size: var(--text-label);
     font-weight: var(--weight-semibold);
+    font-family: var(--font-label);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-text-muted);

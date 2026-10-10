@@ -31,7 +31,8 @@ describe('ContextMenu', () => {
     setup();
     await vi.waitFor(() => expect(content()).not.toBeNull());
     expect(content().textContent).toContain('Cut');
-    expect(content().querySelector('.keys')?.textContent).toBe('⌘X');
+    expect(content().querySelector('.keys .spoken')?.textContent).toBe('⌘X');
+    expect([...content().querySelector('.keys')!.querySelectorAll('kbd')].map((key) => key.textContent)).toEqual(['⌘', 'X']);
     expect(content().querySelector('[data-part="separator"]')).not.toBeNull();
     const trigger = [...content().querySelectorAll('[data-part="trigger-item"]')].find((el) => el.textContent?.includes('Arrange'));
     expect(trigger?.querySelector('.chevron svg')).not.toBeNull();

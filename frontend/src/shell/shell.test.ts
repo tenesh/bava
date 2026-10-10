@@ -7,7 +7,7 @@ import { createViewState } from './view.svelte';
 
 const pane = (text: string) => createRawSnippet(() => ({ render: () => `<p>${text}</p>` }));
 
-function setup() {
+function setup(extra: Record<string, unknown> = {}) {
   const memory = new Map<string, string>();
   const view = createViewState({
     storage: { getItem: (key) => memory.get(key) ?? null, setItem: (key, value) => void memory.set(key, value) },
@@ -23,6 +23,7 @@ function setup() {
     document: pane('page'),
     canvas: pane('scene'),
     view,
+    ...extra,
   });
   return target.querySelector<HTMLElement>('.region-ai')!;
 }
@@ -33,5 +34,17 @@ describe('Shell', () => {
     const ai = setup();
     expect(ai.textContent).not.toContain('Nothing on the canvas');
     expect(ai.textContent).toContain('No AI yet');
+  });
+
+  // A dot before the title bar's state: green when saved, amber while not.
+  // The word beside it says the same, so the dot is not read out.
+  it.each([
+    [false, 'saved'],
+    [true, 'dirty'],
+  ])('marks the title bar state with a dot (dirty: %s)', (dirty, state) => {
+    setup({ dirty });
+    const label = document.querySelector<HTMLElement>('.titlebar .state')!;
+    expect(label.dataset.state).toBe(state);
+    expect(label.querySelector('.dot')?.getAttribute('aria-hidden')).toBe('true');
   });
 });

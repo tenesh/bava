@@ -147,6 +147,7 @@
   .label {
     font-size: var(--text-label);
     font-weight: var(--weight-semibold);
+    font-family: var(--font-label);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-text-muted);
@@ -183,6 +184,8 @@
     white-space: nowrap;
     font-size: var(--text-meta);
     color: var(--color-text-muted);
+    font-family: var(--font-data);
+    font-variant-numeric: tabular-nums;
   }
 
   .buttons {
