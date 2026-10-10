@@ -1,59 +1,45 @@
-# Welcome to Your New Wails3 Project!
+# Bava
 
-Congratulations on generating your Wails3 application! This README will guide you through the next steps to get your project up and running.
+A local-only desktop app for diagrams and documents. Offline, free and
+file-based.
 
-## Getting Started
+Each file holds a page and a canvas. On the canvas you place, draw and
+connect anything, anywhere. A diagram can also be written as D2 code: Bava
+lays it out once and turns it into ordinary shapes and arrows you then edit
+freely.
 
-1. Navigate to your project directory in the terminal.
+- **Your files are the source of truth.** Pages and canvases are plain text
+  on disk, readable and diffable in any editor.
+- **No service of ours.** No accounts, no sync, no telemetry. Network calls
+  happen only where you configure or trigger them.
+- **Desktop only.** macOS, Linux and Windows.
 
-2. To run your application in development mode, use the following command:
+Bava is under active development and not yet released.
 
-   ```
-   wails3 dev
-   ```
+## Building from source
 
-   This will start your application and enable hot-reloading for both frontend and backend changes.
+Needs Go 1.27+, Node 24 and the [Wails v3](https://v3.wails.io/) CLI.
 
-3. To build your application for production, use:
+```
+wails3 build
+```
 
-   ```
-   wails3 build
-   ```
+## Tests
 
-   This will create a production-ready executable in the `build` directory.
+```
+go test ./internal/... .
+cd frontend && npm test
+```
 
-## Exploring Wails3 Features
+Browser tests run in Docker (`npm run browser`); see
+[`docs/testing.md`](docs/testing.md).
 
-Now that you have your project set up, it's time to explore the features that Wails3 offers:
+## Docs
 
-1. **Check out the examples**: The best way to learn is by example. Visit the `examples` directory in the `v3/examples` directory to see various sample applications.
+- [`docs/file-format.md`](docs/file-format.md): what Bava writes to disk
+- [`docs/shortcuts.md`](docs/shortcuts.md): keyboard shortcuts
+- [`docs/decisions.md`](docs/decisions.md): decisions and why
 
-2. **Run an example**: To run any of the examples, navigate to the example's directory and use:
+## Licence
 
-   ```
-   go run .
-   ```
-
-   Note: Some examples may be under development during the alpha phase.
-
-3. **Explore the documentation**: Visit the [Wails3 documentation](https://v3.wails.io/) for in-depth guides and API references.
-
-4. **Join the community**: Have questions or want to share your progress? Join the [Wails Discord](https://discord.gg/JDdSxwjhGf) or visit the [Wails discussions on GitHub](https://github.com/wailsapp/wails/discussions).
-
-## Project Structure
-
-Take a moment to familiarize yourself with your project structure:
-
-- `frontend/`: Contains your frontend code (HTML, CSS, JavaScript/TypeScript)
-- `main.go`: The entry point of your Go backend
-- `app.go`: Define your application structure and methods here
-- `wails.json`: Configuration file for your Wails project
-
-## Next Steps
-
-1. Modify the frontend in the `frontend/` directory to create your desired UI.
-2. Add backend functionality in `main.go`.
-3. Use `wails3 dev` to see your changes in real-time.
-4. When ready, build your application with `wails3 build`.
-
-Happy coding with Wails3! If you encounter any issues or have questions, don't hesitate to consult the documentation or reach out to the Wails community.
+Apache-2.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
