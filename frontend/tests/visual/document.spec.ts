@@ -1,7 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import { DOC_SHEETS, SUBJECTS, sheetPage, type DocSheet, type Subject } from '../fixtures/document-blocks';
+import { box } from '../fixtures/canvas-scenes';
 import {
+  CANVAS_PAGE,
+  SPACE,
   THEMES,
+  openApp,
+  openPage,
+  seedScene,
   dragCells,
   documentPane,
   personPace,
@@ -165,6 +171,34 @@ for (const theme of THEMES) {
         await shotPane(documentPane(page), shot('document', 'page', `width-${width}`, theme));
       });
     }
+  });
+
+  test.describe(`a canvas embed, ${theme}`, () => {
+    test("this page's frame at its own size, with what was drawn over it", async ({ page }) => {
+      await openApp(page, theme);
+      // The first box was drawn before the frame, the second crosses its edge: both are pictured.
+      await seedScene(page, CANVAS_PAGE, [
+        { id: 'f1', type: 'frame', x: 100, y: 100, w: 320, h: 180, z: 1, label: 'Write path' },
+        box('b1', 130, 150, { z: 2, label: 'API' }),
+        box('b2', 360, 200, { z: 3, label: 'Store' }),
+      ]);
+      await page.evaluate(
+        ([root, at]) =>
+          (window as unknown as { __bava: { fakes: { harness: { setSource(root: string, path: string, source: string): void } } } }).__bava.fakes.harness.setSource(
+            root,
+            at,
+            '# Architecture\n\n<!-- bava: embed=f1 -->\n![Write path](../.bava/attachments/Architecture%20-%20Write%20path.png)\n',
+          ),
+        [SPACE, CANVAS_PAGE] as const,
+      );
+      await openPage(page, CANVAS_PAGE);
+      await menu(page, 'view.document');
+      const picture = editor(page).locator('figure.embed img');
+      await expect(picture).toHaveAttribute('src', /^blob:/);
+      await expect.poll(() => picture.evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+      await restPointer(page);
+      await shotPane(documentPane(page), shot('document', 'embed', 'own-size', theme));
+    });
   });
 
   test.describe(`a page's tags, ${theme}`, () => {

@@ -1,31 +1,31 @@
 /**
  * A frame's picture, as a canvas embed shows it: the frame's own box, cut at
- * its edges, holding what the frame holds (frames inside it too), without
+ * its edges, with everything drawn over it (frames inside it too), without
  * the frame's border or label, drawn at twice size on the canvas background.
  */
 import type { SceneData, SceneElement } from '../scene';
 import type { ExportArea } from './area';
+import { drawnBoundsOf } from '../edit';
 import { toPng, type PngOptions } from './png';
 
 /** Pixels per scene unit: sharp on a high-resolution screen. */
-const SCALE = 2;
+export const PICTURE_SCALE = 2;
 
-/** What a frame's picture draws, and its box; null when there is no such frame. */
+/**
+ * What a frame's picture draws, and its box; null when there is no such
+ * frame. Everything drawn over the frame's area, whether or not the frame
+ * holds it: what crosses its edge is cut there when drawn.
+ */
 export function frameArea(scene: SceneData, frameId: string): ExportArea | null {
   const frame = scene.elements.find((element) => element.id === frameId && element.type === 'frame');
   if (!frame) return null;
-  const byId = new Map(scene.elements.map((element) => [element.id, element]));
-  // Held through any frame inside it, however deep; a loop in the file ends the walk.
-  const heldBy = (element: SceneElement): boolean => {
-    const seen = new Set<string>();
-    for (let owner = element.frame; owner !== undefined && !seen.has(owner); owner = byId.get(owner)?.frame) {
-      if (owner === frameId) return true;
-      seen.add(owner);
-    }
-    return false;
+  const box = { x: frame.x, y: frame.y, w: frame.w, h: frame.h };
+  const overlaps = (element: SceneElement) => {
+    const drawn = drawnBoundsOf([element]);
+    return drawn.x < box.x + box.w && drawn.x + drawn.w > box.x && drawn.y < box.y + box.h && drawn.y + drawn.h > box.y;
   };
-  const elements = scene.elements.filter((element) => element.type !== 'group' && heldBy(element)).sort((a, b) => a.z - b.z);
-  return { elements, box: { x: frame.x, y: frame.y, w: frame.w, h: frame.h } };
+  const elements = scene.elements.filter((element) => element.id !== frameId && element.type !== 'group' && overlaps(element)).sort((a, b) => a.z - b.z);
+  return { elements, box };
 }
 
 export type PictureOptions = Pick<PngOptions, 'theme' | 'read' | 'codeRuns'> & {
@@ -38,5 +38,5 @@ export async function framePicture(scene: SceneData, frameId: string, options: P
   const area = frameArea(scene, frameId);
   if (!area) return null;
   const { draw = toPng, ...rest } = options;
-  return draw(area, { ...rest, scale: SCALE, background: true });
+  return draw(area, { ...rest, scale: PICTURE_SCALE, background: true });
 }

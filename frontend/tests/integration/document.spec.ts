@@ -673,6 +673,33 @@ test.describe('canvas embeds', () => {
     await expect.poll(picture).not.toBe(light);
   });
 
+  test('a frame drawn around a shape already there pictures it, not an empty frame', async ({ page }) => {
+    type PictureHarness = { __bava: { fakes: { harness: { pictures(): Record<string, string> } } } };
+    await openApp(page, 'light');
+    // The box is over the first frame but not held by it (drawn before it).
+    await seedScene(page, CANVAS_PAGE, [
+      { id: 'drawn', type: 'frame', x: 100, y: 100, w: 300, h: 200, z: 1, label: 'Drawn around' },
+      box('b9', 160, 160, { z: 2, fill: '#4a7fb5' }),
+      { id: 'empty', type: 'frame', x: 600, y: 100, w: 300, h: 200, z: 3, label: 'Empty' },
+    ]);
+    await openPage(page, CANVAS_PAGE);
+    await menu(page, 'view.document');
+    for (const name of ['Drawn around', 'Empty']) {
+      await newLineAtEnd(page);
+      await page.keyboard.type('/embed');
+      await page.getByRole('option', { name: 'Embed frame' }).click();
+      const picker = page.getByRole('dialog', { name: 'Frames' });
+      await picker.getByRole('option', { name }).click();
+      await expect(picker).toHaveCount(0);
+    }
+    const sizes = await page.evaluate(() => {
+      const all = (window as unknown as PictureHarness).__bava.fakes.harness.pictures();
+      return { drawn: all['Architecture - Drawn around.png']?.length ?? 0, empty: all['Architecture - Empty.png']?.length ?? 0 };
+    });
+    expect(sizes.empty).toBeGreaterThan(0);
+    expect(sizes.drawn).toBeGreaterThan(sizes.empty * 1.2);
+  });
+
   test('clicking an embed shows the canvas beside the page, its frame selected and in view', async ({ page }) => {
     await openWithFrame(page);
     await embedFromSlash(page);
@@ -763,5 +790,45 @@ test.describe('tags on the page', () => {
     await page.getByRole('menuitem', { name: 'Lock' }).click();
     await expect(tags(page)).toContainText('launch');
     await expect(tags(page).getByRole('button')).toHaveCount(0);
+  });
+});
+
+// A block moved by its handle. Playwright's own drag does not start a native
+// drag in this WebKit, so the drag's events are sent as the browser sends
+// them: start on the grip, then over and onto the place it is dropped.
+test.describe('moving a block by its handle', () => {
+  async function dragBlock(page: Page, from: string, to: (lines: { one: DOMRect; two: DOMRect }) => { x: number; y: number }) {
+    const lines = editor(page).locator(':scope > p');
+    await lines.filter({ hasText: from }).hover();
+    const grip = (await page.getByRole('button', { name: 'Drag, or open the block menu' }).boundingBox())!;
+    const one = (await lines.filter({ hasText: 'One' }).boundingBox())!;
+    const two = (await lines.filter({ hasText: 'Two' }).boundingBox())!;
+    const at = to({ one: one as DOMRect, two: two as DOMRect });
+    await page.evaluate(
+      ([g, p]) => {
+        const data = new DataTransfer();
+        const send = (el: Element, type: string, x: number, y: number) =>
+          el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: data, clientX: x, clientY: y }));
+        const start = document.elementFromPoint(g.x + 4, g.y + 4)!;
+        send(start, 'dragstart', g.x + 4, g.y + 4);
+        const over = document.elementFromPoint(p.x, p.y)!;
+        for (const type of ['dragenter', 'dragover', 'drop']) send(over, type, p.x, p.y);
+        send(start, 'dragend', p.x, p.y);
+      },
+      [grip, at] as const,
+    );
+  }
+  const order = (page: Page) => editor(page).locator(':scope > p').allTextContents();
+
+  test('dropped in the gap between two blocks, it lands there', async ({ page }) => {
+    await openSeeded(page, 'light', 'One\n\nTwo\n\nThree\n');
+    await dragBlock(page, 'Three', ({ one, two }) => ({ x: one.x + 20, y: (one.y + one.height + two.y) / 2 }));
+    await expect.poll(() => order(page)).toEqual(['One', 'Three', 'Two', '']);
+  });
+
+  test('dropped on the top half of a block, it lands before it', async ({ page }) => {
+    await openSeeded(page, 'light', 'One\n\nTwo\n\nThree\n');
+    await dragBlock(page, 'Three', ({ one }) => ({ x: one.x + 20, y: one.y + 2 }));
+    await expect.poll(() => order(page)).toEqual(['Three', 'One', 'Two', '']);
   });
 });

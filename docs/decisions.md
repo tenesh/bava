@@ -251,3 +251,4 @@ could reasonably have gone another way.
 | 2026-10-07 | A template is copied as it is | The user (8.6 decision 10): no fill-ins such as `{{date}}`. |
 | 2026-10-07 | A template is edited like a page | The user (8.6 decision 11): opened in the main area under a bar with Done; never in the Files tree. |
 | 2026-10-07 | A deleted template is gone for good, after asking | The user (8.6 decision 12): it does not go to the Space's Trash. |
+| 2026-10-10 | An embed's picture is everything in the frame's area | The user, settling 8.5 decision 3: every shape, line and arrow over the frame's rectangle, cut at its edges, not only those that belong to the frame; a frame drawn around existing shapes shows them. |

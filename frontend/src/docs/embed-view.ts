@@ -9,6 +9,7 @@ import type { Node } from 'prosemirror-model';
 import type { EditorView, NodeView } from 'prosemirror-view';
 import { t } from '../i18n/t';
 import { mediaUrl, type MediaContext } from './media';
+import { PICTURE_SCALE } from '../canvas/export/frame-picture';
 import { resolveLink } from './links';
 
 /** How long the canvas has to stay still before this page's embeds are drawn again. */
@@ -38,6 +39,11 @@ export function embedView(node: Node, _view: EditorView, _getPos: () => number |
   frame.className = 'media-frame';
   const picture = document.createElement('img');
   picture.className = 'media-file';
+  // The picture is drawn at twice the frame's size, for sharp screens: shown
+  // at half its pixels, it is the frame's own size, as on the canvas.
+  picture.addEventListener('load', () => {
+    if (picture.naturalWidth > 0) dom.style.setProperty('--embed-width', `${picture.naturalWidth / PICTURE_SCALE}px`);
+  });
   picture.draggable = false;
   const deleted = document.createElement('span');
   deleted.className = 'embed-deleted';
