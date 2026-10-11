@@ -347,20 +347,25 @@ jobs:
         run: |
           set -euo pipefail
           container="$HOME/Library/Containers/com.tharabyte.bava/Data"
+          # Every walk runs, so one failing does not hide what the others show.
+          failed=0
           for scenario in create reopen canvas export-proof; do
             BAVA_E2E_SANDBOX=1 BAVA_E2E_SCENARIO="$scenario" bin/bava.app/Contents/MacOS/bava || true
             result="$container/smoke-out/$scenario-result.txt"
-            if [[ ! -f "$result" ]]; then echo "::error::$scenario left no result in the sandbox"; exit 1; fi
+            if [[ ! -f "$result" ]]; then echo "::error::$scenario left no result in the sandbox"; failed=1; continue; fi
             cat "$result"
-            grep -q '^PASS' "$result" || { echo "::error::$scenario failed in the sandbox"; exit 1; }
+            grep -q '^PASS' "$result" || { echo "::error::$scenario failed in the sandbox"; failed=1; }
           done
+          exit "$failed"
 
       - name: upload what the sandboxed walks left
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sandbox-macos
-          path: ~/Library/Containers/com.tharabyte.bava/Data/smoke-out/
+          path: |
+            ~/Library/Containers/com.tharabyte.bava/Data/smoke-out/
+            ~/Library/Containers/com.tharabyte.bava/Data/Library/Caches/Bava/logs/
           if-no-files-found: warn
           retention-days: 14
 

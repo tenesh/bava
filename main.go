@@ -98,6 +98,7 @@ func main() {
 			Print: func(html string, setup pdfprint.PageSetup, out string) error {
 				return pdfprint.Print(html, setup, out, application.InvokeSync)
 			},
+			Failed: answers.pdfFailed,
 		})),
 		application.NewService(menus),
 		application.NewService(logService),
@@ -141,6 +142,8 @@ type pickers struct {
 	chooseFolder func(title string) (string, error)
 	chooseFiles  func(kind string) ([]string, error)
 	chooseSave   func(suggestedName string) (string, error)
+	// pdfFailed shows the end-to-end run why a PDF failed.
+	pdfFailed func(error)
 }
 
 // openGrants opens the grants kept beside the settings. One that cannot be

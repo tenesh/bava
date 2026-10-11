@@ -82,5 +82,6 @@ func smokeRun(_ func() *application.App, closeSession func()) (application.Servi
 		// A "pdf" step prints through the system's webview, on the main thread.
 		RunOnMain: application.InvokeSync,
 	})
-	return application.NewService(service), pickers{chooseFolder: folders.Next, chooseFiles: files.Next, chooseSave: saves.Next}
+	pdfFailed := func(err error) { fmt.Fprintln(os.Stderr, "PDF failed:", err) }
+	return application.NewService(service), pickers{chooseFolder: folders.Next, chooseFiles: files.Next, chooseSave: saves.Next, pdfFailed: pdfFailed}
 }

@@ -34,6 +34,10 @@ type ExportServiceOptions struct {
 	Fonts fs.FS
 	// Print has the system's webview print a page; nil where it cannot.
 	Print export.Printer
+	// Failed learns why a PDF failed, its words included; only the
+	// end-to-end build sets it, to show the run why. Nil learns nothing:
+	// the words name the user's files, so the app never logs them.
+	Failed func(error)
 }
 
 // NewExportService constructs the service registered with the application.
@@ -85,6 +89,7 @@ func (s *ExportService) PagePDF(root string, req export.Request, out string) Pro
 	case errors.Is(err, export.ErrNothing):
 		return Problem{Error: err.Error(), Code: "nothing"}
 	}
+	s.failed(err)
 	return Problem{Error: fmt.Sprintf("export: %v", err), Code: "failed"}
 }
 
@@ -144,5 +149,12 @@ func (s *ExportService) SpacePDF(root string, req export.SpaceRequest, out strin
 	case errors.Is(err, export.ErrNothing):
 		return SpacePDFResult{Error: err.Error(), Code: "nothing"}
 	}
+	s.failed(err)
 	return SpacePDFResult{Error: fmt.Sprintf("export: %v", err), Code: "failed"}
+}
+
+func (s *ExportService) failed(err error) {
+	if s.options.Failed != nil {
+		s.options.Failed(err)
+	}
 }
