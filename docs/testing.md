@@ -66,6 +66,13 @@ build contains the driver.
 | `pdffile` | `target`, `text`: `min=` sheets, `first=` / `last=` size in mm |
 | `pdf` | `target`, `name` as `paper/orientation/margins[/heavy]`, `text` as `pages=2 size=210x297` |
 
+Inside the Mac App Store's sandbox, the `sandboxed run (macos)` job packs
+the end-to-end build as an `.app`, signs it ad hoc with
+`build/darwin/entitlements.sandbox.plist` and runs the same walks with
+`BAVA_E2E_SANDBOX=1`: the build lays each walk out in its own container
+(its scenarios and fixtures are built in) and leaves its result there.
+Screenshots the sandbox refuses are skipped, not failures.
+
 ## Rules for every test
 
 - **One behaviour per test**, named as a sentence. Know which code change would fail it.

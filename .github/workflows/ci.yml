@@ -309,6 +309,61 @@ jobs:
           path: ${{ runner.temp }}/smoke-out/
           retention-days: 14
 
+  # The walks inside the Mac App Store's sandbox: the end-to-end build packed
+  # as an .app, ad-hoc signed with the sandbox's entitlements (no account
+  # needed), each walk laid out in the app's own container.
+  sandbox-macos:
+    name: sandboxed run (macos)
+    runs-on: macos-latest
+    needs: test
+    env:
+      VITE_BAVA_E2E: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install wails3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.20
+
+      - name: package the end-to-end build, signed into the sandbox
+        run: |
+          wails3 package EXTRA_TAGS=e2e
+          codesign --force --deep --sign - --entitlements build/darwin/entitlements.sandbox.plist bin/bava.app
+          codesign -d --entitlements - bin/bava.app
+
+      - name: run the walks sandboxed
+        shell: bash
+        timeout-minutes: 12
+        run: |
+          set -euo pipefail
+          container="$HOME/Library/Containers/com.tharabyte.bava/Data"
+          for scenario in create reopen canvas export-proof; do
+            BAVA_E2E_SANDBOX=1 BAVA_E2E_SCENARIO="$scenario" bin/bava.app/Contents/MacOS/bava || true
+            result="$container/smoke-out/$scenario-result.txt"
+            if [[ ! -f "$result" ]]; then echo "::error::$scenario left no result in the sandbox"; exit 1; fi
+            cat "$result"
+            grep -q '^PASS' "$result" || { echo "::error::$scenario failed in the sandbox"; exit 1; }
+          done
+
+      - name: upload what the sandboxed walks left
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sandbox-macos
+          path: ~/Library/Containers/com.tharabyte.bava/Data/smoke-out/
+          if-no-files-found: warn
+          retention-days: 14
+
   # A normal build must not contain the smoke driver: its frontend bundle is
   # checked here, its Go side by release_test.go.
   release-has-no-driver:
