@@ -277,8 +277,9 @@ History belongs in each plan's As built, not here.
   `reopen` walk on all three systems 2026-10-11 (run 38107518600, after the
   walk was taught that Export Space opens on PDF). **R1** (the move to
   Tharabyte, `.claude/work/plans/R1-move-to-tharabyte.md`) is under way:
-  the repository is `tharabyte/bava`; R1a (the rename) is built, not yet
-  seen on CI. Next R1b (no other apps, the AI disclosure), then R2 (the
+  the repository is `tharabyte/bava`; R1a (the rename) is committed, CI
+  green 2026-10-11 (run 38109056864, the browser job on a rerun after the
+  menu flake below). Next R1b (no other apps, the AI disclosure), then R2 (the
   stores' sandboxes, a sandboxed run on CI first; the roadmap's R1 and R2
   section), then 15.3 import and 15.4 the canvas work. The
   roadmap (`.claude/plan/roadmap.md`) holds the sequence.
@@ -387,8 +388,11 @@ What no test can see, still waiting for a person, in both themes:
   not yet investigated.
 - **A floating menu's picture can time out waiting for it to settle**
   (`placed` in `frontend/tests/helpers.ts`): once on CI (the Tags dialog's
-  row menu, 2026-10-11) and once locally (New page from template, 1 run in
-  4 full runs; 30 of 30 alone). Not yet investigated.
+  row menu, 2026-10-11), once locally and once more on CI (New page from
+  template; 30 of 30 alone). Both hold a submenu. `placed` now says, when
+  it gives up, the last positions it saw and whether they were inside the
+  window: the next failure shows whether the submenu keeps moving or sits
+  past the edge.
 
 ### Traps
 

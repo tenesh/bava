@@ -51,7 +51,7 @@ toolchain lines.
 - [x] Failing test first: the metadata test pins `com.tharabyte.bava`,
   "Tharabyte" and the copyright in every platform file
 - [x] Implement; Green: every gate
-- [ ] `wails3 build` on CI for all three
+- [x] `wails3 build` on CI for all three
 
 ### Task 3: The settings' folder
 **Files:** `internal/config` (+ test), `docs/file-format.md` if it names
@@ -129,4 +129,5 @@ the plan's UI impact and README claims.
 **Checks:** Go vet and tests (Windows vet with `-tags e2e`), `npm test`
 (2,871 passed), check, lint, `npm run browser` 513 passed twice. The test
 pinning the platform files was seen failing first (29 lines missing).
-Proved only on CI: the three builds and the walks at the new address.
+CI green at the new address (run 38109056864): the three builds and the
+walks, the driver's renamed service included.

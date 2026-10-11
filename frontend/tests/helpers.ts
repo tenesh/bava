@@ -228,6 +228,10 @@ export async function shotDialog(page: Page, name: string[], dialog: Locator = o
   await expect(dialog).toHaveScreenshot(name);
 }
 
+/** How long a floating piece may take to settle, and how often it is looked at. */
+const PLACED_WAIT_MS = 5000;
+const PLACED_POLL_MS = 100;
+
 /**
  * Waits for something floating to be placed: Ark shows a floating piece
  * above the window or at its edge, then moves it beside what it floats from a
@@ -237,19 +241,22 @@ export async function shotDialog(page: Page, name: string[], dialog: Locator = o
 export async function placed(floating: Locator) {
   await expect(floating.first()).toBeVisible();
   const view = floating.page().viewportSize()!;
+  type Box = { x: number; y: number; width: number; height: number } | null;
+  // Still, and inside the window: before it is placed it can wait at an edge.
+  const inside = (box: Box) => box !== null && box.x >= 0 && box.y >= 0 && box.x + box.width <= view.width && box.y + box.height <= view.height;
+  // What was seen, so a piece that never settles says how it moved.
+  const seen: string[] = [];
   let before = '';
-  await expect
-    .poll(async () => {
-      const boxes = await Promise.all((await floating.all()).map((part) => part.boundingBox()));
-      const now = JSON.stringify(boxes);
-      // Still, and inside the window: before it is placed it can wait at an edge.
-      const inside = (box: { x: number; y: number; width: number; height: number } | null) =>
-        box !== null && box.x >= 0 && box.y >= 0 && box.x + box.width <= view.width && box.y + box.height <= view.height;
-      const still = now === before && boxes.every(inside);
-      before = now;
-      return still;
-    })
-    .toBe(true);
+  const end = Date.now() + PLACED_WAIT_MS;
+  while (Date.now() < end) {
+    const boxes: Box[] = await Promise.all((await floating.all()).map((part) => part.boundingBox()));
+    const now = JSON.stringify(boxes.map((box) => box && { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height) }));
+    if (now === before && boxes.every(inside)) return;
+    if (now !== before) seen.push(`${now}${boxes.every(inside) ? '' : ' (outside the window)'}`);
+    before = now;
+    await new Promise((resolve) => setTimeout(resolve, PLACED_POLL_MS));
+  }
+  throw new Error(`never placed within ${PLACED_WAIT_MS} ms; the last of ${seen.length} positions seen:\n${seen.slice(-6).join('\n')}`);
 }
 
 /** Room round a floating piece for its shadow. */
