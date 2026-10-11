@@ -52,3 +52,30 @@ func TestTheFlatpakKeeperKeepsThePathOnly(t *testing.T) {
 		t.Errorf("restore = %q, %v, %v", path, stale, err)
 	}
 }
+
+// Inside the Mac sandbox, temporary files go in the container's own folder,
+// whatever TMPDIR the launcher passed down: another one is refused.
+func TestInsideTheMacSandboxTemporaryFilesStayInTheContainer(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("TMPDIR", "/somewhere/else")
+	t.Setenv("APP_SANDBOX_CONTAINER_ID", "com.tharabyte.bava")
+	if err := UseContainerTemp(); err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(home, "tmp")
+	if got := os.Getenv("TMPDIR"); got != want {
+		t.Errorf("TMPDIR = %q; want %q", got, want)
+	}
+	if info, err := os.Stat(want); err != nil || !info.IsDir() {
+		t.Error("the container's temporary folder was not made")
+	}
+}
+
+func TestOutsideTheSandboxTemporaryFilesAreLeftAlone(t *testing.T) {
+	t.Setenv("TMPDIR", "/kept")
+	t.Setenv("APP_SANDBOX_CONTAINER_ID", "")
+	if err := UseContainerTemp(); err != nil || os.Getenv("TMPDIR") != "/kept" {
+		t.Errorf("TMPDIR = %q (%v); want it left alone", os.Getenv("TMPDIR"), err)
+	}
+}

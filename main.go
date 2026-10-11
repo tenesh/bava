@@ -33,6 +33,9 @@ var assets embed.FS
 // The native surface stays thin on purpose: the render pipeline, file I/O and
 // logging live in internal/, everything else in the frontend.
 func main() {
+	// Inside the Mac sandbox, temporary files belong in its container,
+	// whatever the launcher passed down. Before anything makes one.
+	tempErr := access.UseContainerTemp()
 	// Logging starts first, so everything after it (including Wails' own
 	// errors, which a release build would otherwise discard) is kept.
 	// It never fails: without a usable folder the session simply records nothing.
@@ -40,6 +43,9 @@ func main() {
 	// Bava's own packages log through slog's default logger, so it must be
 	// the session's too.
 	slog.SetDefault(session.Logger)
+	if tempErr != nil {
+		slog.Warn("the sandbox's temporary folder could not be used")
+	}
 
 	// Set once the application exists. Wails may call these closures from its
 	// own goroutines during New, so the pointer is atomic and checked.
