@@ -1,78 +1,12 @@
 Bava
 Copyright 2026 Tharabyte
 
-This product includes software developed as part of the Bava project
-(https://github.com/tharabyte/bava), licensed under the Apache License,
-Version 2.0.
+Licensed under the Apache License, Version 2.0 (LICENSE).
+https://github.com/tharabyte/bava
 
---------------------------------------------------------------------------
-Third-party components
---------------------------------------------------------------------------
-
-Bava bundles third-party work. Each entry below carries its own licence, and
-those licences continue to apply to those files. This file is the source for
-the licences shown in the application's About screen; add an entry in the same
-change that adds a dependency, never afterwards.
-
-Fonts
-  Geist and Geist Mono: SIL Open Font License 1.1
-    Copyright 2024 The Geist Project Authors
-    https://github.com/vercel/geist-font
-    frontend/public/fonts/GEIST-OFL.txt
-
-Runtime and framework
-  Wails v3: MIT
-  Svelte: MIT
-
-Document editor
-  ProseMirror (prosemirror-model, -state, -view, -transform, -commands,
-  -keymap, -history, -inputrules, -schema-list, -dropcursor, -gapcursor,
-  -search, -markdown, -tables): MIT
-    Copyright (C) 2015-2017 by Marijn Haverbeke <marijn@haverbeke.berlin> and others
-    https://prosemirror.net
-  markdown-it: MIT
-    Copyright (c) 2014 Vitaly Puzrin, Alex Kocharin.
-    https://github.com/markdown-it/markdown-it
-  Their bundled dependencies: orderedmap, rope-sequence, w3c-keyname,
-  linkify-it, mdurl, punycode.js, uc.micro (MIT); entities (BSD-2-Clause,
-  Copyright (c) Felix Böhm, https://github.com/fb55/entities).
-
-Equations
-  KaTeX: MIT
-    Copyright (c) 2013-2020 Khan Academy and other contributors
-    https://github.com/KaTeX/KaTeX
-  KaTeX fonts: SIL Open Font License 1.1, the licence and notices carried in
-  each font file
-    Copyright (c) 2009-2010 Design Science, Inc.
-    Copyright (c) 2014-2018 Khan Academy
-
-Emoji names
-  unicode-emoji-json: MIT
-    Copyright (c) 2019 Mu-An Chiou
-    https://github.com/muan/unicode-emoji-json
-
-Pasted images
-  golang.design/x/clipboard, golang.design/x/x11: MIT
-    Copyright (c) 2021 Changkun Ou <contact@changkun.de>
-    https://github.com/golang-design/clipboard
-  purego (github.com/ebitengine/purego): Apache-2.0
-    https://github.com/ebitengine/purego
-
-Web card details
-  golang.org/x/net (html): BSD-3-Clause
-    Copyright 2009 The Go Authors
-    https://cs.opensource.google/go/x/net
-
-PDF export
-  pdfcpu: Apache-2.0
-    Copyright The pdfcpu Authors
-    https://github.com/pdfcpu/pdfcpu
-  Its dependencies: hhrutter/tiff, golang.org/x/image, golang.org/x/crypto,
-  golang.org/x/text (BSD-3-Clause, Copyright The Go Authors);
-  mattn/go-runewidth (MIT, Copyright (c) 2016 Yasuhiro Matsumoto);
-  clipperhouse/uax29 (MIT, Copyright (c) 2020 Matt Sherman);
-  go.yaml.in/yaml/v3 (MIT and Apache-2.0, Copyright The yaml Project
-  Contributors).
+The packages Bava bundles keep their own licences. Release builds will carry a
+generated list of them with their full licence texts; the bundled fonts'
+licence sits beside them (frontend/public/fonts/GEIST-OFL.txt).
 
 Canvas (adapted code)
   Excalidraw: MIT
@@ -104,13 +38,3 @@ Canvas (adapted code)
     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-Icons
-  Lucide (@lucide/svelte): ISC
-    Copyright (c) 2026 Lucide Icons and Contributors
-    https://github.com/lucide-icons/lucide
-
-(Icon sets, canvas libraries and remaining runtime dependencies are added here
-as they land. Sets under proprietary terms, including the AWS, Azure and
-Google Cloud architecture icon sets, are never bundled; users import those
-themselves.)

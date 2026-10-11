@@ -1,386 +1,178 @@
 # Design system
 
-Bava's UI is built on Ark UI headless primitives, styled only with the design
-system's tokens. No Tailwind, no styled component library, no ad-hoc CSS.
-
-**The code is the source of truth.** `frontend/src/styles/` holds the tokens
-and `frontend/src/components/` the components. When a spec, a sketch, or a
-screenshot disagrees with them, the code wins.
+Tokens, the look, and the component inventory. The code in
+`frontend/src/styles/` and `frontend/src/components/` is the truth.
 
 ## Tokens
-
-All tokens are CSS custom properties, authored in SCSS under
-`frontend/src/styles/tokens/` and emitted onto `:root`. They are redefined
-under `:root[data-theme="dark"]`, and the app sets `data-theme` on `<html>`.
+CSS custom properties, authored in SCSS under `styles/tokens/`, emitted on
+`:root` and redefined under `:root[data-theme="dark"]`.
 
 | File | Holds |
 |---|---|
-| `_color.scss` | semantic colour only; see below |
-| `_space.scss` | `--space-half`, `--space-1` … `--space-12` (4px unit), `--border-width`, fixed chrome heights and named sizes |
+| `_color.scss` | semantic colour, `--syntax-*` per code run kind, `--color-code-surface` |
+| `_space.scss` | `--space-half`, `--space-1` … `--space-12` (4px unit), `--border-width`, named sizes |
 | `_type.scss` | family, size, weight, line-height, letter-spacing |
-| `_radius.scss` | `--radius-sm/md/lg/xl/full`, and named radii (handles, round shapes, the mark's tiles) |
+| `_radius.scss` | `--radius-sm/md/lg/xl/full`, named radii |
 | `_elevation.scss` | shadows and overlay layering |
 | `_motion.scss` | durations and easings |
-| `_z.scss` | named stacking levels; see Stacking below |
-| `_swatches.scss` | the shape swatches, `--swatch-<name>-fill`, `-stroke`, `-text`, in both themes; see Inventory |
+| `_z.scss` | stacking levels (below) |
+| `_swatches.scss` | `--swatch-<name>-fill/-stroke/-text`; names live once in `canvas/palette.ts` |
 
-**Colour tokens are semantic, never literal.** `--color-surface-raised`, not
-`--color-gray-100`. `--color-border-subtle`, not `--color-gray-300`. Literal
-scales may exist as private SCSS variables feeding the semantic layer, but
-nothing outside `tokens/` may reference them.
-
-The test: switching to dark mode should not require touching any file outside
-`tokens/`. If it does, a component contains a literal.
-
-**This is enforced, not merely stated.** `src/styles/no-literals.test.ts` fails
-the suite on any hex, `rgb()`/`hsl()`, or `px` value outside `tokens/`, in
-comments as well as in code. A rule with nothing behind it decays.
-
-### The set
-
-The names, from the design's first token sheet; the values since 2026-10-11
-from `.claude/work/specs/look.md`:
-
-`surface`, `surface-raised`, `surface-sunken`, `surface-overlay`,
+Colour names: `surface`, `surface-raised`, `surface-sunken`, `surface-overlay`,
 `surface-nav` · `border-subtle`, `border-strong`, `border-hairline` ·
 `text-primary`, `text-secondary`, `text-muted`, `text-faint`, `text-prose` ·
 `accent`, `accent-contrast`, `accent-subtle` · `selection` · `focus-ring`,
 `focus-halo` · `danger`, `danger-subtle` · `ok`, `pending` · `backdrop` ·
 `canvas-bg`, `canvas-dot` · `note-fill`, `note-border` · the seven `diagram-*`.
 
-**The look is quiet and precise, in black and white**
-(`.claude/work/specs/look.md`). The accent is the ink (`accent` equals
-`text-primary`, in both themes), and so are the focus ring, the canvas's
-selection handles, attach outline and snapping guides; `tokens.test.ts`
-holds them equal. Neutrals are pure greys. Red is only for what deletes and
-green for saved, amber (`pending`) for unsaved; none of them is an accent.
-There is no accent setting.
+## Token rules
+- **Semantic, never literal**: `--color-surface-raised`, not a grey scale. Dark
+  mode never needs a change outside `tokens/`.
+- **No literal values** (hex, `rgb()`, `px`, one-off shadows) outside `tokens/`;
+  add the token. `no-literals.test.ts` enforces it. `frontend/tests/harness/`
+  is exempt.
+- **`:global()` only in `.svelte` files.** In a stylesheet the browser drops
+  the whole rule; use descendant selectors.
 
-- **Section labels and data are mono.** A label (pane headers, settings and
-  dialog groups, menu headings) is `--font-label` with `--tracking-label`,
-  in capitals; `styles/labels.test.ts` fails a tracked label in any other
-  face. Sizes, dates, paths, counts and keys are `--font-data`, with
-  `tabular-nums` where they line up. A page's own h6 is the writer's text,
-  not a label: it keeps the page face (`--tracking-doc-h6`).
-- **No coloured edge on one side only.** A chosen row (a file, a recent
-  Space, a settings section, a menu item) is a full fill (`selection`;
-  hover is the lighter `accent-subtle`); emphasis on a block goes on its whole border or its
-  icon. A quote's and the contents block's grey rules are the only left
-  edges, and neither is coloured.
-- **Shadows only on what floats:** menus, popovers, the tool rail, the
-  selection bar, dialogs. A chosen segment is outlined, not lifted.
-- Corners 3 to 6px on controls (`--radius-sm/md/lg`), 10px on windows and
-  dialogs (`--radius-xl`).
-
-Two are additions rather than design values, both evidenced by usage rather
-than invented: **`text-prose`** (document body copy, softer than
-`text-primary`) and **`focus-halo`** (the halo the design's focus recipe
-describes in prose but never names).
-
-**Selected text is `selection`,** set once on `::selection` in
-`styles/base.scss`, never the system highlight: that differs by platform.
-An inactive window still dims it; a rule for that is refused by the
-production minifier (`::selection:window-inactive`), so there is none.
-
-**A shape's colour is content.** The file stores a swatch name or a
-`#rrggbb`; what each swatch name means in each theme is a token in
-`_swatches.scss` (below).
-
-**No component writes a literal value.** No hex codes, no `px` outside the
-token files, no one-off shadows. If a value is needed that no token provides,
-add the token; do not inline it.
-The browser tests' harness (`frontend/tests/harness/`) is exempt: it
-never ships, and a demo's cell may need an exact pixel size (a splitter's odd
-width, a handle's gutter) for its picture to stay the same.
+## The look
+Quiet and precise, black and white (`.claude/work/specs/look.md`).
+- The accent is the ink: `accent` equals `text-primary`, as do the focus ring
+  and canvas handles, guides and attach outline (`tokens.test.ts`). Neutrals
+  are pure greys. Red deletes, green is saved, amber unsaved. No accent setting.
+- Labels (pane headers, groups, menu headings) are `--font-label`,
+  `--tracking-label`, capitals. Sizes, dates, paths, counts, keys are
+  `--font-data` (`tabular-nums` where aligned). A page's h6 is not a label.
+- No coloured edge on one side: a chosen row is a full `selection` fill (hover
+  `accent-subtle`).
+- Shadows only on what floats. Corners 3 to 6px on controls, 10px on dialogs.
+- Text selection is `selection` on `::selection` in `base.scss`.
+- Desktop density: 13px base, 4px unit.
 
 ## Stacking
-
-Ark supplies **no z-index of its own**. Verified in the Wails webview on
-2026-09-16: dialog content and tooltip content both painted *below* an
-ordinary `position: fixed; z-index: 9999` element. All stacking is ours, and
-portalled content will hide behind app chrome unless it is placed
-deliberately.
-
-Named layers, defined in `_z.scss` and referenced nowhere as literals:
+Ark sets no z-index: portalled content hides behind chrome unless placed.
+Never a raw `z-index`; one portal root, at `--z-portal`.
 
 | Token | Layer |
 |---|---|
-| `--z-base` | the default plane |
-| `--z-canvas` | the scene surface |
+| `--z-base` | default plane |
+| `--z-canvas` | scene surface |
 | `--z-chrome` | panels, toolbars, sidebar, status bar |
 | `--z-floating` | tool rail, contextual toolbar |
 | `--z-overlay` | backdrops |
 | `--z-portal` | dialogs, popovers, menus, tooltips |
-| `--z-toast` | toasts, above everything |
+| `--z-toast` | toasts |
 
-Values are spaced so a layer can be inserted without renumbering, and
-`tokens.test.ts` asserts the ordering rather than trusting a reader to keep it.
-
-The portal root is defined once in the app shell at `--z-portal`. Do not
-introduce a second portal root, and do not set a raw `z-index` anywhere.
-
-## Density
-
-This is a desktop app, not a web page. Base font size is 13px and the spacing
-unit is 4px. Web-scaled spacing looks bloated in a tool window. Calibrate
-against native desktop editors, not web apps.
-
-## Ark UI usage
-
-- `@ark-ui/svelte` provides behaviour and accessibility. All visual styling
-  is ours.
-- **Wrap every Ark primitive in a project component before using it in a
-  screen.** Screens import from `components/`, never `@ark-ui/svelte`
-  directly. This keeps the swap surface to one file per primitive.
-- Ark components are **compound** (`Root` / `Trigger` / `Content` / `Item`).
-  Keep that structure inside the wrapper rather than flattening it to a single
-  prop-driven component: flattening loses composition and fights the library.
-- **Ark's docs show React examples in places.** Svelte usage differs. Read the
-  Svelte tab, or query Context7 with library id `/chakra-ui/ark`. Never port a
-  React snippet by hand.
-- **Prefix class names used on Ark's own elements.** Ark renders those elements
-  itself, so Svelte's scoping cannot reach them and the rules must be
-  `:global()`. A generic name like `.content` or `.title` then leaks across the
-  whole app. Use `.bava-dialog-content` and the like.
-- Portalled content (Dialog, Popover, Tooltip, Menu) mounts at `body` level,
-  outside `#app`: `<Portal>` defaults its container to `document.body`.
-  Positioning and edge handling work correctly in the webview; only stacking
-  is our problem. See Stacking above.
-
-### Measured Ark behaviours
-
-From the 2026-09-16 spike. These are library behaviours, not bugs, and they
-change how components and their tests are written:
-
-- **Closing a dialog does not unmount it.** The content node stays in the DOM
-  with `data-state="closed"`, `hidden` and `display: none`. Query by state,
-  never by presence.
-- **Binding `open` on a Tooltip does not position it.** Programmatic
-  `bind:open` leaves the content mounted but hidden at 0×0; only real pointer
-  events (`pointerover` / `pointerenter` / `pointermove`) open and position
-  it. Write tooltip tests with pointer events.
-- **A modal Dialog sets `pointer-events: none` on `body`** while open. This
-  reaches the canvas; see `.ai/rules/canvas.md`.
-- **Bundle cost is real.** Dialog + Tooltip + Portal alone took the bundle
-  from 57.61 kB (21.20 gzip) to 173.51 kB (58.28 gzip). Not a network cost in
-  a desktop app, but track it: if each further primitive adds similar weight,
-  tree-shaking is not working.
+## Ark UI
+- **Wrap every primitive in `components/`**; screens never import
+  `@ark-ui/svelte`. Keep the compound structure inside the wrapper.
+- **Prefix classes on Ark's own elements** (`.bava-dialog-content`): they need
+  `:global()`, so a generic name leaks app-wide.
+- **Closed is not unmounted**: query by `data-state`, never presence.
+- **`hidden` always wins**: `base.scss` forces `[hidden]` to `display: none
+  !important`. Popups use `lazyMount unmountOnExit`.
+- **Tooltips open only on real pointer events**; `bind:open` leaves them 0×0.
+- **A modal Dialog sets `pointer-events: none` on `body`**, reaching the canvas.
+- **A menu at a point** reads it through `positioning.getAnchorRect` (`atPoint`).
+- **Open a field from a menu item a frame later**, or the menu takes focus back.
 
 ## Component rules
-
-- **Every button answers the pointer.** A text button is `.bava-button`
-  (`primary`, `danger`, `ghost`), an icon on its own is `.bava-icon-button`,
-  both in `styles/controls.scss` with hover, pressed, disabled and focus
-  states and the `--color-control-*` / `--color-accent-*` tokens. Buttons
-  point and disabled controls refuse (`base.scss`). A button that must look
-  different keeps its own class but styles `:hover` and `:active` itself;
-  `styles/buttons.test.ts` fails any that does not.
-- **`hidden` always wins.** Ark keeps closed dialogs, menus and popovers in
-  the page with the `hidden` attribute. A wrapper that sets `display` on one
-  of those parts would show every closed one at once and cover the window, a
-  failure jsdom tests cannot see. `base.scss` forces `[hidden]` to
-  `display: none !important`; never remove it, and never undo it on a part.
-- **A pane fills its region.** `Pane` is `height: 100%`; the regions are blocks,
-  so without it a pane shrinks to its header and the canvas stage inside is
-  zero tall, which also clips the tool rail. jsdom does no layout, so no unit
-  test catches this: measure in a browser.
-- **An empty state's padding sits inside its height** (`box-sizing:
-  border-box`); otherwise a full-height empty state overflows and its pane
-  shows a scrollbar.
-- **A menu opened at a point reads the point through `positioning.getAnchorRect`**
-  (`atPoint`), not `anchorPoint`. A menu mounted once and opened later was
-  placed from the anchor it had at mount: off the bottom of the window. jsdom
-  computes no positions, so only a running window shows this.
-- **Popups unmount when closed** (`lazyMount unmountOnExit`). Ark closes
-  content with `hidden`, and any `display` rule on the content overrides it:
-  the shape menu sat open over the window controls that way.
-- **Presentational only.** No IPC calls, no file access, no D2 knowledge, no
-  product logic inside `components/`. A component receives props and emits
-  events.
-- One component per file. Logic in `.svelte.ts` modules, not in markup.
-- **No local restyles.** If a screen needs a variant, add the variant to the
-  component with a prop. Overriding a shared component's internals with
-  `:global()` or deep selectors is forbidden.
-- Every interactive component is keyboard-navigable and has a visible focus
-  ring using `--color-focus-ring`. Desktop users keyboard more than web users
-  and will notice immediately.
-- Props typed, no `any`. Variants as string unions, never booleans that can
-  combine illegally.
-- Both themes checked before a component is called done.
+- Every button answers the pointer: `.bava-button` (`primary`, `danger`,
+  `ghost`) or `.bava-icon-button` (`controls.scss`). Custom ones style `:hover`
+  and `:active` (`buttons.test.ts`).
+- `Pane` is `height: 100%`, or the canvas inside is zero tall.
+- Presentational only: no IPC, files, D2 or product logic. Variants are props
+  (string unions), never local restyles of a shared component.
+- Keyboard-navigable with a visible `--color-focus-ring`; both themes checked.
+- Everything that floats closes on a press outside (Ark's, or `pressAway` in
+  `components/press-away.ts`); the Find bar stays until closed. A new floating
+  piece gets a row in `frontend/tests/integration/components.spec.ts`.
+- Add a component: check this inventory and Ark first, then add its row here.
 
 ## Inventory
+Ark primitives not yet wrapped: Accordion, Avatar, Checkbox, Clipboard,
+Collapsible, ColorPicker, Combobox, Editable, Field, Fieldset, FileUpload,
+NumberInput (in `NumberField`), Toast, ToggleGroup. Build when a screen needs.
 
-**From Ark UI** (wrap, then use):
-
-Accordion, Avatar, Checkbox, Clipboard, Collapsible, ColorPicker, Combobox,
-Dialog, Editable, Field, Fieldset, FileUpload, Menu, NumberInput, Popover,
-Progress, RadioGroup, SegmentGroup, Select, Slider, Splitter, Switch, Tabs,
-Toast, Toggle, ToggleGroup, Tooltip, **TreeView**.
-
-TreeView covers the file sidebar and Splitter may cover the pane layout;
-check both before building either by hand.
-
-**Built in-house** (no adequate primitive, or too app-specific):
-
-| Component | Why in-house |
+| Component | What it is (Ark primitive) |
 |---|---|
-| `Pane` ✓ | A region of the shell: `titled` shows the mono capitals header, `bare` (Document, Canvas) keeps only the accessible name. |
-| `ViewSwitcher` ✓ | `Document │ Both │ Canvas`, over `Segments`. |
-| `Segments` ✓ | A few exclusive choices, wrapping Ark's SegmentGroup. Use it rather than buttons with `role="radio"`, which lack arrow-key navigation. |
-| `ShortcutsDialog` ✓ | Shortcut groups, as the caller derives them from the menu spec; each key its own keycap (`keycaps.ts`). |
-| `StatusBar` ✓ | The Space and the page's path, then, at the far end, what is being worked on: the canvas's engine and node count, or the document's words and characters (`shell/status-context.ts` picks the side); an optional message: autosave paused, a command that failed. |
-| `PageHeader` ✓ | Above a page: its folders and name as a breadcrumb, Locked when it is, and the ⋯ page menu's button. The name keeps its room: short of it, the folders are cut to a few letters (`--size-crumb-min`), then folded into one … crumb, reached by Tab and named by the path, whose tooltip holds the path (`crumbs.ts`). Reports the press; the menu is a `ContextMenu` the caller opens. |
-| `SlashMenu` ✓ | The `/` menu's list at the caret, the `:` emoji suggestions and the `@` menu (`label` names the list): the matching items, grouped, each with an optional quiet `detail`, the active one marked; keys stay in the editor, a press reports the item. |
-| `FormatBubble` ✓ | The toolbar over selected text: turn into, bold, italic, underline, strike, code, link, text colour, highlight. Presses keep the selection (mousedown held); the menus open as `ContextMenu`s at the button. A command marked false in `offered` is left out (a mark the selected line cannot take), and Turn into without `turnable`. |
-| `BlockHandle` ✓ | Left of the hovered block: + to add a block after it, and the grip that drags it or opens its block menu. |
-| `FindBar` ✓ | Find and replace across the top of the page: the field, "n of m", previous and next, the replace field, Replace, Replace all, close. Enter and ⇧Enter step, Escape closes. `focus.text` opens it filled with a word (search opening a page at a match); `replace={false}` and `look="floating"` make the Canvas's find: find only, outlined and lifted, at the canvas's top right. |
-| `ZipContents` ✓ | What a Markdown zip holds, for an export dialog's preview: folders, pages and files as a tree, then the hidden `.bava` folder's parts with counts (`files/zip-preview.ts`); "Reading what to export" while none, and the reason when the plan failed. |
-| `PageExportDialog` ✓ | Export page: Format (PDF or Markdown zip, `Segments`; PDF alone for a page outside a Space). For PDF, `PdfPreview` beside Include (Document, Canvas or Both, when the Canvas holds something) and `PdfOptions`; why a setup cannot print at the foot, Export PDF off until it can. For a zip, `ZipContents` beside its note and the totals. Keeps its choices while open; reports Export PDF with the setup, Export zip and close. |
-| `PdfPreview` ✓ | A PDF's first sheet: the page drawn for printing in a sandboxed frame (no scripts) at the paper's size, in the theme chosen, shrunk to `--size-export-preview`; the Canvas's picture when it alone is printed. Not a printed PDF. |
-| `NumberField` ✓ | A number typed into a field, wrapping Ark's NumberInput: `.bava-field` in mono figures, named by `label`, reporting each valid number. |
-| `SpaceExportDialog` ✓ | Export Space: Format (PDF or Markdown zip), What (the whole Space or a folder, a `Select`). For PDF, `PdfOptions` beside the first page's first sheet (`PdfPreview`); while the pages are drawn, "Drawing 3 of 12" with a `Progress` at the foot and Export PDF off. For a zip, as `PageExportDialog`'s. Reports the folder chosen, Export PDF with the setup, Export zip and close. |
-| `PdfOptions` ✓ | A PDF's settings, bound to the dialog that shows them: Paper (`Select`, Custom with width and height), Orientation, Margins (`Select`, Custom with four sides), the unit for Custom (converting what is written), Theme and Page numbers. Shared by Export page and Export Space. |
-| `SearchPalette` ✓ | Search across a Space (File ▸ Search, ⇧⌘F): a field at the top centre over a backdrop, then one row per page or folder (icon, name, folder in mono, count in mono) with its best match beneath, the typed words marked (`search-marks.ts`); a hint before anything is typed, "No results", "Showing the first 50". ↑ ↓ move, Enter opens, Escape or a press outside closes; the field names the highlighted row (`aria-activedescendant`). Reports the query and the row chosen; the state lives in `files/search.svelte.ts`. |
-| `LinkField` ✓ | The link field over selected text: address, Enter to link, Remove to unlink, Escape to leave it. With `placeholder` and `removeLabel` (null for no Remove) it also takes a medium's caption, its file's new name, and a web address for `/` Web link and Online video. Given a line's `height` with `over` (a card's name), it is the field alone, that tall, so it covers nothing under the line. Enter applies it from its own key handler too, since a script's key submits no form. Its field and FindBar's share `.bava-field` in `controls.scss`. |
-| `MediaViewer` ✓ | An image full screen over Ark's Dialog (`size="viewer"`, headless): Escape or a click outside leaves. |
-| `MediaSection` ✓ | The Space's attachments under Files: compact rows (thumbnail, name, size), search, Add files, open the dialog; a row drags into the page (`application/x-bava-attachment`), or Enter or a double-click places it at the caret; the arrows move between rows. |
-| `MediaThumb` ✓ | An attachment's picture (the image, or a video's poster) at row or grid size, else its kind's icon; a picture that will not load gives way to the icon. |
-| `MediaDialog` ✓ | The Media dialog over Ark's Dialog (`size="media"`, unmounted when closed): grid or list, filters, search, sort (each a `Segments`), a file's pages, rename, show in folder, delete, Add files, Move unused to Trash. A name the caller refuses comes back from `onRename` as its reason, shown under the field with the rename kept open. Escape while renaming leaves the rename only, not the dialog. |
-| `EquationField` ✓ | The field over an equation: its TeX, the equation drawn live below by the caller's `render`, Enter to save, Shift+Enter for a new line, Escape to leave it. |
-| `EmojiPicker` ✓ | A search and every emoji under its group; a pick gives the character, Escape or a press outside closes it. The caller supplies the emoji and group names; until they arrive it shows an indeterminate `Progress` bar. |
-| `FramePicker` ✓ | `/` Embed frame: a search, then the frames a page can embed by name with a thumbnail, this page's first and each other page's under its name. Arrows move, Enter or a click picks (the frame and its page), Escape or a press outside closes it. The caller supplies the frames and thumbnails. |
-| `TagChip` ✓ | One tag as a plain outlined chip reading `#launch` in mono (the `#` drawn and hidden from screen readers; the file keeps `launch`), with a remove button when given `onRemove` (named by `removeLabel`). Every tag is drawn by it: a page's, the Files filter's, the Tags dialog's. |
-| `PageTags` ✓ | A page's tags at its bottom, in the page's column: `TagChip`s each with a remove button, then Add tag, a field that writes what is typed as a tag is kept (lowercase, a dash for a space) and suggests the Space's tags above it. Read-only on a locked page, and gone there when it has none. Reports the tags as they are to be. |
-| `TagFilter` ✓ | The Space's tags under the Files header's tag button: a search, each tag with its page count and a box when chosen, its own ⋯ for the tag's menu, then Manage tags. Arrows move, Enter chooses, Escape or a press outside closes it. |
-| `LinkCard` ✓ | The card under a clicked link: its address, Open, Edit, Remove; a missing page says so and offers the one page with its name. Escape or a press outside closes it; focus stays in the page. |
-| `DatePicker` ✓ | A calendar under a date chip, over Ark's `DatePicker` (inline): the chip's month, its day chosen; a pick gives `YYYY-MM-DD`. Escape or a press outside closes it. |
-| `SpaceTree` ✓ | The Files tree of a Space, wrapping Ark's TreeView (expand, keys, typeahead, F2 rename), with drag to move and reorder added on top; a new page or folder is named in place; the row a right-click menu is open for stays marked (`menuPath`); `reveal` brings a row into view and focuses it (a folder search found). Rules in `files/tree.ts`. Reports actions; opens nothing itself. |
-| `SpaceSwitcher` ✓ | The Space's name atop the side pane, opening recent Spaces and Space actions, Remove from List last; wraps Ark's Menu. |
-| `StartScreen` ✓ | Nothing open: the mark, New Space, Open Space, Open file, recent Spaces. Each recent row has a remove button after it (its own Tab stop), seen on hover or focus and always on a missing folder's row; it reports the path. |
-| `TrashDialog` ✓ | A Space's Trash: restore, delete, empty, search, total size. Restore and Delete show on the hovered, focused or chosen row, hidden by opacity so Tab still reaches them. |
-| `NewSpaceDialog` ✓ | New Space: the folder's name and where it is made. A name the caller refuses comes back from `onCreate` as its reason, shown under the field with the dialog kept open. |
-| `SpaceSettingsDialog` ✓ | Rename the Space, its default page width, show its folder. |
-| `SectionTabs` ✓ | Sections chosen from a list on the left, one shown at a time (Settings), each with an icon, under an optional heading; wraps Ark's Tabs, vertical. |
-| `ConfirmDialog` ✓ | A question with fixed answers. Dismissing it is a cancel, never an accident. An optional `check` adds a `Toggle`, off at first, with a warning under it; its state comes with the answer. An answer with `tone: 'danger'` (it cannot be undone) is drawn in the danger colour. |
-| `Select` ✓ | One choice from a short list as a dropdown, wrapping Ark's Select: a trigger showing the chosen option after an optional `prefix` ("Sort:"), named by `label`; the list in the shared menu look with a check by the choice. Enter, Space or the arrows open it; Escape gives focus back. Used where a choice has more options than `Segments` holds comfortably (the Media dialog's Type and Sort, the Tags dialog's Sort). |
-| `TemplatesDialog` ✓ | The Space's templates over `Dialog` (`size="trash"`): each group's under its name, then those in no group, searchable (first focus); New template in the header; per template Edit, Rename (in its row; a name its group has is refused there; Escape leaves the rename, not the dialog), Duplicate, and a ⋯ menu to move it to another group or delete it. |
-| `SaveTemplateDialog` ✓ | Save as template, and New template (`title`): a name (the page's to start with) and a group typed or picked from the Space's groups, empty for none; a name the caller refuses comes back as `refusal`. |
-| `TemplateBar` ✓ | Above a template being edited: that it is a template, its group and name, and Done. |
-| `TagsDialog` ✓ | The Space's tags over `Dialog` (`size="trash"`): search, sort by name or pages, rename in a row (a taken name refused there; Escape leaves the rename, not the dialog), boxes to select several and a bar to merge them into one tag or delete them; each row's ⋯ for one tag. Mounted while open, so a rename it opens for has the first focus. |
-| `CanvasControls` ✓ | The zoom readout and its buttons. |
-| `CanvasSection` ✓ | Settings ▸ Canvas: attach arrows to shapes, snap ends to side middles, snap to objects (`settings/`). |
-| `ToolRail` ✓ | The canvas tool rail: grouped icon buttons, a key letter in each corner, a tooltip naming each; one panel, the tool lock (`Q`) last, behind a hairline. Layout in `canvas/rail.ts`. |
-| `InsertPanel` ✓ | Search, category rows (right chevron clear of the text), a category's tile grid, footer hint. State in `shell/insert.svelte.ts`. |
-| `SelectionToolbar` ✓ | Bottom-centre toolbar for a selection: `StyleBar` pickers, line actions (Edit points, Close or Open line; Done alone while a line is drawn by clicks), align and distribute, More. Model in `canvas/toolbar.ts`. |
-| `Keycaps` ✓ | A shortcut as one small mono key box per key (`keycaps.ts` splits it), read out once as the whole shortcut. At the right of a `ContextMenu` item. |
-| `ContextMenu` ✓ | A menu opened at a point, wrapping Ark's Menu, with nested submenus. Used for right-click and More. It takes the keys when it opens (Ark leaves focus where it was). A dialog's own menus pass `within`: drawn inside the dialog, placed against the window, so the dialog's focus trap lets them keep the keys. Tree in `canvas/context-menu.ts`. The menu look (`.bava-menu`, `-item`, `-label`, `-separator`) is shared with `SlashMenu` and `SpaceSwitcher` and lives in `styles/menus.scss`. |
-| `Tooltip` ✓ | Names a control (and its key) on hover and keyboard focus, wrapping Ark's Tooltip. It renders the button itself, or wraps a control the caller renders through `trigger`, which avoids a button inside a button. |
-| `ToolIcon` ✓ | Interface icons by id: Lucide (ISC), plus the icons drawn in-house in Lucide's stroke style on its 24-unit grid (`DRAWN_ICONS` in `tool-icons.ts`: the parallelogram and the arrowhead choices). |
-| `LayoutEnginePicker` ✓ | TALA, Dagre or ELK over `Segments`, with a direction control, hidden while TALA is chosen (TALA ignores direction), when a line says TALA chooses its own direction; the one place that rule lives in the interface. In the Diagram from Code dialog, never per canvas. |
-| `EmptyState` ✓ | Repeated across file tree, canvas, search, and the no-file window. `mark` adds the faded brand mark for "nothing open yet"; `hints` lists keys beside what they do. |
-| `Splash` ✓ | The launch cover: one centred column of mark, wordmark, indeterminate `Progress` and a status line; the footer at the bottom. The caller decides when startup is over. |
-| `Progress` ✓ | Wraps Ark's Progress. `value: null` is indeterminate: use it whenever nothing reports real progress. |
-| `Portal` ✓ | Draws what it holds in the portal root by moving its element there, so the content stays in its caller's tree: drawn, redrawn and taken down with it. Ark's `Portal` mounts a separate root a tick later, which can redraw from a place its caller dropped, or mount after its caller is gone and stay. Used by every piece the page shows and takes away itself (`FormatBubble`, `LinkField`, `SlashMenu`, `EquationField`, `EmojiPicker`, `FramePicker`, `LinkCard`, `DatePicker`); Ark's `Portal` stays only inside Ark's own popovers, menus, dialogs and tooltips, which open and close their content while the portal stays mounted. |
-| `Mark` ✓ | The brand mark, inlined from `src/brand/panda.svg` at one of four `--size-mark-*` sizes. |
-| `ErrorDialog` ✓ | An unexpected failure: one sentence, the details shown as labels and values (`detail-rows.ts`), Copy details, Open logs folder. Never a stack. |
-| `PanelBoundary` ✓ | `<svelte:boundary>` around each shell region; a crash shows "This panel hit a problem" and Reload panel. |
-| `StyleBar` ✓ | Fill, border and text pickers as swatch chips, named by their tooltip, wrapping Ark's Popover and RadioGroup. Each popover holds the swatches and a `#rrggbb` field for any other colour. A group inside `SelectionToolbar`, which draws the surface. |
-| `OptionPicker` ✓ | One property from a few icon choices (stroke width, line style, edges, text size, alignment, arrow type, arrowheads): a chip opening a popover of radio options; options marked `more` wait behind a More row unless one is current (the crow's-foot heads). Generic over its value; options in `canvas/property-options.ts`. |
-| `OpacityPicker` ✓ | Opacity on a slider in steps of ten, in a popover, wrapping Ark's Slider. |
-| `DiagramDialog` ✓ | Write D2, see it, insert it: a `SourcePane` editor flush beside a live preview on the dotted canvas ground, diagnostics beneath, the `LayoutEnginePicker` in the footer before Cancel and Insert, Insert disabled while it does not compile. The editor is created when the portalled host appears, not at mount. Uses `Dialog` at `size="diagram"`, `flush`. |
-| `Dialog` ✓ | Wraps Ark's Dialog. A ruled header (15px title, optional `subtitle`, `actions`, `closable` X), a padded body, and an optional ruled `footer` for the buttons. `variant="alert"` keeps a short question in one box (`align="center"` and `leading` for About). Named `size`s (`narrow`, `medium`, `wide`, and one per dialog that keeps its own size); `flush` runs the body to the edges; `headless` hides the header from sight but keeps it naming the dialog. A screen never restyles the frame from outside: add an option here instead. By default it is as wide as what it holds. |
-| `ExportDialog` ✓ | Export settings over a live preview: Only selected, Background, Dark mode, Scale, and the PNG, SVG and Copy buttons. Padding is fixed. State in `canvas/export/exporter.svelte.ts`.  Titled Export canvas (File ▸ Export ▸ Canvas).|
-| `Toggle` ✓ | An on/off setting, wrapping Ark's Switch; `variant="row"` puts the label first and the switch at the row's end. Disabled rather than hidden when it does not apply, so it still explains itself. |
-| `AboutDialog` ✓ | Centred: mark, title, tagline, licence, Close. No version shown yet. |
-| `Icon` ✓ | Single wrapper taking an SVG path, and an optional second path drawn filled (`fill`), so icon sizing is tokenised. Lucide is bundled for interface icons, through `ToolIcon` (`tool-icons.ts`). |
-
-✓ marks what exists. Build the rest as screens need them, not upfront: an
-unused component is an unmaintained one.
-
-**Wrapped from Ark so far**: `Dialog`, `Splitter` (the side pane's Files and Media, stacked with `orientation="vertical"`; Ark draws its handle as a button, whose own look the wrapper resets), `Tooltip`, `Progress`, SegmentGroup inside
-`Segments`, Menu inside `ContextMenu`, and
-Popover with RadioGroup inside `StyleBar` and `OptionPicker`, Slider inside
-`OpacityPicker`, Switch inside `Toggle`, TreeView inside `SpaceTree`, Menu
-inside `SpaceSwitcher`, and Tabs inside `SectionTabs`.
-
-**Syntax colours** are `--syntax-*` in `tokens/_color.scss`, one per run kind
-in `canvas/code/highlight.ts`, plus `--color-code-surface` for the panel. A
-kind without a colour draws as nothing, so `tokens.test.ts` checks the set in
-both themes.
-
-**Shape swatches** are tokens in `styles/tokens/_swatches.scss`
-(`--swatch-<name>-fill`, `-stroke`, `-text`, in both themes), with
-`--color-shape-fill`, `--color-shape-stroke`, `--color-shape-text` as the
-unstyled default and `--color-selection-handle` for the selection. The names
-live once, in `canvas/palette.ts`.
+| `AboutDialog` | Mark, title, tagline, licence |
+| `BlockHandle` | + and grip left of a hovered block |
+| `CanvasControls` | Zoom readout and buttons |
+| `CanvasSection` | Settings ▸ Canvas (lives in `settings/`) |
+| `ConfirmDialog` | Fixed answers; dismiss is cancel; `tone: 'danger'`, optional `check` |
+| `ContextMenu` | Menu at a point, nested (Menu); `within` inside a dialog; look in `styles/menus.scss` |
+| `DatePicker` | Calendar under a date chip, gives `YYYY-MM-DD` (DatePicker) |
+| `Dialog` | Ruled header, body, footer; named `size`s, `flush`, `headless`, `variant="alert"` (Dialog) |
+| `DiagramDialog` | D2 source beside live preview, diagnostics, engine picker, Insert |
+| `EmojiPicker` | Search and grouped emoji |
+| `EmptyState` | Empty panes; `mark`, `hints` |
+| `EquationField` | TeX field over an equation, live render |
+| `ErrorDialog` | One sentence, detail rows, Copy details, Open logs folder; never a stack |
+| `ExportDialog` | Export canvas: PNG, SVG, Copy over a preview |
+| `FindBar` | Find and replace; `look="floating"` for the canvas |
+| `FormatBubble` | Toolbar over selected text; keeps the selection |
+| `FramePicker` | `/` Embed frame list |
+| `Icon` | SVG path wrapper, tokenised size |
+| `InsertPanel` | Insert search, categories, tiles |
+| `Keycaps` | A shortcut as mono key boxes |
+| `LayoutEnginePicker` | TALA, Dagre, ELK; direction hidden under TALA |
+| `LinkCard` | Card under a clicked link |
+| `LinkField` | Link field over text; also captions, names, web addresses |
+| `Mark` | The brand mark at `--size-mark-*` |
+| `MediaDialog` | Media grid or list, rename, delete (Dialog) |
+| `MediaSection` | Attachments under Files; rows drag into the page |
+| `MediaThumb` | Attachment picture or kind icon |
+| `MediaViewer` | Full-screen image (Dialog) |
+| `NewSpaceDialog` | Name and location; refusals shown under the field |
+| `NumberField` | Mono number field (NumberInput) |
+| `OpacityPicker` | Opacity in steps of ten (Popover, Slider) |
+| `OptionPicker` | One property from icon choices (Popover, RadioGroup) |
+| `PageExportDialog` | Export page: PDF or Markdown zip |
+| `PageHeader` | Breadcrumb, Locked, page menu button |
+| `PageTags` | A page's tags and Add tag |
+| `Pane` | A shell region, `titled` or `bare` |
+| `PanelBoundary` | `<svelte:boundary>` per region, Reload panel |
+| `PdfOptions` | Paper, orientation, margins, theme, page numbers |
+| `PdfPreview` | First sheet in a sandboxed frame |
+| `Portal` | Moves content into the portal root, staying in the caller's tree; Ark's `Portal` only inside Ark popups |
+| `Progress` | `value: null` is indeterminate (Progress) |
+| `SaveTemplateDialog` | Name and group for a template |
+| `SearchPalette` | Search across a Space; state in `files/search.svelte.ts` |
+| `SectionTabs` | Vertical sections (Tabs) |
+| `Segments` | Few exclusive choices (SegmentGroup); never `role="radio"` buttons |
+| `Select` | Dropdown choice (Select) |
+| `SelectionToolbar` | Bottom-centre selection toolbar; model in `canvas/toolbar.ts` |
+| `ShortcutsDialog` | Shortcut groups from the menu spec |
+| `SlashMenu` | `/`, `:` and `@` lists at the caret |
+| `SpaceExportDialog` | Export Space: PDF or zip, progress |
+| `SpaceSettingsDialog` | Rename, page width, show folder |
+| `SpaceSwitcher` | Space name and recent Spaces (Menu) |
+| `SpaceTree` | Files tree, drag to move (TreeView); rules in `files/tree.ts` |
+| `Splash` | Launch cover |
+| `Splitter` | Side pane split (Splitter) |
+| `StartScreen` | Nothing open: mark, New, Open, recent |
+| `StatusBar` | Space, path, context counts, message |
+| `StyleBar` | Fill, border, text swatches (Popover, RadioGroup) |
+| `TagChip` | One tag, `#name` in mono |
+| `TagFilter` | Files tag filter |
+| `TagsDialog` | Manage tags |
+| `TemplateBar` | Above a template being edited |
+| `TemplatesDialog` | The Space's templates |
+| `Toggle` | On/off; disabled rather than hidden (Switch) |
+| `ToolIcon` | Lucide plus `DRAWN_ICONS` in `tool-icons.ts` |
+| `ToolRail` | Canvas tools; layout in `canvas/rail.ts` |
+| `Tooltip` | Names a control on hover and focus (Tooltip) |
+| `TrashDialog` | Restore, delete, empty |
+| `ViewSwitcher` | `Document │ Both │ Canvas` over `Segments` |
+| `ZipContents` | Zip export preview tree |
 
 ## Brand
+- The panda is paper on ink, always (`--color-mark`, `--color-mark-tile`):
+  never inverted, recoloured or set on `accent`. Use `Mark`, never an `<img>`.
+- One drawing at every size; 20px (`--size-mark-brand`) is the floor for brand
+  placements. Wordmark: lowercase `bava`, Geist Medium; in prose, `Bava`.
 
-The panda mark is **paper on ink, always** (`--color-mark`,
-`--color-mark-tile`): bare on a dark ground, in its own ink tile on a light
-one. It never inverts to ink on paper and is never recoloured: its tile is the
-brand ink (`--color-mark-tile`), never the `accent` token. Use `Mark`, never an `<img>` of the SVG: an
-image cannot take its colour from a token.
-
-One drawing at every size. Do not stretch, rotate, recolour, redraw for small
-sizes, or place it on a mid-tone ground. 20px (`--size-mark-brand`) is the
-floor for brand placements; system chrome may use `--size-mark-chrome`.
-
-The wordmark is lowercase `bava` in Geist Medium (`--text-wordmark`,
-`--tracking-wordmark`); the name in prose is `Bava`.
-
-## Theme and the diagram
-
-Scene elements are drawn by the frontend and take their colours from tokens
-like everything else, and so does a diagram inserted from code: it arrives as
-ordinary shapes in Bava's own style. The one D2 SVG left is the Diagram from
-Code dialog's preview, rendered in Go, which does **not** inherit CSS.
-`Render` accepts the theme's colours (`opts.theme`), but the frontend never
-sends them (`ipc/render.svelte.ts` sends only the engine and direction), so
-the preview draws in D2's own colours and a theme change does not re-render
-it.
-
-The mapping lives in `internal/render/theme.go`, and D2's palette has a trap in
-it: the neutrals `N1`–`N7` carry **text and canvas**, while the `B` and `A`
-families carry **shapes**. Mapping stroke and fill onto `N4`/`N5` (the obvious
-reading) leaves node borders D2's default blue whatever the theme says. Every
-slot is mapped, because an unmapped one keeps its pale default and surfaces on
-whichever shape type happens to use it: a cylinder nested in a container, or a
-person shape, long after the theme looked right on a rectangle. That one was
-caught by looking at a golden, not by a passing test.
-
-Consequence: if the preview is themed, adding a colour token the diagram uses
-means updating the Go-side theme mapping in the same change. Tokens the
-chrome alone uses do not.
-
-## Adding a component
-
-1. Check the inventory. Reuse before building.
-2. Check whether Ark UI provides the primitive before writing behaviour.
-3. If it wraps an Ark primitive, the wrapper goes in `components/` and the
-   screen imports the wrapper.
-4. Tokens only: no literal values. Add missing tokens first.
-5. Keyboard and focus states before visual polish.
-6. Check both themes.
-7. Add it to the inventory table above in the same change.
-
-## `:global()` belongs to Svelte, not to stylesheets
-
-In a `.svelte` component it scopes a rule outward. In a plain stylesheet under
-`styles/`, sass emits it verbatim and the browser drops the whole rule: four
-code-editor rules were dead that way. Use plain descendant selectors there;
-`no-literals.test.ts` compiles the stylesheet and fails on `:global`.
-
-## Everything that floats closes on a press elsewhere
-
-A menu, picker, field, card or dialog closes when the pointer goes down
-anywhere outside it: on the page's own text, or outside the page. Ark's
-pieces do this themselves; a hand-built one uses `pressAway`
-(`components/press-away.ts`), counting as inside whatever belongs with it
-(the page, for the menus that follow typing). What a press elsewhere does
-to what was typed is chosen per field: a link field changes nothing, as
-Escape does; a caption, a name or an equation keeps what was typed. The
-integration test `frontend/tests/integration/components.spec.ts` checks
-each; a new floating piece gets a row there. The Find bar is the one exception: it stays until
-closed, as a browser's does.
-
+## The D2 preview's theme
+The Diagram from Code preview is Go-rendered SVG and ignores CSS; the frontend
+sends no `opts.theme`. If it is themed: in `internal/render/theme.go`, D2's
+`N1`-`N7` colour text and canvas while `B` and `A` colour shapes; map every slot.

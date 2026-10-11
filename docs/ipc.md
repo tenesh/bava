@@ -1,42 +1,32 @@
 # IPC
 
-The frontend reaches Go through six bound services, registered in `main.go`:
-`RenderService`, `FileService`, `SpaceService`, `ExportService`,
-`MenuService` and `LogService`, about thirty methods in all. Every method here
-is API that must survive a Wails beta upgrade, so the surface stays small on
-purpose.
+The Go services the frontend calls, registered in `main.go`: `RenderService`,
+`FileService`, `SpaceService`, `ExportService`, `MenuService` and
+`LogService`. Generated bindings land in
+`frontend/bindings/github.com/tharabyte/bava/internal/app/`. Keep the surface
+small: every method must survive a Wails beta upgrade.
 
-**Scope of Render:** it serves Diagram from Code, and nothing else. It returns
-a preview SVG for the dialog and the layout the frontend converts into
-ordinary canvas shapes and arrows (`frontend/src/canvas/import/convert.ts`).
-The D2 source is not kept. The canvas scene is drawn in the frontend and never
-round-trips through Go. Exports are drawn in the frontend too
-(`frontend/src/canvas/export/`); `ExportService` only writes the result,
-or, for a PDF, prints what the frontend drew (`internal/export`).
+**Errors are data** throughout: a problem the user can act on (missing file,
+permission, malformed block, bad D2) comes back in the result's `error`. A
+returned Go `error` means the request itself was malformed. Cancelling a
+dialog returns an empty path, not an error.
 
-## Render
+## RenderService
 
 ```go
 func (s *RenderService) Render(source string, opts render.Options) (render.Result, error)
 ```
 
-Registered as `RenderService` in `main.go`; generated bindings land in
-`frontend/bindings/github.com/tharabyte/bava/internal/app/`.
+Serves Diagram from Code only: a preview SVG and the `layout` the frontend
+converts into shapes and arrows (`frontend/src/canvas/import/convert.ts`). The
+D2 source is not kept, and the canvas never round-trips through Go.
 
-### Request
-
-| Field | Type | Meaning |
+| Request | Type | Meaning |
 |---|---|---|
-| `source` | string | D2 source text |
-| `opts.engine` | string | `tala` (default when empty), `dagre`, or `elk` |
-| `opts.direction` | string | `down`, `right`, `up`, `left`, or empty for none. Appended as a top-level `direction` only when the source sets none, so the code wins and diagnostics keep their lines. TALA ignores it. An unknown value is a returned error. |
-| `opts.theme` | object, optional | The diagram colours. Absent renders D2's own defaults, which is what the goldens expect. The frontend never sends it: it sends only `engine` and `direction`. |
-
-An unrecognised engine is a **returned error**, not a diagnostic: it is a bug
-in the caller, not a problem with the diagram. `direction` is deliberately not
-exposed while TALA is active, because TALA ignores it.
-
-### Response
+| `source` | string | D2 source |
+| `opts.engine` | string | `tala` (default when empty), `dagre`, `elk`; anything else is a returned error |
+| `opts.direction` | string | `down`, `right`, `up`, `left`, or empty. Appended as a top-level `direction` only when the source sets none. TALA ignores it, so the UI hides it there. Unknown is a returned error |
+| `opts.theme` | object, optional | Diagram colours. Absent renders D2's defaults (what the goldens expect). The frontend never sends it |
 
 ```ts
 type Result = {
@@ -45,270 +35,172 @@ type Result = {
   nodeMap: Record<string, Span> | null;
   layout: Layout;                   // geometry to build shapes from; empty on failure
 };
-
 type Diagnostic = { message: string; from: number; to: number; line: number };
-
 type Span = { from: number; to: number; line: number }; // where in the source
 ```
 
-**Errors are data, not exceptions.** Source that does not compile returns a
-successful call with `errors` populated and `svg` empty. The dialog keeps the
-last good preview on screen; users type through invalid states constantly, and
-blanking the preview on every half-finished line would be unusable. A returned
-`error` means the request itself was malformed.
-
-**Positions.** `from` and `to` are offsets in **UTF-16 code units** (the
-units JavaScript and CodeMirror index by), because the pipeline compiles with
-`UTF16Pos` set. They are *not* byte offsets: D2 reports UTF-8 bytes by default,
-and a single non-ASCII label then shifts every marker by the extra bytes ahead
-of it. `line` is **1-indexed**; D2 reports 0-indexed lines and the conversion
-happens once, in Go. A position reaching the frontend 0-indexed, or measured in
-bytes, is a bug.
-
-**`nodeMap`** maps an SVG element id to where the node was declared in the
-source. It carries no geometry: that is in `layout`.
-
-Keyed by SVG id so click-on-node is a direct lookup. Where an object is
-referenced several times, the span points at the **earliest** reference, which
-is the declaration. The render client carries it; no screen reads it today.
-
-### Debounce and staleness
-
-Owned by the frontend client in `frontend/src/ipc/render.svelte.ts`:
-
-- 250ms of quiet before a request is issued.
-- Every request carries an incrementing id; responses whose id is not the
-  latest are discarded. Without this a slow TALA render can land after a faster
-  later one and the preview flickers between states, a symptom that looks like
-  a layout bug and is not.
-
-### Rendering details fixed at the boundary
-
-- `NoXMLTag` is set: the preview injects the string into a div it owns, where
-  an XML declaration is invalid.
-- `OmitVersion` is set: D2 stamps a build-time version that does not track the
-  module version (it reports `v0.8.1-HEAD` while running v0.9.0), so recording
-  it in a golden file would commit a false fact.
-- `Salt` is unset. It changes generated ids deterministically.
-
-### Layout
-
-Added in Milestone 6.6. `Result.layout` is the geometry the canvas builds
-shapes from: each shape's `id`, `type`, `parent`, position, size and label,
-and each connection's `src`, `dst`, arrowheads, label and `route`.
-
-**It carries no colours**, and no opacity, dashes, icons, tooltips or links.
-A diagram inserted on the canvas arrives in Bava's own style (decided
-2026-09-19), and leaving D2's palette out of the contract is what keeps that
-true: nothing downstream can come to depend on it.
-
-**`parent` comes from the dotted absolute id**, resolved against the ids that
-exist, so a label containing a dot cannot invent a container.
-
-**The SVG and the layout never disagree**, because both come from the one
-compile. The SVG is for previewing; the layout is for building.
+- **Compile errors** return a successful call with `errors` set and `svg`
+  empty. `from`/`to` are **UTF-16 code units** (`UTF16Pos`), never bytes;
+  `line` is **1-indexed**.
+- **`nodeMap`** maps an SVG element id to the node's earliest reference in the
+  source (its declaration). No geometry; no screen reads it yet.
+- **`layout`**: each shape's `id`, `type`, `parent`, position, size and label;
+  each connection's `src`, `dst`, arrowheads, label and `route`. No colours,
+  opacity, dashes, icons, tooltips or links: inserted diagrams take Bava's
+  style. `parent` comes from the dotted absolute id resolved against existing
+  ids, so a dot in a label cannot invent a container. SVG and layout come from
+  one compile and never disagree.
+- **Fixed options:** `NoXMLTag` and `OmitVersion` (D2's stamped version is
+  wrong) set, `Salt` unset.
+- **Client** (`frontend/src/ipc/render.svelte.ts`): 250ms debounce; requests
+  carry an incrementing id and stale responses are dropped.
 
 ## FileService
 
-Added in Milestone 5. Reads and writes files; knows nothing about what is in
-them beyond handing the parse to `internal/format`.
+Reads and writes files; parsing is `internal/format`'s.
 
 | Method | Returns |
 |---|---|
-| `Open(path)` | `OpenResult`: prose (the file without its canvas block, which `Save` writes from the scene), diagram blocks by id, scene, stamp, error |
+| `Open(path)` | `OpenResult`: prose (the file without its canvas block), diagram blocks by id, scene, stamp, error. A malformed canvas block still returns the prose. Allows the page's folder for `/bava-file/` |
 | `Save(path, source, scene)` | `SaveResult`: path, new stamp, error |
 | `ChangedOnDisk(path, stamp)` | bool |
-| `ChooseFileToOpen()` | `DialogResult`: a path, or empty when cancelled |
-| `ChooseFileToSave(suggestedName)` | `DialogResult`: a path, or empty when cancelled |
-| `Settings()` | the user's preferences, defaults when unreadable; since 06.16 they include `arrowBinding` and `midpointSnap`, both on by default (an older file omits them and reads as on), and since Milestone 7 `objectSnap`, off by default |
-| `SaveSettings(settings)` | an error string, empty on success |
-| `ChooseMedia(kind)` | `PathsResult`: the images (`kind` `image`), videos (`video`) or files of any type (`file`) chosen in the native open dialog, several at once; none when cancelled |
-| `FileDetails(root, path)` | `FileDetailsResult`: whether a file of a folder the user opened is there, its size and date modified, for a file card; an error outside those folders |
-| `OpenFile(root, path)` | an error string, empty on success: opens a file of a folder the user opened in its own app, as a file card's click; a program, a script or a folder is shown in its folder instead, so a click never runs code |
-| `ClipboardImage()` | the clipboard's image as PNG in base64, or empty when it holds none; read for a paste, since the webview hands the page text only |
+| `ChooseFileToOpen()` | `DialogResult`: a path, empty when cancelled |
+| `ChooseFileToSave(suggestedName)` | `DialogResult`: as above |
+| `Settings()` | `config.Settings`, defaults when unreadable. `arrowBinding` and `midpointSnap` default on (absent reads as on), `objectSnap` off |
+| `SaveSettings(settings)` | error string, empty on success |
+| `ChooseMedia(kind)` | `PathsResult`: images (`image`), videos (`video`) or any files (`file`) from the native dialog, several at once; none when cancelled |
+| `FileDetails(root, path)` | `FileDetailsResult`: whether a file in an opened folder exists, its size and date modified (for a file card); error outside opened folders |
+| `OpenFile(root, path)` | error string, empty on success: opens the file in its own app; a program, script or folder is revealed in its folder instead, so a click never runs code |
+| `ClipboardImage()` | the clipboard image as base64 PNG, empty when none (the webview pastes text only) |
 
-Opening a page allows its folder for the file route below.
+- **A scene crosses whole.** `format.Scene` and `format.Element` do their own
+  JSON, so unknown keys survive the round trip; Wails therefore types `Scene`
+  as `any`, and `canvas/scene.ts` describes it.
+- **`stamp`** is size plus modification time. The time, in nanoseconds,
+  crosses as a decimal string (`modifiedUnixNano: "1790444150393195667"`):
+  as a JSON number JavaScript would round it.
 
-**A scene crosses the bridge whole.** `format.Scene` and `format.Element`
-implement their own JSON encoding, so every key an element has, known or not,
-reaches the frontend and comes back to be saved (fixed in Milestone 6: a plain
-decode dropped points, text and unknown keys). As a result Wails types `Scene`
-as `any` in the generated TypeScript; the frontend's own scene types in
-`canvas/scene.ts` describe it.
+### `files:dropped` (Go to frontend)
 
-**Errors are data.** A missing file, a permission denial, a malformed
-canvas block (all things the user can act on) come back in `error` rather
-than as a failed call. A returned error means the request itself was malformed.
-
-**A malformed canvas block still returns the prose.** Losing a whole document
-to one bad trailing block is the worst outcome available.
-
-**`stamp` is size and modification time**, taken when a file is read and passed
-back to `ChangedOnDisk`. Enough to notice another program writing the file, and
-cheap enough to check whenever the window regains focus. A content hash would
-be exact and would mean re-reading every open file on every focus change.
-The modification time, in nanoseconds, crosses as a decimal string
-(`modifiedUnixNano: "1790444150393195667"`): as a JSON number its 19 digits
-were rounded in JavaScript, and every file looked changed on disk (06.17).
-
-**Cancelling a dialog is not an error.** An empty path means the user changed
-their mind, which is a normal outcome and is not reported as a failure.
-
-### `files:dropped` (Go → frontend)
-
-Files dragged from the desktop onto an element marked `data-file-drop-target`
-(the Document): `{ paths, x, y }`, the point in CSS pixels from the page's
-top left. The window enables file drops (`EnableFileDrop`).
+Files dragged onto an element marked `data-file-drop-target` (the Document):
+`{ paths, x, y }`, the point in CSS pixels from the page's top left. The window
+sets `EnableFileDrop`.
 
 ### Files the page shows
 
-Images and videos in a page are drawn from the app's own asset server, not
-through a bound call: `GET /bava-file/?root=<folder>&path=<relative>`, an
-`AssetOptions.Middleware` in front of the embedded frontend. Range requests
-are answered, so a video seeks.
+Images and videos load from the app's asset server, not a binding:
+`GET /bava-file/?root=<folder>&path=<relative>`, an `AssetOptions.Middleware`
+before the embedded frontend. Range requests are answered. Anything not
+meeting all of these is a 404:
 
-It serves one file, and only when all of these hold; anything else is a 404:
+- `root` is absolute and was opened this session (`SpaceService.Open` or
+  `Create`, or a page's folder via `FileService.Open`); kept in memory only.
+- `path` is relative, `/`-separated, has no `\` or `:`, stays inside `root`,
+  passes through no link, and is opened through `os.OpenRoot`.
+- No hidden part, except `.bava/attachments/<file>`.
+- Extension is an image (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`) or
+  a video (`.mp4`, `.webm`, `.mov`), served with that type.
 
-- `root` is absolute and was opened this session: a Space (`SpaceService.Open`
-  or `Create`), or the folder of a page opened on its own (`FileService.Open`).
-- `path` is relative, with `/` between its parts and no `\` or `:` (on Windows
-  either could lead out of `root`), stays inside `root`, and passes through no
-  link. The file is opened through `root` itself (`os.OpenRoot`).
-- No part of `path` is hidden, except the `.bava/attachments/` of
-  `.bava/attachments/<file>`.
-- Its extension is an image (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`,
-  `.svg`) or a video (`.mp4`, `.webm`, `.mov`), served with that type. An SVG
-  is drawn as an image, so no script in it runs.
-
-Every file is sent with `X-Content-Type-Options: nosniff` and a sandboxing
-`Content-Security-Policy`, so an SVG is only ever an image, never a page
-that runs.
-
-The allowed folders live in memory and are forgotten when the app quits.
+Every response carries `X-Content-Type-Options: nosniff` and a sandboxing
+`Content-Security-Policy`, so an SVG is only ever an image.
 
 ## SpaceService
 
-Added in Milestone 8.1. A Space on disk (`docs/file-format.md`, "Spaces"):
-open a folder as a Space, list its folders, and change it through **one**
-method taking an operation, so the bound surface stays small. Every change is
-a real file operation in `internal/space`; nothing keeps a second copy of the
-tree.
+A Space on disk (`docs/file-format.md`, "Spaces"), changed through one
+`Apply` method. Every change is a real file operation in `internal/space`.
 
 | Method | Returns |
 |---|---|
-| `Create(parent, name)` | `SpaceInfo`: makes a folder named `name` in `parent` (an absolute path the user chose) and opens it as a Space; a taken or invalid name is refused with a `code` |
-| `Open(dir)` | `SpaceInfo`: root, name (the folder's), the Space's page width; creates `.bava/space.json` when missing |
+| `Create(parent, name)` | `SpaceInfo`: makes folder `name` in absolute `parent` and opens it; a taken or invalid name is refused with a `code` |
+| `Open(dir)` | `SpaceInfo`: root, name (the folder's), page width; creates `.bava/space.json` when missing |
 | `List(root, folder)` | `SpaceList`: one folder's pages (`.md`) and folders in the Space's order; never hidden entries, `.d2` files or `.bava` |
-| `Templates(root)` | `TemplateList`: the Space's templates (`group`, `name`, `path` from the Space's root), each group's by name, groups by name, then those in no group |
-| `SaveTemplate(root, group, name, source, scene, replace)` | `OpResult`: the template's `path`, written as a page is through `internal/format`; a taken name refused (`exists`) unless `replace` |
-| `CreatePageFrom(root, folder, name, source, scene)` | `OpResult`: a new page's `path` holding the text and scene (a page made from a template) |
-| `Attachments(root)` | `AttachmentList`: each file of `.bava/attachments` (not folders, links or hidden files) by name, with its size and date modified, for Media; which pages use it is worked out from the pages |
-| `FetchCard(root, address)` | `CardDetails`: a web page's title, description, and its icon and picture saved as attachments (their names; none outside a Space). The one fetch of a page: on the user's paste of its link, or Refresh details. At most 8 s, 5 redirects, 1 MB of the page, 2 MB a picture; no cookies; `User-Agent: Bava` |
-| `Apply(root, op)` | `OpResult`: the new path, a Trash item's id, or a renamed Space's root. `op.kind` is `createPage`, `createFolder`, `rename`, `move` (`folder`, `index`; -1 for the end), `duplicate`, `trash`, `restore`, `deleteForever`, `emptyTrash`, `renameSpace`, `setPageWidth`, `relink` (`edits`: each page's `path`, `before` and `after` text; a page is written only if it still reads as `before`, and `missed` lists those that were not), `attach` (`source`, a file anywhere, copied into `.bava/attachments`), `attachData` (`data` in base64, saved under `name`, or with none as `Pasted image <date> <time>.png`) `renameAttachment` (`attachment` to `name`, its extension kept), `trashAttachment` (`attachment`, to the Trash, restored with `restore`) `savePicture` (a canvas embed's picture, `data` in base64: first under `name`, numbered when taken and never sharing a file with the same bytes; with `replace`, written to `name` itself, made if gone, and left untouched when its bytes are the same) `deleteSpaceData` (the Space's `.bava` folder deleted for good, the Trash and any pages in it included; the pages in the Space's folders are kept; a `.bava` that is a link is refused, code `throughLink`), `renameTemplate` (`path` to `name`, in its group), `moveTemplate` (`path` to the group in `folder`, "" for none; an emptied group goes), `duplicateTemplate` (`path`, beside itself, numbered) or `deleteTemplate` (`path`, for good; an emptied group goes); a template's name taken in its group is refused, code `exists`; the first three return the attachment's `name`, numbered when taken by a different file, or an identical file's already there, and `savePicture` the name it saved under |
-| `Index(root, withText)` | `SpaceIndex`: every page in the Space (its path, its name without `.md`, and with `withText` its text, or `unreadable` set when it could not be read: its links are then not known, which is not "none"), in the tree's order; never hidden entries or `.bava`. The frontend reads links from the text with the Document's own reader: "Linked from", missing links, and which links a rename rewrites |
-| `Search(root, query, open)` | `SpaceSearch`: `hits` (each a page or folder: `kind`, `path`, `name`, `folder`, `count`, and `best`, where it is best shown: `where` (`name`, `document` or `canvas`), `text` (the line or the element's text, cut to about 80 characters around the match), `word`, `occurrence` (how many times the word comes before it in the Document, as find counts) and `element` (the canvas element's id)) and `more` (over 50 found). Every word of `query` must appear, at the start of a word, capitals ignored, in the name, Document or Canvas; names first, then by count, then the tree's order. Pages and folders only: never templates, the Trash or hidden entries. `open` (`path`, `source`, `scene`) is the open page as the window holds it, searched in place of its file. Nothing is written or kept |
-| `ZipPlan(root, scope)` | `ZipPlanResult`: `files`, each a `path` in the zip and a `size`, sorted by path; what a Markdown zip of `scope` will hold. `scope` is `kind` (`space`, `folder`, `page`), `path`, and `attachments`, the names of the files a folder's or page's pages use (the frontend reads them). A Space's zip is every file as it lies with `.bava` but not its Trash; a folder's or a page's keeps its place in the Space with only the attachments named. Hidden files and links are never followed |
-| `ExportZip(root, scope, out)` | `Problem`: writes that zip to `out` (a path from the save dialog), to a temporary file beside it, renamed into place; the Space is only read |
-| `Trash(root)` | `TrashList`: items (where each came from, kind, when, size) and the total size |
-| `ChooseFolder(title)` | `DialogResult`: the native folder picker, which can make a folder, titled as the frontend words it (translated there); empty when cancelled |
-| `Reveal(root, path)` | `Problem` (`error`, `code`), both empty on success: the Space's folder, or an item selected in its folder (an attachment by `.bava/attachments/<name>`, its exact name; any other hidden path is refused), in the file manager; `revealUnavailable` when there is no file manager to call |
+| `Templates(root)` | `TemplateList`: each `group`, `name`, `path` (from the root); groups by name, each group's by name, then ungrouped |
+| `SaveTemplate(root, group, name, source, scene, replace)` | `OpResult`: the template's `path`, written as a page; a taken name is `exists` unless `replace` |
+| `CreatePageFrom(root, folder, name, source, scene)` | `OpResult`: the new page's `path` |
+| `Attachments(root)` | `AttachmentList`: each file in `.bava/attachments` (no folders, links or hidden files) with size and date modified |
+| `FetchCard(root, address)` | `CardDetails`: a web page's title, description, and icon and picture saved as attachments (their names; none outside a Space). Only on the user's paste or Refresh details. At most 8 s, 5 redirects, 1 MB of page, 2 MB per picture; no cookies; `User-Agent: Bava` |
+| `Apply(root, op)` | `OpResult`: new path, Trash item id, renamed Space root, or attachment name (below) |
+| `Index(root, withText)` | `SpaceIndex`: every page (path, name without `.md`, and with `withText` its text, or `unreadable` set, meaning its links are unknown) in tree order; never hidden entries or `.bava`. The frontend reads links from the text |
+| `Search(root, query, open)` | `SpaceSearch`: `hits` and `more` (over 50 found). Each hit: `kind`, `path`, `name`, `folder`, `count`, `best` (`where`: `name`, `document` or `canvas`; `text`, about 80 characters around the match; `word`; `occurrence`, earlier matches of the word in the Document; `element`, the canvas element id). Every query word must start a word (case ignored) in the name, Document or Canvas. Names first, then count, then tree order. Pages and folders only. `open` (`path`, `source`, `scene`) is searched instead of its file. Writes nothing |
+| `ZipPlan(root, scope)` | `ZipPlanResult`: `files` (`path` in the zip, `size`), sorted by path. `scope`: `kind` (`space`, `folder`, `page`), `path`, `attachments` (names the pages use). A Space's zip is every file with `.bava` minus its Trash; a folder's or page's keeps its place with only the named attachments. Hidden files and links never followed |
+| `ExportZip(root, scope, out)` | `Problem`: writes that zip to `out` via a temporary file renamed into place |
+| `Trash(root)` | `TrashList`: items (origin, kind, when, size) and total size |
+| `ChooseFolder(title)` | `DialogResult`: native folder picker (can make a folder); empty when cancelled |
+| `Reveal(root, path)` | `Problem` (`error`, `code`), empty on success: the Space folder, or an item selected in it (an attachment as `.bava/attachments/<name>`; other hidden paths refused); `revealUnavailable` with no file manager |
 
-**The root is checked on every call**: it must be absolute and hold `.bava/`, or the call is refused, so an empty or stale root can never act on the working folder.
+`Apply` operations (`op.kind`, with its fields):
 
-**Paths are relative to the Space**, with `/` between folders. One that is
-absolute, leaves the Space, or is hidden (which keeps `.bava` out of reach) is
-refused, in `Error`, and so is one that goes through a symbolic link. So is a name that already exists: nothing is overwritten (a rename that only changes case lands on the same file, and is allowed).
+| Kind | Fields and effect |
+|---|---|
+| `createPage`, `createFolder`, `rename`, `duplicate`, `trash`, `restore`, `deleteForever`, `emptyTrash`, `renameSpace`, `setPageWidth` | as named |
+| `move` | `folder`, `index` (-1 for the end) |
+| `relink` | `edits`: each page's `path`, `before`, `after`; a page is written only if it still reads as `before`; `missed` lists the rest |
+| `attach`, `attachData` | `source` (any file) copied into `.bava/attachments`, or `data` (base64) saved as `name` or `Pasted image <date> <time>.png` |
+| `renameAttachment`, `trashAttachment` | `attachment` renamed to `name` (extension kept), or to the Trash (back with `restore`) |
+| `savePicture` | a canvas embed's picture, `data` in base64: saved under `name`, numbered when taken, never sharing a file with the same bytes; with `replace`, written to `name` itself (made if gone, untouched if identical). Returns the name used |
+| `deleteSpaceData` | deletes `.bava` for good (Trash included); pages in the Space's folders kept; a `.bava` that is a link is `throughLink` |
+| `renameTemplate`, `moveTemplate`, `duplicateTemplate`, `deleteTemplate` | `path`: renamed to `name` in its group; moved to group `folder` ("" for none); copied beside itself, numbered; deleted for good. An emptied group goes |
 
-**Errors are data**, as for `FileService`. A refusal the user can act on
-also carries `code` (`exists`, `nameEmpty`, `nameSlash`, `nameDot`, `nameReserved`,
-`intoItself`, `notFolder`, `onlyPage`, `outside`, `throughLink`, `notSpace`, `changed`,
-`revealUnavailable`;
-`internal/space/errors.go`), and the frontend words it in the user's language
-(`space.error.*`). Any other failure has an empty `code` and its `error` is
-shown as it came.
+`attach`, `attachData` and `renameAttachment` return the attachment's `name`:
+numbered when taken by a different file, or the existing identical file's. A
+template name taken in its group is `exists`.
 
-It replaces `FileService.ListWorkspace`, whose flat listing of a file's parent
-folder was the workspace before Spaces.
+- **Root** must be absolute and hold `.bava/`. **Paths** are relative,
+  `/`-separated; absolute, outside, hidden or through a link is refused.
+  Nothing is overwritten (a case-only rename is allowed).
+- **Codes** (`internal/space/errors.go`, worded by the frontend as
+  `space.error.*`): `exists`, `nameEmpty`, `nameSlash`, `nameDot`,
+  `nameReserved`, `intoItself`, `notFolder`, `onlyPage`, `outside`,
+  `throughLink`, `notSpace`, `changed`, `notAttachment`, `notPage`, plus
+  `revealUnavailable` from `Reveal`. Other failures have an empty `code` and
+  `error` is shown as is.
 
 ## ExportService
 
-Added in Milestone 6.4. Writes an exported picture where the user asked.
+Writes exports the frontend drew (`frontend/src/canvas/export/`,
+`internal/export`). Separate from `FileService`: an export never touches the
+open file, its stamp or history.
 
 | Method | Returns |
 |---|---|
-| `Save(path, contentsBase64)` | an error string, empty on success |
-| `PagePDF(root, request, out)` | `Problem`: prints a page of the Space at `root` to a PDF at `out`; `code` is `notOpened` (the folder was not opened this session), `unavailable` (no printing on this system), `setup` (a paper or margins that cannot be printed), `nothing` (neither Document nor Canvas) or `failed` (the print, the join or the write failed; `error` says how) |
-| `SpacePDF(root, request, out)` | `SpacePDFResult` (`error`, `code`, `page`): prints a folder or the Space to one PDF at `out`, its contents first; the codes are `PagePDF`'s, and `page` when a page could not be printed, `page` naming it (nothing is written) |
+| `Save(path, contentsBase64)` | error string, empty on success. Base64 because the JSON bridge would send bytes as a number array. Written through `store.Save` (temp file renamed into place); a missing folder is an error |
+| `PagePDF(root, request, out)` | `Problem`: prints a page to a PDF at `out`. Codes: `notOpened` (folder not opened this session), `unavailable` (no printing here), `setup` (paper or margins unprintable), `nothing` (neither Document nor Canvas), `failed` (`error` says how) |
+| `SpacePDF(root, request, out)` | `SpacePDFResult` (`error`, `code`, `page`): a folder or the Space as one PDF, contents first. `PagePDF`'s codes, plus `page` when a page failed (`page` names it; nothing written) |
 
-**A page's PDF** (`request`: `setup`, the page setup of
-`internal/pdfprint`; `document`, the page's HTML, styles and `widthPx`, 0
-for full width; `canvas`, its picture as SVG with its `width` and
-`height`; `dark`, with `paper`, the theme's page colour; `numbers`, with
-`ink`, their colour). The frontend draws the page in its own editor and the
-Canvas through its export; Go puts the fonts (from the app's own files) and
-the pictures (from the opened folders, images only) inside one file, under
-a policy that lets it load nothing else, and has the system's webview print
-it. The Canvas goes on a sheet of its own, landscape when wider than tall,
-scaled down to fit. Dark sheets are filled to their edge and numbers laid
-over them after printing, with pdfcpu (no settings written), and the parts
-joined and written like a save.
+- **Page request:** `setup` (`internal/pdfprint` page setup); `document` (the
+  page's HTML, styles, `widthPx`, 0 for full width); `canvas` (SVG, `width`,
+  `height`); `dark` with `paper`; `numbers` with `ink`. Go embeds the bundled
+  fonts and the pictures (opened folders, images only) in one file under a
+  policy that loads nothing else, and the system webview prints it. The Canvas
+  gets its own sheet, landscape when wider than tall, scaled to fit. Dark fill
+  and page numbers are applied after printing with pdfcpu; parts are joined
+  and written like a save.
+- **Space or folder request:** `title`; `entries` in Files tree order, each a
+  folder (`folder`, `depth`, `title`) or a page (`path`, `document` with HTML
+  and `widthPx`, `canvas`); `css` once for all pages; `setup`, `dark`,
+  `paper`, `text`, `ink`, `numbers`. Pages print as above, then the contents
+  (title, folders as headings, each page's starting sheet, reprinted if its
+  length shifts them). Numbering starts at the contents; bookmarks nest pages
+  under folders.
 
-**A folder's or the Space's PDF** (`request`: `title`; `entries` in the
-Files tree's order, each a folder (`folder`, `depth`, `title`) or a page
-with its `path`, `document` (HTML and `widthPx`) and `canvas`; `css`, the
-styles every page is drawn with, sent once; `setup`, `dark`, `paper`,
-`text`, `ink`, `numbers`). Each page is printed as a page's PDF is, then
-the contents: the title, folders as headings, each page with the sheet it
-starts on, printed again if their own length moves those sheets. Sheets
-are numbered from the contents on, and bookmarks nest pages under their
-folders.
+## MenuService
 
-**The picture is drawn in the frontend**, which owns the canvas, and crosses as
-base64. The bridge is JSON, so raw bytes would arrive as an array of numbers,
-several times the size of the image. Go decodes and writes; it never draws.
+The native menu is declared in `internal/app/menu/spec.json` and built in Go
+(`app.InstallMenu`, called after `application.New`, not bound).
 
-**It writes like a document save**, through `store.Save`: a temporary file
-renamed into place, so a failure never leaves half a PNG where a whole one
-was, and a folder that does not exist is an error rather than something
-silently created.
+### `menu:command` (Go to frontend)
 
-**It is not part of `FileService`.** An export is a copy, not the user's
-document: nothing here touches the open file, its stamp or its history.
+Every click on a dispatchable item emits `{ "id": "file.save" }` or
+`{ "id": "file.openRecent", "arg": "/path/to/notes.md" }`.
+`frontend/src/shell/commands.ts` maps ids to actions; a test fails on an id
+without a handler or the reverse. Unknown ids are ignored.
 
-## Menu
+- Native roles (Hide, Quit, Close Window, Minimise, Zoom, Full Screen) never
+  emit. Cut, Copy and Paste are commands using the Wails clipboard API (the
+  Windows roles never reach the canvas). Items with a punctuation `shortcut`
+  emit only on click; the page handles the key with the same id.
 
-Added in Milestone 5.6. The native menu bar is declared in
-`internal/app/menu/spec.json` and built from it in Go. It names commands; it
-does not perform them.
-
-### `menu:command` (Go → frontend)
-
-An event, not a binding. Every click on a dispatchable item emits one:
-
-```json
-{ "id": "file.save" }
-{ "id": "file.openRecent", "arg": "/path/to/notes.md" }
-```
-
-`frontend/src/shell/commands.ts` maps each id to an action. A test reads the
-spec and fails when an id has no handler, or a handler has no spec entry.
-An unknown id is ignored rather than thrown, so a newer menu cannot crash an
-older frontend.
-
-Native roles (Hide, Quit, Close Window, Minimise, Zoom, Full Screen) never
-emit; they act through the platform. Cut, Copy and Paste are **not** roles:
-on Windows those roles run clipboard scripts in the page that never reach the
-canvas, so they are commands like Undo, and text goes through the Wails
-clipboard API rather than the browser's.
-
-Items with a `shortcut` (punctuation keys) never emit from a key press either:
-the page matches the key itself and dispatches the same command id through
-the same dispatcher. A click on the item still emits `menu:command`.
-
-### `MenuService.SetState(state)` (frontend → Go)
-
-The one bound method. The frontend reports what the menu reflects, and Go
-never guesses:
+### `SetState(state)` (frontend to Go)
 
 | Field | Menu effect |
 |---|---|
@@ -325,38 +217,26 @@ never guesses:
 | `objectSnap` | ticks Canvas ▸ Snap to Objects |
 | `recents` | rebuilds Open Recent; empty shows a disabled placeholder |
 
-Checks and enabled state are set on the native items directly. The menu is
-rebuilt (`Menu.Update`, on the main thread) only when the recents list
-changed; every tool switch and selection change calls `SetState`, and a
-rebuild each time would be wasteful everywhere and a GTK call off the main
-thread on Linux.
-
-Calling it before the menu is installed does nothing. Building the menu is
-deliberately not bound: `app.InstallMenu` is a package function main calls
-after `application.New`.
+Checks and enablement are set on the items directly; the menu is rebuilt
+(`Menu.Update`, main thread) only when `recents` changes. Calling it before
+the menu is installed does nothing.
 
 ## LogService
 
-Added in Milestone 5.8. The frontend's way into Bava's own log. Nothing here
-leaves the machine: there is no upload, and Report Issue stays hidden until
-the public tracker exists.
+The frontend's way into Bava's own log. Nothing leaves the machine.
 
 | Method | Returns |
 |---|---|
-| `Report(entry)` | nothing (logs a frontend error); `entry` is `{level, kind, stack, source}`: the error's kind and stack frames, **never its message**, which can quote input. Kind capped at 200 characters, stack at 8,000. At most 20 per 10 seconds; the number dropped is noted when the next report arrives |
-| `Diagnostics(userAgent)` | plain text for the user to copy: build, OS, webview, whether the last session ended unexpectedly, and the last 200 log lines, already redacted |
-| `OpenLogsFolder()` | an error message, empty on success |
+| `Report(entry)` | nothing. `entry` is `{level, kind, stack, source}`, **never the message** (it can quote input). Kind capped at 200 characters, stack at 8,000. At most 20 per 10 seconds; the dropped count is noted on the next report |
+| `Diagnostics(userAgent)` | text to copy: build, OS, webview, whether the last session ended unexpectedly, last 200 log lines, redacted |
+| `OpenLogsFolder()` | error message, empty on success |
 | `TakeNotices()` | pending notices, once: `{kind: "unexpectedExit" \| "webviewReloaded", session}` |
-| `SetVerbose(on)` | an error message, empty on success; switches the live level and saves `verboseLogging` |
+| `SetVerbose(on)` | error message, empty on success; sets the live level and saves `verboseLogging` |
 
-### `app:error` (Go → frontend)
+### `app:error` (Go to frontend)
 
-Emitted when Go recovers from a panic, whether in a bound method, a Wails
-goroutine, or one Bava started with `app.Go`. Carries `{id}`, which finds the
-full stack in the log; the frontend supplies the words. Never the stack, never
-content.
-
-A panic inside Wails' `InvokeSync` is the exception: its caller would wait
-forever, so Bava logs it and exits instead, and the next launch reports the
-unexpected exit. Panics in Wails' window-event and event hooks are not
-recovered by Wails at all and end the process the same way.
+Emitted when Go recovers a panic in a bound method, a Wails goroutine, or one
+started with `app.Go`. Carries `{id}` (finds the stack in the log), never the
+stack or content. A panic inside Wails' `InvokeSync`, or in its window-event
+and event hooks, ends the process instead; the next launch reports the
+unexpected exit.

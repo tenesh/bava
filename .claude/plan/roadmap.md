@@ -1,921 +1,127 @@
 # Bava roadmap
 
-Milestones 0–16, including half-steps (0.5, 5.5 to 5.8, 8.7) that exist because
-something must land before the milestone that depends on it. Each has one goal,
-one exit criterion provable by running a
-command, and its dependencies. The build loop in
-`.claude/skills/build-step/SKILL.md` reads this file to locate the current
-milestone; determine it from what exists in the tree, not from what a
-previous session claimed.
+The order work is built in. The build loop (`.claude/skills/build-step/SKILL.md`)
+reads it to find the next step; check the tree, not a previous session's
+claim. Each step names its exit check.
 
-Sequence is fixed. Three standing rules cannot be traded away under schedule
-pressure:
+Standing rules:
+- **Tokens before components** (`.ai/rules/design-system.md`).
+- **Format before persistence:** `docs/file-format.md` describes a shape
+  before code writes it, with a round-trip test.
+- **Nothing deferred without a destination:** work pushed out names the step
+  that picks it up.
 
-- **Tokens before components.** `frontend/src/styles/tokens/` exists before
-  anything lands in `frontend/src/components/` (`.ai/rules/design-system.md`).
-- **Format before persistence.** `docs/file-format.md` specifies a shape
-  before any code writes it, with a round-trip test in the same change
-  (`.ai/rules/file-format.md`).
-- **Nothing is deferred without a destination.** If a milestone pushes work out
-  of scope, it names the milestone that picks it up. A deferral with nowhere to
-  go is a roadmap bug.
+## Done
 
-**Re-planned 2026-09-16.** Milestones 2 onward were rebuilt around a
-free-placement canvas after the product direction was settled; see
-`.claude/work/specs/canvas-architecture.md`.
-
-**Re-planned again 2026-09-17, from Milestone 6.** A diagram is no longer a
-live block rendered from D2. D2 *generates* a diagram (from code the user
-writes or the AI writes), and the result is converted into ordinary canvas
-shapes, arrows and containers that can be moved and edited freely; the D2 is
-then discarded. Decisions in `.claude/work/specs/diagrams-as-shapes.md`.
-Milestone 1's pipeline survives as the generator: compile, lay out, and hand
-the geometry to conversion.
-
----
-
-## Milestone 0: Scaffold *(complete)*
-
-**Goal:** Wails v3 + Svelte 5 + TypeScript shell that builds and runs on the
-dev machine.
-
-**Exit criterion:**
-
-```sh
-wails3 doctor && go vet ./... && (cd frontend && npm ci && npm run build)
-```
-
-**Depends on:** nothing.
-
-**Note:** `go build ./...` was excluded here while the mobile targets broke
-the link step; they are gone as of Milestone 0.5, whose criterion includes it.
-
----
-
-## Milestone 0.5: Toolchain and doc alignment *(complete)*
-
-**Goal:** Make the gates runnable and make every documented fact about the
-tree true, before any milestone depends on either.
-
-**Scope, and status as verified on 2026-09-16:**
-
-| Item | Status |
+| Step | What |
 |---|---|
-| Skill file named `SKILL.md` | Already correct on disk; the skill loads. No rename was needed, and `git mv` would not have applied: `.claude/` is untracked. |
-| Module `github.com/tenesh/bava`, `go 1.27.0` | Already applied in the working tree; toolchain `go1.27.1` confirmed. |
-| D2 `v0.9.0` in the module graph | Present, still `// indirect`. Dropped once by `go mod tidy` during the bindings regeneration and re-added; see the trap below. |
-| `npm run lint` (ESLint 10 + `eslint-plugin-svelte` 3 + typescript-eslint 8) | Added: `frontend/eslint.config.js`, flat config, `bindings/` and `dist/` ignored. |
-| `npm test` (Vitest 5) | Added. No tests yet; Milestone 1 writes the first. |
-| CLAUDE.md states intent only | Done: version pins now point at `go.mod`, spike timings and tree inventory moved to the build loop's repo-state section. |
-| Mobile targets removed | Done: `build/android` and `build/ios` removed (46 files, committed in `e7e0508`), plus their references in `Taskfile.yml`, `build/Taskfile.yml`, `.gitignore` and `build/config.yml`. `go build ./...` passes again. |
-| Bindings match the module path | Done: regenerated to `frontend/bindings/github.com/tenesh/bava/`, stale `changeme/` removed, `src/App.svelte` import updated. |
-
-**Exit criterion:**
-
-```sh
-go vet ./... && go build ./... && go test ./... \
-  && ! test -e build/android && ! test -e build/ios \
-  && (cd frontend && npm run check && npm run lint)
-```
-
-Verified 2026-09-16: everything above passes except `npm run lint`, which
-still reports three errors, all inside the Wails demo screen `src/App.svelte`
-(one `any`, two direct DOM manipulations). Milestone 1 deletes that screen, so
-the gate goes green there rather than by editing code already scheduled for
-removal. Milestone 1 deleted it and the gate went green.
-
-**Depends on:** Milestone 0.
-
-**Trap discovered here:** `wails3 task common:generate:bindings` depends on
-`go:mod:tidy`, and tidy drops `github.com/d2lang/d2` because nothing imports
-it yet. Re-add with `go get github.com/d2lang/d2@v0.9.0` after any tidy until
-Milestone 1's first import makes the requirement direct.
-
----
-
-## Milestone 1: The spine *(complete)*
-
-**Goal:** Type D2 in a source pane, Go compiles and lays it out, the resulting
-SVG appears on screen.
-
-**Role after the 2026-09-16 re-plan:** this pipeline is no longer the whole
-app. It renders `diagram` elements placed on the canvas. Everything built here
-(the `Render` surface, the debounce and staleness handling, errors-as-data,
-`nodeMap`, the golden fixtures) carries forward unchanged into Milestone 6,
-which adds node geometry to `nodeMap` and places the result on a stage. The
-two-pane shell and the interim `DiagramCanvas` class built here are replaced by
-Milestones 3 and 4.
-
-**Superseded 2026-09-17: diagrams become shapes.** There is no live `diagram`
-element. The pipeline survives as the generator behind Diagram from Code,
-whose output is converted to ordinary shapes (see the top of this file).
-
-**Scope:** `internal/layout` and `internal/render` on D2
-v0.9.0 (library only, logger in every `Compile` context, TALA default, text
-measured in Go); the single IPC surface `Render(source, opts) → {svg, errors,
-nodeMap}`; CodeMirror 6 mounted imperatively in `onMount`; the canvas as a
-plain TS class; 250ms debounce with incrementing request IDs and stale
-responses dropped; errors returned as data with the last good SVG left on
-screen. Golden fixtures under `testdata/golden/` start here; the `lint` and
-`test` scripts they run alongside were added in Milestone 0.5.
-
-No `internal/compile/` package: `d2lib.Compile` already fuses parse, compile
-and layout, so it would be an empty shell wrapping one call. Its glob has since
-been removed from `.ai/rules/index.md` rather than left registered and unused.
-
-**Exit criterion:**
-
-```sh
-go vet ./... && go build ./... && go test ./internal/... . \
-  && go test ./internal/render -run Golden \
-  && (cd frontend && npm run check && npm run lint && npm test)
-```
-
-green, with at least one committed golden SVG reviewed by eye, and frontend
-tests covering debounce and stale-response dropping.
-
-**Depends on:** Milestone 0.5 (the lint and test gates must exist before the
-first test is written; nothing else in 0.5 blocks it).
-
-**Also closes:** deleting the Wails demo screen `src/App.svelte` clears the
-three standing lint errors, and the first `internal/` package makes the D2
-requirement direct so `go mod tidy` stops dropping it.
-
-**Out of scope:** writes nothing to disk: no save, no autosave, no
-`localStorage` for document state. Source lives in memory until Milestone 5.
-Unstyled two-pane layout; no `frontend/src/components/` work, because tokens
-do not exist yet.
-
----
-
-## Milestone 2: Design tokens and theming *(complete)*
-
-**Goal:** A semantic token layer plus light/dark theming, so component work can
-start without a literal value anywhere.
-
-**Scope:** `frontend/src/styles/tokens/` (`_color`, `_space`, `_type`,
-`_radius`, `_elevation`, `_motion`, `_z`), emitted on `:root`, redefined under
-`:root[data-theme="dark"]`, with `data-theme` on `<html>`. 13px base, 4px
-spacing unit, desktop density. The bundled Geist and Geist Mono faces move into
-`_type.scss` as `--font-ui` and `--font-mono`, replacing the interim
-declarations in `public/style.css`. `--z-*` must cover portal layers: the Ark
-spike measured portalled content painting *below* ordinary app chrome because
-Ark ships no z-index of its own.
-
-**Exit criterion:**
-
-```sh
-ls frontend/src/styles/tokens/_{color,space,type,radius,elevation,motion,z}.scss \
-  && (cd frontend && npm run check && npm run lint && npm run build) \
-  && ! grep -rEn '#[0-9a-fA-F]{3,8}|[0-9]+px' frontend/src \
-       --include='*.svelte' --include='*.scss' --include='*.ts' \
-     | grep -v 'src/styles/tokens/'
-```
-
-The grep must find nothing outside `tokens/`. It also clears the two named
-debts from Milestone 1: the `13px` base and the `1px` divider.
-
-**Depends on:** Milestone 1.
-
----
-
-## Milestone 3: App shell *(complete)*
-
-**Goal:** The three-view window: document, canvas, or both, with the chrome
-around them.
-
-**Scope:** The `Document | Both | Canvas` switcher. Resizable, collapsible
-panes on Ark's Splitter (file tree, main area, dockable AI pane), with pane
-visibility and widths kept in `localStorage` inside try/catch. `StatusBar`,
-`EmptyState`, `Icon`, and the settings shell whose sections later milestones
-fill in. The default window grows from 1000×618 to a size where four regions
-are usable.
-
-**Exit criterion:**
-
-```sh
-(cd frontend && npm run check && npm run lint && npm test) && go test ./internal/... .
-```
-
-green, every new component added to the inventory in
-`.ai/rules/design-system.md` in the same change, plus a keyboard pass and a
-both-themes check per component.
-
-**Depends on:** Milestone 2.
-
----
-
-## Milestone 4: Canvas foundation *(complete)*
-
-**Goal:** An infinite canvas you can draw on: place, select, move, group,
-undo.
-
-**Scope:** The Konva stage as a plain TypeScript class. Pan and zoom. Tools
-with their keyboard shortcuts: select (V), rectangle (R), ellipse (O), arrow
-(A), line (L), pen (D), text (T), frame (F). Freehand via `perfect-freehand`.
-Selection, multi-select, transform handles, z-order, labelled groups, copy and
-paste, and an undo/redo history over scene mutations. The contextual toolbar
-that changes with selection.
-
-Canvas text is measured here, in the frontend, and the measurement is stored on
-the element, the mitigation `canvas.md` requires now that measurement has left
-Go.
-
-**Inherited debt, moved here from Milestone 3 on 2026-09-17:** click-on-node
-jump-to-source was wired in Milestone 1 with no keyboard equivalent.
-Obsolete since diagrams became shapes: a converted diagram keeps no source to
-jump to.
-
-**Exit criterion:**
-
-```sh
-(cd frontend && npm run check && npm run lint && npm test)
-```
-
-green, with tests over the real logic and not the markup: hit-testing, scene
-transforms, selection state, and undo/redo returning the scene to a
-byte-identical state after an arbitrary sequence of mutations.
-
-**Depends on:** Milestone 3.
-
-**Out of scope:** persistence; the scene lives in memory until Milestone 5.
-Diagram elements, connectors and bindings are Milestones 6 and 7.
-
----
-
-## Milestone 5: File format and persistence *(complete)*
-
-**Goal:** Open and save real files, in a format specified before a byte is
-written.
-
-**Scope:** `docs/file-format.md` first, covering the whole shape: a file holds
-a document and a scene; every element carries geometry; canvas text carries its
-measured dimensions; a `diagram` element carries **D2 source inline, as
-readable source**; bindings are stored by node id, never by coordinate; unknown
-keys and unknown element types survive a round trip untouched. Then
-`internal/format` and `internal/store`, native open/save dialogs, the file
-tree on Ark's TreeView, recent files, and the unsaved-changes and
-file-changed-on-disk flows.
-
-**Superseded 2026-09-17: diagrams become shapes.** No `diagram` element holds
-D2 source; generated diagrams are saved as ordinary shapes and arrows.
-
-The two tunables Milestone 1 left as compile-time constants (the 250ms
-debounce and the default layout engine) move behind the settings file here.
-
-**Exit criterion:**
-
-```sh
-test -f docs/file-format.md \
-  && go test ./internal/format ./internal/store -run RoundTrip -v \
-  && go test ./internal/... . && go vet ./...
-```
-
-with a round trip that covers an unknown element type and an unknown key, and
-one proving a scene reopens with identical text layout on a machine that did
-not create it.
-
-**Depends on:** Milestone 4. The format spec is an internal gate: no
-persistence code merges before it.
-
----
-
-## Milestone 5.5: Wiring *(complete)*
-
-**Goal:** Make what Milestones 4 and 5 built reachable from the window. Draw on
-the canvas; open and save a file. No new capability.
-
-**Why it exists:** both earlier milestones shipped tested logic with no way to
-use it. Added 2026-09-17 rather than stacking Milestone 6 on an app nobody could
-yet open a file in.
-
-**Exit criterion:**
-
-```sh
-go vet ./internal/... . && go test ./internal/... . \
-  && (cd frontend && npm run check && npm run lint && npm test)
-```
-
-green, plus a hand check that no test replaces: draw, save to a new file, quit,
-reopen, and confirm the drawing is intact.
-
-**Depends on:** Milestones 4 and 5.
-
----
-
-## Milestone 5.6: Chrome *(complete; brand shipped in 5.7; the window check is owed, listed in the build skill)*
-
-**Goal:** A real desktop menu bar in place of title-bar buttons, and autosave.
-
-**Scope:** The native menu declared as data (`internal/app/menu/spec.json`),
-grouped for the items later milestones add; one `menu:command` path into the
-frontend; the JS keymap stripped of whatever the menu binds; autosave settings,
-off by default. The brand mark was in scope; it moved to
-Milestone 5.7 and shipped there.
-
-**Exit criterion:**
-
-```sh
-go vet ./internal/... . && go test ./internal/... . \
-  && (cd frontend && npm run check && npm run lint && npm test)
-```
-
-green, plus a hand check at a running window: macOS at least, Windows and
-Linux through the CI build and a person where possible: the menu bar appears,
-every item does what it says, ⌘Z undoes once in the canvas and once in the
-source editor, Copy/Paste work on a canvas selection and in the editor, and
-`⌘=` and `⇧⌘]` fire.
-
-**Depends on:** Milestone 5.5.
-
----
-
-## Milestone 5.7: Brand *(complete; a human look at the icons is owed, listed in the build skill)*
-
-**Goal:** The mark as app icon, in the title bar, the files empty state and
-About.
-
-**Art:** vendored in the repo: `frontend/src/brand/panda.svg`, one drawing at
-every size (a small-size variant was tried and rejected), and designer-
-exported 1024px icon masters per platform beside their outputs in `build/`.
-Rules and decisions in `.claude/work/specs/brand.md`.
-
-**Exit criterion:**
-
-```sh
-go test ./internal/app -run 'Icon|AssetsCar' \
-  && (cd frontend && npm run check && npm run lint && npm test)
-```
-
-green, plus a human look at a built app: the icon at 16px and 1024px on
-macOS, the title bar and About in both themes. The mark is paper on ink,
-always, never the accent.
-
-**Depends on:** Milestone 5.6.
-
----
-
-## Milestone 5.8: Errors and logs *(complete; the release-build check is owed, listed in the build skill)*
-
-**Goal:** When something fails, the user sees what happened and can hand us the
-logs, and nothing reaches us unless they send it.
-
-**Why now:** in a release build Wails discards every log line, and a panic
-outside a bound method closes the app without a word. Cheaper to fix before
-Milestone 6 adds more ways to fail, and every later milestone logs from its
-first line. Design: `.claude/work/specs/errors-and-logs.md`.
-
-**Scope:**
-- Per-session log files in the platform log folder, with pruning; the same
-  logger handed to Wails.
-- Frontend errors forwarded to the log.
-- A panel-level `<svelte:boundary>`.
-- A `PanicHandler` and recover wrappers for our goroutines.
-- An unexpected-exit marker and the next-launch notice.
-- The "Something went wrong" dialog for unexpected errors.
-- Help ▸ Open Logs Folder and Copy Diagnostics. Report Issue is built but
-  hidden until Milestone 16 confirms the public repository.
-- Retention: the last 10 sessions, 50 MB total.
-- A Verbose logging setting, off by default.
-- Webview content-process termination on macOS, with the Windows and Linux
-  equivalents checked.
-
-**Exit criterion:**
-
-```sh
-go test ./internal/... . && go vet ./internal/... . \
-  && (cd frontend && npm run check && npm run lint && npm test)
-```
-
-green, including:
-- a test that a log from an open–edit–render–save cycle contains none of the
-  fixture's content
-- a test that a panic in a goroutine is logged and does not exit the process
-- a test that a missing clean-exit marker produces the next-launch notice
-- a test that pruning keeps the configured number of sessions
-
-Plus a human check at a running release build: force a panic and a frontend
-exception, and find both in the log folder.
-
-**Depends on:** Milestone 5.6 (the Help menu).
-
-**Out of scope:** recovering unsaved work after a crash: Milestone 16. Any
-automatic upload: never.
-
----
-
-## Milestone 6: Canvas *(built in parts 6 to 6.17, all committed; window checks settled by 8.4a)*
-
-**Goal:** A free-placement canvas that draws, styles, connects, exports and
-edits everything a diagram needs.
-
-**Plans:** one file, `.claude/work/plans/06-canvas.md`: an overview table,
-then each part's plan, as built and spec review in full. Decisions in
-`.claude/work/specs/arrows-and-code.md` (1 to 16), `canvas-toolbar.md`,
-`diagrams-as-shapes.md`, `launch.md` and `docs/decisions.md`.
-
-**Scope, as built.** Milestone 6 started as "shapes that look right" and grew,
-at the user's direction, into the whole canvas. Parts keep their numbers, so
-references elsewhere ("Milestone 6.5") still name them:
-
-| Part | What it delivered |
-|---|---|
-| 6 | The shape set diagrams need (rectangle, ellipse, diamond, cylinder, hexagon, parallelogram, document, person, cloud), labels, swatch colours, selection; shipped data loss on save fixed |
-| 6.1 | The first window check's defects; launch into a splash and a no-file state |
-| 6.2, 6.2.1 | Icon rail and eraser, insert panel, selection toolbar, right-click menu, align and distribute; constrained drags, colour chips |
-| 6.3 | Style keys, any colour, locking, rotation |
-| 6.4 | Export and copy as PNG or SVG, drawn by the canvas's own code *(moved forward from Milestone 15)* |
-| 6.5 | Arrows attached by element id that re-aim as shapes move; frames that own their contents; arrow labels |
-| 6.6, 6.11 | Diagram from code: D2 typed in a dialog, previewed and inserted as ordinary shapes; the dialog's engines and direction |
-| 6.7, 6.9 | Code blocks: highlighted, in Geist Mono, edited in place *(moved forward from Milestone 15)* |
-| 6.8 | Feel fixes: styles at their size, tools that let go, zoom-steady distances |
-| 6.10, 6.12 to 6.16 | Every line and arrow behaviour a diagram needs (a 90-row inventory; B3 in part, B22 kept as Bava's rule): bends, elbows, pinned ends, point editing, click-by-click lines, heads, labels, attaching settings |
-| 6.17 | A code block's language and font size; arrow labels typed in place and along the arrow; the false "changed on disk" prompt and the right-click Reload fixed |
-
-**Exit criterion:**
-
-```sh
-go test ./internal/format -run RoundTrip && go test ./internal/... . \
-  && (cd frontend && npm run check && npm run lint && npm test)
-```
-
-green (it is, for every part), plus the hand check each part's plan
-describes, at a running window in both themes. The 8.4a canvas testing pass
-settled those checks; the few that still need a person at a window are listed
-in its As built (`.claude/work/plans/08.4a-canvas-testing.md`).
-
-**Depends on:** Milestone 5.8.
-
----
-
-## Milestone 7: Snapping and detached arrows *(complete, 2026-09-27)*
-
-**Goal:** Arrows drawn by hand attach to shapes as naturally as generated
-ones, and shapes line up with each other.
-
-**Scope, as built.** Attaching, choosing the side, the detached state,
-rotation, stroke width and dash were built early, in 6.3 to 6.16. Plan
-`.claude/work/plans/07-snapping.md` added the exit tests and
-object snapping (the user's request): off by default, `⌥S`, every element
-snapping by its box, equal spacing between neighbours. No spatial index:
-measured on 2,000 shapes and not needed (`docs/decisions.md`). Checked at a
-running window by the user.
-
-**Exit criterion:**
-
-```sh
-(cd frontend && npm run check && npm run lint && npm test)
-```
-
-green, with tests that dropping an arrow end on a shape attaches it, that
-deleting the shape detaches rather than deletes the arrow, and that undo
-restores the attachment.
-
-**Depends on:** Milestone 6.5.
-
----
-
-## Milestone 8: Documents *(complete; 8.1 to 8.6c committed, CI green 2026-10-10)*
-
-**Discussed and decided (2026-09-27):** 97 decisions in
-`.claude/work/specs/documents.md`, with mockups (since deleted; the look is
-now `look.md`). Planned in six parts,
-with 8.1a, 8.3d, 8.4a to 8.4e, 8.5a and 8.6c added along the way; each is planned, gated and
-committed on its own, and specifies its file-format changes in
-`docs/file-format.md` first:
-
-| Part | Delivers |
-|---|---|
-| 8.1 Spaces and files *(committed)* | `.bava` folder and `space.json`; start screen, Space switcher and settings; New Space (a name and a place); the Files tree (order by hand, duplicate, trash, an Add menu, folding); single files; one page open at a time. Also built with it: the restyle to the mockups (dialog frame, status bar per side, canvas dot grid) |
-| 8.1a Testing layers *(committed)* | Screen checks in a pinned container and a real-app smoke driver, both run in CI |
-| 8.2 The Document editor *(committed)* | ProseMirror, saving Markdown; text blocks, lists, inline formatting and colours; typing shortcuts, `/` menu, formatting bubble, block handle; find and replace, word count; page menu, lock, width |
-| 8.3 Rich blocks *(committed)* | In three parts (decision 77): **8.3a** callouts, toggles, code, equations, footnotes, contents, emoji; **8.3b** rich tables and spreadsheet paste; **8.3c** `@` page links and backlinks, links to headings, date chips |
-| 8.3d Adding lines *(committed)* | A block added before or after any block with ⌘Enter and ⇧⌘Enter or the block menu, and an empty line kept at the end of every page (decision 90); toggle headings dropped (decision 91) |
-| 8.4 Media and attachments *(committed)* | In three parts (decision 97): **8.4.1** the attachments folder, images and video files, relinking; **8.4.2** online videos, file and web-link cards; **8.4.3** the Media section and dialog |
-| 8.4a Canvas testing pass *(committed)* | Screen checks of seeded canvases (every shape and style, arrows of every kind and attachment, frames, groups, code blocks, a D2 diagram; selection, rotation, snapping and point-editing states; the pickers and menus; exported PNG and SVG) in both themes and at two zooms; real-app smoke scenarios that draw, connect, move, undo and insert a diagram, then check the saved file's contents. Replaces the 6.x window checks still owed. Before 8.5, so embedding cannot break the canvas unseen |
-| 8.4b to 8.4e Testing *(committed)* | One testing standard (8.4b); every component, element, block and surface pictured (8.4c); tests laid out by layer (8.4d); pictures as sheets per family (8.4e) |
-| 8.5 Canvas in the Document *(committed)* | Live frame embeds, Diagram from Code from the Document; this part carries the exit criterion below |
-| 8.5a Remove a Space *(committed)* | Remove a Space from the list (start screen, switcher), optionally deleting its `.bava` data |
-| 8.6 Tags and templates *(committed)* | In two parts (08.6 decision 1): **8.6a** tags at the page's bottom, a tag filter in Files and the Tags dialog; **8.6b** templates in groups, New page from template, Save as template, the Templates dialog |
-| 8.6c Dropdowns *(committed)* | `Select` (Ark wrapped) for the Media dialog's Type and Sort and the Tags dialog's Sort; menus take the keys, also inside dialogs |
-
-Export and import moved to Milestone 15, which follows this one after 8.7 (the look).
-
-**Goal:** Prose alongside the canvas, with parts of the canvas embedded in the
-text. How embeds work (a frame, kept up to date as an image, from either side)
-is settled in decisions 24 to 27 and 61 of `documents.md`.
-
-**Exit criterion:**
-
-```sh
-go test ./internal/format -run RoundTrip \
-  && (cd frontend && npm run check && npm run lint && npm test)
-```
-
-green, with tests that activating an embed selects its frame on the canvas,
-and a round trip of a document containing an embed.
-
-**Depends on:** Milestone 5, Milestone 6.5.
-
----
-
-## Milestone 8.7: The look *(complete; committed 2026-10-11, added that day, before Milestone 15)*
-
-**Goal:** Bava looks like itself: quiet and precise, in black and white,
-across every screen, with nothing it does changed.
-
-**Why now:** asked by the user on 2026-10-11, before more screens are
-added: "It just doesn't feel polished or unique like its missing its
-personality." The design pass owed since the Milestone 8 discussion folds
-into this one.
-
-**Scope:** `.claude/work/specs/look.md`: the black-and-white palette in both
-themes, the shape swatches and canvas dots retuned to it, mono for data and
-section labels, no one-sided coloured edges, hairlines and floating-only
-shadows, the four small touches (saved dot, `#` on tags, position while
-dragging, keys in menus). Tokens first, then components, then screens;
-every picture in `testdata/visual/` retaken and read in both themes.
-
-**Exit criterion:**
-
-```sh
-(cd frontend && npm run check && npm run lint && npm test && npm run browser)
-```
-
-green, with every changed picture read in both themes, `no-literals` still
-holding, and the file format unchanged (`go test ./internal/format`).
-
-**Depends on:** Milestone 8.
-
----
-
-## R1 and R2: Tharabyte, and the stores' sandboxes *(added 2026-10-11, before 15.3)*
-
-**R1: the move to Tharabyte** (`.claude/work/plans/R1-move-to-tharabyte.md`,
-`.claude/work/specs/release.md`). R1a the rename (module, app ID,
-publisher); R1b no other apps named, the rules, and `AI-DISCLOSURE.md`.
-The history is kept as it is.
-
-**R1c: the adapted canvas code, written afresh** (decided 2026-10-11).
-A comparison found parts of the canvas adapted from another project's MIT
-code; `NOTICE` attributes it meanwhile. R1c replaces each with code written
-from Bava's own description of the behaviour, then drops the attribution:
-elbow segment editing (`elbow-segments.ts`); arrow binding, its reach,
-elbow snapping, anchor points and the inside-out guard (`binding.ts`);
-arrowhead sizes, angles and shapes (`arrows.ts`); closing a line
+| 0 to 0.5 | Scaffold, toolchain |
+| 1 | The spine: D2 compiled and laid out in Go, previewed |
+| 2 to 3 | Design tokens and theming; the app shell |
+| 4 | Canvas foundation (Konva, outside Svelte) |
+| 5 to 5.8 | File format and persistence; wiring; chrome; brand; errors and logs |
+| 6 | The canvas: shapes, lines, arrows, binding, elbows, code blocks, export |
+| 7 | Snapping and detached arrows |
+| 8 | Documents: Spaces, the page editor, media, tables, links, tags, templates |
+| 8.7 | The look: black and white |
+| 15.1 | Search across a Space; find on the Canvas |
+| 15.2 | Export: a page, a folder or the Space as PDF or Markdown zip; the Canvas as PNG or SVG |
+| R1 | The move to Tharabyte (`tharabyte/bava`, `com.tharabyte.bava`); no other products named |
+
+## Next
+
+### R1c: the adapted canvas code, written afresh
+Parts of the canvas were adapted from another project's MIT code; `NOTICE`
+attributes them meanwhile. Each part is rewritten from a spec of Bava's own
+behaviour, by someone who has not seen the original: elbow segment editing
+(`elbow-segments.ts`); binding, its reach, elbow snapping, anchor points and
+the inside-out guard (`binding.ts`); arrowheads (`arrows.ts`); closing a line
 (`closed.ts`); angle snapping (`constrain.ts`); a vector's heading
-(`elbow.ts`). Behaviour stays: the existing tests and pictures are the
-specification, and each part is described in a spec before its code is
-replaced, never from the original source.
-
-**R2: the stores' sandboxes, proven first.** Bava ships only through the
-Mac App Store, the Microsoft Store and Flathub (`release.md` decision 1).
-Two of them sandbox the app: it may touch only what the user chose through
-the system's own dialogs, and must ask the system again to reopen a Space
-later (on macOS a security-scoped bookmark, on Flathub a portal). Today's
-end-to-end walks run the plain binary, unsandboxed, so nothing proves Bava
-works inside a store's sandbox. R2, in order:
-- **A spec** (`.claude/work/specs/stores.md`), one question at a time: how
-  a Space, a loose page, recent Spaces, the pickers, import and export
-  reach files under each sandbox; where settings and logs land; what the
-  Microsoft Store's MSIX (full trust, virtualised files) changes.
-- **A sandboxed run on CI first**: the end-to-end build packaged and signed as a store would ship
-  it (macOS: an ad-hoc signed `.app` with the App Sandbox entitlements;
-  Windows: an MSIX CI signs and installs; Linux: a Flatpak once its
-  manifest exists), running the walks, its result read from where the
-  sandbox puts it. Expected to fail at first; the failures guide the file
-  access work.
-- **The file access each sandbox needs**, until the sandboxed walks pass.
-  Before 15.3, since import reaches files the same way.
-
-Store signing, listings and submission stay in Milestone 16.
-
----
-
-## Milestone 15: Export, import and search *(under way: 15.1 and 15.2a to 15.2d committed 2026-10-11, CI green; R1, the move to Tharabyte, comes before 15.3; moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
-
-**Goal:** Get work out of Bava and into it, and find things across a Space.
-
-**Built in four parts** (`.claude/work/specs/search.md` decision 1): **15.1**
-search across a Space, with find on the Canvas; **15.2** export, itself in three parts
-(`export.md` decision 6: 15.2a a proof of PDF printing on every system,
-15.2b the dialogs and the Markdown zip, 15.2c a page's PDF, 15.2d a
-folder's or the Space's PDF, contents and bookmarks); **15.3**
-import; **15.4** the canvas work below. Search is settled in `search.md`.
-
-**Scope:** From the Milestone 8 discussion (`.claude/work/specs/documents.md`,
-decisions 48, 49 and 58):
-- **Export** a page, a folder or a whole Space as PDF (one combined file or
-  one per page; paper size, theme, margins, scale, page numbers) or as a
-  Markdown zip laid out as in the Space. A page's Canvas exports through
-  the canvas's own drawing, never a second renderer; canvas embeds are
-  already saved as images.
-- **Import** Markdown files and folders, and Bava export zips, into a chosen
-  folder; name clashes kept numbered, never overwritten.
-- **Search** across a Space, with results, jump-to-match, and the
-  `EmptyState` the design system already assumes exists for it.
-
-**Canvas work with no other home** (chosen 2026-09-26 by the user), none
-built yet:
-- Zoom to fit and zoom to selection.
-- A command palette.
-- Paste from other apps onto the canvas: text as a text element, and Bava
-  shapes through the system clipboard.
-- A drag the system cuts off (`pointercancel`, lost capture) ends as a
-  release does, clearing the marquee, guides and position readout.
-- Labels that fit their shape: a text area per shape (diamond, ellipse and
-  the outline shapes), and a shape that grows to its label on commit.
-
-**Carried from Milestone 6.6:** SQL table and UML class shapes. Canvas export
-and code blocks moved forward to Milestones 6.4 and 6.7 (2026-09-18); any
-colour for shapes was built in 6.3.
-
-**Exit criterion:**
-
-```sh
-go test ./internal/export ./internal/search -v \
-  && go test ./internal/... . && go vet ./internal/... . \
-  && (cd frontend && npm run check && npm run lint && npm test)
-```
-
-green, including a round trip of a Space through export and import. (A
-test that an exported diagram is byte-identical to the `Render` output was
-struck with the user on 2026-10-11: Diagram from Code keeps no D2, its
-diagram becomes ordinary shapes and arrows that export through the
-canvas's own drawing, so there is no diagram element left to compare.)
-
-**Depends on:** Milestone 8, Milestone 5.
-
----
-
-## Milestone 9: Icons and assets
-
-**Goal:** A searchable icon library, plus the user's own.
-
-**Scope:** Bundled Lucide (ISC) for general icons and tech logos from Simple
-Icons (CC0) or Devicon (MIT), with a searchable picker. User-imported SVGs as
-the "custom icons" category, placed as `icon` elements. D2's `icon:` becomes
-an icon element during conversion, resolved from the local library; **a
-remote icon URL is never fetched**: D2 code from elsewhere, or from a model,
-may name `https://…` icons, and fetching one would phone a CDN. An unresolved
-remote icon converts to a placeholder with an explicit one-time fetch offer,
-never a silent request.
-
-**Cannot be bundled:** the AWS, Azure and Google Cloud architecture icon sets
-are not open-source licensed. They arrive by user import only.
-
-**Exit criterion:**
-
-```sh
-go test ./internal/... . \
-  && (cd frontend && npm run check && npm run lint && npm test)
-```
-
-green, with a test that conversion never produces a remote icon reference,
-and every bundled set recorded in `NOTICE`.
-
-**Depends on:** Milestone 6.6.
-
----
-
-## Milestone 10: Source editor polish
-
-**Goal:** Make writing D2 in the Diagram from code dialog pleasant.
-
-**Scope:** Narrowed 2026-09-17: the dialog is now the only place D2 is edited.
-A D2 language mode for CodeMirror (keywords, shape and style keys, edges,
-containers, comments, strings) and its keymap. `docs/shortcuts.md` already
-exists and gains the dialog's keys.
-
-**Exit criterion:**
-
-```sh
-(cd frontend && npm run check && npm run lint && npm test) \
-  && test -f docs/shortcuts.md
-```
-
-green, with tests over the tokeniser (expected token types at known offsets in
-a fixture), not over how it looks.
-
-**Depends on:** Milestone 6.6, Milestone 2 (highlight colours are tokens).
-
----
-
-## Milestone 11: AI foundation
-
-**Goal:** A chat pane that generates a diagram, with the model's D2 verified
-before it is shown.
-
-**Scope:** `internal/ai` against a user-configured **local** endpoint (Ollama,
-LM Studio, llama.cpp, LocalAI, all OpenAI-compatible over localhost). The
-dockable chat pane, one thread per file covering the document and every
-diagram on the canvas, persisted as append-only JSONL in the platform data
-directory. Generation, staged visibly: planning, then a placeholder on the
-canvas, then the diagram converted into free shapes through Milestone 6.6's
-conversion. The compile-and-repair loop: output is compiled in-process,
-diagnostics fed back, **capped at two retries**.
-
-**Chat rendering: candidate library, decided 2026-09-17, pending a spike:**
-`markstream-svelte` (MIT) renders streamed replies: markdown, highlighted code
-blocks, safe HTML, and custom components for tags such as a thinking block. It
-is the first choice because one library covers what would otherwise be
-`@humanspeak/svelte-markdown` plus Shiki. Unchanged either way: provider calls,
-credentials and the repair loop stay in Go; dropdowns, menus and collapsibles
-are Ark UI wrapped in `components/`; a D2 block in a reply previews through
-`Render`, never Mermaid.
-
-The milestone's first task is a throwaway spike in the real webview. Adopt
-only if all four hold:
-
-1. **No network, at all:** streaming a reply with code and math makes zero
-   requests. Its code blocks depend on `stream-diffs`, and math and diagrams
-   run in web workers; none may fetch from a CDN. A failure here is a
-   non-negotiable, not a trade-off.
-2. **Themes to our tokens** in both themes. It ships its own `index.css`; if
-   that cannot be driven from `--color-*` and friends without fighting it, it
-   fails.
-3. **Bundle size** measured with Mermaid excluded (~1.5MB, and Bava's diagrams
-   are D2), and KaTeX only if math is wanted.
-4. **Streaming stays smooth** on a long reply in WKWebView, and the Svelte port
-   (marked beta/experimental upstream) is stable enough across a pinned
-   version.
-
-**Fallback:** `@humanspeak/svelte-markdown` (MIT, ships no styles, per-element
-renderers) with Shiki bundled locally. Rejected outright: Svelte AI Elements
-and anything else built on shadcn-svelte, because they bring Tailwind.
-
-**Exit criterion:**
-
-```sh
-go test ./internal/ai/... -v && go test ./internal/... . && go vet ./internal/... . \
-  && (cd frontend && npm run check && npm run lint && npm test)
-```
-
-green, including a test that invalid output is repaired rather than shown, that
-the retry cap holds, and a transcript round trip. Tests run against a local
-stub server, never a live endpoint.
-
-**Depends on:** Milestone 6.6, Milestone 5, Milestone 3.
-
----
-
-## Milestone 12: AI editing
-
-**Goal:** Select something, ask for a fix, see a diff, accept or reject.
-
-**Scope:** Selection-scoped edits: a ProseMirror range in a document, or a
-selection on the canvas, where the model's change arrives as new or modified
-elements through conversion. Edits enter as
-**transactions** so one undo history survives. The inline edit box is
-ephemeral: it shows a diff and vanishes on accept or reject, and is not written
-to the transcript.
-
-**Exit criterion:**
-
-```sh
-(cd frontend && npm run check && npm run lint && npm test) && go test ./internal/... .
-```
-
-green, with tests that a rejected edit leaves the document byte-identical and
-that Ctrl+Z after an accepted edit undoes it in one step.
-
-**Depends on:** Milestone 11, Milestone 8.
-
----
-
-## Milestone 13: Hosted providers
-
-**Goal:** Bring your own key, with the user knowing what leaves the machine.
-
-**Scope:** Hosted providers by API key. Credentials in the OS secret store
-(Keychain, Credential Manager, libsecret), never a file. The consent surface
-before the first hosted call, stating plainly that a highlighted paragraph
-sends the surrounding file. Provider and model pickers in the settings shell.
-The error taxonomy: invalid key, rate limit, offline, model unavailable,
-context too long.
-
-**Exit criterion:**
-
-```sh
-go test ./internal/ai/... -v && go test ./internal/... . \
-  && ! grep -rEn 'api\.(openai|anthropic)|generativelanguage' internal/ --include='*.go' \
-     | grep -v _test.go | grep -v 'providers\.go'
-```
-
-green, with no credential reachable from any file Bava writes, every endpoint
-resolved from user configuration, and the consent gate proven to block the
-first call until accepted.
-
-**Depends on:** Milestone 11.
-
----
-
-## Milestone 14: Provider login
-
-**Goal:** Sign in with a provider account, for users on subscription plans
-rather than API credit.
-
-**Scope:** OAuth device-code flow, tokens in the OS secret store, refresh,
-expiry, and re-authentication when refresh fails. Never a client secret
-embedded in a distributed binary.
-
-**Exit criterion:**
-
-```sh
-go test ./internal/ai/... -run 'OAuth|Token' -v && go test ./internal/... .
-```
-
-green against a stub authorisation server, including expiry and a failed
-refresh.
-
-**Depends on:** Milestone 13.
-
----
-
-
-## Milestone 16: Release readiness
-
-**Goal:** Everything between "it works on my machine" and "someone else can
-install it".
-
-**Scope:** First-run experience (no account, no network): choosing a theme,
-alongside 8.1's start screen, which already opens a folder or makes a New
-Space. The About screen rendering `NOTICE`, which is a licence
-obligation and not decoration. Packaging for the three stores Bava ships
-through, and only them (decided 2026-10-11): the Mac App Store, the
-Microsoft Store and Flathub. Each store updates the app, so Bava has no
-updater and no update check of its own; the in-app updater once planned
-here is dropped.
-
-**Installer branding, carried from Milestone 5.7:** the DMG's file icon
-(`build/darwin/dmg-file-icon.*`) and background (`dmg-background.png`) are
-still the Wails template. Either replace them with Bava art or drop them; all
-three DMG images are optional in `wails3 tool package`, and the volume icon
-already uses `icons.icns`. A test then forbids the template files, as
-`internal/app/icons_test.go` does for the app icons. The same applies to the
-Windows MSIX tiles, which `wails3 tool msix` fills with Wails placeholders, and
-to Linux: deb/rpm install the 1024px `appicon.png` into `hicolor/128x128`.
-
-**Carried from Milestone 5.8:** recovering unsaved work after a crash:
-backups kept outside the project, offered at the next launch.
-Also: confirm the public issue tracker and un-hide Help ▸ Report Issue.
-
-**The publisher's name: settled 2026-10-11** (`.claude/work/specs/release.md`
-decisions 2 to 4, built in R1a). The app ID is `com.tharabyte.bava`, the
-publisher Tharabyte, the repository `tharabyte/bava` and the Go module
-`github.com/tharabyte/bava`. Left for the store work: the MSIX
-`Publisher` must match the signing certificate's subject once there is
-one.
-
-**Exit criterion:**
-
-```sh
-go test ./internal/... . && gh run list --workflow=ci.yml --limit 1
-```
-
-green, with a store build for each of the three made on CI rather than
-locally.
-
-**Depends on:** Milestone 3 (settings shell), and everything it ships.
-
----
-
-## Cross-cutting, no milestone of its own
-
-- **CI build matrix.** `.github/workflows/ci.yml`: test and build jobs across
-  ubuntu/macos/windows, plus the screen checks and smoke runs from 8.1a. First
-  green on all three platforms at `9cf4d06`; later runs have failed and been
-  fixed, so read the latest rather than assume it. A local `wails3 build`
-  proves nothing about Windows or Linux. It also checks that D2 renders
-  identical golden bytes on every platform (`.gitattributes` forces LF for
-  `*.svg`).
-  Check: `gh run list --workflow=ci.yml --limit 1`.
-- **Translations.** The translation layer is `frontend/src/i18n/`, with the
-  strings in `messages.ts`. No new hardcoded string.
-- **Artifact sync.** `docs/ipc.md`, `docs/file-format.md`, `docs/shortcuts.md`,
-  `docs/decisions.md`, `NOTICE` and the `.ai/rules/` files are updated in the
-  same change as the code that makes them true, per the build loop's checklist.
-- **Accessibility debt from Milestone 1.** Reaching a node *inside* a diagram
-  dissolved on 2026-09-17: a converted diagram's nodes are ordinary elements.
-  Tab is not a canvas key; it is left to the browser's focus
-  (`frontend/src/canvas/keymap.test.ts`).
-
----
-
-## After Milestone 15: CI setup in one place
-
-Asked by the user on 2026-10-11. Keep the one workflow (`.github/workflows/ci.yml`),
-since its jobs wait on `test` and report one result, but move the setup
-every job repeats (checkout, Linux webview packages, Go, Node, `npm ci`)
-into a local composite action, `.github/actions/setup`. Proved by a green
-CI run on all three systems.
-
----
-
-## After the last milestone: a documentation clean-up
-
-Asked by the user on 2026-10-10. Once every milestone is built, go through
-every Markdown file (`docs/`, `.ai/rules/`, `.claude/`, `CLAUDE.md`, the
-README): fold what still matters into the specs and docs it belongs in,
-and drop what only recorded how the work went.
-
+(`elbow.ts`). Exit: every existing test and picture passes unchanged; the
+attribution leaves `NOTICE`.
+
+### R2: the stores' sandboxes, proven first
+The Mac App Store and Flathub sandbox the app: it may reach only what the
+user chose through the system's dialogs, and must ask again to reopen a
+Space (macOS: security-scoped bookmarks; Flathub: portals).
+1. A spec, one question at a time: Spaces, loose pages, recent Spaces, the
+   pickers, import and export under each sandbox; where settings and logs
+   land; what the Microsoft Store's package changes.
+2. A sandboxed run on CI, free of any account: an ad-hoc signed `.app` with
+   the sandbox entitlements, a self-signed MSIX, later a Flatpak. Expected
+   to fail first.
+3. The file access each needs, until the sandboxed walks pass.
+
+Exit: the end-to-end walks pass sandboxed on CI.
+
+### 15.3: Import
+Markdown files and folders, and Bava's export zips, into a chosen folder;
+name clashes numbered, never overwritten. Exit: a Space round-trips through
+export and import.
+
+### 15.4: Canvas work
+Zoom to fit and to selection; a command palette; paste from other apps
+(text as a text element, Bava shapes through the system clipboard); a drag
+the system cuts off ends as a release does; labels that fit their shape;
+SQL table and UML class shapes.
+
+### CI setup in one place
+Move the setup every job repeats (checkout, Linux packages, Go, Node,
+`npm ci`) into `.github/actions/setup`. Exit: green on all three systems.
+
+### 9: Icons and assets
+Bundled general icons and open-licensed tech logos with a searchable
+picker; user-imported SVGs. A D2 `icon:` resolves locally; a remote icon is
+never fetched without the user asking. Proprietary cloud icon sets are
+never bundled. Exit: a test that conversion never yields a remote icon.
+
+### 10: Source editor polish
+A D2 language mode and keymap for the Diagram from Code editor. Exit:
+tokeniser tests.
+
+### 11: AI foundation
+A chat pane against a local, OpenAI-compatible endpoint the user sets.
+Generated D2 is compiled, repaired at most twice, and converted into shapes.
+One thread per file, kept as JSONL in the app's data folder. Rendering
+replies needs a library that makes no network request and takes Bava's
+tokens; spike it first. Exit: tests against a local stub, never a live
+endpoint.
+
+### 12: AI editing
+Ask for a change to a selection, see a diff, accept or reject; one undo.
+
+### 13: Hosted providers
+Bring your own key; credentials in the OS secret store; consent before the
+first hosted call; clear errors. Exit: no credential in any file Bava
+writes; every endpoint from user settings.
+
+### 14: Provider login
+OAuth device-code sign-in; tokens in the secret store; refresh and expiry.
+
+### 16: Release-ready, without any account
+Everything that costs nothing:
+- Packaging for each store, built on CI and signed with throwaway
+  certificates (ad-hoc on macOS, self-signed MSIX); a Flatpak build.
+- No updater: the stores update Bava.
+- First run (theme); the About screen with the licences.
+- Third-party licences generated from the bundled packages, full texts.
+- Installer art (the DMG, MSIX tiles and Linux icons still carry the Wails
+  template).
+- Recovering unsaved work after a crash; the public issue tracker and Help ▸
+  Report Issue.
+- Store listings drafted (text, screenshots, privacy answers), not
+  submitted.
+
+Exit: each store's package builds on CI.
+
+### 17: Accounts and submission, when Bava is complete
+Paid and owner-run, only once the owner calls Bava complete: the Apple
+Developer account, the Microsoft Store account, real signing certificates
+(the MSIX publisher then matches the certificate), submission to each
+store. The Flathub manifest and submission are written by the owner, not
+AI, as Flathub requires.
+
+### After release: the documentation rewrite
+Delete `.claude/work`; rewrite `docs/`, `.claude/`, CLAUDE.md, `.ai/` and
+the README for the released app, with an AI disclosure if a store asks
+for one.

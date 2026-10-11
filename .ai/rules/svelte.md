@@ -1,28 +1,22 @@
 # Svelte
 
-## Runes only
-`$state`, `$derived`, `$effect`, `$props`. Never `$:` reactive statements,
-never `writable`/`readable` stores, never `export let`.
+Rules for Svelte components and `.svelte.ts` modules.
 
-Svelte 5 is recent enough that mixed Svelte 4/5 code appears constantly in
-training data and search results; a file with both idioms usually means a
-snippet was pasted without translation.
+## Runes only
+`$state`, `$derived`, `$effect`, `$props`. Never `$:`, `writable`/`readable`
+or `export let`. A file mixing idioms usually means a pasted Svelte 4 snippet.
 
 ## No store library
-Shared state lives in plain `.svelte.ts` modules using `$state`. Runes give
-fine-grained reactivity across module boundaries; adding Zustand-alikes or
-Svelte 4 stores on top is redundant.
+Shared state lives in plain `.svelte.ts` modules using `$state`.
 
 ## TypeScript only
-No `.js` source files. The only exceptions are config files the tooling
-requires by name: `frontend/svelte.config.js` and `frontend/eslint.config.js`.
+No `.js` source, except config the tooling requires by name:
+`frontend/svelte.config.js` and `frontend/eslint.config.js`.
 
 ## Logic out of markup
-One component per file. Anything beyond rendering (derivation, formatting,
-state machines) goes in a `.svelte.ts` module and is imported. Markup that
-contains logic cannot be tested and cannot be reused.
+One component per file. Derivation, formatting and state machines go in a
+`.svelte.ts` module, where they can be tested.
 
 ## Imperative libraries are not reactive
-CodeMirror, ProseMirror, and the canvas class own their own DOM. Mount them in
-`onMount`, destroy them in the cleanup return, and never pass reactive props
-in. See `editors.md` and `canvas.md`.
+CodeMirror, ProseMirror and the canvas class own their DOM: mount in
+`onMount`, destroy in the cleanup return, never pass reactive props in.
