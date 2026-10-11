@@ -38,7 +38,7 @@ func (portal) Restore(token []byte) (string, bool, error) { return string(token)
 // down: the sandbox refuses any other. Outside a sandbox it does nothing.
 // Call it before anything makes a temporary file.
 func UseContainerTemp() error {
-	if os.Getenv("APP_SANDBOX_CONTAINER_ID") == "" {
+	if runtime.GOOS != "darwin" || os.Getenv("APP_SANDBOX_CONTAINER_ID") == "" {
 		return nil
 	}
 	home, err := os.UserHomeDir()

@@ -56,6 +56,9 @@ func TestTheFlatpakKeeperKeepsThePathOnly(t *testing.T) {
 // Inside the Mac sandbox, temporary files go in the container's own folder,
 // whatever TMPDIR the launcher passed down: another one is refused.
 func TestInsideTheMacSandboxTemporaryFilesStayInTheContainer(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("the Mac sandbox's alone")
+	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("TMPDIR", "/somewhere/else")
