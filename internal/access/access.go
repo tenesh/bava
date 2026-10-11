@@ -100,8 +100,14 @@ func Open(path string, keeper Keeper) (*Store, error) {
 				changed = true
 			}
 		}
-		s.reachable[filepath.Clean(g.Path)] = true
-		s.chosen[filepath.Clean(g.Path)] = true
+		// A bookmark follows a folder the user moved: it is reached where it
+		// is now.
+		if now = filepath.Clean(now); now != filepath.Clean(g.Path) {
+			s.grants[i].Path = now
+			changed = true
+		}
+		s.reachable[now] = true
+		s.chosen[now] = true
 	}
 	if changed {
 		if err := s.save(); err != nil {

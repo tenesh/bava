@@ -10,6 +10,8 @@ finish-args:
   - --socket=wayland
   - --socket=fallback-x11
   - --device=dri
+  # Web cards fetch a page's title and picture.
+  - --share=network
 modules:
   - name: bava
     buildsystem: simple

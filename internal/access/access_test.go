@@ -14,6 +14,7 @@ import (
 type fakeKeeper struct {
 	fail  map[string]bool
 	stale map[string]bool
+	moved map[string]string
 	kept  []string
 }
 
@@ -28,6 +29,9 @@ func (k *fakeKeeper) Restore(token []byte) (string, bool, error) {
 	path := string(token)[len("kept:"):]
 	if k.fail[path] {
 		return "", false, errors.New("the system refused it")
+	}
+	if to, ok := k.moved[path]; ok {
+		return to, true, nil
 	}
 	return path, k.stale[path], nil
 }
@@ -176,5 +180,33 @@ func TestWhatTheUserChoseIsGranted(t *testing.T) {
 		if !s.Granted(file) || s.Granted(filepath.Join(space, "other.pdf")) {
 			t.Errorf("%s: a chosen folder does not grant exactly what is inside it", name)
 		}
+	}
+}
+
+// A bookmark follows a folder the user moved: Bava reaches it where it is
+// now, and no longer where it was.
+func TestAFolderMovedSinceItWasAllowedIsReachableWhereItIsNow(t *testing.T) {
+	state, space := setup(t)
+	s, _ := access.Open(state, &fakeKeeper{})
+	if err := s.Allow(space); err != nil {
+		t.Fatal(err)
+	}
+	moved := filepath.Join(t.TempDir(), "Renamed")
+	if err := os.Rename(space, moved); err != nil {
+		t.Fatal(err)
+	}
+	again, err := access.Open(state, &fakeKeeper{moved: map[string]string{space: moved}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Reachable(space) {
+		t.Error("the folder's old place reads as reachable")
+	}
+	if !again.Reachable(moved) || !again.Granted(moved) {
+		t.Error("the folder is not reachable where it is now")
+	}
+	relaunched, _ := access.Open(state, &fakeKeeper{})
+	if !relaunched.Reachable(moved) {
+		t.Error("the new place was not kept for the next launch")
 	}
 }

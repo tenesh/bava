@@ -53,6 +53,22 @@ func TestMacAppMenuIsTitledBava(t *testing.T) {
 	}
 }
 
+// The Microsoft Store's package starts what CI builds: an x64 bava.exe, as
+// the application and its full-trust process alike.
+func TestTheMSIXManifestStartsTheBuiltExecutable(t *testing.T) {
+	content, err := os.ReadFile(testutil.RepoPath(t, "build", "windows", "msix", "app_manifest.xml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := string(content)
+	if !strings.Contains(manifest, `ProcessorArchitecture="x64"`) {
+		t.Error("the package is not x64, which CI builds")
+	}
+	if n := strings.Count(manifest, `Executable="bava.exe"`); n != 2 {
+		t.Errorf("bava.exe named %d times; want the application and its full-trust process", n)
+	}
+}
+
 // The app ID the stores know Bava by, and its publisher, in every file the
 // app is packaged from. The ID can never change after the first release.
 func TestEveryPlatformFileNamesTharabytesApp(t *testing.T) {

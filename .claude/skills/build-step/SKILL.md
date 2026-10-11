@@ -22,9 +22,11 @@ of ours; never run git write operations (the user commits).
 6. **Plan** in `.claude/work/plans/<NN>-<name>.md`; wait for explicit approval before any code.
 7. **Implement** task by task, test first per the table below, running affected tests after each.
 8. **Sync artifacts** (checklist below) in the same change.
-9. **Gates:** `go vet ./internal/... .`, `go test ./internal/... .`, `npm run check`, `npm run lint`, `npm test`; `npm run browser` when anything drawn or page behavior changes.
-10. **Review:** dispatch `spec-reviewer` on the diff; verify each finding, push back on wrong ones.
-11. **Report** what shipped, files, test counts, every deviation from spec. Then stop.
+9. **Gates:** all green on the host (go vet, go test 15 packages, 2 golden
+fixtures, check, lint, `npm test` 2,880 passed); `npm run browser` 521 passed,
+300 references in `testdata/visual/`; CI end-to-end green, inside each
+store's package too. `npm run build`'s minifier rejects some CSS the browser
+tests accept (WebKit-only selectors).
 
 ## Commands
 
@@ -128,7 +130,8 @@ exit code (`npm test` can fail with every test passed).
 What is true now and affects the gates. Update it when a milestone closes.
 
 **Position:** R1 done (repository `tharabyte/bava`; adapted canvas code
-attributed in `NOTICE` for good). R2 (the stores' sandboxes) under way: Tasks 1 to 4 built, the Mac sandbox proven on CI (run 38122540515); next the Windows package, then the Flatpak. Then 15.3
+attributed in `NOTICE` for good). R2 done (the stores' sandboxes: the same walks pass inside the Mac sandbox,
+the installed MSIX and Flatpak, run 38143080459). Next 15.3
 (import), 15.4 (canvas work), Milestone 16, Milestone 17. Help ▸ Report Issue
 is hidden until release (`REPORT_ISSUE_ENABLED` in
 `frontend/src/shell/report-issue.ts`); the DMG icon and background stay
@@ -143,19 +146,17 @@ to `3.0.0-beta.20`; Node 24 (`.nvmrc`); Ark UI `5.24.2`, Konva `10.5`, Vitest
 **How tests run:** Go, vitest, check, lint and build on the host. Browser
 tests only in Docker (`tests/scripts/browser.sh`; OrbStack must be running).
 The real app only on CI: `-tags e2e` walks `tests/e2e/` (`create`, `reopen`,
-`canvas`, `export-proof`) on all three platforms. Never `wails3 dev` locally.
+`canvas`, `export-proof`) on all three platforms, and again inside each
+store's package. Never `wails3 dev` locally.
 
 **Gates:** all green on the host (go vet, go test 14 packages, 2 golden
 fixtures, check, lint, `npm test` 2,871 passed); `npm run browser` 513 passed,
 296 references in `testdata/visual/`; CI end-to-end green. `npm run build`'s
 minifier rejects some CSS the browser tests accept (WebKit-only selectors).
 
-**Owed at a running window**, both themes: keyboard passes (Space tree,
-switcher, start screen, Space dialogs, page menus, find bar, error dialog,
-Media); icons at 16px and 1024px; native menus on Windows and Linux; a forced
-panic and frontend exception in a release build's log folder; macOS video
-first frame, YouTube thumbnail, play; and the lists in the As built of 08.4a,
-08.5, 08.5a, 08.6a to 08.6c, 08.7, 15.1 and 15.2b to 15.2d.
+**Owed at a running window:** `docs/release-checklist.md`, the one list of
+what only a person can check. A change that adds such a check adds its line
+there, in the same change; a plan's As built points to it.
 
 **Open problems:**
 - Browser tests see WebKit in a container, not the real webviews.

@@ -835,13 +835,22 @@
   let lostSpaces = $state.raw<string[]>([]);
   const cannotOpen = $derived([...missingSpaces, ...lostSpaces]);
 
-  // Asked again whenever the recent Spaces change.
+  // Asked again whenever the recent Spaces change; an answer for a list
+  // that has since changed is dropped.
   $effect(() => {
     const paths = recents.entries.filter((entry) => entry.kind === 'space').map((entry) => entry.path);
+    let current = true;
     void space.reachable(paths).then(
-      (ok) => (lostSpaces = paths.filter((_, i) => !ok[i])),
-      () => (lostSpaces = []),
+      (ok) => {
+        if (current) lostSpaces = paths.filter((_, i) => !ok[i]);
+      },
+      () => {
+        if (current) lostSpaces = [];
+      },
     );
+    return () => {
+      current = false;
+    };
   });
 
   /**

@@ -76,10 +76,10 @@ per system), `tests/e2e` (scratch folders the sandbox may reach).
 - [x] Windows: a self-signed MSIX of it, installed, runs the walks (green
   2026-10-11, run 38141862243; the walk is named in `~/.bava-e2e`, written
   with a .NET call because `Set-Content` silently left no file)
-- [ ] Linux: a test-only manifest (`tests/flatpak/bava-ci.yml`, ID
+- [x] Linux: a test-only manifest (`tests/flatpak/bava-ci.yml`, ID
   `com.tharabyte.bava.Devel`, never submitted) builds a Flatpak of it that
-  runs the walks
-- [ ] Green: all three sandboxed jobs on CI
+  runs the walks (green 2026-10-11, run 38143080459, first try)
+- [x] Green: all three sandboxed jobs on CI (run 38143080459)
 
 ## Artifacts
 
@@ -91,3 +91,72 @@ goes through `internal/access`), the build skill's repo state.
 
 Store accounts, real signing, listings and submission (Milestone 17); the
 Flathub manifest itself (the owner's, at submission).
+
+## As built (2026-10-11)
+
+`internal/access` keeps what the user allows Bava to reach (`access.json`
+beside the settings): a security-scoped bookmark inside the Mac App Store's
+sandbox, the portal's path inside Flatpak, nothing anywhere else. Every
+folder or file picked in a dialog or dropped is allowed through it. A
+recent Space Bava cannot reach reads "Can't open: find it again"; a page on
+its own asks for its folder in a bar over the page, its pictures waiting
+meanwhile; a card for a file outside the Space reads "Outside this Space"
+and asks for that file once. CI runs the same four walks inside each
+store's package: `sandboxed run (macos)`, `packaged run (windows)`,
+`sandboxed run (linux)`.
+
+**Deviations**
+- **The Mac sandbox needed two things the plan did not foresee:** temporary
+  files must stay in the container (`access.UseContainerTemp`, called first
+  in `main`), and a sandbox started from a shell has no
+  `APP_SANDBOX_CONTAINER_ID`, so Bava also knows it by a home under
+  `Library/Containers`.
+- **A packaged Windows run gets no environment from the shell:** CI names
+  the walk in `~/.bava-e2e` (`e2e.RunFile`). PowerShell's `Set-Content`
+  left no file there and reported nothing, which cost four runs; the step
+  now writes it with a .NET call and stops on any error. A run that cannot
+  begin now logs why, since a package has no stderr anyone reads.
+- **Inside Flatpak a walk lays itself out in the app's own folder**
+  (`~/.var/app/<id>`, `e2e.SandboxHome`): the sandbox reaches nothing else
+  in the home.
+- **Screenshots are skipped inside a sandbox**, noted, never a failure: the
+  Mac sandbox may refuse the tool and the Flatpak runtime has none.
+- **Not done, with reasons:** the system's own dialogs cannot be clicked on
+  CI, so the grant itself, a bookmark restoring access after a relaunch and
+  the portal keeping a grant are checked by a person (below).
+
+**Red first:** the store, keepers, `Reachable` and `Granted`, the three
+UI states, `UseContainerTemp`, `RunFile`, `SandboxHome` and a moved
+folder's bookmark were seen failing first. The entitlements and the MSIX
+manifest (x64, `bava.exe` twice) are pinned by contract tests, the latter
+seen failing on a changed architecture.
+
+**Review** (spec-reviewer): pass, ten warnings. Fixed: a bookmark that
+follows a moved folder now reaches it where it is now, not where it was;
+the MSIX test pins the architecture and executable; a privacy test proves a
+grant that cannot be kept logs no part of its path (seen failing when the
+error was logged); the editor mounting rule, lost in the rules trim, is
+back in `.ai/rules/editors.md`; an out-of-date answer about which recent
+Spaces Bava can reach is dropped (no test: the race needs a slower stand-in
+than the browser harness has; the guard is the effect's cleanup); the test
+manifest asks for network, as a store build would for web cards; the
+release checklist exists. Left, with reasons: a guard that a test manifest
+never takes the real app ID (the settings deny edits to that file, and
+`CLAUDE.md` forbids it); a check that the release Go binary carries no
+walks (they sit behind the `e2e` build tag, which CI's release build never
+sets).
+
+**Pictures:** new `document/card--outside` and
+`document/page--folder-access`, changed `start/screen--missing`, each in
+both themes, read at the review. The start screen's picture also shows
+"That folder is not a Space." in the status bar: reopening the last Space
+at launch, when its folder is gone, says so as well as marking the row.
+Older than R2, and left for the user to decide.
+
+**Checks:** Go vet (with and without `-tags e2e`) and tests exit 0;
+`npm test` 2,880 passed, check and lint exit 0; `npm run browser` 521
+passed, 300 references; CI green on every job, the three sandboxed runs
+included (run 38143080459).
+
+**Owed at a running window**, on each store's build: listed under "Store
+sandboxes" in `docs/release-checklist.md`.

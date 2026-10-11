@@ -10,6 +10,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
+	"github.com/tharabyte/bava/internal/access"
 	"github.com/tharabyte/bava/internal/app"
 	"github.com/tharabyte/bava/internal/logs"
 	"github.com/tharabyte/bava/internal/render"
@@ -86,6 +87,54 @@ func TestLogsNeverContainContent(t *testing.T) {
 	for _, want := range []string{"file opened", "file saved", "render", "bound method failed"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("log is missing %q, so the test is not exercising it:\n%s", want, text)
+		}
+	}
+}
+
+// refusing stands in for a sandbox that will not keep a grant.
+type refusing struct{}
+
+func (refusing) Sandboxed() bool                        { return true }
+func (refusing) Keep(string) ([]byte, error)            { return nil, errors.New("the system refused it") }
+func (refusing) Restore(t []byte) (string, bool, error) { return string(t), false, nil }
+
+// A grant that cannot be kept is logged without the file's name or any part
+// of its path: a name can be content.
+func TestAGrantThatCannotBeKeptLogsNoName(t *testing.T) {
+	home := t.TempDir()
+	session, err := logs.Start(logs.Options{Dir: filepath.Join(home, "logs"), Home: home, Verbose: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	previous := slog.Default()
+	slog.SetDefault(session.Logger)
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	grants, err := access.Open(filepath.Join(t.TempDir(), "access.json"), refusing{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.AllowDropped(grants, []string{filepath.Join(t.TempDir(), "NAME-SENTINEL-5521", "salary-review.md")})
+
+	entries, err := os.ReadDir(filepath.Join(home, "logs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var log strings.Builder
+	for _, e := range entries {
+		data, err := os.ReadFile(filepath.Join(home, "logs", e.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		log.Write(data)
+	}
+	if !strings.Contains(log.String(), "keep access failed") {
+		t.Fatal("the failed grant was not logged at all")
+	}
+	for _, part := range []string{"NAME-SENTINEL-5521", "salary-review"} {
+		if strings.Contains(log.String(), part) {
+			t.Errorf("the log names %q", part)
 		}
 	}
 }
