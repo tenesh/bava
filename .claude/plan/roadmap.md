@@ -57,7 +57,11 @@ SQL table and UML class shapes.
 
 ### CI setup in one place
 Move the setup every job repeats (checkout, Linux packages, Go, Node,
-`npm ci`) into `.github/actions/setup`. Exit: green on all three systems.
+`npm ci`) into `.github/actions/setup`. Name every job one way, the same
+word in its id, its shown name and its artifact (`walks-<os>`,
+`store-walks-<os>`, `browser`, `release-check`; the build's download keeps
+`bava-<os>-<commit>`), with `docs/testing.md` and the build skill to match.
+Exit: green on all three systems.
 
 ### 9: Icons and assets
 Bundled general icons and open-licensed tech logos with a searchable
