@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import cases from '../../../testdata/fixtures/links/paths.json';
-import { linkTo, resolveLink, retarget } from './links';
+import { linkTo, resolveLink, retarget, outsideTarget } from './links';
 
 describe('the link rules', () => {
   it('finds the page a link reaches', () => {
@@ -21,5 +21,19 @@ describe('the link rules', () => {
       if (c.href2 === '') expect(got, c.name).toBeNull();
       else expect(got, c.name).toEqual({ href: c.href2, text: c.text2 });
     }
+  });
+});
+
+describe('outsideTarget', () => {
+  it('is where a link leaving the Space points, from the Space root', () => {
+    expect(outsideTarget('Notes/Page.md', '../../Contracts/deal.pdf')).toBe('../Contracts/deal.pdf');
+    expect(outsideTarget('Page.md', '../My%20Deals/deal.pdf')).toBe('../My Deals/deal.pdf');
+    expect(outsideTarget('Page.md', '/Users/you/deal.pdf')).toBe('/Users/you/deal.pdf');
+  });
+
+  it('is nothing for a link inside the Space, on the web, or only an anchor', () => {
+    expect(outsideTarget('Notes/Page.md', '../deal.pdf')).toBeNull();
+    expect(outsideTarget('Page.md', 'https://example.com/a.pdf')).toBeNull();
+    expect(outsideTarget('Page.md', '#top')).toBeNull();
   });
 });

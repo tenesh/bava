@@ -48,6 +48,12 @@ export interface FileDetailsResult {
     "size": number;
     "modified": string;
     "error": string;
+
+    /**
+     * Outside: the file is outside the opened folder and the user has not
+     * chosen it yet; opening it asks.
+     */
+    "outside": boolean;
 }
 
 /**

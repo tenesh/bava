@@ -1045,7 +1045,7 @@ $callout-swatches: (
       background: var(--color-control-hover);
     }
 
-    &[data-state='missing'] {
+    &:is([data-state='missing'], [data-state='outside']) {
       border-style: dashed;
       border-color: var(--color-border-strong);
       background: var(--color-surface-sunken);

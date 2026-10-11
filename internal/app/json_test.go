@@ -22,7 +22,7 @@ func TestServiceTypesKeepTheirJSONKeys(t *testing.T) {
 		{"SaveResult", app.SaveResult{}, []string{"error", "path", "stamp"}},
 		{"DialogResult", app.DialogResult{}, []string{"error", "path"}},
 		{"PathsResult", app.PathsResult{}, []string{"error", "paths"}},
-		{"FileDetailsResult", app.FileDetailsResult{}, []string{"error", "exists", "modified", "size"}},
+		{"FileDetailsResult", app.FileDetailsResult{}, []string{"error", "exists", "modified", "outside", "size"}},
 		{"FilesDropped", app.FilesDropped{}, []string{"paths", "x", "y"}},
 		{"LogEntry", app.LogEntry{}, []string{"kind", "level", "source", "stack"}},
 		{"Notice", app.Notice{}, []string{"kind", "session"}},

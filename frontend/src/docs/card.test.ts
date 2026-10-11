@@ -25,6 +25,7 @@ function open(markdown: string, files: Record<string, { size: number; modified: 
     onOpenFile: vi.fn(),
     fileDetails: vi.fn(async (_root: string, path: string) => {
       const file = files[path];
+      if (path.startsWith('../') || path.startsWith('/')) return { exists: false, size: 0, modified: '', error: '', outside: true };
       return file ? { exists: true, size: file.size, modified: file.modified, error: '' } : { exists: false, size: 0, modified: '', error: '' };
     }),
   };
@@ -135,5 +136,19 @@ describe('a web card', () => {
     const { host, onOpenFile } = open('<!-- bava: card -->\n[Notes](https://example.com/notes)\n');
     host.querySelector<HTMLElement>('.card')!.click();
     expect(onOpenFile).toHaveBeenCalledWith('https://example.com/notes');
+  });
+});
+
+describe('a card for a file outside the Space', () => {
+  it('says it is outside, asks for it from where it is, and still opens on a click', async () => {
+    const { host, fileDetails, onOpenFile } = open('<!-- bava: card -->\n[Deal](../Contracts/deal.pdf)\n');
+    await settle();
+    const card = host.querySelector<HTMLElement>('.card')!;
+    expect(fileDetails).toHaveBeenCalledWith('/Space', '../Contracts/deal.pdf');
+    expect(card.dataset.state).toBe('outside');
+    expect(card.textContent).toContain('Outside this Space');
+    expect(card.querySelector('button')).toBeNull();
+    card.click();
+    expect(onOpenFile).toHaveBeenCalledWith('../Contracts/deal.pdf');
   });
 });

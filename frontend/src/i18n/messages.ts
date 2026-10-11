@@ -286,6 +286,7 @@ export const messages = {
   'card.refresh': 'Refresh details',
   'card.toCard': 'Show as card',
   'card.openFailed': 'This file could not be opened.',
+  'card.outside': 'Outside this Space',
   'card.refreshFailed': 'The page could not be reached; its details are as they were.',
   'media.play': 'Play the {site} video',
   'media.replace': 'Replace file',

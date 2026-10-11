@@ -133,7 +133,7 @@
   } from './shell/shortcuts';
   import menuSpec from '../../internal/app/menu/spec.json';
   import { Browser, Clipboard, Events } from '@wailsio/runtime';
-  import { followAction, followBeside, joinFile, resolveLink, type Move } from './docs/links';
+  import { followAction, followBeside, joinFile, outsideTarget, resolveLink, type Move } from './docs/links';
   import { relinkEdits } from './docs/page-links';
   import { addMedia, type MediaFile } from './docs/add-media';
   import { ExportService, FileService, LogService, MenuService, SpaceService } from '../bindings/github.com/tharabyte/bava/internal/app';
@@ -2052,10 +2052,12 @@
       void Browser.OpenURL(href);
       return;
     }
-    const target = mediaPlace ? resolveLink(mediaPlace.here, href)?.target : undefined;
+    const inside = mediaPlace ? resolveLink(mediaPlace.here, href)?.target : undefined;
+    // A file outside the Space: Go asks for it once, then opens it.
+    const target = inside ?? (mediaPlace ? outsideTarget(mediaPlace.here, href) : null);
     if (!mediaPlace || !target) return;
     // A page of the Space opens here, as a link to it does.
-    if (/\.md$/i.test(target)) {
+    if (inside && /\.md$/i.test(target)) {
       await followLink(href);
       return;
     }

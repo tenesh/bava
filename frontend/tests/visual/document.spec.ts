@@ -53,6 +53,16 @@ for (const theme of THEMES) {
       await shotPane(documentPane(page), shot('document', 'page', 'folder-access', theme));
     });
 
+    // A card for a file outside the Space, not chosen yet.
+    test('a card for a file outside the Space', async ({ page }) => {
+      await openApp(page, theme);
+      await page.evaluate((root) => (window as unknown as { __bava: { fakes: { harness: { setSource(r: string, p: string, s: string): void } } } }).__bava.fakes.harness.setSource(root, 'Roadmap.md', '# Roadmap\n\n<!-- bava: card -->\n[Deal](../Contracts/deal.pdf)\n'), SPACE);
+      await openPage(page, 'Roadmap.md');
+      await expect(editor(page).locator('.card')).toHaveAttribute('data-state', 'outside');
+      await restPointer(page);
+      await shotPane(documentPane(page), shot('document', 'card', 'outside', theme));
+    });
+
     test('an empty line says what to type', async ({ page }) => {
       await openDocument(page, theme, 'Marketing/Launch plan.md');
       await newLineAtEnd(page);

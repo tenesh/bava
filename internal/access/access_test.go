@@ -159,3 +159,22 @@ func TestAnUnreadableGrantsFileStartsEmpty(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// What the user chose is granted for the launch everywhere, and kept only
+// inside a sandbox; a folder grants what is inside it.
+func TestWhatTheUserChoseIsGranted(t *testing.T) {
+	for name, keeper := range map[string]access.Keeper{"sandbox": &fakeKeeper{}, "none": access.None{}} {
+		state, space := setup(t)
+		s, _ := access.Open(state, keeper)
+		file := filepath.Join(space, "Contracts", "deal.pdf")
+		if s.Granted(file) {
+			t.Errorf("%s: granted before it was chosen", name)
+		}
+		if err := s.Allow(filepath.Dir(file)); err != nil {
+			t.Fatal(err)
+		}
+		if !s.Granted(file) || s.Granted(filepath.Join(space, "other.pdf")) {
+			t.Errorf("%s: a chosen folder does not grant exactly what is inside it", name)
+		}
+	}
+}

@@ -69,8 +69,8 @@ Reads and writes files; parsing is `internal/format`'s.
 | `Settings()` | `config.Settings`, defaults when unreadable. `arrowBinding` and `midpointSnap` default on (absent reads as on), `objectSnap` off |
 | `SaveSettings(settings)` | error string, empty on success |
 | `ChooseMedia(kind)` | `PathsResult`: images (`image`), videos (`video`) or any files (`file`) from the native dialog, several at once; none when cancelled |
-| `FileDetails(root, path)` | `FileDetailsResult`: whether a file in an opened folder exists, its size and date modified (for a file card); error outside opened folders |
-| `OpenFile(root, path)` | error string, empty on success: opens the file in its own app; a program, script or folder is revealed in its folder instead, so a click never runs code |
+| `FileDetails(root, path)` | `FileDetailsResult`: whether a file in an opened folder exists, its size and date modified (for a file card). A file outside (`../…` or a full path) reads only once the user chose it; until then `outside` is true and nothing is read |
+| `OpenFile(root, path)` | error string, empty on success: opens the file in its own app; a program, script or folder is revealed in its folder instead, so a click never runs code. A file outside the opened folder, not chosen yet, is asked for once through the system's dialog at its place; cancelling opens nothing |
 | `ClipboardImage()` | the clipboard image as base64 PNG, empty when none (the webview pastes text only) |
 
 - **A scene crosses whole.** `format.Scene` and `format.Element` do their own

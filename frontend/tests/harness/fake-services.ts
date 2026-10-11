@@ -353,6 +353,10 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     lost: [...(boot().lost ?? [])] as string[],
     /** Where each folder dialog was asked to open, in order. */
     chosenNear: [] as string[],
+    /** Files outside the Space: asked for, chosen, and opened. */
+    askedForFiles: [] as string[],
+    chosenFiles: [] as string[],
+    openedFiles: [] as string[],
     /** The settings as last saved, for a test to read what a control changed. */
     settings: () => ({ ...settings }),
     /** The canvas embeds' pictures saved, in base64, by name. */
@@ -555,11 +559,21 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         return '';
       },
       async FileDetails(_root: string, path: string) {
+        // A file outside the Space is read only once the user chose it.
+        if (/^(\.\.\/|\/)/.test(path)) {
+          return harness.chosenFiles.includes(path) ? { exists: true, size: 5, modified: '2026-09-21T09:00:00Z', error: '', outside: false } : { exists: false, size: 0, modified: '', error: '', outside: true };
+        }
         // The pretend Space's files: the one card fixture that is there.
         const there = path === '.bava/attachments/Q3 report.pdf';
         return { exists: there, size: there ? 248_000 : 0, modified: there ? '2026-09-21T09:00:00Z' : '', error: '' };
       },
-      async OpenFile(_root: string, _path: string) {
+      async OpenFile(_root: string, path: string) {
+        // Outside the Space and not chosen yet: the dialog asks, the user picks it.
+        if (/^(\.\.\/|\/)/.test(path) && !harness.chosenFiles.includes(path)) {
+          harness.askedForFiles.push(path);
+          harness.chosenFiles.push(path);
+        }
+        harness.openedFiles.push(path);
         return '';
       },
       async Settings() {

@@ -62,7 +62,7 @@ it), `docs/file-format.md` (where `access.json` lives), `docs/ipc.md`.
 
 ### Task 4: A file outside the Space (decision 3)
 **Files:** `frontend/src/docs/card.ts`, `App.svelte`, `messages.ts`.
-- [ ] Failing tests: a card outside the Space reads "Outside this Space";
+- [x] Failing tests: a card outside the Space reads "Outside this Space";
   opening it asks for that file once, then opens it
 
 ### Task 5: Sandboxed runs on CI

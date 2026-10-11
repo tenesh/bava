@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tharabyte/bava/internal/access"
 	"github.com/tharabyte/bava/internal/app"
 	"github.com/tharabyte/bava/internal/testutil"
 )
@@ -197,9 +198,13 @@ func TestFileDetailsAreReadFromTheFile(t *testing.T) {
 	if gone := s.FileDetails(root, "gone.pdf"); gone.Error != "" || gone.Exists {
 		t.Errorf("a missing file = %+v", gone)
 	}
-	for _, rel := range []string{"../x.pdf", `a\..\..\x.pdf`, "/etc/passwd"} {
-		if bad := s.FileDetails(root, rel); bad.Error == "" {
-			t.Errorf("%s: %+v", rel, bad)
+	if bad := s.FileDetails(root, `a\..\..\x.pdf`); bad.Error == "" {
+		t.Errorf("a backslash path: %+v", bad)
+	}
+	// Outside the folder and never chosen: said so, nothing read.
+	for _, rel := range []string{"../x.pdf", "/etc/passwd"} {
+		if out := s.FileDetails(root, rel); !out.Outside || out.Exists || out.Size != 0 {
+			t.Errorf("%s: %+v", rel, out)
 		}
 	}
 	if other := s.FileDetails(t.TempDir(), "x.pdf"); other.Error == "" {
@@ -282,5 +287,56 @@ func TestChooseFileToSaveTakesItsAnswerWhenGivenOne(t *testing.T) {
 	got := s.ChooseFileToSave("Acme Product.zip")
 	if got.Error != "" || got.Path != "/out/Space.zip" || asked != "Acme Product.zip" {
 		t.Errorf("ChooseFileToSave = %+v, asked %q", got, asked)
+	}
+}
+
+// A file outside the opened folders stays refused until the user chooses it
+// in the system's dialog; then its details read and it opens.
+func TestAFileOutsideTheSpaceIsAskedForOnce(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "Space")
+	testutil.WriteTree(t, parent, map[string]string{"Space/page.md": "x", "Contracts/deal.pdf": "12345"})
+	deal := filepath.Join(parent, "Contracts", "deal.pdf")
+	folders := app.NewOpenedFolders()
+	folders.Allow(root)
+	grants, err := access.Open(filepath.Join(t.TempDir(), "access.json"), access.None{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var asked []string
+	answer := ""
+	var opened []string
+	s := app.NewFileService(app.FileServiceOptions{
+		Folders: folders,
+		Access:  grants,
+		Open:    func(path string) error { opened = append(opened, path); return nil },
+		ChooseFile: func(near string) (string, error) {
+			asked = append(asked, near)
+			return answer, nil
+		},
+	})
+	for _, rel := range []string{"../Contracts/deal.pdf", deal} {
+		if got := s.FileDetails(root, rel); !got.Outside || got.Exists || got.Error != "" {
+			t.Errorf("%s before: %+v", rel, got)
+		}
+	}
+	// Cancelled: nothing opens, nothing is granted.
+	if err := s.OpenFile(root, "../Contracts/deal.pdf"); err != "" || len(opened) != 0 {
+		t.Errorf("cancelled: %q, opened %v", err, opened)
+	}
+	answer = deal
+	if err := s.OpenFile(root, "../Contracts/deal.pdf"); err != "" || len(opened) != 1 || opened[0] != deal {
+		t.Errorf("chosen: %q, opened %v", err, opened)
+	}
+	if len(asked) != 2 || asked[0] != deal {
+		t.Errorf("asked at %v; want the file's own place", asked)
+	}
+	if got := s.FileDetails(root, "../Contracts/deal.pdf"); !got.Exists || got.Size != 5 || got.Outside {
+		t.Errorf("after: %+v", got)
+	}
+	// Allowed once: opening again asks nothing.
+	_ = s.OpenFile(root, "../Contracts/deal.pdf")
+	if len(asked) != 2 {
+		t.Errorf("asked again: %v", asked)
 	}
 }

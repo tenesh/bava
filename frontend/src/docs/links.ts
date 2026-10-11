@@ -215,3 +215,20 @@ export function joinFile(folder: string, relative: string): string {
 export function linkLabel(text: string): string {
   return text.replace(/[\\[\]]/g, (c) => `\\${c}`);
 }
+
+/**
+ * Where a link that leaves the Space points: from the Space's root (`../…`),
+ * or the full path it names (`/…`). Null for anything inside the Space, on
+ * the web, or only an anchor. Such a file is reached only once the user
+ * chooses it.
+ */
+export function outsideTarget(page: string, dest: string): string | null {
+  if (dest === '' || dest[0] === '#' || SCHEME.test(dest)) return null;
+  const at = dest.search(/[?#]/);
+  const decoded = unescapePath(at < 0 ? dest : dest.slice(0, at));
+  if (!decoded) return null;
+  if (decoded.startsWith('/')) return decoded;
+  const dir = dirOf(page);
+  const target = cleanPath(dir ? `${dir}/${decoded}` : decoded);
+  return target === '..' || target.startsWith('../') ? target : null;
+}

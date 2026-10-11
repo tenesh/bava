@@ -10,7 +10,7 @@ import type { EditorView, NodeView } from 'prosemirror-view';
 import { t } from '../i18n/t';
 import { formatBytes } from '../files/space-helpers';
 import { formatDay } from './dates';
-import { resolveLink } from './links';
+import { outsideTarget, resolveLink } from './links';
 import { isWeb, mediaRelinkAddress, type MediaPlace } from './media';
 
 const ATTACHMENTS = '.bava/attachments/';
@@ -48,7 +48,8 @@ function decodeName(name: string): string {
   }
 }
 
-export type FileDetails = { exists: boolean; size: number; modified: string; error: string };
+/** `outside`: outside the opened folder and not chosen yet; opening it asks. */
+export type FileDetails = { exists: boolean; size: number; modified: string; error: string; outside?: boolean };
 
 export type CardContext = {
   place: () => MediaPlace | null;
@@ -130,7 +131,8 @@ export function cardView(node: Node, view: EditorView, getPos: () => number | un
     description.hidden = true;
     picture.remove();
     const place = context.place();
-    const target = place ? resolveLink(place.here, current.attrs.href as string)?.target : undefined;
+    const href = current.attrs.href as string;
+    const target = place ? (resolveLink(place.here, href)?.target ?? outsideTarget(place.here, href)) : undefined;
     const asked = (read += 1);
     if (!place || !target) {
       missing(null);
@@ -138,6 +140,10 @@ export function cardView(node: Node, view: EditorView, getPos: () => number | un
     }
     void context.details(place.root, target).then(async (file) => {
       if (asked !== read) return;
+      if (file.outside) {
+        outside();
+        return;
+      }
       if (file.exists) {
         const look = fileLook(target);
         const parts = current.attrs.look === 'extended' ? [look.type, formatBytes(file.size), formatDay(file.modified.slice(0, 10))] : [formatBytes(file.size)];
@@ -151,6 +157,16 @@ export function cardView(node: Node, view: EditorView, getPos: () => number | un
       const there = candidate ? (await context.details(place.root, candidate)).exists : false;
       if (asked === read) missing(there ? address : null);
     });
+  };
+
+  /** Outside the opened folder, not chosen yet: a click asks for it. */
+  const outside = () => {
+    dom.dataset.state = 'outside';
+    meta.textContent = '';
+    notice.replaceChildren();
+    const words = document.createElement('span');
+    words.textContent = t('card.outside');
+    notice.append(words);
   };
 
   const missing = (relinkTo: string | null) => {

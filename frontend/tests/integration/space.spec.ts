@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { SPACE, menu, menus, newLineAtEnd, openApp, openPage, openSpace, restPointer, rightClick, sidePane, statusMessage } from '../helpers';
+import { SPACE, editor, menu, menus, newLineAtEnd, openApp, openPage, openSpace, restPointer, rightClick, sidePane, statusMessage } from '../helpers';
 
 const RECENTS = [
   { path: '/Users/you/Documents/Acme Product', kind: 'space', openedAt: Date.UTC(2026, 8, 26) },
@@ -291,4 +291,21 @@ test.describe('templates', () => {
     await ask.getByRole('button', { name: 'Delete' }).click();
     await expect.poll(() => templatePaths(page)).not.toContain('.bava/templates/Bug report.md');
   });
+});
+
+// A card for a file outside the Space: said so, asked for once on opening,
+// then opened without asking again.
+test('a file outside the Space is asked for once, then opens', async ({ page }) => {
+  type Files = { __bava: { fakes: { harness: { askedForFiles: string[]; openedFiles: string[]; setSource(r: string, p: string, s: string): void } } } };
+  await openApp(page, 'light');
+  await page.evaluate((root) => (window as unknown as Files).__bava.fakes.harness.setSource(root, 'Roadmap.md', '# Roadmap\n\n<!-- bava: card -->\n[Deal](../Contracts/deal.pdf)\n'), SPACE);
+  await openPage(page, 'Roadmap.md');
+  const card = editor(page).locator('.card');
+  await expect(card).toHaveAttribute('data-state', 'outside');
+  await expect(card).toContainText('Outside this Space');
+  await card.click();
+  await card.click();
+  const files = await page.evaluate(() => (window as unknown as Files).__bava.fakes.harness);
+  expect(files.askedForFiles).toEqual(['../Contracts/deal.pdf']);
+  expect(files.openedFiles).toEqual(['../Contracts/deal.pdf', '../Contracts/deal.pdf']);
 });

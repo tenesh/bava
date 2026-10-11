@@ -44,6 +44,9 @@ type FileServiceOptions struct {
 	// Access keeps what the user picks, for a store's sandbox; nil keeps
 	// nothing.
 	Access *access.Store
+	// ChooseFile answers the dialog asking for a file outside the opened
+	// folder, as ChooseFiles does the media picker. Nil shows the native one.
+	ChooseFile func(near string) (string, error)
 }
 
 // NewFileService constructs the service registered with the application.

@@ -59,6 +59,9 @@ type Store struct {
 	mu        sync.Mutex
 	grants    []grant
 	reachable map[string]bool
+	// chosen is everything allowed this launch, or restored: what Granted
+	// answers from, with or without a sandbox.
+	chosen map[string]bool
 }
 
 // Open reads the grants kept at path and restores each. A file that cannot
@@ -66,7 +69,7 @@ type Store struct {
 // refuses, or whose folder is gone, is kept and listed as lost, never
 // silently dropped.
 func Open(path string, keeper Keeper) (*Store, error) {
-	s := &Store{path: path, keeper: keeper, reachable: map[string]bool{}}
+	s := &Store{path: path, keeper: keeper, reachable: map[string]bool{}, chosen: map[string]bool{}}
 	if !keeper.Sandboxed() {
 		return s, nil
 	}
@@ -98,6 +101,7 @@ func Open(path string, keeper Keeper) (*Store, error) {
 			}
 		}
 		s.reachable[filepath.Clean(g.Path)] = true
+		s.chosen[filepath.Clean(g.Path)] = true
 	}
 	if changed {
 		if err := s.save(); err != nil {
@@ -110,10 +114,13 @@ func Open(path string, keeper Keeper) (*Store, error) {
 // Allow keeps a folder or file the user just chose through the system's
 // dialog, or dropped, so a later launch may reach it again.
 func (s *Store) Allow(path string) error {
+	path = filepath.Clean(path)
+	s.mu.Lock()
+	s.chosen[path] = true
+	s.mu.Unlock()
 	if !s.keeper.Sandboxed() {
 		return nil
 	}
-	path = filepath.Clean(path)
 	token, err := s.keeper.Keep(path)
 	if err != nil {
 		return fmt.Errorf("keep access to %s: %w", filepath.Base(path), err)
@@ -128,6 +135,9 @@ func (s *Store) Allow(path string) error {
 
 // Forget drops a grant, as when a Space is removed from the recent list.
 func (s *Store) Forget(path string) error {
+	s.mu.Lock()
+	delete(s.chosen, filepath.Clean(path))
+	s.mu.Unlock()
 	if !s.keeper.Sandboxed() {
 		return nil
 	}
@@ -154,6 +164,21 @@ func (s *Store) Reachable(path string) bool {
 	defer s.mu.Unlock()
 	for granted := range s.reachable {
 		if path == granted || strings.HasPrefix(path, granted+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
+}
+
+// Granted reports whether the user chose path, or a folder holding it,
+// through a dialog or a drop: this launch, or kept from an earlier one inside
+// a sandbox. Unlike Reachable, a file merely existing is not enough.
+func (s *Store) Granted(path string) bool {
+	path = filepath.Clean(path)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for chosen := range s.chosen {
+		if path == chosen || strings.HasPrefix(path, chosen+string(filepath.Separator)) {
 			return true
 		}
 	}

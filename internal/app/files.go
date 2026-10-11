@@ -188,6 +188,9 @@ type FileDetailsResult struct {
 	Size     int64  `json:"size"`
 	Modified string `json:"modified"`
 	Error    string `json:"error"`
+	// Outside: the file is outside the opened folder and the user has not
+	// chosen it yet; opening it asks.
+	Outside bool `json:"outside"`
 }
 
 // FileDetails reads a file card's details from the file, inside a folder the
@@ -195,7 +198,21 @@ type FileDetailsResult struct {
 func (s *FileService) FileDetails(root, rel string) FileDetailsResult {
 	clean, err := inOpened(s.options.Folders, root, rel)
 	if err != nil {
-		return FileDetailsResult{Error: err.Error()}
+		abs, outside := outsidePath(s.options.Folders, root, rel)
+		if !outside {
+			return FileDetailsResult{Error: err.Error()}
+		}
+		if !s.granted(abs) {
+			return FileDetailsResult{Outside: true}
+		}
+		info, err := os.Lstat(abs)
+		if errors.Is(err, os.ErrNotExist) {
+			return FileDetailsResult{}
+		}
+		if err != nil || !info.Mode().IsRegular() {
+			return FileDetailsResult{Error: "not a file"}
+		}
+		return FileDetailsResult{Exists: true, Size: info.Size(), Modified: info.ModTime().UTC().Format(time.RFC3339)}
 	}
 	full, err := noLinks(root, clean)
 	if errors.Is(err, os.ErrNotExist) {
@@ -232,12 +249,34 @@ var documents = map[string]bool{
 func (s *FileService) OpenFile(root, rel string) string {
 	clean, err := inOpened(s.options.Folders, root, rel)
 	if err != nil {
-		return err.Error()
+		abs, outside := outsidePath(s.options.Folders, root, rel)
+		if !outside {
+			return err.Error()
+		}
+		if !s.granted(abs) {
+			// Asked for once, through the system's dialog at its place.
+			chosen, err := s.chooseFile(abs)
+			if err != nil {
+				return err.Error()
+			}
+			if chosen == "" {
+				return ""
+			}
+			allow(s.options.Access, chosen)
+			abs = chosen
+		}
+		return s.openOrReveal(abs)
 	}
 	full, err := noLinks(root, clean)
 	if err != nil {
 		return err.Error()
 	}
+	return s.openOrReveal(full)
+}
+
+// openOrReveal opens a document in its own app; anything else (a program,
+// a folder, a script) is only shown in its folder.
+func (s *FileService) openOrReveal(full string) string {
 	info, err := os.Lstat(full)
 	if err != nil {
 		return err.Error()
@@ -260,4 +299,44 @@ func (s *FileService) OpenFile(root, rel string) string {
 		return err.Error()
 	}
 	return ""
+}
+
+// outsidePath is a file a page names outside its opened folder (by a path
+// leading up and out, or an absolute one), as a full path; false for
+// anything else, or a folder never opened.
+func outsidePath(folders *OpenedFolders, root, rel string) (string, bool) {
+	if !folders.Allowed(root) || rel == "" {
+		return "", false
+	}
+	var abs string
+	switch {
+	case filepath.IsAbs(rel):
+		abs = filepath.Clean(rel)
+	case strings.ContainsAny(rel, `\:`):
+		return "", false
+	default:
+		abs = filepath.Join(root, filepath.FromSlash(rel))
+	}
+	inside := abs == filepath.Clean(root) || strings.HasPrefix(abs, filepath.Clean(root)+string(filepath.Separator))
+	return abs, !inside
+}
+
+// granted is whether the user chose this file, or a folder holding it.
+func (s *FileService) granted(abs string) bool {
+	return s.options.Access != nil && s.options.Access.Granted(abs)
+}
+
+// chooseFile asks for one file through the system's dialog, opening where
+// near is; "" when cancelled.
+func (s *FileService) chooseFile(near string) (string, error) {
+	if s.options.ChooseFile != nil {
+		return s.options.ChooseFile(near)
+	}
+	dialog := application.Get().Dialog.OpenFile()
+	dialog.CanChooseFiles(true)
+	dialog.CanChooseDirectories(false)
+	if start := StartFolder(filepath.Dir(near)); start != "" {
+		dialog.SetDirectory(start)
+	}
+	return dialog.PromptForSingleSelection()
 }
