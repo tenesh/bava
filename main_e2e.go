@@ -5,6 +5,7 @@ package main
 import (
 	"embed"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -60,8 +61,7 @@ func smokeRun(_ func() *application.App, closeSession func()) (application.Servi
 			repo, scratch, out, err = e2e.SandboxRun(home, smokeFixtures)
 		}
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
+			stop("sandboxed run", err)
 		}
 		read = func() ([]byte, error) {
 			return smokeScenarios.ReadFile("tests/e2e/" + name + ".json")
@@ -70,13 +70,11 @@ func smokeRun(_ func() *application.App, closeSession func()) (application.Servi
 	vars := map[string]string{"SCRATCH": scratch, "REPO": repo}
 	data, err := read()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "scenario:", err)
-		os.Exit(2)
+		stop("scenario", err)
 	}
 	scenario, err := e2e.Parse(data, vars)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		stop("scenario", err)
 	}
 	folders := e2e.NewFolderQueue(scenario.Folders)
 	files := e2e.NewFileQueue(scenario.Files)
@@ -93,6 +91,17 @@ func smokeRun(_ func() *application.App, closeSession func()) (application.Servi
 		// A "pdf" step prints through the system's webview, on the main thread.
 		RunOnMain: application.InvokeSync,
 	})
-	pdfFailed := func(err error) { fmt.Fprintln(os.Stderr, "PDF failed:", err) }
+	pdfFailed := func(err error) {
+		fmt.Fprintln(os.Stderr, "PDF failed:", err)
+		slog.Error("e2e: PDF failed", "err", err)
+	}
 	return application.NewService(service), pickers{chooseFolder: folders.Next, chooseFiles: files.Next, chooseSave: saves.Next, pdfFailed: pdfFailed}
+}
+
+// stop ends a run that could not begin. The reason goes to the log as well
+// as stderr: a package the system starts has no stderr anyone reads.
+func stop(stage string, err error) {
+	fmt.Fprintf(os.Stderr, "%s: %v\n", stage, err)
+	slog.Error("e2e: run could not begin", "stage", stage, "err", err)
+	os.Exit(2)
 }
