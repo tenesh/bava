@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { SPACE, editor, expectNothingCovering, menu, newLineAtEnd, openApp, openDialog, openPage, openSpace } from '../helpers';
+import { PARENT, SPACE, editor, expectNothingCovering, menu, newLineAtEnd, openApp, openDialog, openLoosePage, openPage, openSpace } from '../helpers';
 
 // Closed dialogs once covered the window at launch with every logic test
 // green: nothing may show until something is opened.
@@ -101,4 +101,27 @@ test('a recent Space Bava cannot reach is found again from the start screen', as
   await expect(page.locator('.bava-space-switcher')).toContainText('Acme Product');
   const near = await page.evaluate(() => (window as unknown as { __bava: { fakes: { harness: { chosenNear: string[] } } } }).__bava.fakes.harness.chosenNear);
   expect(near).toEqual([SPACE]);
+});
+
+// A page opened on its own, in a store's sandbox: its pictures need its
+// folder, which the user allows from a bar above the page.
+test('a page on its own asks for its folder when it shows pictures from it', async ({ page }) => {
+  await openApp(page, 'light', {}, { lost: [PARENT] });
+  await page.evaluate((path) => Object.assign((window as unknown as { __bava: { fakes: { harness: object } } }).__bava.fakes.harness, { fileToOpen: path }), `${PARENT}/Photos.md`);
+  await menu(page, 'file.open');
+  const bar = page.getByRole('region', { name: 'Folder access' });
+  await expect(bar).toContainText('need access to Documents');
+  // Not missing: waiting, with nothing to relink.
+  await expect(page.locator('figure.media')).toHaveAttribute('data-state', 'waiting');
+  await expect(page.locator('figure.media')).toContainText('Waiting for folder access');
+  await bar.getByRole('button', { name: 'Allow access' }).click();
+  await expect(bar).toHaveCount(0);
+  const near = await page.evaluate(() => (window as unknown as { __bava: { fakes: { harness: { chosenNear: string[] } } } }).__bava.fakes.harness.chosenNear);
+  expect(near).toEqual([PARENT]);
+});
+
+test('a page on its own that shows nothing from its folder asks for nothing', async ({ page }) => {
+  await openApp(page, 'light', {}, { lost: [PARENT] });
+  await openLoosePage(page);
+  await expect(page.getByRole('region', { name: 'Folder access' })).toHaveCount(0);
 });

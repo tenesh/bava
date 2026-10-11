@@ -984,7 +984,12 @@ export class DocEditor {
 
   /** The folder the user opened that holds this page, and its path there: where its images and videos load from. */
   setMediaPlace(place: MediaPlace | null): void {
-    const same = place && this.#mediaPlace && place.root === this.#mediaPlace.root && place.here === this.#mediaPlace.here;
+    const same =
+      place &&
+      this.#mediaPlace &&
+      place.root === this.#mediaPlace.root &&
+      place.here === this.#mediaPlace.here &&
+      Boolean(place.waiting) === Boolean(this.#mediaPlace.waiting);
     if (same || (!place && !this.#mediaPlace)) return;
     this.#mediaPlace = place;
     for (const redraw of this.#mediaWatchers) redraw();

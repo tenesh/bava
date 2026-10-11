@@ -50,6 +50,8 @@
   import SaveTemplateDialog from './components/SaveTemplateDialog.svelte';
   import TemplatesDialog from './components/TemplatesDialog.svelte';
   import TemplateBar from './components/TemplateBar.svelte';
+  import AccessBar from './components/AccessBar.svelte';
+  import { usesItsFolder } from './docs/local-files';
   import TagsDialog from './components/TagsDialog.svelte';
   import FramePicker from './components/FramePicker.svelte';
   import { SourcePane } from './editor/source-pane';
@@ -795,6 +797,35 @@
     },
   });
 
+  // A page opened on its own whose pictures and files need its folder,
+  // which a store's sandbox has not been allowed to reach: the bar above the
+  // page offers it. Null when nothing is needed.
+  let folderNeeded = $state.raw<string | null>(null);
+
+  $effect(() => {
+    void doc.generation;
+    const place = mediaPlace;
+    const source = doc.source;
+    if (space.root || !doc.path || !place || !usesItsFolder(source)) {
+      folderNeeded = null;
+      return;
+    }
+    void space.reachable([place.root]).then(([ok]) => {
+      if (place === mediaPlace) folderNeeded = ok ? null : place.root;
+    });
+  });
+
+  /** The folder dialog, at the page's folder; once allowed, the page draws again. */
+  async function allowFolder() {
+    const folder = folderNeeded;
+    if (!folder) return;
+    const chosen = await space.chooseFolder(t('access.choose'), folder);
+    if (!chosen.path) return;
+    const [ok] = await space.reachable([folder]);
+    if (!ok) return;
+    folderNeeded = null;
+  }
+
   // The open Space, and the last one, reopened at launch.
   const LAST_SPACE_KEY = 'bava.lastSpace';
   // Spaces that failed to open this session, or that a store's sandbox no
@@ -854,6 +885,10 @@
     const root = folder === '' || /^[A-Za-z]:$/.test(folder) ? doc.path.slice(0, at + 1) : folder;
     return { root, here: doc.path.slice(at + 1) };
   });
+
+  // The place the page is shown: waiting while its folder is still needed,
+  // so a file there reads as waiting, not missing, and loads once allowed.
+  const shownPlace = $derived(mediaPlace && folderNeeded ? { ...mediaPlace, waiting: true } : mediaPlace);
 
   /**
    * Open a folder as a Space, closing the page first, and reopen its last
@@ -3416,6 +3451,9 @@
     {#if editingTemplate}
       <TemplateBar group={editingTemplate.group} name={editingTemplate.name} onDone={() => void doneWithTemplate()} />
     {/if}
+    {#if folderNeeded}
+      <AccessBar folder={folderNeeded.replace(/^.*[\\/]/, '') || folderNeeded} onAllow={() => void allowFolder()} />
+    {/if}
     <DocumentPane
       bind:this={docPane}
       crumbs={pageCrumbs}
@@ -3433,7 +3471,7 @@
       isTemplate={editingTemplate !== null}
       onCopyText={(text) => void Clipboard.SetText(text)}
       here={space.root ? openRel : null}
-      {mediaPlace}
+      mediaPlace={shownPlace}
       readIndex={(withText) => space.index(withText)}
       onFollow={(href) => void followLink(href)}
       onOpenPage={(path) => void openPath(space.absolute(path))}

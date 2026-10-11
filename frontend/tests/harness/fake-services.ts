@@ -337,7 +337,10 @@ export function createFakes(first: FakeSpace = seedSpace()) {
   // The PDFs asked for: of which folder, where, and what was sent to print.
   const pdfs: { root: string; out: string; request: { document: unknown; canvas: unknown; setup: unknown; dark: boolean; numbers: boolean } }[] = [];
   // A page on its own, in no Space, and what Open File's picker answers.
-  const loose: Record<string, FakePage> = { [`${PARENT}/Notes.md`]: { source: '# Notes\n\nA page kept on its own, in no Space.\n', scene: { version: 1, elements: [] } } };
+  const loose: Record<string, FakePage> = {
+    [`${PARENT}/Notes.md`]: { source: '# Notes\n\nA page kept on its own, in no Space.\n', scene: { version: 1, elements: [] } },
+    [`${PARENT}/Photos.md`]: { source: '# Photos\n\n![logo](logo.png)\n', scene: { version: 1, elements: [] } },
+  };
   // The Space and folder PDFs asked for.
   const spacePdfs: { root: string; out: string; request: { title: string; entries: { title: string; path: string; folder: boolean; document: unknown; canvas: unknown }[] } }[] = [];
   const harness = {
@@ -500,9 +503,11 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         return { items: space.trash, size: space.trash.reduce((sum, item) => sum + item.size, 0), error: '', code: '' };
       },
       async ChooseFolder(_title: string, near = '') {
+        // The user accepts the folder suggested, else picks the seeded Space.
         harness.chosenNear.push(near);
-        harness.lost = harness.lost.filter((p) => p !== SPACE_ROOT);
-        return { path: SPACE_ROOT, error: '' };
+        const path = near || SPACE_ROOT;
+        harness.lost = harness.lost.filter((p) => p !== path);
+        return { path, error: '' };
       },
       // Everything is reachable unless a test marks it lost.
       async Reachable(paths: string[]) {

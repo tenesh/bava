@@ -3,6 +3,7 @@ import { DOC_SHEETS, SUBJECTS, sheetPage, type DocSheet, type Subject } from '..
 import { box } from '../fixtures/canvas-scenes';
 import {
   CANVAS_PAGE,
+  PARENT,
   SPACE,
   THEMES,
   openApp,
@@ -40,6 +41,16 @@ for (const theme of THEMES) {
       await expect(editor(page)).toHaveAttribute('contenteditable', 'false');
       await restPointer(page);
       await shotPane(documentPane(page), shot('document', 'page', 'locked', theme));
+    });
+
+    // A page on its own, in a store's sandbox, asking for its folder.
+    test('a page on its own asking for its folder', async ({ page }) => {
+      await openApp(page, theme, {}, { lost: [PARENT] });
+      await page.evaluate((path) => Object.assign((window as unknown as { __bava: { fakes: { harness: object } } }).__bava.fakes.harness, { fileToOpen: path }), `${PARENT}/Photos.md`);
+      await menu(page, 'file.open');
+      await expect(page.getByRole('region', { name: 'Folder access' })).toBeVisible();
+      await restPointer(page);
+      await shotPane(documentPane(page), shot('document', 'page', 'folder-access', theme));
     });
 
     test('an empty line says what to type', async ({ page }) => {

@@ -14,8 +14,12 @@ import { mediaKind } from './markdown';
 import { onlineVideo, thumbnail, type OnlineVideo } from './online-video';
 import { schema } from './schema';
 
-/** The folder the user opened (a Space, or a loose page's folder) and this page's path in it. */
-export type MediaPlace = { root: string; here: string };
+/**
+ * The folder the user opened (a Space, or a loose page's folder) and this
+ * page's path in it. `waiting`: a store's sandbox has not been allowed that
+ * folder yet, so a file there may be unreadable rather than missing.
+ */
+export type MediaPlace = { root: string; here: string; waiting?: boolean };
 
 const ATTACHMENTS = '.bava/attachments/';
 
@@ -97,7 +101,7 @@ export type MediaContext = {
   openExternal?: (href: string) => void;
 };
 
-type State = 'loading' | 'ready' | 'missing' | 'unplayable';
+type State = 'loading' | 'ready' | 'missing' | 'unplayable' | 'waiting';
 
 /**
  * An online video: a placeholder that contacts no one until play is
@@ -234,7 +238,7 @@ export function mediaView(node: Node, view: EditorView, getPos: () => number | u
     const name = current.attrs.src.slice(current.attrs.src.lastIndexOf('/') + 1);
     const words = document.createElement('span');
     const missing = isWeb(current.attrs.src) ? t('media.unreachable') : t('media.missing');
-    words.textContent = state === 'missing' ? missing.replace('{name}', decodeName(name)) : t('media.unplayable');
+    words.textContent = state === 'waiting' ? t('media.waiting') : state === 'missing' ? missing.replace('{name}', decodeName(name)) : t('media.unplayable');
     notice.append(words);
     if (relinkTo) {
       const button = document.createElement('button');
@@ -254,7 +258,8 @@ export function mediaView(node: Node, view: EditorView, getPos: () => number | u
     const place = context.place();
     const next = mediaUrl(place, current.attrs.src);
     load += 1;
-    if (next === src && next !== null) return;
+    // A file waiting for its folder is asked for again once it is allowed.
+    if (next === src && next !== null && dom.dataset.state !== 'waiting') return;
     src = next;
     setState('loading');
     if (next === null) {
@@ -306,6 +311,11 @@ export function mediaView(node: Node, view: EditorView, getPos: () => number | u
     }
     const place = context.place();
     if (!src || !place) return;
+    // Not readable yet, not gone: the folder is still to be allowed.
+    if (place.waiting) {
+      setState('waiting');
+      return;
+    }
     void context.probe(src).then(async (there) => {
       if (asked !== load) return;
       if (there) {

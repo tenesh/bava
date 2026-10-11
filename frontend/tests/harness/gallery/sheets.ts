@@ -45,6 +45,7 @@ export const IN_SCREENS: Record<string, string> = {
   SaveTemplateDialog: 'dialogs',
   TemplatesDialog: 'dialogs',
   TemplateBar: 'document',
+  AccessBar: 'document',
   StartScreen: 'start',
   Splash: 'shell',
 };

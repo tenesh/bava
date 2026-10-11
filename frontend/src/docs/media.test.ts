@@ -110,6 +110,20 @@ describe('an image in the page', () => {
     expect(editor!.markdown()).toBe('![Logo](.bava/attachments/logo.png)\n');
   });
 
+  // Inside a store's sandbox, before the user allows the page's folder: the
+  // file is there, Bava may not read it yet.
+  it('waits for folder access, offering nothing, while the folder is not allowed', async () => {
+    const { host } = open('![Logo](logo.png)\n', ['logo.png']);
+    editor!.setMediaPlace({ root: '/Space', here: 'Page.md', waiting: true });
+    const figure = host.querySelector('figure.media')!;
+    figure.querySelector('img')!.dispatchEvent(new Event('error'));
+    await settle();
+    await settle();
+    expect(figure.getAttribute('data-state')).toBe('waiting');
+    expect(figure.textContent).toContain('Waiting for folder access');
+    expect(figure.querySelector('button')).toBeNull();
+  });
+
   it('offers nothing when no file of its name is in the attachments', async () => {
     const { host } = open('![Logo](img/logo.png)\n');
     const figure = host.querySelector('figure.media')!;

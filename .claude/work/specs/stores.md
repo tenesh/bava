@@ -28,3 +28,9 @@ and Windows. Revised the same day: Claude writes a test-only manifest,
 only by CI and never submitted; the owner writes the Flathub manifest,
 `com.tharabyte.bava.yml`, at submission, without copying it (Flathub's
 rule, `.ai/rules/ai-disclosure.md`).
+
+### 5. A picture Bava may not read yet waits, never "missing" (2026-10-11)
+While a loose page's folder is not allowed, a picture or file it cannot
+read says it is waiting for folder access, with no Relink; it draws once
+allowed. "Missing" stays for files that are really gone. Chosen over
+keeping the missing state under the bar.

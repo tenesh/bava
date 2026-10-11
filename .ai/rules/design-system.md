@@ -157,6 +157,7 @@ NumberInput (in `NumberField`), Toast, ToggleGroup. Build when a screen needs.
 | `TagFilter` | Files tag filter |
 | `TagsDialog` | Manage tags |
 | `TemplateBar` | Above a template being edited |
+| `AccessBar` | Above a page on its own whose folder a store's sandbox has not allowed; Allow access |
 | `TemplatesDialog` | The Space's templates |
 | `Toggle` | On/off; disabled rather than hidden (Switch) |
 | `ToolIcon` | Lucide plus `DRAWN_ICONS` in `tool-icons.ts` |

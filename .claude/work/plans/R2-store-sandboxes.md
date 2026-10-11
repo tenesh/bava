@@ -57,7 +57,7 @@ it), `docs/file-format.md` (where `access.json` lives), `docs/ipc.md`.
 
 ### Task 3: A loose page's folder (decision 1)
 **Files:** `App.svelte`, a bar over the page, `messages.ts`.
-- [ ] Failing tests: a loose page showing something from its folder offers
+- [x] Failing tests: a loose page showing something from its folder offers
   "Allow access to this folder"; allowing it loads them and is remembered
 
 ### Task 4: A file outside the Space (decision 3)

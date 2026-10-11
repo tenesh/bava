@@ -820,7 +820,7 @@ $callout-swatches: (
 
   // Not shown: the file is missing, or this webview cannot play it. The
   // notice takes the file's place, with the relink offer when there is one.
-  .media:is([data-state='missing'], [data-state='unplayable']) {
+  .media:is([data-state='missing'], [data-state='unplayable'], [data-state='waiting']) {
     .media-frame {
       width: 100%;
       min-height: var(--size-media-notice);
@@ -843,7 +843,7 @@ $callout-swatches: (
     }
   }
 
-  .media[data-state='missing'] .media-file {
+  .media:is([data-state='missing'], [data-state='waiting']) .media-file {
     visibility: hidden;
   }
 
