@@ -44,15 +44,3 @@ func TestARunFileNamesTheWalkWhenTheEnvironmentCannot(t *testing.T) {
 		t.Errorf("run file = %q, %v; want reopen", name, ok)
 	}
 }
-
-// A package's own folders may be all it can see: the walk is looked for in
-// each folder given, the first one holding the file naming it.
-func TestARunFileIsFoundInTheFirstFolderThatHasOne(t *testing.T) {
-	missing, local := t.TempDir(), t.TempDir()
-	if err := os.WriteFile(filepath.Join(local, ".bava-e2e"), []byte("canvas"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if name, ok := RunFile(missing, local); !ok || name != "canvas" {
-		t.Errorf("run file = %q, %v; want canvas", name, ok)
-	}
-}

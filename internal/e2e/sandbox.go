@@ -42,19 +42,14 @@ func SandboxRun(home string, fixtures fs.FS) (repo, scratch, out string, err err
 }
 
 // RunFile is the walk a packaged run is asked for, the first line of
-// `.bava-e2e` in the first of dirs that has one, which CI writes before
-// starting the app: the system starts a package without the shell's
-// environment. False when no dir has the file.
-func RunFile(dirs ...string) (string, bool) {
-	for _, dir := range dirs {
-		data, err := os.ReadFile(filepath.Join(dir, ".bava-e2e"))
-		if err != nil {
-			continue
-		}
-		name, _, _ := strings.Cut(strings.TrimSpace(string(data)), "\n")
-		if name = strings.TrimSpace(name); name != "" {
-			return name, true
-		}
+// `.bava-e2e` in the home, which CI writes before starting the app: the
+// system starts a package without the shell's environment. False when
+// there is no such file.
+func RunFile(home string) (string, bool) {
+	data, err := os.ReadFile(filepath.Join(home, ".bava-e2e"))
+	if err != nil {
+		return "", false
 	}
-	return "", false
+	name, _, _ := strings.Cut(strings.TrimSpace(string(data)), "\n")
+	return strings.TrimSpace(name), name != ""
 }

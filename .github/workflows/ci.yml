@@ -433,22 +433,13 @@ jobs:
           $package = Get-AppxPackage com.tharabyte.bava
           $out = "$env:USERPROFILE\smoke-out"
           $failed = 0
-          Write-Host "runner: $(whoami), home $env:USERPROFILE"
-          Get-CimInstance Win32_Process -Filter "Name='explorer.exe'" | ForEach-Object { Write-Host "explorer owner: $((Invoke-CimMethod -InputObject $_ -MethodName GetOwner).User)" }
           foreach ($scenario in 'create', 'reopen', 'canvas', 'export-proof') {
-            # Written so a failure stops the step: the cmdlet route left no
-            # file and said nothing.
+            # A package starts without the shell's environment: the walk is
+            # named in a file in the home. Not Set-Content, which left none.
             $runFile = Join-Path $env:USERPROFILE '.bava-e2e'
             [System.IO.File]::WriteAllText($runFile, $scenario)
-            # The package's own view of the local app data folder.
-            $local = "$env:LOCALAPPDATA\Packages\$($package.PackageFamilyName)\LocalCache\Local"
-            New-Item -ItemType Directory -Force $local | Out-Null
-            [System.IO.File]::WriteAllText((Join-Path $local '.bava-e2e'), $scenario)
-            Write-Host "$scenario`: run file reads '$([System.IO.File]::ReadAllText($runFile))'"
             Start-Process "shell:AppsFolder\$($package.PackageFamilyName)!com.tharabyte.bava"
             Start-Sleep -Seconds 5
-            $running = Get-Process bava -ErrorAction SilentlyContinue
-            Write-Host "$scenario`: bava running after 5s: $([bool]$running)"
             $deadline = (Get-Date).AddMinutes(4)
             while ((Get-Process bava -ErrorAction SilentlyContinue) -and ((Get-Date) -lt $deadline)) { Start-Sleep -Seconds 2 }
             Get-Process bava -ErrorAction SilentlyContinue | Stop-Process -Force
@@ -458,11 +449,8 @@ jobs:
             if (-not ((Get-Content $result -First 1) -like 'PASS*')) { Write-Host "::error::$scenario failed in the package"; $failed = 1 }
           }
           Remove-Item "$env:USERPROFILE\.bava-e2e" -ErrorAction SilentlyContinue
-          # What Windows said about starting the package, and what Bava logged
-          # in the package's own storage.
-          Get-WinEvent -LogName 'Microsoft-Windows-AppModel-Runtime/Admin' -MaxEvents 15 -ErrorAction SilentlyContinue | Format-List TimeCreated, Id, Message
+          # Bava's logs, kept in the package's own storage.
           $cache = "$env:LOCALAPPDATA\Packages\$($package.PackageFamilyName)\LocalCache"
-          Get-ChildItem -Recurse $cache -ErrorAction SilentlyContinue | Select-Object -First 40 FullName
           New-Item -ItemType Directory -Force "$env:USERPROFILE\smoke-out\package-cache" | Out-Null
           Copy-Item -Recurse "$cache\*" "$env:USERPROFILE\smoke-out\package-cache" -ErrorAction SilentlyContinue
           exit $failed

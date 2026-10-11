@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
+	"path/filepath"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -41,16 +41,13 @@ func smokeRun(_ func() *application.App, closeSession func()) (application.Servi
 	sandboxed := os.Getenv("BAVA_E2E_SANDBOX") == "1"
 	// A package the system starts gets no environment: the walk is named in
 	// a file in the home, and runs as it does in a sandbox.
-	// An MSIX package sees its own copy of the local app data folder, so
-	// the file is looked for there as well as in the home.
 	if name == "" {
 		home, _ := os.UserHomeDir()
-		local, _ := os.UserCacheDir()
-		if from, ok := e2e.RunFile(home, local); ok {
-			name, sandboxed = from, true
-		} else {
-			stop("no walk named", fmt.Errorf("none in %q or %q; the home holds %v", home, local, dotFiles(home)))
+		from, ok := e2e.RunFile(home)
+		if !ok {
+			stop("no walk named", fmt.Errorf("no %s", filepath.Join(home, ".bava-e2e")))
 		}
+		name, sandboxed = from, true
 	}
 	if sandboxed {
 		// The sandbox may refuse the screenshot tool: a picture is noted
@@ -109,16 +106,4 @@ func stop(stage string, err error) {
 	fmt.Fprintf(os.Stderr, "%s: %v\n", stage, err)
 	slog.Error("e2e: run could not begin", "stage", stage, "err", err)
 	os.Exit(2)
-}
-
-// dotFiles names the hidden files in dir, for a run that found no walk.
-func dotFiles(dir string) []string {
-	entries, _ := os.ReadDir(dir)
-	var names []string
-	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), ".") {
-			names = append(names, e.Name())
-		}
-	}
-	return names
 }
