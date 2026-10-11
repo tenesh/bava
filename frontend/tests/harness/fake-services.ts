@@ -344,6 +344,8 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     pdfs,
     spacePdfs,
     faults,
+    /** Paths a store's sandbox no longer lets Bava reach. */
+    lost: [] as string[],
     /** The settings as last saved, for a test to read what a control changed. */
     settings: () => ({ ...settings }),
     /** The canvas embeds' pictures saved, in base64, by name. */
@@ -495,6 +497,10 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       },
       async ChooseFolder(_title: string) {
         return { path: SPACE_ROOT, error: '' };
+      },
+      // Everything is reachable unless a test marks it lost.
+      async Reachable(paths: string[]) {
+        return paths.map((p) => !harness.lost.includes(p));
       },
       async Reveal(_root: string, _path: string) {
         return { error: '', code: '' };

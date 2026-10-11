@@ -105,6 +105,15 @@ export function Open(dir: string): $CancellablePromise<$models.SpaceInfo> {
 }
 
 /**
+ * Reachable reports, for each path, whether Bava may reach it now: inside a
+ * store's sandbox only what the user allowed, elsewhere whatever exists.
+ * The start screen and the switcher mark a recent Space that cannot be.
+ */
+export function Reachable(paths: string[] | null): $CancellablePromise<boolean[] | null> {
+    return $Call.ByID(2745398921, paths);
+}
+
+/**
  * Reveal shows the Space's folder, or with a path, that item selected in its
  * folder, in the platform's file manager. A zero Problem means it worked.
  */

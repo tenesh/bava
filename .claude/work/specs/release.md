@@ -62,3 +62,5 @@ R1, replaces each adapted part with code written from a spec of Bava's own
 behaviour (the tests and pictures as the check), never from the original;
 the attribution is removed with the last of it. Chosen over attributing
 only and over rewriting before attributing.
+
+*Revised 2026-10-11:* no rewrite. The attribution in `NOTICE` stays for good, as is usual for reused code; renaming or reordering the code would not change what it is.

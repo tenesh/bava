@@ -11,6 +11,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
+	"github.com/tharabyte/bava/internal/access"
 	"github.com/tharabyte/bava/internal/format"
 	"github.com/tharabyte/bava/internal/space"
 	"github.com/tharabyte/bava/internal/web"
@@ -37,6 +38,9 @@ type SpaceServiceOptions struct {
 	Folders *OpenedFolders
 	// Fetch reads a web page's details for a card; nil is web.Fetch.
 	Fetch func(ctx context.Context, address string, pictures bool) (web.Details, error)
+	// Access keeps what the user picks, for a store's sandbox; nil keeps
+	// nothing and counts whatever exists as reachable.
+	Access *access.Store
 }
 
 // NewSpaceService constructs the service registered with the application.
@@ -375,6 +379,7 @@ func (s *SpaceService) ChooseFolder(title string) DialogResult {
 		if err != nil {
 			return DialogResult{Error: err.Error()}
 		}
+		allow(s.options.Access, path)
 		return DialogResult{Path: path}
 	}
 	dialog := application.Get().Dialog.OpenFile()
@@ -386,7 +391,19 @@ func (s *SpaceService) ChooseFolder(title string) DialogResult {
 	if err != nil {
 		return DialogResult{Error: err.Error()}
 	}
+	allow(s.options.Access, path)
 	return DialogResult{Path: path}
+}
+
+// Reachable reports, for each path, whether Bava may reach it now: inside a
+// store's sandbox only what the user allowed, elsewhere whatever exists.
+// The start screen and the switcher mark a recent Space that cannot be.
+func (s *SpaceService) Reachable(paths []string) []bool {
+	out := make([]bool, len(paths))
+	for i, p := range paths {
+		out[i] = reachable(s.options.Access, p)
+	}
+	return out
 }
 
 // Problem is a failure the user may see: its message for the log, and a code

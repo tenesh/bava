@@ -3,11 +3,6 @@
 Rules for the page (ProseMirror, `docs/`) and the D2 editor (CodeMirror,
 `editor/`).
 
-## Mounting
-Mount in `onMount`, destroy in the cleanup return, never feed reactive props
-or a `$derived` in. `DocEditor` (`docs/editor.ts`) is a plain class owning one
-view; never a Svelte component per block.
-
 ## The file is Markdown both ways
 `docs/markdown.ts` reads and writes. What the schema cannot hold becomes a
 `kept` block or `keptInline` run, byte for byte; never drop or fix it. Front

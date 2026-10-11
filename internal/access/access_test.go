@@ -1,0 +1,161 @@
+package access_test
+
+import (
+	"errors"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/tharabyte/bava/internal/access"
+)
+
+// fakeKeeper stands in for a sandbox: a token is "kept:" and the path, and
+// restoring one can be made to fail or come back stale.
+type fakeKeeper struct {
+	fail  map[string]bool
+	stale map[string]bool
+	kept  []string
+}
+
+func (k *fakeKeeper) Sandboxed() bool { return true }
+
+func (k *fakeKeeper) Keep(path string) ([]byte, error) {
+	k.kept = append(k.kept, path)
+	return []byte("kept:" + path), nil
+}
+
+func (k *fakeKeeper) Restore(token []byte) (string, bool, error) {
+	path := string(token)[len("kept:"):]
+	if k.fail[path] {
+		return "", false, errors.New("the system refused it")
+	}
+	return path, k.stale[path], nil
+}
+
+func setup(t *testing.T) (string, string) {
+	t.Helper()
+	state := filepath.Join(t.TempDir(), "access.json")
+	space := t.TempDir()
+	return state, space
+}
+
+func TestAFolderAllowedIsReachableAfterARelaunch(t *testing.T) {
+	state, space := setup(t)
+	keeper := &fakeKeeper{}
+	s, err := access.Open(state, keeper)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Reachable(space) {
+		t.Fatal("a folder never allowed is reachable in a sandbox")
+	}
+	if err := s.Allow(space); err != nil {
+		t.Fatal(err)
+	}
+	again, err := access.Open(state, &fakeKeeper{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !again.Reachable(space) || !again.Reachable(filepath.Join(space, "Marketing", "Plan.md")) {
+		t.Error("an allowed folder or what is inside it is not reachable after a relaunch")
+	}
+}
+
+func TestAGrantTheSystemRefusesIsReportedAndKept(t *testing.T) {
+	state, space := setup(t)
+	s, _ := access.Open(state, &fakeKeeper{})
+	if err := s.Allow(space); err != nil {
+		t.Fatal(err)
+	}
+	again, err := access.Open(state, &fakeKeeper{fail: map[string]bool{space: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Reachable(space) {
+		t.Error("a refused grant reads as reachable")
+	}
+	if lost := again.Lost(); len(lost) != 1 || lost[0] != space {
+		t.Errorf("lost = %v; want the refused folder", lost)
+	}
+	// Still there, to be found again rather than silently forgotten.
+	third, _ := access.Open(state, &fakeKeeper{})
+	if !third.Reachable(space) {
+		t.Error("a refused grant was dropped from the file")
+	}
+}
+
+func TestAStaleGrantIsKeptAfresh(t *testing.T) {
+	state, space := setup(t)
+	s, _ := access.Open(state, &fakeKeeper{})
+	_ = s.Allow(space)
+	keeper := &fakeKeeper{stale: map[string]bool{space: true}}
+	again, _ := access.Open(state, keeper)
+	if !again.Reachable(space) {
+		t.Error("a stale grant is not reachable")
+	}
+	if len(keeper.kept) != 1 || keeper.kept[0] != space {
+		t.Errorf("kept afresh: %v; want the stale folder", keeper.kept)
+	}
+}
+
+func TestAGrantForAFolderThatIsGoneIsLost(t *testing.T) {
+	state, space := setup(t)
+	s, _ := access.Open(state, &fakeKeeper{})
+	_ = s.Allow(space)
+	if err := os.RemoveAll(space); err != nil {
+		t.Fatal(err)
+	}
+	again, _ := access.Open(state, &fakeKeeper{})
+	if again.Reachable(space) || len(again.Lost()) != 1 {
+		t.Error("a folder that is gone reads as reachable")
+	}
+}
+
+func TestForgettingRemovesTheGrant(t *testing.T) {
+	state, space := setup(t)
+	s, _ := access.Open(state, &fakeKeeper{})
+	_ = s.Allow(space)
+	if err := s.Forget(space); err != nil {
+		t.Fatal(err)
+	}
+	again, _ := access.Open(state, &fakeKeeper{})
+	if again.Reachable(space) || len(again.Lost()) != 0 {
+		t.Error("a forgotten grant came back")
+	}
+}
+
+// Where nothing is sandboxed, anything that exists is reachable and nothing
+// is written.
+func TestWithoutASandboxWhatExistsIsReachable(t *testing.T) {
+	state, space := setup(t)
+	s, err := access.Open(state, access.None{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.Reachable(space) || s.Reachable(filepath.Join(space, "missing")) {
+		t.Error("without a sandbox, reachable is not simply whether it exists")
+	}
+	if err := s.Allow(space); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(state); !errors.Is(err, os.ErrNotExist) {
+		t.Error("a grant was written where nothing is sandboxed")
+	}
+}
+
+func TestAnUnreadableGrantsFileStartsEmpty(t *testing.T) {
+	state, space := setup(t)
+	if err := os.WriteFile(state, []byte("{not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := access.Open(state, &fakeKeeper{})
+	if err == nil {
+		t.Error("an unreadable file was not reported")
+	}
+	if s == nil || s.Reachable(space) {
+		t.Fatal("no usable, empty store after an unreadable file")
+	}
+	if err := s.Allow(space); err != nil {
+		t.Fatal(err)
+	}
+}

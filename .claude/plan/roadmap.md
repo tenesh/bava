@@ -26,19 +26,9 @@ Standing rules:
 | 8.7 | The look: black and white |
 | 15.1 | Search across a Space; find on the Canvas |
 | 15.2 | Export: a page, a folder or the Space as PDF or Markdown zip; the Canvas as PNG or SVG |
-| R1 | The move to Tharabyte (`tharabyte/bava`, `com.tharabyte.bava`); no other products named |
+| R1 | The move to Tharabyte (`tharabyte/bava`, `com.tharabyte.bava`); no other products named; adapted canvas code attributed in `NOTICE`, for good |
 
 ## Next
-
-### R1c: the adapted canvas code, written afresh
-Parts of the canvas were adapted from another project's MIT code; `NOTICE`
-attributes them meanwhile. Each part is rewritten from a spec of Bava's own
-behaviour, by someone who has not seen the original: elbow segment editing
-(`elbow-segments.ts`); binding, its reach, elbow snapping, anchor points and
-the inside-out guard (`binding.ts`); arrowheads (`arrows.ts`); closing a line
-(`closed.ts`); angle snapping (`constrain.ts`); a vector's heading
-(`elbow.ts`). Exit: every existing test and picture passes unchanged; the
-attribution leaves `NOTICE`.
 
 ### R2: the stores' sandboxes, proven first
 The Mac App Store and Flathub sandbox the app: it may reach only what the

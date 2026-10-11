@@ -20,10 +20,6 @@ and the preview flickers, which looks like a layout bug.
 D2 compile failures come back in `errors` with positions; the previous good
 preview stays on screen. Never blank it on a compile error.
 
-## Keep the surface small
-Every bound method must survive Wails beta upgrades. Prefer one method with an
-options struct over several narrow ones.
-
 ## The menu names commands; the frontend performs them
 Go emits `menu:command` with an id and never decides what it does. The ids in
 `spec.json` and `shell/commands.ts` must match; a test checks both ways.
@@ -33,3 +29,8 @@ Go emits `menu:command` with an id and never decides what it does. The ids in
 a card's details on paste or Refresh, never on draw. 8 s, 5 redirects, 1 MB
 page, 2 MB picture, no cookies, `User-Agent: Bava`. Any other fetch goes here or
 is raised first.
+
+## Every path the user picks or drops is kept
+A store's sandbox lets Bava reach only what the user chose. Every dialog
+result and drop goes through `allow` (`internal/app/access.go`), so a later
+launch can reach it again; ask `Reachable` before assuming a path opens.

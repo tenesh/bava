@@ -13,9 +13,9 @@ against its rules. You never modify files. Absence of evidence is a finding.
   Any update check is a finding. Grep `net/http`, `fetch(`, `XMLHttpRequest`, URLs; trace each.
 - **Credentials** go to the OS secret store, never a file, config or code.
 - No remote fonts, icons or stylesheets; everything bundled.
-- **Own words** (`.ai/rules/own-words.md`): another product named as a
-  comparison or source is a finding.
-- **AI disclosure / Flathub:** an agent change to `com.tharabyte.bava.*` is a
+- **Own words** (CLAUDE.md 5): another product named as a comparison or
+  source is a finding.
+- **Flathub** (CLAUDE.md 6): an agent change to `com.tharabyte.bava.*` is a
   blocker.
 
 ## Files as truth

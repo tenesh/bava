@@ -525,6 +525,9 @@ Every file pages show or link to, one folder per Space.
   open folders and last page: per viewer, in `localStorage`.
 - Chat transcripts: JSONL in the platform data directory (`.ai/rules/ai.md`).
 - Credentials: the OS secret store.
+- Folders and files the user allowed Bava to reach, inside a store's
+  sandbox: `access.json` beside the settings, each a path and, on macOS, a
+  security-scoped bookmark. Deleting it only means choosing them again.
 
 `.d2` files are not opened as diagrams, are left out of a Space's list, and
 are never written.

@@ -7,15 +7,6 @@ Traps when writing tests. The standard and layers are in `docs/testing.md`.
 new or changed SVG or PNG, list them in the report. Run goldens before and after
 any D2, font or Wails bump. `.gitattributes` forces LF; never relax it.
 
-## What gets a failing test first
-| Work | Approach |
-|---|---|
-| Pipeline, file I/O, IPC, parsing, file format | Failing test first |
-| Diagram output | Golden, looked at before kept |
-| Bindings, config, build scripts | Implement, then a contract test |
-| Anything drawn (component, style, token, string) | `npm run browser`, every changed picture read in both themes |
-| Canvas, editor wiring | Tests where logic exists, not markup |
-
 ## Test the path the app takes
 Inject at the transport and `normalise` goes untested; supply what the app
 computes and you test nothing about the app. One test per crossing comes the

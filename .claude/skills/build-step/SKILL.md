@@ -127,8 +127,8 @@ exit code (`npm test` can fail with every test passed).
 
 What is true now and affects the gates. Update it when a milestone closes.
 
-**Position:** R1a and R1b done (repository `tharabyte/bava`). Next R1c (the
-adapted canvas code written afresh), then R2 (the stores' sandboxes), 15.3
+**Position:** R1 done (repository `tharabyte/bava`; adapted canvas code
+attributed in `NOTICE` for good). Next R2 (the stores' sandboxes), 15.3
 (import), 15.4 (canvas work), Milestone 16, Milestone 17. Help ▸ Report Issue
 is hidden until release (`REPORT_ISSUE_ENABLED` in
 `frontend/src/shell/report-issue.ts`); the DMG icon and background stay

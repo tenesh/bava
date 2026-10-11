@@ -6,11 +6,6 @@ Traps in Wails v3 beta and the native shell.
 `v3/pkg/application` only; never v2 `runtime` or the alpha docs
 (`v3alpha.wails.io`). The tag is pinned in `go.mod`; never float it.
 
-## No vendored docs
-Context7 and upstream serve the latest, maybe ahead of the pin. When they
-disagree with the code, read the pinned source:
-`go list -m -f '{{.Dir}}' github.com/wailsapp/wails/v3`.
-
 ## Build the frontend before any Go command
 `main.go` embeds `all:frontend/dist`, which is gitignored. On a clean checkout
 every Go build fails with `pattern all:frontend/dist: no matching files found`.
@@ -20,15 +15,6 @@ A stale local `dist/` hides it.
 Install `libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev libglib2.0-dev`.
 GTK3 is opt-in behind the `gtk3` tag. `wails3 doctor` lists both variants'
 packages; the build tags are the authority.
-
-## Cross-platform claims need CI
-A macOS build proves nothing about Windows or Linux. Never claim "builds
-everywhere" without a CI matrix result.
-
-## Keep the native surface thin
-Go holds file I/O, Spaces, windows, menus, D2, logs, the clipboard image
-(`FileService.ClipboardImage`) and the one web fetch. Everything else is
-frontend.
 
 ## Menu role items need a running application
 `AddRole` panics outside a running app. Build menus after `application.New`;
@@ -80,10 +66,6 @@ reserves room with `--size-titlebar-inset-start` under
 `Label\tHint` hints go in labels on Windows only. On macOS a punctuation key
 without Shift or Option may be native (`nativeOn: ["darwin"]`), and the page's
 matcher must stand down.
-
-## Build assets ship with template metadata
-`config.yml`, the plists, `.desktop`, `info.json`, NSIS and MSIX all said
-"My Product" (`TestPackagingMetadataIsNotTheWailsTemplate`).
 
 ## Release builds discard Wails' logs
 The production `DefaultLogger` writes to `io.Discard`; Bava passes

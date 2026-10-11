@@ -9,6 +9,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
+	"github.com/tharabyte/bava/internal/access"
 	"github.com/tharabyte/bava/internal/config"
 	"github.com/tharabyte/bava/internal/format"
 	"github.com/tharabyte/bava/internal/store"
@@ -40,6 +41,9 @@ type FileServiceOptions struct {
 	Open func(path string) error
 	// Reveal shows a file in its folder; nil uses the platform's file manager.
 	Reveal func(path string) error
+	// Access keeps what the user picks, for a store's sandbox; nil keeps
+	// nothing.
+	Access *access.Store
 }
 
 // NewFileService constructs the service registered with the application.
@@ -191,6 +195,7 @@ func (s *FileService) ChooseFileToOpen() DialogResult {
 	if err != nil {
 		return DialogResult{Error: err.Error()}
 	}
+	allow(s.options.Access, path)
 	return DialogResult{Path: path}
 }
 
@@ -201,6 +206,7 @@ func (s *FileService) ChooseFileToSave(suggestedName string) DialogResult {
 		if err != nil {
 			return DialogResult{Error: err.Error()}
 		}
+		allow(s.options.Access, path)
 		return DialogResult{Path: path}
 	}
 	dialog := application.Get().Dialog.SaveFile()
@@ -213,6 +219,7 @@ func (s *FileService) ChooseFileToSave(suggestedName string) DialogResult {
 	if err != nil {
 		return DialogResult{Error: err.Error()}
 	}
+	allow(s.options.Access, path)
 	return DialogResult{Path: path}
 }
 
@@ -252,6 +259,7 @@ func (s *FileService) ChooseMedia(kind string) PathsResult {
 	if paths == nil {
 		paths = []string{}
 	}
+	allow(s.options.Access, paths...)
 	return PathsResult{Paths: paths}
 }
 

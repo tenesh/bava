@@ -273,3 +273,4 @@ Dated rows, newest last: each closes a question that could have gone another way
 | 2026-10-11 | Bava in its own words: no other product named, no studies kept | Guarded by `names_test.go` and `.ai/rules/own-words.md`; history is not rewritten. |
 | 2026-10-11 | Adapted canvas code is attributed now and written afresh next | MIT-derived canvas parts are credited in `NOTICE` until rewritten as R1c. |
 | 2026-10-11 | No AI disclosure file or names test until release; `NOTICE` trimmed | The owner: both go until the release rewrite, the own-words rule stands on review; `NOTICE` keeps Bava's licence and the adapted code's attribution, and release builds will carry generated third-party licences. |
+| 2026-10-11 | The adapted canvas code keeps its attribution; no rewrite | The owner: `NOTICE` carries the MIT notice for good, as is usual for reused code; a rewrite would risk the canvas's most delicate parts for no gain in compliance. |

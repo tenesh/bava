@@ -7,13 +7,16 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sync/atomic"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 
+	"github.com/tharabyte/bava/internal/access"
 	"github.com/tharabyte/bava/internal/app"
+	"github.com/tharabyte/bava/internal/config"
 	"github.com/tharabyte/bava/internal/logs"
 	"github.com/tharabyte/bava/internal/pdfprint"
 )
@@ -63,6 +66,8 @@ func main() {
 	// The folders the user opened this session: the page is shown images and
 	// videos from these alone.
 	folders := app.NewOpenedFolders()
+	// What the user allowed Bava to reach, kept for a store's sandbox.
+	grants := openGrants()
 	menus := app.NewMenuService()
 	// Only a -tags e2e build has a driver and answers pickers itself.
 	driver, answers := smokeRun(current.Load, func() { _ = session.Close() })
@@ -73,6 +78,7 @@ func main() {
 			ClipboardImage: app.ReadClipboardImage,
 			ChooseFiles:    answers.chooseFiles,
 			ChooseSave:     answers.chooseSave,
+			Access:         grants,
 		})),
 		application.NewService(app.NewSpaceService(app.SpaceServiceOptions{
 			Reveal: func(path string, selectFile bool) error {
@@ -84,6 +90,7 @@ func main() {
 			},
 			ChooseFolder: answers.chooseFolder,
 			Folders:      folders,
+			Access:       grants,
 		})),
 		application.NewService(app.NewExportService(app.ExportServiceOptions{
 			Folders: folders,
@@ -109,6 +116,7 @@ func main() {
 	window := wailsApp.Window.NewWithOptions(app.MainWindowOptions())
 	window.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
 		ctx := event.Context()
+		app.AllowDropped(grants, ctx.DroppedFiles())
 		wailsApp.Event.Emit(app.FilesDroppedEvent, app.DroppedFiles(ctx.DroppedFiles(), ctx.DropTargetDetails()))
 	})
 	// macOS only: Wails beta.20 does not surface the equivalent on Windows or
@@ -133,6 +141,20 @@ type pickers struct {
 	chooseFolder func(title string) (string, error)
 	chooseFiles  func(kind string) ([]string, error)
 	chooseSave   func(suggestedName string) (string, error)
+}
+
+// openGrants opens the grants kept beside the settings. One that cannot be
+// read starts empty: the user is asked for folders again, nothing worse.
+func openGrants() *access.Store {
+	path := ""
+	if settings, err := config.Path(); err == nil {
+		path = filepath.Join(filepath.Dir(settings), "access.json")
+	}
+	grants, err := access.Open(path, access.ForSystem())
+	if err != nil {
+		slog.Warn("access grants unreadable; starting empty")
+	}
+	return grants
 }
 
 // appFiles are the frontend's built files, as the app serves them: the

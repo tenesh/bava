@@ -126,6 +126,7 @@ A Space on disk (`docs/file-format.md`, "Spaces"), changed through one
 | `ExportZip(root, scope, out)` | `Problem`: writes that zip to `out` via a temporary file renamed into place |
 | `Trash(root)` | `TrashList`: items (origin, kind, when, size) and total size |
 | `ChooseFolder(title)` | `DialogResult`: native folder picker (can make a folder); empty when cancelled |
+| `Reachable(paths)` | `[]bool`: whether Bava may reach each path now (inside a store's sandbox, only what the user allowed) |
 | `Reveal(root, path)` | `Problem` (`error`, `code`), empty on success: the Space folder, or an item selected in it (an attachment as `.bava/attachments/<name>`; other hidden paths refused); `revealUnavailable` with no file manager |
 
 `Apply` operations (`op.kind`, with its fields):
@@ -240,3 +241,5 @@ started with `app.Go`. Carries `{id}` (finds the stack in the log), never the
 stack or content. A panic inside Wails' `InvokeSync`, or in its window-event
 and event hooks, ends the process instead; the next launch reports the
 unexpected exit.
+
+Every path the user picks through a dialog, or drops, is kept for a store's sandbox (`internal/access`).

@@ -20,9 +20,11 @@ once into ordinary shapes and arrows; documents share the same file.
 4. **Never run git write operations** (add, commit, push, tag, branch,
    worktree, stash, reset), whatever a skill says. Read-only git is fine.
 5. **Bava in its own words.** Nothing names another product as a comparison or
-   source; only `NOTICE` names sources (`.ai/rules/own-words.md`).
+   source; only `NOTICE` names sources, where a licence requires it.
 6. **Never touch the Flathub manifest or submission**; the maintainer writes
-   them (`.ai/rules/ai-disclosure.md`).
+   them; Flathub bans AI-written manifests. A test-only manifest for CI
+   (`tests/flatpak/`, ID `com.tharabyte.bava.Devel`) is allowed and never
+   becomes the submitted one.
 
 ## Stack
 
@@ -62,6 +64,8 @@ Look versioned APIs up (Context7, gopls MCP, `docs/`); never recall them.
   editors their own; `frontend/src/shell/edit-target.ts` routes ⌘Z by focus.
 - Debounce 250ms, tag requests with an incrementing id, drop stale responses.
 - No document state in browser storage; `components/` are presentational.
+- TypeScript only (no `.js` source but tooling config); one component per
+  file, logic in `.svelte.ts` modules where it can be tested.
 
 ## Where things live
 
