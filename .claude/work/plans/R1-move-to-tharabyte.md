@@ -186,3 +186,5 @@ claude.ai for the design and says the rule checks are review agents'; the
 disclosure rule says what the settings deny; the settle helper's timing
 comment. Left to the user: whether naming sync services and the sibling
 project counts, and the reasons written afresh (Deviations).
+
+**CI:** green on all three systems (run 38112377554), first time.

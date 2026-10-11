@@ -5,7 +5,7 @@ go 1.27.0
 require (
 	github.com/d2lang/d2 v0.9.0
 	github.com/pdfcpu/pdfcpu v0.16.1
-	github.com/wailsapp/wails/v3 v3.0.0-beta.20
+	github.com/wailsapp/wails/v3 v3.0.0-beta.28
 	golang.design/x/clipboard v0.11.0
 	golang.org/x/net v0.58.0
 )
