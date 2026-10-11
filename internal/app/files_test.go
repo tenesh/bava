@@ -202,7 +202,9 @@ func TestFileDetailsAreReadFromTheFile(t *testing.T) {
 		t.Errorf("a backslash path: %+v", bad)
 	}
 	// Outside the folder and never chosen: said so, nothing read.
-	for _, rel := range []string{"../x.pdf", "/etc/passwd"} {
+	// A full path on this system (on Windows, one with a drive).
+	elsewhere := filepath.Join(t.TempDir(), "passwd")
+	for _, rel := range []string{"../x.pdf", elsewhere} {
 		if out := s.FileDetails(root, rel); !out.Outside || out.Exists || out.Size != 0 {
 			t.Errorf("%s: %+v", rel, out)
 		}
