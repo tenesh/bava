@@ -429,18 +429,22 @@ jobs:
         shell: pwsh
         timeout-minutes: 14
         run: |
+          $ErrorActionPreference = 'Stop'
           $package = Get-AppxPackage com.tharabyte.bava
           $out = "$env:USERPROFILE\smoke-out"
           $failed = 0
           Write-Host "runner: $(whoami), home $env:USERPROFILE"
           Get-CimInstance Win32_Process -Filter "Name='explorer.exe'" | ForEach-Object { Write-Host "explorer owner: $((Invoke-CimMethod -InputObject $_ -MethodName GetOwner).User)" }
           foreach ($scenario in 'create', 'reopen', 'canvas', 'export-proof') {
-            Set-Content -NoNewline "$env:USERPROFILE\.bava-e2e" $scenario
+            # Written so a failure stops the step: the cmdlet route left no
+            # file and said nothing.
+            $runFile = Join-Path $env:USERPROFILE '.bava-e2e'
+            [System.IO.File]::WriteAllText($runFile, $scenario)
             # The package's own view of the local app data folder.
             $local = "$env:LOCALAPPDATA\Packages\$($package.PackageFamilyName)\LocalCache\Local"
             New-Item -ItemType Directory -Force $local | Out-Null
-            Set-Content -NoNewline "$local\.bava-e2e" $scenario
-            Write-Host "$scenario`: run file in the home: $(Test-Path "$env:USERPROFILE\.bava-e2e")"
+            [System.IO.File]::WriteAllText((Join-Path $local '.bava-e2e'), $scenario)
+            Write-Host "$scenario`: run file reads '$([System.IO.File]::ReadAllText($runFile))'"
             Start-Process "shell:AppsFolder\$($package.PackageFamilyName)!com.tharabyte.bava"
             Start-Sleep -Seconds 5
             $running = Get-Process bava -ErrorAction SilentlyContinue
