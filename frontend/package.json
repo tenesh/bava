@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "browser": "../tests/scripts/browser.sh",
-    "browser:update": "../tests/scripts/browser.sh --update"
+    "browser:update": "../tests/scripts/browser.sh --update",
+    "design": "node ../designs/build.ts"
   },
   "dependencies": {
     "@ark-ui/svelte": "^5.24.2",

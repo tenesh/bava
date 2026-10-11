@@ -35,6 +35,7 @@ of ours; never run git write operations (the user commits).
 | Vet / format | `go vet ./internal/... .` / `gofmt -w .` |
 | Svelte types / lint / tests | `npm run check` / `npm run lint` / `npm test` |
 | Browser tests (Docker) | `(cd frontend && npm run browser)`, `-- --project=visual` or `integration` |
+| Design system files | `(cd frontend && npm run design)`, then publish `designs/out/project/` |
 | Accept screenshots | `(cd frontend && npm run browser:update)`, then open every changed image |
 | Bindings | `wails3 generate bindings -f '' -clean=true -ts -i` after any bound Go change, comments included |
 | Env check | `wails3 doctor` |

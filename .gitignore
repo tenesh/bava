@@ -10,3 +10,6 @@ build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 
 # Browser-test results (differences, report); the approved screenshots live in testdata/visual
 frontend/tests/.results/
+
+# Built design system files, published to the design system, not kept
+designs/out/

@@ -13,7 +13,8 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
+    // The design system's generators live beside the app, in `designs/`.
+    include: ['src/**/*.test.ts', 'tests/**/*.test.ts', '../designs/**/*.test.ts'],
     // Konva needs a 2D context, which jsdom does not implement. A pure-JS mock
     // rather than the native `canvas` package: this has to build on three CI
     // platforms, and a native module there is a maintenance bill for nothing:

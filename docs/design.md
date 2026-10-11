@@ -20,6 +20,9 @@ and the app differ after a change ships, the mockup is updated to match.
 ## Keeping them current
 
 A change to the tokens or to a component's styles is carried to the design
-system, and the canvas's copy of it updated, in the same piece of work. The
+system, and the canvas's copy of it updated, in the same piece of work:
+`npm run design` in `frontend/` rebuilds the design system's tokens,
+stylesheet and fonts from the code into `designs/out/` (see `designs/`), to
+be published from there. The
 visual references in `testdata/visual/` are the pictures to check a card or a
 board against.
