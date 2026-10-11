@@ -18,10 +18,10 @@ These hold in every phase, whatever the pressure.
    no telemetry, no analytics, no crash reporting. Nothing about a user or
    their work reaches anyone operating this project, ever. Network calls happen
    only where the user configured or triggered them: an LLM endpoint they
-   chose, local or hosted, with credentials they supplied; and the update
-   check, which fetches public release metadata, sends no user data and
-   carries no identifier. If a feature would require a server we run, stop and
-   raise it.
+   chose, local or hosted, with credentials they supplied. Bava never checks
+   for updates itself: it ships only through the App Store, the Microsoft
+   Store and Flathub, which update it. If a feature would require a server we
+   run, stop and raise it.
 2. **Files are the source of truth.** Work product (diagrams and documents)
    is plain text on disk that a user can read, edit and diff in any editor,
    and lose nothing if Bava disappears. No database, no proprietary container,

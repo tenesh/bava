@@ -236,7 +236,7 @@ Catch yourself thinking any of these and stop. The thought is the signal.
 | "Should pass now" / "seems fine" | Run the command. Confidence is not evidence. |
 | "The spec is unclear, I'll pick something sensible" | Raise it. Improvised behavior becomes the de facto spec. |
 | "I'll make the canvas a Svelte component, it's cleaner" | It is the documented performance trap. Read the architecture rule. |
-| "Just a small call to a service of ours" | No service of ours, no telemetry. Network only where the user configured or triggered it, and the update check of public release metadata. A non-negotiable, not a preference. |
+| "Just a small call to a service of ours" | No service of ours, no telemetry. Network only where the user configured or triggered it; no update check, the stores update Bava. A non-negotiable, not a preference. |
 | "I'll store that in localStorage for now" | Document state lives in files. Always. |
 | "I'll hardcode this colour for now" | Tokens only. "For now" survives to release. |
 | "I'll set z-index: 9999 on it" | Named `--z-*` layers only. Raw z-index is how the stacking got broken elsewhere. |

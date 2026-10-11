@@ -17,10 +17,10 @@ Check every item. **Absence of evidence is a finding, not a pass.**
   disabled-by-default flag. Nothing about a user or their work reaches anyone
   operating this project.
 - **Network only where the user configured or triggered it:** the LLM
-  endpoint they chose, local or hosted, with credentials they supplied; the
-  update check, which fetches public release metadata and sends no user data
-  or identifier; and fetching a web page, card, image or video the user put
-  in a page. Grep for `http.Get`, `http.Post`, `net/http` clients, `fetch(`,
+  endpoint they chose, local or hosted, with credentials they supplied; and
+  fetching a web page, card, image or video the user put in a page. There
+  is no update check: the stores update Bava, so any call that looks for a
+  new version is a finding. Grep for `http.Get`, `http.Post`, `net/http` clients, `fetch(`,
   `XMLHttpRequest`, `axios` and any hardcoded URL, and trace each call to one
   of these.
 - **Credentials go to the OS secret store**, never to a file, config or

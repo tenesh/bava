@@ -798,10 +798,11 @@ install it".
 **Scope:** First-run experience (no account, no network): choosing a theme,
 alongside 8.1's start screen, which already opens a folder or makes a New
 Space. The About screen rendering `NOTICE`, which is a licence
-obligation and not decoration. The in-app updater: available, release notes,
-downloading, restart to apply, failed. Signature verification before anything
-is applied. Auto-check as a setting that genuinely turns off. Packaging for
-macOS, Linux and Windows.
+obligation and not decoration. Packaging for the three stores Bava ships
+through, and only them (decided 2026-10-11): the Mac App Store, the
+Microsoft Store and Flathub. Each store updates the app, so Bava has no
+updater and no update check of its own; the in-app updater once planned
+here is dropped.
 
 **Installer branding, carried from Milestone 5.7:** the DMG's file icon
 (`build/darwin/dmg-file-icon.*`) and background (`dmg-background.png`) are
@@ -832,13 +833,11 @@ link.
 **Exit criterion:**
 
 ```sh
-go test ./internal/update/... -v && go test ./internal/... . \
-  && gh run list --workflow=ci.yml --limit 1
+go test ./internal/... . && gh run list --workflow=ci.yml --limit 1
 ```
 
-green, with a test pinning the update request's shape (no identifier, no
-version in a query parameter, no user data) and a CI matrix result rather than
-a local build.
+green, with a store build for each of the three made on CI rather than
+locally.
 
 **Depends on:** Milestone 3 (settings shell), and everything it ships.
 
