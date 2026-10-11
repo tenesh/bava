@@ -34,7 +34,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Wails v3 defaults to GTK4 + WebKitGTK 6.0 on Linux. The GTK3 variant
       # exists but is opt-in behind a `gtk3` build tag; see the cgo tags in
@@ -53,14 +53,14 @@ jobs:
           pkg-config --exists gtk4 webkitgtk-6.0 libsoup-3.0 gio-unix-2.0 \
             || { echo "::error::required pkg-config packages missing after install"; exit 1; }
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           # Follows the go directive rather than pinning a second version that
           # can drift away from it.
           go-version-file: go.mod
           cache: true
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -124,7 +124,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Wails v3 defaults to GTK4 + WebKitGTK 6.0 on Linux. The GTK3 variant
       # exists but is opt-in behind a `gtk3` build tag; see the cgo tags in
@@ -143,12 +143,12 @@ jobs:
           pkg-config --exists gtk4 webkitgtk-6.0 libsoup-3.0 gio-unix-2.0 \
             || { echo "::error::required pkg-config packages missing after install"; exit 1; }
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -181,7 +181,7 @@ jobs:
           echo "APP_NAME=$name" >> "$GITHUB_ENV"
 
       - name: upload the app
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.APP_NAME }}
           path: |
@@ -201,14 +201,14 @@ jobs:
     runs-on: ubuntu-24.04-arm
     needs: test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: npm run browser
         run: tests/scripts/browser.sh
 
       - name: upload results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: browser-test-results
           path: frontend/tests/.results/
@@ -228,7 +228,7 @@ jobs:
     env:
       VITE_BAVA_E2E: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Linux webview dependencies and a virtual screen
         if: runner.os == 'Linux'
@@ -255,12 +255,12 @@ jobs:
             sudo sqlite3 "$db" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier, flags) VALUES ('kTCCServiceScreenCapture', '/usr/sbin/screencapture', 1, 2, 4, 1, 'UNUSED', 0);" || true
           done
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -303,7 +303,7 @@ jobs:
 
       - name: upload screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smoke-${{ matrix.os }}
           path: ${{ runner.temp }}/smoke-out/
@@ -319,14 +319,14 @@ jobs:
     env:
       VITE_BAVA_E2E: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -360,7 +360,7 @@ jobs:
 
       - name: upload what the sandboxed walks left
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sandbox-macos
           path: |
@@ -376,8 +376,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
