@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -41,10 +42,16 @@ func smokeRun(_ func() *application.App, closeSession func()) (application.Servi
 	// A package the system starts gets no environment: the walk is named in
 	// a file in the home, and runs as it does in a sandbox.
 	if name == "" {
-		if home, err := os.UserHomeDir(); err == nil {
+		home, err := os.UserHomeDir()
+		if err == nil {
 			if from, ok := e2e.RunFile(home); ok {
 				name, sandboxed = from, true
+			} else {
+				_, err = os.Stat(filepath.Join(home, ".bava-e2e"))
 			}
+		}
+		if name == "" {
+			stop("no walk named", fmt.Errorf("home %q, user %q: %v", home, os.Getenv("USERNAME"), err))
 		}
 	}
 	if sandboxed {
