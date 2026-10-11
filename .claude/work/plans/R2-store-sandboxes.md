@@ -69,8 +69,10 @@ it), `docs/file-format.md` (where `access.json` lives), `docs/ipc.md`.
 **Files:** `build/darwin/entitlements.plist` (App Sandbox, user-selected
 files read-write, app-scoped bookmarks), the CI workflow (a sandboxed job
 per system), `tests/e2e` (scratch folders the sandbox may reach).
-- [ ] macOS: the end-to-end build, ad-hoc signed with the sandbox
-  entitlements, runs the walks
+- [x] macOS: the end-to-end build, ad-hoc signed with the sandbox
+  entitlements, runs the walks (green 2026-10-11, run 38122540515, after
+  Bava learned to keep its temporary files in the container and to know
+  the sandbox by its container home)
 - [ ] Windows: a self-signed MSIX of it, installed, runs the walks
 - [ ] Linux: a test-only manifest (`tests/flatpak/bava-ci.yml`, ID
   `com.tharabyte.bava.Devel`, never submitted) builds a Flatpak of it that
