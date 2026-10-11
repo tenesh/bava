@@ -436,6 +436,8 @@ jobs:
             Set-Content -NoNewline "$env:USERPROFILE\.bava-e2e" $scenario
             Start-Process "shell:AppsFolder\$($package.PackageFamilyName)!com.tharabyte.bava"
             Start-Sleep -Seconds 5
+            $running = Get-Process bava -ErrorAction SilentlyContinue
+            Write-Host "$scenario`: bava running after 5s: $([bool]$running)"
             $deadline = (Get-Date).AddMinutes(4)
             while ((Get-Process bava -ErrorAction SilentlyContinue) -and ((Get-Date) -lt $deadline)) { Start-Sleep -Seconds 2 }
             Get-Process bava -ErrorAction SilentlyContinue | Stop-Process -Force
@@ -445,6 +447,13 @@ jobs:
             if (-not ((Get-Content $result -First 1) -like 'PASS*')) { Write-Host "::error::$scenario failed in the package"; $failed = 1 }
           }
           Remove-Item "$env:USERPROFILE\.bava-e2e" -ErrorAction SilentlyContinue
+          # What Windows said about starting the package, and what Bava logged
+          # in the package's own storage.
+          Get-WinEvent -LogName 'Microsoft-Windows-AppModel-Runtime/Admin' -MaxEvents 15 -ErrorAction SilentlyContinue | Format-List TimeCreated, Id, Message
+          $cache = "$env:LOCALAPPDATA\Packages\$($package.PackageFamilyName)\LocalCache"
+          Get-ChildItem -Recurse $cache -ErrorAction SilentlyContinue | Select-Object -First 40 FullName
+          New-Item -ItemType Directory -Force "$env:USERPROFILE\smoke-out\package-cache" | Out-Null
+          Copy-Item -Recurse "$cache\*" "$env:USERPROFILE\smoke-out\package-cache" -ErrorAction SilentlyContinue
           exit $failed
 
       - name: upload what the packaged walks left
