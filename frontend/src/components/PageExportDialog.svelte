@@ -8,16 +8,14 @@
    * choices while open, and reports the export asked for.
    */
   import Dialog from './Dialog.svelte';
-  import NumberField from './NumberField.svelte';
+  import PdfOptions from './PdfOptions.svelte';
   import PdfPreview from './PdfPreview.svelte';
   import Progress from './Progress.svelte';
   import Segments from './Segments.svelte';
-  import Select from './Select.svelte';
-  import Toggle from './Toggle.svelte';
   import ZipContents from './ZipContents.svelte';
   import { t } from '../i18n/t';
   import { zipSummary } from '../files/zip-preview';
-  import { A4_MM, MARGINS, PAPERS, UNIT_STEP, inUnit, pageSetup, type Include, type MarginName, type PageSetup, type Paper, type PdfChoices, type Unit } from '../files/export-pdf';
+  import { pageSetup, startingSettings, type Include, type PageSetup, type Paper, type PdfChoices, type PdfSettings } from '../files/export-pdf';
   import type { ZipFile } from '../files/space.svelte';
 
   type Format = 'pdf' | 'zip';
@@ -53,32 +51,12 @@
   // svelte-ignore state_referenced_locally
   let format = $state<Format>(formats[0] ?? 'zip');
   // svelte-ignore state_referenced_locally
-  let choices = $state<PdfChoices>({
-    paper,
-    custom: { width: A4_MM.width, height: A4_MM.height },
-    unit: 'mm',
-    landscape: false,
-    margins: 'normal',
-    customMargins: { top: MARGINS.normal, right: MARGINS.normal, bottom: MARGINS.normal, left: MARGINS.normal },
-    ...initial,
-  });
+  let settings = $state<PdfSettings>(startingSettings(paper, initial));
 
-  /** A unit chosen: Custom's sizes and margins are kept, written in it. */
-  function setUnit(next: Unit) {
-    if (next === choices.unit) return;
-    const convert = (n: number) => Math.round(inUnit(n, choices.unit, next) * 100) / 100;
-    choices.custom = { width: convert(choices.custom.width), height: convert(choices.custom.height) };
-    const m = choices.customMargins;
-    choices.customMargins = { top: convert(m.top), right: convert(m.right), bottom: convert(m.bottom), left: convert(m.left) };
-    choices.unit = next;
-  }
   // Set from the page once it is drawn, unless chosen before.
   let chosenInclude = $state<Include | null>(null);
   const include = $derived(chosenInclude ?? pdf?.include ?? 'document');
-  let dark = $state(false);
-  let numbers = $state(false);
-
-  const made = $derived(pageSetup(choices));
+  const made = $derived(pageSetup(settings.choices));
   const zipReady = $derived(plan !== null && !plan.error);
 
   function close() {
@@ -86,9 +64,6 @@
     onClose();
   }
 
-  const paperOptions = PAPERS.map((paper) => ({ value: paper, label: paper === 'Custom' ? t('export.pdf.custom') : paper }));
-  const marginOptions = (['none', 'narrow', 'normal', 'wide', 'custom'] as MarginName[]).map((name) => ({ value: name, label: t(`export.pdf.margins.${name}`) }));
-  const sides = ['top', 'right', 'bottom', 'left'] as const;
 </script>
 
 {#snippet footer()}
@@ -101,7 +76,7 @@
   {#if format === 'zip'}
     <button type="button" class="bava-button primary" disabled={!zipReady} onclick={() => onExport()}>{t('export.zip')}</button>
   {:else}
-    <button type="button" class="bava-button primary" disabled={made.problem !== '' || !pdf} onclick={() => onExportPdf({ setup: made.setup, include, dark, numbers })}>{t('export.pdf')}</button>
+    <button type="button" class="bava-button primary" disabled={made.problem !== '' || !pdf} onclick={() => onExportPdf({ setup: made.setup, include, dark: settings.dark, numbers: settings.numbers })}>{t('export.pdf')}</button>
   {/if}
 {/snippet}
 
@@ -109,7 +84,7 @@
   <div class="bava-page-export">
     {#if format === 'pdf'}
       {#if pdf}
-        <PdfPreview page={pdf.page} canvas={pdf.canvas} {include} setup={made.setup} {dark} />
+        <PdfPreview page={pdf.page} canvas={pdf.canvas} {include} setup={made.setup} dark={settings.dark} />
       {:else}
         <div class="drawing"><Progress value={null} label={t('export.pdf.drawing')} /></div>
       {/if}
@@ -127,66 +102,7 @@
             <Segments label={t('export.pdf.include')} value={include} options={pdf.offered.map((part) => ({ value: part, label: t(`export.pdf.${part}`) }))} onValueChange={(next) => (chosenInclude = next)} />
           </div>
         {/if}
-        <div class="row">
-          <span class="row-label">{t('export.pdf.paper')}</span>
-          <Select label={t('export.pdf.paper')} value={choices.paper} options={paperOptions} onValueChange={(next) => (choices.paper = next)} />
-        </div>
-        {#if choices.paper === 'Custom'}
-          <div class="pair">
-            <div class="field">
-              <span class="caption" aria-hidden="true">{t('export.pdf.width')}</span>
-              <NumberField label={t('export.pdf.width')} value={choices.custom.width} onValueChange={(n) => (choices.custom.width = n)} />
-            </div>
-            <div class="field">
-              <span class="caption" aria-hidden="true">{t('export.pdf.height')}</span>
-              <NumberField label={t('export.pdf.height')} value={choices.custom.height} onValueChange={(n) => (choices.custom.height = n)} />
-            </div>
-          </div>
-        {/if}
-        <div class="row">
-          <span class="row-label">{t('export.pdf.orientation')}</span>
-          <Segments
-            label={t('export.pdf.orientation')}
-            value={choices.landscape ? 'landscape' : 'portrait'}
-            options={[{ value: 'portrait', label: t('export.pdf.portrait') }, { value: 'landscape', label: t('export.pdf.landscape') }]}
-            onValueChange={(next) => (choices.landscape = next === 'landscape')}
-          />
-        </div>
-        <div class="row">
-          <span class="row-label">{t('export.pdf.margins')}</span>
-          <Select label={t('export.pdf.margins')} value={choices.margins} options={marginOptions} onValueChange={(next) => (choices.margins = next)} />
-        </div>
-        {#if choices.margins === 'custom'}
-          <div class="pair">
-            {#each sides as side (side)}
-              <div class="field">
-                <span class="caption" aria-hidden="true">{t(`export.pdf.${side}`)}</span>
-                <NumberField label={t(`export.pdf.${side}`)} value={choices.customMargins[side]} step={UNIT_STEP[choices.unit]} onValueChange={(n) => (choices.customMargins[side] = n)} />
-              </div>
-            {/each}
-          </div>
-        {/if}
-        {#if choices.paper === 'Custom' || choices.margins === 'custom'}
-          <div class="row">
-            <span class="row-label">{t('export.pdf.unit')}</span>
-            <Segments
-              label={t('export.pdf.unit')}
-              value={choices.unit}
-              options={(['mm', 'in'] as Unit[]).map((unit) => ({ value: unit, label: t(`export.pdf.${unit}`) }))}
-              onValueChange={setUnit}
-            />
-          </div>
-        {/if}
-        <div class="row">
-          <span class="row-label">{t('export.pdf.theme')}</span>
-          <Segments
-            label={t('export.pdf.theme')}
-            value={dark ? 'dark' : 'light'}
-            options={[{ value: 'light', label: t('export.pdf.light') }, { value: 'dark', label: t('export.pdf.dark') }]}
-            onValueChange={(next) => (dark = next === 'dark')}
-          />
-        </div>
-        <Toggle label={t('export.pdf.numbers')} checked={numbers} variant="row" onChange={(next) => (numbers = next)} />
+        <PdfOptions bind:settings />
       {:else}
         <p class="hint">{t('export.zipNote')}</p>
       {/if}
@@ -219,29 +135,11 @@
     color: var(--color-text-secondary);
   }
 
-  .pair {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-2);
-  }
-
   .drawing {
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: var(--size-export-preview);
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    min-width: 0;
-  }
-
-  .caption {
-    font-size: var(--text-note);
-    color: var(--color-text-muted);
   }
 
   .hint {

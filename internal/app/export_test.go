@@ -158,3 +158,39 @@ func TestAFailedPrintComesBackWithACode(t *testing.T) {
 		t.Errorf("problem = %+v; want failed and a message", p)
 	}
 }
+
+func TestASpacesPDFIsWritten(t *testing.T) {
+	service, root, _ := pdfExport(t)
+	out := filepath.Join(t.TempDir(), "Acme.pdf")
+	req := export.SpaceRequest{Setup: a4, Title: "Acme", Entries: []export.SpaceEntry{{Entry: export.Entry{Title: "Roadmap"}, Path: "Roadmap.md", Document: &export.Page{HTML: "<p>x</p>"}}}}
+	if r := service.SpacePDF(root, req, out); r != (app.SpacePDFResult{}) {
+		t.Fatal(r)
+	}
+	if _, err := os.Stat(out); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A page that cannot be printed comes back named, with a code.
+func TestASpacesPDFNamesThePageThatFailed(t *testing.T) {
+	root := t.TempDir()
+	folders := app.NewOpenedFolders()
+	folders.Allow(root)
+	service := app.NewExportService(app.ExportServiceOptions{Folders: folders, Print: func(html string, _ pdfprint.PageSetup, out string) error {
+		if strings.Contains(html, "jam") {
+			return os.ErrPermission
+		}
+		return os.WriteFile(out, testutil.BlankPDF(1, 210, 297), 0o644)
+	}})
+	req := export.SpaceRequest{Setup: a4, Title: "Acme", Entries: []export.SpaceEntry{
+		{Entry: export.Entry{Title: "Roadmap"}, Path: "Roadmap.md", Document: &export.Page{HTML: "<p>x</p>"}},
+		{Entry: export.Entry{Title: "Plan"}, Path: "Plan.md", Document: &export.Page{HTML: "<p>jam</p>"}},
+	}}
+	r := service.SpacePDF(root, req, filepath.Join(t.TempDir(), "x.pdf"))
+	if r.Code != "page" || r.Page != "Plan.md" || r.Error == "" {
+		t.Errorf("result = %+v; want the page named", r)
+	}
+	if r := service.SpacePDF(t.TempDir(), req, filepath.Join(t.TempDir(), "x.pdf")); r.Code != "notOpened" {
+		t.Errorf("a folder not opened: %+v", r)
+	}
+}

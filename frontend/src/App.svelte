@@ -31,12 +31,13 @@
   import PageExportDialog from './components/PageExportDialog.svelte';
   import SpaceExportDialog from './components/SpaceExportDialog.svelte';
   import { attachmentsFor, zipName } from './files/export-zip';
-  import { defaultPaper, includeChoice, pdfName, type Include } from './files/export-pdf';
+  import { defaultPaper, includeChoice, pdfName, spaceEntries, type Include } from './files/export-pdf';
   import { pageCss, renderPage } from './docs/print-page';
-  import { pageWidth } from './docs/page-settings';
+  import { pageWidth, type PageWidth } from './docs/page-settings';
   import { pagePicture, type PagePicture } from './canvas/export/page-picture';
   import { withTheme } from './canvas/export/theme';
   import type { PdfExport } from './components/PageExportDialog.svelte';
+  import type { SpacePdfExport } from './components/SpaceExportDialog.svelte';
   import type { ZipFile, ZipScope } from './files/space.svelte';
   import { base64 } from './canvas/export/fonts';
   import { framePicture } from './canvas/export/frame-picture';
@@ -1526,7 +1527,12 @@
     pdf?: PagePdf | null;
     /** A page outside a Space: a PDF alone, of the page at this file. */
     loose?: string;
+    /** A folder's or the Space's PDF: its first page, for the preview. */
+    preview?: SpacePreview | null;
+    /** How far its pages are drawn, once Export PDF is pressed. */
+    drawing?: { done: number; total: number } | null;
   };
+  type SpacePreview = { page: { html: string; css: string; widthPx: number } | null; canvas: null };
   let zipExport = $state<ZipExport | null>(null);
 
   /**
@@ -1594,14 +1600,15 @@
     if (doc.dirty && !(await savedBeforeExport())) return;
     const pages = (await space.index(false)) ?? [];
     const folders = [...new Set(pages.flatMap((p) => p.path.split('/').slice(0, -1).map((_, i, parts) => parts.slice(0, i + 1).join('/'))))].sort();
-    zipExport = { kind: 'space', page: '', target: folder, folders, plan: null };
-    await planZip();
+    zipExport = { kind: 'space', page: '', target: folder, folders, plan: null, preview: null };
+    await Promise.all([planZip(), prepareSpacePreview()]);
   }
 
   async function chooseZipTarget(folder: string) {
     if (!zipExport) return;
-    zipExport = { ...zipExport, target: folder, plan: null };
-    await planZip();
+    // A drawing under way stops: it was for the folder chosen before.
+    zipExport = { ...zipExport, target: folder, plan: null, preview: null, drawing: null };
+    await Promise.all([planZip(), prepareSpacePreview()]);
   }
 
   /** The save dialog, then the zip written where it was asked. */
@@ -1641,32 +1648,136 @@
     if (!e) return;
     const file = e.loose ?? (space.root ? space.absolute(e.page) : null);
     if (!file) return;
-    const open = file === doc.path;
     try {
-      let markdown = docPane?.currentMarkdown() ?? '';
-      let scene: SceneData = history.current;
-      if (!open) {
-        const read = await FileService.Open(file);
-        if (read.error && !read.source) throw new Error(read.error);
-        markdown = read.source;
-        scene = { elements: (read.scene.elements ?? []) as unknown as SceneElement[] };
-      }
+      const read = await readForPdf(file);
       const place = e.loose ? (mediaPlace ?? { root: '', here: '' }) : { root: space.root ?? '', here: e.page };
-      const runs = open ? codeRuns.all() : await (async () => {
-        const own = createCodeRuns();
-        await own.update(scene);
-        return own.all();
-      })();
       const [page, canvas] = await Promise.all([
-        renderPage(markdown, { place, width: (own) => pageWidth(own, space.pageWidth, settingsState.pageWidth) }),
-        pagePicture(scene, { theme: theme.resolved, codeRuns: runs, monoAdvance: codeMetrics().advance, fonts: canvasFonts() }),
+        renderPage(read.markdown, { place, width: widthOf }),
+        pagePicture(read.scene, { theme: theme.resolved, codeRuns: read.runs, monoAdvance: codeMetrics().advance, fonts: canvasFonts() }),
       ]);
-      const { offered, initial: include } = includeChoice(canvas !== null, open ? view.mode : 'document');
-      const pdf: PagePdf = { offered, include, page: { ...page, css: pageCss() }, canvas, root: place.root, scene, runs };
+      const { offered, initial: include } = includeChoice(canvas !== null, read.open ? view.mode : 'document');
+      const pdf: PagePdf = { offered, include, page: { ...page, css: pageCss() }, canvas, root: place.root, scene: read.scene, runs: read.runs };
       if (zipExport && sameExport(zipExport, e)) zipExport = { ...zipExport, pdf };
     } catch (error) {
       void report(error, 'export-pdf');
       if (zipExport && sameExport(zipExport, e)) notify(t('export.pdf.failed'));
+    }
+  }
+
+  /** A page's width in Bava, from its own setting, its Space's, the app's. */
+  const widthOf = (own: PageWidth | undefined) => pageWidth(own, space.pageWidth, settingsState.pageWidth);
+
+  /**
+   * A page for its PDF: its Markdown and Canvas as they are now when it is
+   * the open page, else as saved; its code coloured on its own.
+   */
+  async function readForPdf(file: string): Promise<{ markdown: string; scene: SceneData; runs: Record<string, Run[][]>; open: boolean }> {
+    if (file === doc.path) return { markdown: docPane?.currentMarkdown() ?? '', scene: history.current, runs: codeRuns.all(), open: true };
+    const read = await FileService.Open(file);
+    // A canvas block that cannot be read still leaves the page's words.
+    if (read.error && !read.source) throw new Error(read.error);
+    const scene = { elements: (read.scene.elements ?? []) as unknown as SceneElement[] };
+    const own = createCodeRuns();
+    await own.update(scene);
+    return { markdown: read.source, scene, runs: own.all(), open: false };
+  }
+
+  // ---- export a folder or the Space as one PDF -------------------------------
+
+  /** The pages the Space export would print, in the Files tree's order. */
+  async function spacePages(): Promise<string[]> {
+    return ((await space.index(false)) ?? []).map((p) => p.path);
+  }
+
+  /** Draws the first page of the folder or Space being exported, for the preview. */
+  async function prepareSpacePreview() {
+    const e = zipExport;
+    if (!e || e.kind !== 'space' || !space.root) return;
+    const first = spaceEntries(await spacePages(), e.target).find((entry) => !entry.folder);
+    try {
+      let preview: SpacePreview = { page: null, canvas: null };
+      if (first) {
+        const read = await readForPdf(space.absolute(first.path));
+        const page = await renderPage(read.markdown, { place: { root: space.root, here: first.path }, width: widthOf });
+        preview = { page: { ...page, css: pageCss() }, canvas: null };
+      }
+      if (zipExport && sameExport(zipExport, e)) zipExport = { ...zipExport, preview };
+    } catch (error) {
+      void report(error, 'export-pdf');
+      if (zipExport && sameExport(zipExport, e)) zipExport = { ...zipExport, preview: { page: null, canvas: null } };
+    }
+  }
+
+  /**
+   * The save dialog, then every page drawn in turn, saying how far, and the
+   * whole printed by Go as one PDF. Closing the dialog stops the drawing; a
+   * page that cannot be read or drawn stops it too, and says which.
+   */
+  async function writeSpacePdf(choice: SpacePdfExport) {
+    const e = zipExport;
+    const root = space.root;
+    if (!e || e.kind !== 'space' || !root) return;
+    const title = e.target ? (e.target.split('/').pop() ?? e.target) : space.name;
+    const chosen = (await FileService.ChooseFileToSave(`${title}.pdf`)).path;
+    if (!chosen) return;
+    const entries = spaceEntries(await spacePages(), e.target);
+    const pages = entries.filter((entry) => !entry.folder);
+    const themed = choice.dark ? 'dark' : 'light';
+    const still = () => zipExport !== null && sameExport(zipExport, e);
+    // Each page as drawn, by path; the styles go once, with the request.
+    const drawn: Record<string, { document: { html: string; css: string; widthPx: number }; canvas: PagePicture | null }> = {};
+    for (const [i, entry] of pages.entries()) {
+      if (!still()) return;
+      zipExport = { ...zipExport!, drawing: { done: i + 1, total: pages.length } };
+      try {
+        const read = await readForPdf(space.absolute(entry.path));
+        const [page, canvas] = await Promise.all([
+          renderPage(read.markdown, { place: { root, here: entry.path }, width: widthOf }),
+          pagePicture(read.scene, { theme: themed, codeRuns: read.runs, monoAdvance: codeMetrics().advance, fonts: canvasFonts() }),
+        ]);
+        drawn[entry.path] = { document: { ...page, css: '' }, canvas };
+      } catch (error) {
+        void report(error, 'export-pdf');
+        if (still()) zipExport = { ...zipExport!, drawing: null };
+        notify(t('export.pdf.pageUnreadable').replace('{name}', entry.title));
+        return;
+      }
+    }
+    if (!still()) return;
+    const name = chosen.replace(/^.*[\\/]/, '');
+    zipExport = null;
+    notify(t('export.pdf.printing').replace('{name}', name));
+    const colours = withTheme(themed, (read) => ({ paper: read('--color-surface'), text: read('--color-text-primary'), ink: read('--color-text-muted') }));
+    try {
+      const result = await ExportService.SpacePDF(
+        root,
+        {
+          setup: { ...choice.setup, paper: choice.setup.paper as BoundPaper },
+          title,
+          css: pageCss(),
+          entries: entries.map((entry) => ({ ...entry, document: drawn[entry.path]?.document ?? null, canvas: drawn[entry.path]?.canvas ?? null })),
+          dark: choice.dark,
+          paper: colours.paper.trim(),
+          text: colours.text.trim(),
+          ink: colours.ink.trim(),
+          numbers: choice.numbers,
+        },
+        chosen,
+      );
+      if (result.code === 'page') {
+        void report(new Error(result.error), 'export-pdf');
+        const why = result.error.split(`${result.page}: `).slice(1).join(`${result.page}: `) || result.error;
+        notify(t('export.pdf.pageFailed').replace('{name}', result.page.replace(/^.*\//, '').replace(/\.md$/i, '')).replace('{why}', why));
+        return;
+      }
+      if (result.error) {
+        notify(pdfMessage(result));
+        return;
+      }
+      notify(t('export.done').replace('{name}', name));
+    } catch (error) {
+      void report(error, 'export-pdf');
+      notify(t('export.pdf.failed'));
     }
   }
 
@@ -1715,6 +1826,7 @@
     if (problem.code === 'notOpened') return t('export.pdf.notOpened');
     if (problem.code === 'unavailable') return t('export.pdf.unavailable');
     if (problem.code === 'setup') return t('export.pdf.noRoom');
+    if (problem.code === 'nothing') return t('export.pdf.nothing');
     void report(new Error(problem.error), 'export-pdf');
     return t('export.pdf.failed');
   }
@@ -3455,8 +3567,13 @@
     folders={zipExport.folders}
     target={zipExport.target}
     plan={zipExport.plan}
+    formats={['pdf', 'zip']}
+    paper={defaultPaper(navigator.language)}
+    pdf={zipExport.preview ?? null}
+    drawing={zipExport.drawing ?? null}
     onTarget={(folder) => void chooseZipTarget(folder)}
     onExport={() => void writeZip()}
+    onExportPdf={(choice) => void writeSpacePdf(choice)}
     onClose={() => (zipExport = null)}
   />
 {/if}

@@ -69,6 +69,12 @@ export type Faults = {
   settingsSaveFails: boolean;
   /** A folder listed with rows the Files pane cannot draw: its folders' names cannot be written out. */
   undrawable: string | null;
+  /** A page, by its path in the Space, that cannot be opened. */
+  unreadable: string | null;
+  /** How long each page takes to open, in milliseconds. */
+  slowOpen: number;
+  /** A page, by its path in the Space, the system's printing fails on. */
+  unprintable: string | null;
 };
 
 /** The one D2 complaint the stand-in knows: a map opened and never closed, as D2 words it. */
@@ -82,7 +88,7 @@ function d2Errors(source: string) {
 
 export function createFakes(first: FakeSpace = seedSpace()) {
   const spaces = new Map<string, FakeSpace>([[first.root, first]]);
-  const faults: Faults = { changedOnDisk: false, saveFails: false, settingsSaveFails: false, undrawable: null };
+  const faults: Faults = { changedOnDisk: false, saveFails: false, settingsSaveFails: false, undrawable: null, unreadable: null, slowOpen: 0, unprintable: null };
   let settings = {
     debounceMs: 250,
     layoutEngine: 'tala',
@@ -330,10 +336,13 @@ export function createFakes(first: FakeSpace = seedSpace()) {
   const pdfs: { root: string; out: string; request: { document: unknown; canvas: unknown; setup: unknown; dark: boolean; numbers: boolean } }[] = [];
   // A page on its own, in no Space, and what Open File's picker answers.
   const loose: Record<string, FakePage> = { [`${PARENT}/Notes.md`]: { source: '# Notes\n\nA page kept on its own, in no Space.\n', scene: { version: 1, elements: [] } } };
+  // The Space and folder PDFs asked for.
+  const spacePdfs: { root: string; out: string; request: { title: string; entries: { title: string; path: string; folder: boolean; document: unknown; canvas: unknown }[] } }[] = [];
   const harness = {
     exports,
     zips,
     pdfs,
+    spacePdfs,
     faults,
     /** The settings as last saved, for a test to read what a control changed. */
     settings: () => ({ ...settings }),
@@ -501,7 +510,8 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       async Open(path: string) {
         if (path in loose) return { path, source: loose[path].source, diagrams: null, scene: structuredClone(loose[path].scene), stamp, error: '' };
         const found = pageAt(path);
-        if (!found) return { path, source: '', diagrams: null, scene: { version: 1, elements: [] }, stamp, error: `open ${path}: no such file` };
+        if (faults.slowOpen) await new Promise((resolve) => setTimeout(resolve, faults.slowOpen));
+        if (!found || found.rel === faults.unreadable) return { path, source: '', diagrams: null, scene: { version: 1, elements: [] }, stamp, error: `open ${path}: no such file` };
         const page = found.space.pages[found.rel];
         return { path, source: page.source, diagrams: null, scene: structuredClone(page.scene), stamp, error: '' };
       },
@@ -573,6 +583,13 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         if (!request.document && !request.canvas) return { error: 'a PDF needs the Document, the Canvas or both', code: 'nothing' };
         pdfs.push({ root, out, request });
         return { error: '', code: '' };
+      },
+      async SpacePDF(root: string, request: (typeof spacePdfs)[number]['request'], out: string) {
+        if (!request.entries.some((e) => !e.folder)) return { error: 'a PDF needs a page', code: 'nothing', page: '' };
+        const jammed = request.entries.find((e) => e.path === faults.unprintable);
+        if (jammed) return { error: `export: ${jammed.path}: print the Document: the printer jammed`, code: 'page', page: jammed.path };
+        spacePdfs.push({ root, out, request });
+        return { error: '', code: '', page: '' };
       },
     },
     MenuService: {

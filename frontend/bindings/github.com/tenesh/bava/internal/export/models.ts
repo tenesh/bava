@@ -49,3 +49,33 @@ export interface Request {
     "document": Page | null;
     "canvas": Canvas | null;
 }
+
+/**
+ * SpaceEntry is one entry of a folder's or the Space's PDF, in the Files
+ * tree's order: a folder, or a page with its Document and, when it holds
+ * something, its Canvas.
+ */
+export interface SpaceEntry {
+    "title": string;
+    "depth": number;
+    "folder": boolean;
+    "path": string;
+    "document": Page | null;
+    "canvas": Canvas | null;
+}
+
+/**
+ * SpaceRequest is a folder's or the Space's PDF: its title, its entries,
+ * the styles every page is drawn with, and how it is printed.
+ */
+export interface SpaceRequest {
+    "setup": pdfprint$0.PageSetup;
+    "title": string;
+    "css": string;
+    "entries": SpaceEntry[] | null;
+    "dark": boolean;
+    "paper": string;
+    "text": string;
+    "ink": string;
+    "numbers": boolean;
+}

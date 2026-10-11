@@ -66,3 +66,36 @@ describe('closing an export dialog', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 });
+
+describe('SpaceExportDialog as a PDF', () => {
+  const item = (text: string) => [...document.querySelectorAll<HTMLElement>('[data-part="item"]')].find((el) => (el.textContent ?? '').trim() === text);
+  const pdf = { page: { html: '<div class="bava-print"><h1>Roadmap</h1></div>', css: '', widthPx: 640 }, canvas: null };
+
+  it('starts on PDF and reports the setup, the theme and numbers', async () => {
+    const onExportPdf = vi.fn();
+    render(SpaceExportDialog, { open: true, spaceName: 'Acme Product', folders: [], target: '', plan, onTarget: vi.fn(), onExport: vi.fn(), formats: ['pdf', 'zip'], paper: 'Letter', pdf, onExportPdf });
+    await vi.waitFor(() => expect(dialog()).not.toBeNull());
+    expect(dialog().querySelector('[data-name="Paper"] .bava-select-trigger')?.textContent?.trim()).toBe('Letter');
+    item('Dark')!.click();
+    await vi.waitFor(() => expect(item('Dark')?.hasAttribute('data-state') && item('Dark')?.getAttribute('data-state')).toBe('checked'));
+    button('Export PDF')!.click();
+    expect(onExportPdf).toHaveBeenCalledWith(expect.objectContaining({ dark: true, numbers: false, setup: expect.objectContaining({ paper: 'Letter' }) }));
+  });
+
+  it('says how far the drawing has gone, and offers no second export meanwhile', async () => {
+    render(SpaceExportDialog, { open: true, spaceName: 'Acme Product', folders: [], target: '', plan, onTarget: vi.fn(), onExport: vi.fn(), formats: ['pdf', 'zip'], pdf, drawing: { done: 3, total: 12 }, onExportPdf: vi.fn() });
+    await vi.waitFor(() => expect(dialog()).not.toBeNull());
+    expect(dialog().textContent).toContain('Drawing 3 of 12');
+    expect(button('Export PDF')?.disabled).toBe(true);
+  });
+
+  it('still exports a zip', async () => {
+    const onExport = vi.fn();
+    render(SpaceExportDialog, { open: true, spaceName: 'Acme Product', folders: [], target: '', plan, onTarget: vi.fn(), onExport, formats: ['pdf', 'zip'], pdf, onExportPdf: vi.fn() });
+    await vi.waitFor(() => expect(dialog()).not.toBeNull());
+    item('Markdown zip')!.click();
+    await vi.waitFor(() => expect(button('Export zip')).toBeDefined());
+    button('Export zip')!.click();
+    expect(onExport).toHaveBeenCalledOnce();
+  });
+});

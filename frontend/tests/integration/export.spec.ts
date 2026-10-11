@@ -12,6 +12,10 @@ const spaceDialog = (page: Page) => page.getByRole('dialog', { name: 'Export Spa
 const asZip = (page: Page) => pageDialog(page).locator('[data-part="item"]', { hasText: 'Markdown zip' }).click();
 
 type Pdf = { root: string; out: string; request: { document: { html: string; widthPx: number } | null; canvas: { svg: string } | null; setup: { paper: string; landscape: boolean }; dark: boolean; numbers: boolean } };
+type SpacePdf = { root: string; out: string; request: { title: string; entries: { title: string; path: string; folder: boolean; depth: number; document: { html: string } | null }[] } };
+const spacePdfs = (page: Page) => page.evaluate(() => (window as unknown as { __bava: { fakes: { harness: { spacePdfs: SpacePdf[] } } } }).__bava.fakes.harness.spacePdfs);
+const fault = (page: Page, faults: Record<string, unknown>) =>
+  page.evaluate((f) => Object.assign((window as unknown as { __bava: { fakes: { harness: { faults: object } } } }).__bava.fakes.harness.faults, f), faults);
 const pdfs = (page: Page) => page.evaluate(() => (window as unknown as { __bava: { fakes: { harness: { pdfs: Pdf[] } } } }).__bava.fakes.harness.pdfs);
 
 test.describe('export as a Markdown zip', () => {
@@ -36,6 +40,7 @@ test.describe('export as a Markdown zip', () => {
     await openSpace(page);
     await rightClick(page, sidePane(page).locator('[data-path="Marketing"]'));
     await menus(page).getByRole('menuitem', { name: 'Export' }).click();
+    await spaceDialog(page).locator('[data-part="item"]', { hasText: 'Markdown zip' }).click();
     await expect(spaceDialog(page)).toContainText('Brand guide');
     await expect(spaceDialog(page)).not.toContainText('Roadmap');
     await spaceDialog(page).getByRole('button', { name: 'Export zip' }).click();
@@ -63,6 +68,7 @@ test.describe('export as a Markdown zip', () => {
     await openSpace(page);
     await page.locator('.bava-space-switcher').click();
     await page.getByRole('menuitem', { name: 'Export Space' }).click();
+    await spaceDialog(page).locator('[data-part="item"]', { hasText: 'Markdown zip' }).click();
     await expect(spaceDialog(page)).toContainText('Settings');
     await expect(spaceDialog(page)).toContainText('templates');
     await spaceDialog(page).getByRole('button', { name: 'Export zip' }).click();
@@ -120,5 +126,80 @@ test.describe('export as a Markdown zip', () => {
       SPACE,
     );
     expect(saved).toContain('Roadmap for Q4');
+  });
+});
+
+test.describe('export a folder or the Space as one PDF', () => {
+  test('the Space switcher prints every page, folders before their pages, as one PDF', async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    await page.locator('.bava-space-switcher').click();
+    await page.getByRole('menuitem', { name: 'Export Space' }).click();
+    const dialog = spaceDialog(page);
+    await expect(dialog.frameLocator('iframe').locator('.bava-print')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Export PDF' }).click();
+    await expect.poll(async () => (await spacePdfs(page)).length).toBe(1);
+    const [pdf] = await spacePdfs(page);
+    expect(pdf.out).toMatch(/\.pdf$/);
+    const entries = pdf.request.entries;
+    const marketing = entries.findIndex((e) => e.folder && e.path === 'Marketing');
+    const launch = entries.findIndex((e) => e.path === 'Marketing/Launch plan.md');
+    expect(marketing).toBeGreaterThanOrEqual(0);
+    expect(launch).toBeGreaterThan(marketing);
+    expect(entries.filter((e) => !e.folder).every((e) => e.document?.html.includes('bava-print'))).toBe(true);
+    await expect(statusMessage(page)).toContainText('Exported');
+  });
+
+  test("a folder's right-click prints only that folder, titled with its name", async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    await rightClick(page, sidePane(page).locator('[data-path="Marketing"]'));
+    await menus(page).getByRole('menuitem', { name: 'Export' }).click();
+    await spaceDialog(page).getByRole('button', { name: 'Export PDF' }).click();
+    await expect.poll(async () => (await spacePdfs(page)).length).toBe(1);
+    const [pdf] = await spacePdfs(page);
+    expect(pdf.request.title).toBe('Marketing');
+    expect(pdf.out).toMatch(/Marketing\.pdf$/);
+    expect(pdf.request.entries.every((e) => e.path.startsWith('Marketing/'))).toBe(true);
+    expect(pdf.request.entries[0].depth).toBe(0);
+  });
+
+  test('a page that cannot be read stops the PDF and is named', async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    await fault(page, { unreadable: 'Marketing/Brand guide.md' });
+    await rightClick(page, sidePane(page).locator('[data-path="Marketing"]'));
+    await menus(page).getByRole('menuitem', { name: 'Export' }).click();
+    await spaceDialog(page).getByRole('button', { name: 'Export PDF' }).click();
+    await expect(statusMessage(page)).toHaveText('Brand guide could not be read, so no PDF was made.');
+    expect(await spacePdfs(page)).toHaveLength(0);
+  });
+
+  test('a page the system cannot print stops the PDF, named, with why', async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    await fault(page, { unprintable: 'Marketing/Launch plan.md' });
+    await rightClick(page, sidePane(page).locator('[data-path="Marketing"]'));
+    await menus(page).getByRole('menuitem', { name: 'Export' }).click();
+    await spaceDialog(page).getByRole('button', { name: 'Export PDF' }).click();
+    await expect(statusMessage(page)).toHaveText('Launch plan could not be printed, so no PDF was made: print the Document: the printer jammed');
+  });
+
+  test('Cancel while the pages are drawn stops it, and nothing is printed', async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    await page.locator('.bava-space-switcher').click();
+    await page.getByRole('menuitem', { name: 'Export Space' }).click();
+    const dialog = spaceDialog(page);
+    await expect(dialog.frameLocator('iframe').locator('.bava-print')).toBeVisible();
+    await fault(page, { slowOpen: 300 });
+    await dialog.getByRole('button', { name: 'Export PDF' }).click();
+    await expect(dialog).toContainText('Drawing');
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toHaveCount(0);
+    // The rest open at once now: a drawing that went on would print soon.
+    await fault(page, { slowOpen: 0 });
+    await page.waitForTimeout(1500);
+    expect(await spacePdfs(page)).toHaveLength(0);
   });
 });

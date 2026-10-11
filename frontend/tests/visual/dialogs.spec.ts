@@ -89,11 +89,23 @@ for (const theme of THEMES) {
       await shotDialog(page, shot('dialogs', 'export-page', 'zip', theme), dialog);
     });
 
+    test('export the Space as a PDF', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await menu(page, 'file.exportSpace');
+      const dialog = page.getByRole('dialog', { name: 'Export Space' });
+      await expect(dialog.frameLocator('iframe').locator('.bava-print')).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Export PDF' })).toBeEnabled();
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'export-space', 'pdf', theme), dialog);
+    });
+
     test('export the Space', async ({ page }) => {
       await openApp(page, theme);
       await openSpace(page);
       await menu(page, 'file.exportSpace');
       const dialog = page.getByRole('dialog', { name: 'Export Space' });
+      await dialog.locator('[data-part="item"]', { hasText: 'Markdown zip' }).click();
       await expect(dialog).toContainText('Settings');
       await expect(dialog.getByRole('button', { name: 'Export zip' })).toBeEnabled();
       await restPointer(page);

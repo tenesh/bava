@@ -34,6 +34,10 @@ func fakePrinter(log *[]printed, fail string) Printer {
 			return errors.New("the printer jammed")
 		}
 		n := strings.Count(html, `class="sheet"`)
+		// The contents: three lines to a sheet.
+		if lines := strings.Count(html, "<li "); lines > 0 {
+			n = (lines + 2) / 3
+		}
 		if n == 0 {
 			n = 1
 			if strings.Contains(html, "two pages") {

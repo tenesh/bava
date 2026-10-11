@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultPaper, includeChoice, pageSetup, pdfName, type PdfChoices } from './export-pdf';
+import { defaultPaper, includeChoice, pageSetup, pdfName, spaceEntries, type PdfChoices } from './export-pdf';
 
 describe('defaultPaper', () => {
   it('is Letter in the US and Canada, A4 elsewhere', () => {
@@ -59,5 +59,26 @@ describe('pageSetup', () => {
 describe('pdfName', () => {
   it("is the page's name", () => {
     expect(pdfName('Marketing/Launch plan.md')).toBe('Launch plan.pdf');
+  });
+});
+
+describe('spaceEntries', () => {
+  const pages = ['Roadmap.md', 'Marketing/Launch plan.md', 'Marketing/Social/Posts.md', 'Marketing/Brand.md', 'Engineering/API.md'];
+
+  it("lists the Space's folders before their pages, in the order given", () => {
+    expect(spaceEntries(pages, '')).toEqual([
+      { title: 'Roadmap', depth: 0, folder: false, path: 'Roadmap.md' },
+      { title: 'Marketing', depth: 0, folder: true, path: 'Marketing' },
+      { title: 'Launch plan', depth: 1, folder: false, path: 'Marketing/Launch plan.md' },
+      { title: 'Social', depth: 1, folder: true, path: 'Marketing/Social' },
+      { title: 'Posts', depth: 2, folder: false, path: 'Marketing/Social/Posts.md' },
+      { title: 'Brand', depth: 1, folder: false, path: 'Marketing/Brand.md' },
+      { title: 'Engineering', depth: 0, folder: true, path: 'Engineering' },
+      { title: 'API', depth: 1, folder: false, path: 'Engineering/API.md' },
+    ]);
+  });
+
+  it("lists a folder's own pages and folders, from its own depth", () => {
+    expect(spaceEntries(pages, 'Marketing').map((e) => `${e.depth}:${e.title}`)).toEqual(['0:Launch plan', '0:Social', '1:Posts', '0:Brand']);
   });
 });

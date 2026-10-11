@@ -55,6 +55,45 @@ type part struct {
 	setup pdfprint.PageSetup
 }
 
+// look is how every sheet of a PDF looks: dark to its edge in the paper's
+// colour, numbered in the ink's.
+type look struct {
+	dark    bool
+	paper   string
+	ink     string
+	numbers bool
+}
+
+// check refuses a look that cannot be drawn: numbers with no colour, or a
+// colour that is not one.
+func (l look) check() error {
+	if l.numbers && l.ink == "" {
+		return errors.New("page numbers need a colour")
+	}
+	for _, c := range []string{l.paper, l.ink} {
+		if c != "" && !colour.MatchString(c) {
+			return fmt.Errorf("%q is not a colour", c)
+		}
+	}
+	return nil
+}
+
+// workspace is a folder of the parts being printed, removed with done, and
+// pdfcpu's settings, kept in memory.
+func workspace() (dir string, conf *model.Configuration, done func(), err error) {
+	dir, err = os.MkdirTemp("", "bava-pdf-*")
+	if err != nil {
+		return "", nil, nil, fmt.Errorf("export PDF: %w", err)
+	}
+	done = func() { _ = os.RemoveAll(dir) }
+	conf, err = api.LoadConfiguration(api.ConfigurationOptions{Mode: api.ConfigurationModeStateless})
+	if err != nil {
+		done()
+		return "", nil, nil, fmt.Errorf("export PDF: %w", err)
+	}
+	return dir, conf, done, nil
+}
+
 // PagePDF prints a page's Document, then its Canvas on a sheet of its own,
 // fills each sheet to its edge when dark, numbers the sheets when asked,
 // and writes them as one PDF at out. A failure leaves nothing at out, and
@@ -63,90 +102,114 @@ func PagePDF(ctx context.Context, req Request, src Sources, print Printer, out s
 	if req.Document == nil && req.Canvas == nil {
 		return ErrNothing
 	}
-	if req.Numbers && req.Ink == "" {
-		return errors.New("page numbers need a colour")
+	l := look{dark: req.Dark, paper: req.Paper, ink: req.Ink, numbers: req.Numbers}
+	if err := l.check(); err != nil {
+		return err
 	}
-	for _, c := range []string{req.Paper, req.Ink} {
-		if c != "" && !colour.MatchString(c) {
-			return fmt.Errorf("%q is not a colour", c)
-		}
-	}
-	dir, err := os.MkdirTemp("", "bava-pdf-*")
+	dir, conf, done, err := workspace()
 	if err != nil {
+		return err
+	}
+	defer done()
+	parts, err := printPage(dir, "page", req.Document, req.Canvas, req.Setup, l, src, print)
+	if err != nil {
+		return err
+	}
+	joined, _, err := assemble(ctx, parts, l, dir, print, src, conf)
+	if err != nil {
+		return err
+	}
+	if err := store.SaveFrom(out, bytes.NewReader(joined)); err != nil {
 		return fmt.Errorf("export PDF: %w", err)
 	}
-	defer os.RemoveAll(dir)
-	conf, err := api.LoadConfiguration(api.ConfigurationOptions{Mode: api.ConfigurationModeStateless})
-	if err != nil {
-		return fmt.Errorf("export PDF: %w", err)
-	}
+	return nil
+}
 
-	setup := req.Setup
+// printPage prints a page's Document and then its Canvas, each a part,
+// named after name in dir.
+func printPage(dir, name string, doc *Page, canvas *Canvas, setup pdfprint.PageSetup, l look, src Sources, print Printer) ([]part, error) {
 	setup.Background = true
 	var parts []part
-	if req.Document != nil {
-		page := *req.Document
-		page.Dark = req.Dark
+	if doc != nil {
+		page := *doc
+		page.Dark = l.dark
 		html, err := Printable(page, setup, src)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		p := part{filepath.Join(dir, "document.pdf"), setup}
+		p := part{filepath.Join(dir, name+"-document.pdf"), setup}
 		if err := print(html, p.setup, p.file); err != nil {
-			return fmt.Errorf("print the Document: %w", err)
+			return nil, fmt.Errorf("print the Document: %w", err)
 		}
 		parts = append(parts, p)
 	}
-	if req.Canvas != nil {
+	if canvas != nil {
 		s := setup
-		s.Landscape = req.Canvas.Width > req.Canvas.Height
-		p := part{filepath.Join(dir, "canvas.pdf"), s}
-		if err := print(canvasPage(*req.Canvas, s, req.Dark, req.Paper), s, p.file); err != nil {
-			return fmt.Errorf("print the Canvas: %w", err)
+		s.Landscape = canvas.Width > canvas.Height
+		p := part{filepath.Join(dir, name+"-canvas.pdf"), s}
+		if err := print(canvasPage(*canvas, s, l.dark, l.paper), s, p.file); err != nil {
+			return nil, fmt.Errorf("print the Canvas: %w", err)
 		}
 		parts = append(parts, p)
 	}
+	return parts, nil
+}
 
+// sheets is how many sheets a printed part has.
+func sheets(ctx context.Context, file string, conf *model.Configuration) (int, error) {
+	pdf, err := os.ReadFile(file)
+	if err != nil {
+		return 0, fmt.Errorf("export PDF: %w", err)
+	}
+	n, err := api.PageCount(ctx, bytes.NewReader(pdf), conf)
+	if err != nil {
+		return 0, fmt.Errorf("export PDF: read what was printed: %w", err)
+	}
+	return n, nil
+}
+
+// assemble fills and numbers each part's sheets as the look asks, numbers
+// running on from part to part, and joins them in order. It returns the
+// joined PDF and each part's sheet count.
+func assemble(ctx context.Context, parts []part, l look, dir string, print Printer, src Sources, conf *model.Configuration) ([]byte, []int, error) {
 	var readers []io.ReadSeeker
+	counts := make([]int, len(parts))
 	next := 1
 	for i, p := range parts {
 		pdf, err := os.ReadFile(p.file)
 		if err != nil {
-			return fmt.Errorf("export PDF: %w", err)
+			return nil, nil, fmt.Errorf("export PDF: %w", err)
 		}
 		n, err := api.PageCount(ctx, bytes.NewReader(pdf), conf)
 		if err != nil {
-			return fmt.Errorf("export PDF: read what was printed: %w", err)
+			return nil, nil, fmt.Errorf("export PDF: read what was printed: %w", err)
 		}
-		if req.Dark && req.Paper != "" {
+		counts[i] = n
+		if l.dark && l.paper != "" {
 			fill := filepath.Join(dir, fmt.Sprintf("fill-%d.pdf", i))
-			if pdf, err = layer(ctx, pdf, fill, fillPage(req.Paper), edgeToEdge(p.setup, true), print, false, conf); err != nil {
-				return fmt.Errorf("export PDF: fill the margins: %w", err)
+			if pdf, err = layer(ctx, pdf, fill, fillPage(l.paper), edgeToEdge(p.setup, true), print, false, conf); err != nil {
+				return nil, nil, fmt.Errorf("export PDF: fill the margins: %w", err)
 			}
 		}
-		if req.Numbers {
+		if l.numbers {
 			numbers := filepath.Join(dir, fmt.Sprintf("numbers-%d.pdf", i))
-			html := numbersPage(next, n, p.setup, req.Ink, src)
+			html := numbersPage(next, n, p.setup, l.ink, src)
 			if pdf, err = layer(ctx, pdf, numbers, html, edgeToEdge(p.setup, false), print, true, conf); err != nil {
-				return fmt.Errorf("export PDF: number the pages: %w", err)
+				return nil, nil, fmt.Errorf("export PDF: number the pages: %w", err)
 			}
 		}
 		next += n
 		readers = append(readers, bytes.NewReader(pdf))
 	}
-
-	var joined bytes.Buffer
 	if len(readers) == 1 {
-		if _, err := io.Copy(&joined, readers[0]); err != nil {
-			return err
-		}
-	} else if err := api.MergeRaw(ctx, readers, &joined, false, conf); err != nil {
-		return fmt.Errorf("export PDF: join the parts: %w", err)
+		pdf, err := io.ReadAll(readers[0])
+		return pdf, counts, err
 	}
-	if err := store.SaveFrom(out, &joined); err != nil {
-		return fmt.Errorf("export PDF: %w", err)
+	var joined bytes.Buffer
+	if err := api.MergeRaw(ctx, readers, &joined, false, conf); err != nil {
+		return nil, nil, fmt.Errorf("export PDF: join the parts: %w", err)
 	}
-	return nil
+	return joined.Bytes(), counts, nil
 }
 
 // edgeToEdge is a part's sheet with no margins, its background printed or

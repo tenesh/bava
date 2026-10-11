@@ -1,7 +1,7 @@
 {
   "name": "reopen",
   "folders": ["${SCRATCH}/Smoke"],
-  "saves": ["${SCRATCH}/Smoke.zip", "${SCRATCH}/First page.pdf"],
+  "saves": ["${SCRATCH}/Smoke.zip", "${SCRATCH}/First page.pdf", "${SCRATCH}/Smoke.pdf"],
   "steps": [
     { "do": "wait", "target": "header", "timeoutMs": 30000 },
     { "do": "menu", "target": "file.openSpace" },
@@ -64,6 +64,15 @@
     { "do": "shot", "name": "export-pdf" },
     { "do": "click", "target": "[role='dialog'] .bava-button.primary" },
     { "do": "gone", "target": "[role='dialog']" },
-    { "do": "pdffile", "target": "First page.pdf", "text": "min=2 first=210x297", "timeoutMs": 90000 }
+    { "do": "pdffile", "target": "First page.pdf", "text": "min=2 first=210x297", "timeoutMs": 90000 },
+    { "do": "menu", "target": "file.exportSpace" },
+    { "do": "wait", "target": "[role='dialog']", "text": "Export Space" },
+    { "do": "wait", "target": "[role='dialog'] .bava-pdf-preview iframe", "timeoutMs": 20000 },
+    { "do": "click", "target": "[role='dialog'] [data-name='Paper'] .bava-select-trigger" },
+    { "do": "click", "target": ".bava-select-item[data-value='A4']" },
+    { "do": "click", "target": "[role='dialog'] .bava-toggle" },
+    { "do": "click", "target": "[role='dialog'] .bava-button.primary" },
+    { "do": "gone", "target": "[role='dialog']", "timeoutMs": 60000 },
+    { "do": "pdffile", "target": "Smoke.pdf", "text": "min=4 first=210x297", "timeoutMs": 120000 }
   ]
 }

@@ -467,8 +467,8 @@ Markdown bundle, HTML).
   or both (the Canvas as one large picture after the Document).
 - **Formats: PDF and a Markdown bundle.** Not HTML, not Word.
 - **PDF:** a folder or Space goes to one combined PDF (tree order, a
-  contents page, bookmarks) or a folder of PDFs mirroring the Space, chosen
-  in the dialog. Options: paper size and orientation, light or dark theme,
+  contents page, bookmarks). *(The folder of PDFs mirroring the Space was
+  dropped 2026-10-11, `export.md` decision 12.)* Options: paper size and orientation, light or dark theme,
   margins and scale, page numbers.
 - **Markdown bundle:** always a **zip**, laid out **exactly as in the
   Space**, its `.bava` folder (attachments) included, so it opens as a Space

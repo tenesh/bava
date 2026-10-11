@@ -36,6 +36,27 @@ export type PdfChoices = {
   customMargins: Sides;
 };
 
+/** Everything a PDF's settings choose: the page setup's choices, the theme and numbers. */
+export type PdfSettings = { choices: PdfChoices; dark: boolean; numbers: boolean };
+
+/** The settings a PDF export starts from: the paper given, Normal margins, light, no numbers. */
+export function startingSettings(paper: Paper, initial: Partial<PdfChoices> = {}): PdfSettings {
+  const normal = MARGINS.normal;
+  return {
+    choices: {
+      paper,
+      custom: { width: A4_MM.width, height: A4_MM.height },
+      unit: 'mm',
+      landscape: false,
+      margins: 'normal',
+      customMargins: { top: normal, right: normal, bottom: normal, left: normal },
+      ...initial,
+    },
+    dark: false,
+    numbers: false,
+  };
+}
+
 /** Each named paper's width and height in millimetres, portrait. */
 const SIZES: Record<Exclude<Paper, 'Custom'>, [number, number]> = {
   A3: [297, 420],
@@ -134,4 +155,30 @@ export function paperSize(setup: PageSetup): { width: number; height: number } |
 export function pdfName(pagePath: string): string {
   const name = pagePath.split('/').pop() ?? pagePath;
   return `${name.replace(/\.md$/i, '')}.pdf`;
+}
+
+/** One entry of a folder's or the Space's PDF: a folder heading, or a page. */
+export type SpaceEntry = { title: string; depth: number; folder: boolean; path: string };
+
+/**
+ * The entries of `folder`'s PDF ('' for the whole Space) from its pages'
+ * paths in the Files tree's order: each folder before its pages, where its
+ * first page is, at depths from the folder exported.
+ */
+export function spaceEntries(pagePaths: string[], folder: string): SpaceEntry[] {
+  const base = folder ? folder.split('/').length : 0;
+  const out: SpaceEntry[] = [];
+  const shown = new Set<string>();
+  for (const path of pagePaths) {
+    if (folder && !path.startsWith(`${folder}/`)) continue;
+    const parts = path.split('/');
+    for (let i = base + 1; i < parts.length; i += 1) {
+      const at = parts.slice(0, i).join('/');
+      if (shown.has(at)) continue;
+      shown.add(at);
+      out.push({ title: parts[i - 1], depth: i - 1 - base, folder: true, path: at });
+    }
+    out.push({ title: parts[parts.length - 1].replace(/\.md$/i, ''), depth: parts.length - 1 - base, folder: false, path });
+  }
+  return out;
 }

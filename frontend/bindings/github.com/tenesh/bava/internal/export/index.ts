@@ -4,5 +4,7 @@
 export type {
     Canvas,
     Page,
-    Request
+    Request,
+    SpaceEntry,
+    SpaceRequest
 } from "./models.js";

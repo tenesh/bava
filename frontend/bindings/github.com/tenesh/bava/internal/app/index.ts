@@ -34,6 +34,7 @@ export type {
     SpaceIndex,
     SpaceInfo,
     SpaceList,
+    SpacePDFResult,
     SpaceSearch,
     TemplateList,
     TrashList,

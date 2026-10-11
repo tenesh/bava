@@ -44,6 +44,9 @@ func TestServiceTypesKeepTheirJSONKeys(t *testing.T) {
 		{"export.Request", export.Request{}, []string{"canvas", "dark", "document", "ink", "numbers", "paper", "setup"}},
 		{"export.Page", export.Page{}, []string{"css", "html", "widthPx"}},
 		{"export.Canvas", export.Canvas{}, []string{"height", "svg", "width"}},
+		{"export.SpaceRequest", export.SpaceRequest{}, []string{"css", "dark", "entries", "ink", "numbers", "paper", "setup", "text", "title"}},
+		{"export.SpaceEntry", export.SpaceEntry{}, []string{"canvas", "depth", "document", "folder", "path", "title"}},
+		{"SpacePDFResult", app.SpacePDFResult{}, []string{"code", "error", "page"}},
 		{"pdfprint.PageSetup", pdfprint.PageSetup{}, []string{"background", "heightMM", "landscape", "margins", "paper", "widthMM"}},
 		{"pdfprint.Margins", pdfprint.Margins{}, []string{"bottom", "left", "right", "top"}},
 	}

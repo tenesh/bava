@@ -110,3 +110,39 @@ func (s *ExportService) picture(root, rel string) ([]byte, string, error) {
 	}
 	return data, kind, nil
 }
+
+// SpacePDFResult is how a folder's or the Space's PDF went: empty when it
+// was written; else why not, with a code, and the page that failed.
+type SpacePDFResult struct {
+	Error string `json:"error"`
+	Code  string `json:"code"`
+	// Page is the path of the page that could not be printed, for "page".
+	Page string `json:"page"`
+}
+
+// SpacePDF prints a folder or the Space at root to one PDF at out: the
+// contents, then each page as the request draws it. Codes are as PagePDF's,
+// and "page" when a page could not be printed (Page names it).
+func (s *ExportService) SpacePDF(root string, req export.SpaceRequest, out string) SpacePDFResult {
+	if !s.options.Folders.Allowed(root) {
+		return SpacePDFResult{Error: "export: that folder is not open", Code: "notOpened"}
+	}
+	if s.options.Print == nil {
+		return SpacePDFResult{Error: "export: printing to PDF is not available on this system", Code: "unavailable"}
+	}
+	if err := req.Setup.Check(); err != nil {
+		return SpacePDFResult{Error: fmt.Sprintf("export: %v", err), Code: "setup"}
+	}
+	src := export.Sources{Fonts: s.options.Fonts, Picture: s.picture}
+	err := export.SpacePDF(context.Background(), req, src, s.options.Print, out)
+	var failed *export.PageError
+	switch {
+	case err == nil:
+		return SpacePDFResult{}
+	case errors.As(err, &failed):
+		return SpacePDFResult{Error: fmt.Sprintf("export: %v", err), Code: "page", Page: failed.Path}
+	case errors.Is(err, export.ErrNothing):
+		return SpacePDFResult{Error: err.Error(), Code: "nothing"}
+	}
+	return SpacePDFResult{Error: fmt.Sprintf("export: %v", err), Code: "failed"}
+}

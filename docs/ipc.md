@@ -238,6 +238,7 @@ Added in Milestone 6.4. Writes an exported picture where the user asked.
 |---|---|
 | `Save(path, contentsBase64)` | an error string, empty on success |
 | `PagePDF(root, request, out)` | `Problem`: prints a page of the Space at `root` to a PDF at `out`; `code` is `notOpened` (the folder was not opened this session), `unavailable` (no printing on this system), `setup` (a paper or margins that cannot be printed), `nothing` (neither Document nor Canvas) or `failed` (the print, the join or the write failed; `error` says how) |
+| `SpacePDF(root, request, out)` | `SpacePDFResult` (`error`, `code`, `page`): prints a folder or the Space to one PDF at `out`, its contents first; the codes are `PagePDF`'s, and `page` when a page could not be printed, `page` naming it (nothing is written) |
 
 **A page's PDF** (`request`: `setup`, the page setup of
 `internal/pdfprint`; `document`, the page's HTML, styles and `widthPx`, 0
@@ -251,6 +252,16 @@ it. The Canvas goes on a sheet of its own, landscape when wider than tall,
 scaled down to fit. Dark sheets are filled to their edge and numbers laid
 over them after printing, with pdfcpu (no settings written), and the parts
 joined and written like a save.
+
+**A folder's or the Space's PDF** (`request`: `title`; `entries` in the
+Files tree's order, each a folder (`folder`, `depth`, `title`) or a page
+with its `path`, `document` (HTML and `widthPx`) and `canvas`; `css`, the
+styles every page is drawn with, sent once; `setup`, `dark`, `paper`,
+`text`, `ink`, `numbers`). Each page is printed as a page's PDF is, then
+the contents: the title, folders as headings, each page with the sheet it
+starts on, printed again if their own length moves those sheets. Sheets
+are numbered from the contents on, and bookmarks nest pages under their
+folders.
 
 **The picture is drawn in the frontend**, which owns the canvas, and crosses as
 base64. The bridge is JSON, so raw bytes would arrive as an array of numbers,

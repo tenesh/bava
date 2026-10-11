@@ -96,3 +96,29 @@ bookmarks, or one per page. A page outside a Space exports a PDF without
 one; only its zip needs a Space. Anything not on disk (a picture from the
 web, an online video, a link card's picture) prints as its address or its
 words; the printing webview reaches nothing.
+
+### 11. A combined PDF opens with contents and page numbers (2026-10-11)
+
+A folder's or the Space's PDF starts with a contents page: each page's
+name and the sheet it starts on, under its folder's name, in the Files
+tree's order, like a book's contents; bookmarks give the same jumps.
+Chosen over names without numbers and over bookmarks alone.
+
+### 12. A folder or the Space exports one combined PDF only (2026-10-11)
+
+Every page in one file. "One PDF per page in matching folders"
+(`documents.md` decision 48, decision 2 here) is dropped; a single page
+is still exported on its own from Export page.
+
+### 13. Each page brings its Document, then its Canvas if it has one (2026-10-11)
+
+In a folder's or the Space's PDF, every page prints its Document and,
+when its Canvas holds something, the Canvas on a sheet of its own after
+it. Nothing to choose. Chosen over one Include choice for all pages and
+over Documents only.
+
+### 14. A page that cannot be printed stops the export (2026-10-11)
+
+If any page cannot be read or printed, the whole export stops and nothing
+is written; Bava says which page and why. Chosen over leaving the page
+out and saying so afterwards.

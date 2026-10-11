@@ -259,6 +259,20 @@ export interface SpaceList {
 }
 
 /**
+ * SpacePDFResult is how a folder's or the Space's PDF went: empty when it
+ * was written; else why not, with a code, and the page that failed.
+ */
+export interface SpacePDFResult {
+    "error": string;
+    "code": string;
+
+    /**
+     * Page is the path of the page that could not be printed, for "page".
+     */
+    "page": string;
+}
+
+/**
  * SpaceSearch is what a search found, and whether there were more than it
  * returns.
  */
