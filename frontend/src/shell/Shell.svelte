@@ -124,7 +124,7 @@
       {#if start}
         {@render start()}
       {:else}
-        <EmptyState title={t('empty.noFile.title')} mark {hints} />
+        <EmptyState title={t('empty.noFile.title')} mark {hints} size="pane" />
       {/if}
     </main>
   {/if}
@@ -151,7 +151,7 @@
     -->
     {#if !pageOpen}
       <main class="region region-main no-page">
-        <EmptyState title={t('empty.noPage.title')} body={t('empty.noPage.body')} {hints} />
+        <EmptyState title={t('empty.noPage.title')} body={t('empty.noPage.body')} {hints} size="pane" />
       </main>
     {/if}
 

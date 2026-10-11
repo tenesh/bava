@@ -9,12 +9,14 @@
     mark?: boolean;
     /** Ways out of the state: a formatted shortcut beside what it does. */
     hints?: { keys: string; label: string }[];
+    /** A whole pane with nothing open reads larger than an empty spot in a list. */
+    size?: 'spot' | 'pane';
   };
 
-  let { title, body, mark = false, hints = [] }: Props = $props();
+  let { title, body, mark = false, hints = [], size = 'spot' }: Props = $props();
 </script>
 
-<div class="empty">
+<div class="empty" data-size={size}>
   {#if mark}
     <div class="faded"><Mark size="hero" /></div>
   {/if}
@@ -75,6 +77,34 @@
     gap: var(--space-2);
     font-size: var(--text-meta);
     color: var(--color-text-secondary);
+  }
+
+  [data-size='pane'] {
+    gap: var(--space-2);
+  }
+
+  [data-size='pane'] .title {
+    font-size: var(--text-title);
+    font-weight: var(--weight-medium);
+    color: var(--color-text-primary);
+  }
+
+  [data-size='pane'] .body {
+    font-size: var(--text-body);
+    color: var(--color-text-secondary);
+  }
+
+  [data-size='pane'] .hints {
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+
+  [data-size='pane'] .hints li {
+    font-size: var(--text-body);
+  }
+
+  [data-size='pane'] kbd {
+    font-size: var(--text-mono-source);
   }
 
   kbd {

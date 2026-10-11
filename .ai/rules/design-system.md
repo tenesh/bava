@@ -105,7 +105,7 @@ NumberInput (in `NumberField`), Toast, ToggleGroup. Build when a screen needs.
 | `Dialog` | Ruled header, body, footer; named `size`s, `flush`, `headless`, `variant="alert"` (Dialog) |
 | `DiagramDialog` | D2 source beside live preview, diagnostics, engine picker, Insert |
 | `EmojiPicker` | Search and grouped emoji |
-| `EmptyState` | Empty panes; `mark`, `hints` |
+| `EmptyState` | Empty panes; `mark`, `hints`, `size` (`pane` for a whole pane with nothing open) |
 | `EquationField` | TeX field over an equation, live render |
 | `ErrorDialog` | One sentence, detail rows, Copy details, Open logs folder; never a stack |
 | `ExportDialog` | Export canvas: PNG, SVG, Copy over a preview |

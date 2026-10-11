@@ -454,7 +454,6 @@ export const messages = {
   'space.remove.deleteData': "Also delete Bava's data in this folder",
   'space.remove.deleteDataHint': 'Deletes the .bava folder: the images and files the pages show, the Trash, the page order and the Space settings. The pages in its folders stay. This cannot be undone.',
   'space.remove.confirm': 'Remove',
-  'start.note': 'A Space is a folder you choose. Bava keeps its own data in a hidden .bava folder inside it.',
   'trash.title': 'Trash',
   'trash.search': 'Search the Trash',
   'trash.total': '{size} in the Trash',

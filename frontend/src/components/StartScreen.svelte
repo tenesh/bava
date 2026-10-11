@@ -68,8 +68,6 @@
         {/each}
       </section>
     {/if}
-
-    <p class="note">{t('start.note')}</p>
   </div>
 </main>
 
@@ -106,6 +104,7 @@
 
   .words p {
     margin: 0;
+    font-size: var(--text-title);
     color: var(--color-text-secondary);
   }
 
@@ -119,6 +118,7 @@
   .action {
     height: var(--size-toolbar);
     padding: 0 var(--space-4);
+    font-size: var(--text-body);
   }
 
   .recent:focus-visible {
@@ -216,6 +216,7 @@
   }
 
   .name {
+    font-size: var(--text-title);
     font-weight: var(--weight-medium);
   }
 
@@ -223,22 +224,16 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: var(--text-mono-status);
+    font-size: var(--text-body);
     color: var(--color-text-muted);
     font-family: var(--font-data);
     font-variant-numeric: tabular-nums;
   }
 
   .when {
-    font-size: var(--text-meta);
+    font-size: var(--text-body);
     color: var(--color-text-muted);
     font-family: var(--font-data);
     font-variant-numeric: tabular-nums;
-  }
-
-  .note {
-    margin: 0;
-    font-size: var(--text-meta);
-    color: var(--color-text-muted);
   }
 </style>
