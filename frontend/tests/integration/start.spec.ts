@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { PARENT, SPACE, editor, expectNothingCovering, menu, newLineAtEnd, openApp, openDialog, openLoosePage, openPage, openSpace } from '../helpers';
+import { PARENT, SPACE, editor, expectNothingCovering, menu, newLineAtEnd, openApp, openDialog, openLoosePage, openPage, openSpace, statusBar } from '../helpers';
 
 // Closed dialogs once covered the window at launch with every logic test
 // green: nothing may show until something is opened.
@@ -89,6 +89,14 @@ test.describe('removing a Space from the list', () => {
     await expect(page.locator('[data-path="Roadmap.md"]')).toBeVisible();
     await expect(page.locator('.bava-space-switcher')).toContainText('Acme Product');
   });
+});
+
+// The last Space's folder gone at launch: its row says so, and the status
+// bar adds nothing that disagrees with it.
+test('a last Space whose folder is gone is marked on the start screen, without a message', async ({ page }) => {
+  await openApp(page, 'light', { 'bava.recents': JSON.stringify(RECENTS), 'bava.lastSpace': THESIS });
+  await expect(page.locator('.recent', { hasText: 'Thesis' })).toContainText("Can't open: find it again");
+  await expect(statusBar(page)).not.toContainText('not a Space');
 });
 
 // A store's sandbox can forget a Space; the start screen offers to find it

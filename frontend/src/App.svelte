@@ -902,9 +902,10 @@
   /**
    * Open a folder as a Space, closing the page first, and reopen its last
    * page. With `keepPage`, the loose page open now stays open and becomes
-   * the Space's page instead.
+   * the Space's page instead. With `quiet`, a folder that cannot be opened
+   * is only marked missing, without a message.
    */
-  async function openSpace(dir: string, keepPage = false): Promise<boolean> {
+  async function openSpace(dir: string, keepPage = false, quiet = false): Promise<boolean> {
     if (!keepPage) {
       if (doc.isOpen && !(await fileActions.close())) return false;
       loadScene([]);
@@ -912,7 +913,7 @@
     const error = await space.open(dir);
     if (error) {
       if (!missingSpaces.includes(dir)) missingSpaces = [...missingSpaces, dir];
-      notify(error);
+      if (!quiet) notify(error);
       return false;
     }
     missingSpaces = missingSpaces.filter((path) => path !== dir);
@@ -2251,7 +2252,7 @@
   }
 
   // Reopen the last Space at launch; a folder that is gone falls
-  // back to the start screen, marked missing there.
+  // back to the start screen, marked missing there, which says it all.
   void (async () => {
     let last: string | null;
     try {
@@ -2260,7 +2261,7 @@
       last = null;
     }
     if (!last) return;
-    const opened = await openSpace(last);
+    const opened = await openSpace(last, false, true);
     if (launchTarget(last, opened) === 'start') rememberLastSpace(null);
   })();
 

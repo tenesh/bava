@@ -148,10 +148,10 @@ sets).
 
 **Pictures:** new `document/card--outside` and
 `document/page--folder-access`, changed `start/screen--missing`, each in
-both themes, read at the review. The start screen's picture also shows
-"That folder is not a Space." in the status bar: reopening the last Space
-at launch, when its folder is gone, says so as well as marking the row.
-Older than R2, and left for the user to decide.
+both themes, read at the review. That start screen also showed "That
+folder is not a Space." in the status bar, older than R2: reopening the
+last Space at launch now fails quietly, as the row already says it all
+(test first; the picture's status bar is empty now).
 
 **Checks:** Go vet (with and without `-tags e2e`) and tests exit 0;
 `npm test` 2,880 passed, check and lint exit 0; `npm run browser` 521
