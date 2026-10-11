@@ -3,8 +3,8 @@ package store_test
 import (
 	"testing"
 
-	"github.com/tenesh/bava/internal/store"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/store"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // A stamp goes to the frontend with a file and comes back with its save.

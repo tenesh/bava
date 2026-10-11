@@ -6,7 +6,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/tenesh/bava/internal/app/menu"
+	"github.com/tharabyte/bava/internal/app/menu"
 )
 
 func build(t *testing.T, platform string) (*menu.Built, *[]menu.Command) {

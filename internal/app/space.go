@@ -11,9 +11,9 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/tenesh/bava/internal/format"
-	"github.com/tenesh/bava/internal/space"
-	"github.com/tenesh/bava/internal/web"
+	"github.com/tharabyte/bava/internal/format"
+	"github.com/tharabyte/bava/internal/space"
+	"github.com/tharabyte/bava/internal/web"
 )
 
 // SpaceService is a Space's file surface (docs/ipc.md, "SpaceService"): open

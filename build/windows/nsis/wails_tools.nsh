@@ -8,7 +8,7 @@
     !define INFO_PROJECTNAME "bava"
 !endif
 !ifndef INFO_COMPANYNAME
-    !define INFO_COMPANYNAME "tenesh"
+    !define INFO_COMPANYNAME "Tharabyte"
 !endif
 !ifndef INFO_PRODUCTNAME
     !define INFO_PRODUCTNAME "Bava"
@@ -17,7 +17,7 @@
     !define INFO_PRODUCTVERSION "0.1.0"
 !endif
 !ifndef INFO_COPYRIGHT
-    !define INFO_COPYRIGHT "© 2026, tenesh"
+    !define INFO_COPYRIGHT "© 2026 Tharabyte"
 !endif
 !ifndef PRODUCT_EXECUTABLE
     !define PRODUCT_EXECUTABLE "${INFO_PROJECTNAME}.exe"

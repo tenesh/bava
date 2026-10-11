@@ -215,7 +215,7 @@ describe('the layout of the last good render', () => {
 describe('the real transport', () => {
   it('carries every part of the response through, layout included', async () => {
     vi.resetModules();
-    vi.doMock('../../bindings/github.com/tenesh/bava/internal/app', () => ({
+    vi.doMock('../../bindings/github.com/tharabyte/bava/internal/app', () => ({
       RenderService: {
         Render: async () => ({
           svg: '<svg/>',
@@ -229,12 +229,12 @@ describe('the real transport', () => {
     const client = fresh({ debounceMs: 0 });
     client.request('a');
     await vi.waitFor(() => expect(client.state.layout.shapes).toHaveLength(1));
-    vi.doUnmock('../../bindings/github.com/tenesh/bava/internal/app');
+    vi.doUnmock('../../bindings/github.com/tharabyte/bava/internal/app');
   });
 
   it('turns the binding nulls into the empty shapes the UI expects', async () => {
     vi.resetModules();
-    vi.doMock('../../bindings/github.com/tenesh/bava/internal/app', () => ({
+    vi.doMock('../../bindings/github.com/tharabyte/bava/internal/app', () => ({
       RenderService: {
         Render: async () => ({ svg: null, errors: null, nodeMap: null, layout: null }),
       },
@@ -246,7 +246,7 @@ describe('the real transport', () => {
     expect(client.state.svg).toBe('');
     expect(client.state.errors).toEqual([]);
     expect(client.state.layout).toEqual({ shapes: [], connections: [] });
-    vi.doUnmock('../../bindings/github.com/tenesh/bava/internal/app');
+    vi.doUnmock('../../bindings/github.com/tharabyte/bava/internal/app');
   });
 });
 

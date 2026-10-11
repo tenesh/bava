@@ -7,7 +7,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/tenesh/bava/internal/pdfprint"
+	"github.com/tharabyte/bava/internal/pdfprint"
 )
 
 var a4 = pdfprint.PageSetup{Paper: pdfprint.A4, Margins: pdfprint.Margins{Top: 20, Right: 20, Bottom: 20, Left: 20}}

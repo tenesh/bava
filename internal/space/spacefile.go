@@ -15,7 +15,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tenesh/bava/internal/store"
+	"github.com/tharabyte/bava/internal/store"
 )
 
 // Version is the space.json version this code writes.

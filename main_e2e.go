@@ -8,7 +8,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/tenesh/bava/internal/e2e"
+	"github.com/tharabyte/bava/internal/e2e"
 )
 
 // smokeRun is the smoke test build's extra wiring: the driver's service, and

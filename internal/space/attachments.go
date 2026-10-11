@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tenesh/bava/internal/store"
+	"github.com/tharabyte/bava/internal/store"
 )
 
 // attachmentsDir is where a Space keeps the files its pages show.

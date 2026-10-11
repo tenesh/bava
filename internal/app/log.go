@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/tenesh/bava/internal/logs"
+	"github.com/tharabyte/bava/internal/logs"
 )
 
 // Frontend reports are capped so a failure in a loop cannot fill the disk:

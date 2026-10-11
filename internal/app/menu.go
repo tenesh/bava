@@ -6,7 +6,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/tenesh/bava/internal/app/menu"
+	"github.com/tharabyte/bava/internal/app/menu"
 )
 
 // MenuCommandEvent is the one event a menu click raises. The frontend owns

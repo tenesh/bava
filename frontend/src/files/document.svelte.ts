@@ -6,9 +6,9 @@
  * undo, so a save checks the disk first and refuses rather than asking
  * forgiveness. The caller decides what to do about the conflict.
  */
-import { FileService } from '../../bindings/github.com/tenesh/bava/internal/app';
-import type { Scene } from '../../bindings/github.com/tenesh/bava/internal/format/models';
-import type { Stamp } from '../../bindings/github.com/tenesh/bava/internal/store/models';
+import { FileService } from '../../bindings/github.com/tharabyte/bava/internal/app';
+import type { Scene } from '../../bindings/github.com/tharabyte/bava/internal/format/models';
+import type { Stamp } from '../../bindings/github.com/tharabyte/bava/internal/store/models';
 
 export type OpenResult = {
   path: string;

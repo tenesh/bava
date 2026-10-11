@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/format"
-	"github.com/tenesh/bava/internal/space"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/format"
+	"github.com/tharabyte/bava/internal/space"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // canvas is a page's canvas block holding the given elements' JSON.

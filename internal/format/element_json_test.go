@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/format"
+	"github.com/tharabyte/bava/internal/format"
 )
 
 // Wails encodes a scene for the frontend and decodes the one the frontend

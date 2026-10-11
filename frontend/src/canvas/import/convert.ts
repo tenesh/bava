@@ -14,7 +14,7 @@ import { canvasShapeFor } from './shapes';
 import type {
   LayoutConnection as WireConnection,
   LayoutShape as WireShape,
-} from '../../../bindings/github.com/tenesh/bava/internal/render/models';
+} from '../../../bindings/github.com/tharabyte/bava/internal/render/models';
 import type { ElementId, SceneElement } from '../scene';
 
 /**

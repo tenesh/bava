@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as real from '../../bindings/github.com/tenesh/bava/internal/app';
+import * as real from '../../bindings/github.com/tharabyte/bava/internal/app';
 import { createFakes } from './fake-services';
 import { seedSpace } from '../fixtures/space';
 

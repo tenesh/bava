@@ -23,5 +23,5 @@ import * as menu$0 from "./menu/models.js";
  * Before InstallMenu it does nothing: there is no menu to update yet.
  */
 export function SetState(state: menu$0.State): $CancellablePromise<void> {
-    return $Call.ByID(1869122623, state);
+    return $Call.ByID(3623861400, state);
 }

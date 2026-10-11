@@ -13,9 +13,9 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 
-	"github.com/tenesh/bava/internal/app"
-	"github.com/tenesh/bava/internal/logs"
-	"github.com/tenesh/bava/internal/pdfprint"
+	"github.com/tharabyte/bava/internal/app"
+	"github.com/tharabyte/bava/internal/logs"
+	"github.com/tharabyte/bava/internal/pdfprint"
 )
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.

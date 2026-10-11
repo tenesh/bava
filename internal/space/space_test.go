@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/space"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/space"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // newSpace makes a folder with the given files ("a/b.md", "dir/") and opens it.

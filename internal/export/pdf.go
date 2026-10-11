@@ -16,8 +16,8 @@ import (
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
 
-	"github.com/tenesh/bava/internal/pdfprint"
-	"github.com/tenesh/bava/internal/store"
+	"github.com/tharabyte/bava/internal/pdfprint"
+	"github.com/tharabyte/bava/internal/store"
 )
 
 // Printer prints one self-contained HTML document to a PDF file.

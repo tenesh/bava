@@ -3,7 +3,7 @@ package format_test
 import (
 	"testing"
 
-	"github.com/tenesh/bava/internal/format"
+	"github.com/tharabyte/bava/internal/format"
 )
 
 func TestFindsFencedBlocksWithInfoStrings(t *testing.T) {

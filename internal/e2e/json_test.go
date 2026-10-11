@@ -3,8 +3,8 @@ package e2e_test
 import (
 	"testing"
 
-	"github.com/tenesh/bava/internal/e2e"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/e2e"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // The page side of the driver reads these names.

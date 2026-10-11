@@ -3,7 +3,7 @@ package e2e
 import (
 	"testing"
 
-	"github.com/tenesh/bava/internal/pdfprint"
+	"github.com/tharabyte/bava/internal/pdfprint"
 )
 
 func TestAPDFStepNeedsAFileASetupAndWhatItMustHold(t *testing.T) {

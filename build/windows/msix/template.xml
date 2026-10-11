@@ -10,23 +10,23 @@
     <Installer
         Path="bava"
         Arguments=""
-        InstallLocation="C:\Program Files\tenesh\Bava">
+        InstallLocation="C:\Program Files\Tharabyte\Bava">
     </Installer>
     <PackageInformation
         PackageName="Bava"
         PackageDisplayName="Bava"
-        PublisherName="CN=tenesh"
-        PublisherDisplayName="tenesh"
+        PublisherName="CN=Tharabyte"
+        PublisherDisplayName="Tharabyte"
         Version="0.1.0.0"
-        PackageDescription="A bava application">
+        PackageDescription="Diagrams and documents, on your own disk.">
         <Capabilities>
             <Capability Name="runFullTrust" />
             
         </Capabilities>
         <Applications>
             <Application
-                Id="dev.tenesh.bava"
-                Description="A bava application"
+                Id="com.tharabyte.bava"
+                Description="Diagrams and documents, on your own disk."
                 DisplayName="Bava"
                 ExecutableName="bava"
                 EntryPoint="Windows.FullTrustApplication">
@@ -42,8 +42,8 @@
         <Properties>
             <Framework>false</Framework>
             <DisplayName>Bava</DisplayName>
-            <PublisherDisplayName>tenesh</PublisherDisplayName>
-            <Description>A bava application</Description>
+            <PublisherDisplayName>Tharabyte</PublisherDisplayName>
+            <Description>Diagrams and documents, on your own disk.</Description>
             <Logo>Assets\AppIcon.png</Logo>
         </Properties>
     </PackageInformation>

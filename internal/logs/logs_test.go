@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tenesh/bava/internal/logs"
+	"github.com/tharabyte/bava/internal/logs"
 )
 
 func TestLogDirFollowsEachPlatform(t *testing.T) {

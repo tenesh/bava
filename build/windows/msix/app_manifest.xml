@@ -8,15 +8,15 @@
   IgnorableNamespaces="uap3">
   
   <Identity 
-    Name="dev.tenesh.bava"
-    Publisher="CN=tenesh"
+    Name="com.tharabyte.bava"
+    Publisher="CN=Tharabyte"
     Version="0.1.0.0" 
     ProcessorArchitecture="arm64" />
   
   <Properties>
     <DisplayName>Bava</DisplayName>
-    <PublisherDisplayName>tenesh</PublisherDisplayName>
-    <Description>A bava application</Description>
+    <PublisherDisplayName>Tharabyte</PublisherDisplayName>
+    <Description>Diagrams and documents, on your own disk.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
   
@@ -29,10 +29,10 @@
   </Resources>
   
   <Applications>
-    <Application Id="dev.tenesh.bava" Executable="bava" EntryPoint="Windows.FullTrustApplication">
+    <Application Id="com.tharabyte.bava" Executable="bava" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="Bava"
-        Description="A bava application"
+        Description="Diagrams and documents, on your own disk."
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">

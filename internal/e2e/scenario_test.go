@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/e2e"
+	"github.com/tharabyte/bava/internal/e2e"
 )
 
 func TestParseReadsAScenario(t *testing.T) {

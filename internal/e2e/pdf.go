@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tenesh/bava/internal/pdfprint"
+	"github.com/tharabyte/bava/internal/pdfprint"
 )
 
 // samplePage is what a "pdf" step prints: two pages, the second forced onto

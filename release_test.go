@@ -23,10 +23,10 @@ func deps(t *testing.T, tags ...string) string {
 // The smoke test driver never ships: a build without the e2e tag must not
 // link it at all.
 func TestAReleaseBuildHasNoSmokeDriver(t *testing.T) {
-	if strings.Contains(deps(t), "github.com/tenesh/bava/internal/e2e") {
+	if strings.Contains(deps(t), "github.com/tharabyte/bava/internal/e2e") {
 		t.Error("a build without -tags e2e links internal/e2e")
 	}
-	if !strings.Contains(deps(t, "e2e"), "github.com/tenesh/bava/internal/e2e") {
+	if !strings.Contains(deps(t, "e2e"), "github.com/tharabyte/bava/internal/e2e") {
 		t.Error("a build with -tags e2e does not link internal/e2e, so this test proves nothing")
 	}
 }
@@ -37,11 +37,11 @@ func TestNoBuildLinksTheTestHelpers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(out), "github.com/tenesh/bava/internal/testutil") {
+	if !strings.Contains(string(out), "github.com/tharabyte/bava/internal/testutil") {
 		t.Fatal("render's tests do not link internal/testutil, so this test proves nothing")
 	}
 	for _, tags := range [][]string{nil, {"e2e"}} {
-		if strings.Contains(deps(t, tags...), "github.com/tenesh/bava/internal/testutil") {
+		if strings.Contains(deps(t, tags...), "github.com/tharabyte/bava/internal/testutil") {
 			t.Errorf("a build with tags %v links internal/testutil", tags)
 		}
 	}

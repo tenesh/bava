@@ -13,8 +13,8 @@ import (
 
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 
-	"github.com/tenesh/bava/internal/pdfprint"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/pdfprint"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // spaceRequest is a Space of three pages, one in a folder within a folder,

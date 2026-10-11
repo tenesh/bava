@@ -817,18 +817,12 @@ to Linux: deb/rpm install the 1024px `appicon.png` into `hicolor/128x128`.
 backups kept outside the project, offered at the next launch.
 Also: confirm the public issue tracker and un-hide Help ▸ Report Issue.
 
-**The publisher's name, settled before the first release** (asked by the user
-on 2026-10-11). Today it is `tenesh` everywhere. The app ID
-`dev.tenesh.bava` (`build/config.yml` and the files made from it:
-`Info.plist`, `wails.exe.manifest`, the MSIX manifests) is what macOS and
-Windows know the app by: changing it after release makes it a different app,
-and what was kept under the old ID does not follow. Decide it first. The
-rest can change any time: the company, copyright and vendor
-(`build/config.yml`, `build/windows/info.json`, `build/linux/nfpm/nfpm.yaml`,
-the NSIS defaults), the MSIX `Publisher`, which must match the signing
-certificate, and, if the repository moves, the Go module path
-(`github.com/tenesh/bava`), the bindings folder made from it, and `NOTICE`'s
-link.
+**The publisher's name: settled 2026-10-11** (`.claude/work/specs/release.md`
+decisions 2 to 4, built in R1a). The app ID is `com.tharabyte.bava`, the
+publisher Tharabyte, the repository `tharabyte/bava` and the Go module
+`github.com/tharabyte/bava`. Left for the store work: the MSIX
+`Publisher` must match the signing certificate's subject once there is
+one.
 
 **Exit criterion:**
 

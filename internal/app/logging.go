@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/tenesh/bava/internal/config"
-	"github.com/tenesh/bava/internal/logs"
+	"github.com/tharabyte/bava/internal/config"
+	"github.com/tharabyte/bava/internal/logs"
 )
 
 // StartLogging opens this run's log session in the platform log folder,

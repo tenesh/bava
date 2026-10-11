@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tenesh/bava/internal/space"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/space"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 func zipSpace(t *testing.T) space.Space {

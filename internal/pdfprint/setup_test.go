@@ -3,7 +3,7 @@ package pdfprint_test
 import (
 	"testing"
 
-	"github.com/tenesh/bava/internal/pdfprint"
+	"github.com/tharabyte/bava/internal/pdfprint"
 )
 
 func TestNamedPapersHaveTheirSizes(t *testing.T) {

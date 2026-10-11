@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/app"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/app"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // served asks the file route for a file, as the page does.

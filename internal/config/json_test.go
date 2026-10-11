@@ -3,8 +3,8 @@ package config_test
 import (
 	"testing"
 
-	"github.com/tenesh/bava/internal/config"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/config"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // The frontend reads and saves settings by these names, and the settings file

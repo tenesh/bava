@@ -14,7 +14,7 @@ import { t } from '../i18n/t';
 export const REPORT_ISSUE_ENABLED = false;
 
 /** One place to change when the public tracker is confirmed. */
-export const ISSUE_TRACKER_URL = 'https://github.com/tenesh/bava/issues/new';
+export const ISSUE_TRACKER_URL = 'https://github.com/tharabyte/bava/issues/new';
 
 
 export function issueUrl(build: { version: string; os: string }): string {

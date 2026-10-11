@@ -8,7 +8,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/tenesh/bava/internal/app"
+	"github.com/tharabyte/bava/internal/app"
 )
 
 type events struct {

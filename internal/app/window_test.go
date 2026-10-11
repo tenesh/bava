@@ -8,8 +8,8 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/tenesh/bava/internal/app"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/app"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // Pinned rather than asserted for correctness: the point is that a later edit

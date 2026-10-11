@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tenesh/bava/internal/web"
+	"github.com/tharabyte/bava/internal/web"
 )
 
 var png = []byte("\x89PNG\r\n\x1a\nfake")

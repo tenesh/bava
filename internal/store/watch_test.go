@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tenesh/bava/internal/store"
+	"github.com/tharabyte/bava/internal/store"
 )
 
 func TestUnchangedFileIsNotReportedAsChanged(t *testing.T) {

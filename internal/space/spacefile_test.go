@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/tenesh/bava/internal/space"
+	"github.com/tharabyte/bava/internal/space"
 )
 
 // docs/file-format.md, "Spaces": space.json keeps unknown keys through every

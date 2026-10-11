@@ -6,7 +6,7 @@
  * another file discarded unsaved changes without a word, and a save conflict
  * did nothing visible. Each of those is a test now.
  */
-import type { Scene } from '../../bindings/github.com/tenesh/bava/internal/format/models';
+import type { Scene } from '../../bindings/github.com/tharabyte/bava/internal/format/models';
 
 export type PromptKind = 'unsaved' | 'conflict';
 

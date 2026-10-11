@@ -9,10 +9,10 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/tenesh/bava/internal/app"
-	"github.com/tenesh/bava/internal/export"
-	"github.com/tenesh/bava/internal/pdfprint"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/app"
+	"github.com/tharabyte/bava/internal/export"
+	"github.com/tharabyte/bava/internal/pdfprint"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // An exported picture is the user's file, written where they asked. It is

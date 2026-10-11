@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/format"
+	"github.com/tharabyte/bava/internal/format"
 )
 
 func TestOmitsTheCanvasBlockWhenTheSceneIsEmpty(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/tenesh/bava/internal/render"
+	"github.com/tharabyte/bava/internal/render"
 )
 
 // RenderService is the one render surface. Resist adding a second: a preview,

@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/tenesh/bava/internal/e2e"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/e2e"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // The committed scenarios parse, so a typo fails here rather than on CI.

@@ -6,7 +6,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/tenesh/bava/internal/store"
+	"github.com/tharabyte/bava/internal/store"
 )
 
 // Pages lists every page in the Space, depth first in the tree's order, each

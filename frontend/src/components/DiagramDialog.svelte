@@ -18,7 +18,7 @@
   import type { KeyBinding } from '@codemirror/view';
   import { withoutRemoteRefs } from '../canvas/import/safe-svg';
   import { t } from '../i18n/t';
-  import type { Diagnostic } from '../../bindings/github.com/tenesh/bava/internal/render/models';
+  import type { Diagnostic } from '../../bindings/github.com/tharabyte/bava/internal/render/models';
 
   type Props = {
     open: boolean;

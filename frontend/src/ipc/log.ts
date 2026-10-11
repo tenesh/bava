@@ -4,7 +4,7 @@
  * Everything goes to Go's `LogService.Report`, which writes the session log on
  * the user's machine. Nothing is sent anywhere else; there is nowhere else.
  */
-import { LogService } from '../../bindings/github.com/tenesh/bava/internal/app';
+import { LogService } from '../../bindings/github.com/tharabyte/bava/internal/app';
 
 export type LogEntry = { level: 'error' | 'warn'; kind: string; stack: string; source: string };
 

@@ -3,8 +3,8 @@ package app_test
 import (
 	"testing"
 
-	"github.com/tenesh/bava/internal/app"
-	"github.com/tenesh/bava/internal/render"
+	"github.com/tharabyte/bava/internal/app"
+	"github.com/tharabyte/bava/internal/render"
 )
 
 // Compile failures must reach the frontend as data on a successful call.

@@ -23,7 +23,7 @@
   import { CodeEditor, commitCode, fitToCode } from './canvas/code/editor';
   import { createCodeRuns } from './canvas/code/runs';
   import type { Run } from './canvas/code/highlight';
-  import type { Paper as BoundPaper } from '../bindings/github.com/tenesh/bava/internal/pdfprint/models';
+  import type { Paper as BoundPaper } from '../bindings/github.com/tharabyte/bava/internal/pdfprint/models';
   import { measureCode } from './canvas/code/measure';
   import { invalidateAdvanceOnFontLoad } from './canvas/code/advance';
   import { monoAdvance } from './canvas/code/advance';
@@ -134,7 +134,7 @@
   import { followAction, followBeside, joinFile, resolveLink, type Move } from './docs/links';
   import { relinkEdits } from './docs/page-links';
   import { addMedia, type MediaFile } from './docs/add-media';
-  import { ExportService, FileService, LogService, MenuService, SpaceService } from '../bindings/github.com/tenesh/bava/internal/app';
+  import { ExportService, FileService, LogService, MenuService, SpaceService } from '../bindings/github.com/tharabyte/bava/internal/app';
   import { t } from './i18n/t';
   import { createSearch } from './files/search.svelte';
   import type { SearchHit } from './files/space.svelte';

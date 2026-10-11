@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/tenesh/bava/internal/space"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/space"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 func readPage(t *testing.T, s space.Space, rel string) string {

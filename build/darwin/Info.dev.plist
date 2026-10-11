@@ -8,7 +8,7 @@
         <key>CFBundleExecutable</key>
             <string>bava</string>
         <key>CFBundleIdentifier</key>
-            <string>dev.tenesh.bava</string>
+            <string>com.tharabyte.bava</string>
         <key>CFBundleVersion</key>
             <string>0.1.0</string>
         <key>CFBundleGetInfoString</key>
@@ -22,7 +22,7 @@
         <key>NSHighResolutionCapable</key>
             <string>true</string>
         <key>NSHumanReadableCopyright</key>
-            <string>© 2026, tenesh</string>
+            <string>© 2026 Tharabyte</string>
         <key>NSAppTransportSecurity</key>
         <dict>
             <key>NSAllowsLocalNetworking</key>

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unicode/utf16"
 
-	"github.com/tenesh/bava/internal/render"
+	"github.com/tharabyte/bava/internal/render"
 )
 
 // Nested so the test covers a container child, whose SVG id ("web.api") is not

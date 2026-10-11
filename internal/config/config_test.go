@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/tenesh/bava/internal/config"
+	"github.com/tharabyte/bava/internal/config"
 )
 
 func TestDefaultsWhenTheFileIsAbsent(t *testing.T) {

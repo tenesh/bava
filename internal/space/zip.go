@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tenesh/bava/internal/store"
+	"github.com/tharabyte/bava/internal/store"
 )
 
 // The kinds of zip: the whole Space, one folder, or one page.

@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tenesh/bava/internal/export"
+	"github.com/tharabyte/bava/internal/export"
 
-	"github.com/tenesh/bava/internal/store"
+	"github.com/tharabyte/bava/internal/store"
 )
 
 // ExportService writes an exported picture to disk.

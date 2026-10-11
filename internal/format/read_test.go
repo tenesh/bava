@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/format"
+	"github.com/tharabyte/bava/internal/format"
 )
 
 const sample = "# Ingest\n\nProse here.\n\n```d2 id=write-path\nwriter -> queue\n```\n\nMore prose.\n\n```bava-canvas\n{\n  \"version\": 1,\n  \"elements\": [\n    {\"id\": \"e1\", \"type\": \"rect\", \"x\": 1, \"y\": 2, \"w\": 3, \"h\": 4, \"z\": 1}\n  ]\n}\n```\n"

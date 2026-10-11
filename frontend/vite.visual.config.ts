@@ -52,7 +52,7 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: /^.*\/bindings\/github\.com\/tenesh\/bava\/internal\/app$/,
+        find: /^.*\/bindings\/github\.com\/tharabyte\/bava\/internal\/app$/,
         replacement: fileURLToPath(new URL('./tests/harness/bindings-app.ts', import.meta.url)),
       },
     ],

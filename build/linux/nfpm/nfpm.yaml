@@ -10,10 +10,10 @@ version: "0.1.0"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "A bava application"
-vendor: "tenesh"
-homepage: "https://wails.io"
-license: "MIT"
+description: "Diagrams and documents, on your own disk."
+vendor: "Tharabyte"
+homepage: "https://github.com/tharabyte/bava"
+license: "Apache-2.0"
 release: "1"
 
 contents:

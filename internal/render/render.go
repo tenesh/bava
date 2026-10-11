@@ -22,7 +22,7 @@ import (
 	d2log "github.com/d2lang/d2/lib/log"
 	"github.com/d2lang/d2/lib/textmeasure"
 
-	"github.com/tenesh/bava/internal/layout"
+	"github.com/tharabyte/bava/internal/layout"
 )
 
 // Options selects how a diagram is rendered. It is an options struct rather

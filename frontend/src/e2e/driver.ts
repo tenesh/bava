@@ -68,7 +68,7 @@ export function watchErrors(target: EventTarget) {
   };
 }
 
-const SERVICE = 'github.com/tenesh/bava/internal/e2e.Service';
+const SERVICE = 'github.com/tharabyte/bava/internal/e2e.Service';
 
 /**
  * Everything a target names: a CSS selector's matches, or for `text=…` the

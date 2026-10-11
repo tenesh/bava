@@ -27,7 +27,7 @@ import * as $models from "./models.js";
  * Apply runs one operation on a Space.
  */
 export function Apply(root: string, op: $models.Operation): $CancellablePromise<$models.OpResult> {
-    return $Call.ByID(2192293281, root, op);
+    return $Call.ByID(2987757770, root, op);
 }
 
 /**
@@ -35,7 +35,7 @@ export function Apply(root: string, op: $models.Operation): $CancellablePromise<
  * Which pages use each is worked out by the page, from the pages' text.
  */
 export function Attachments(root: string): $CancellablePromise<$models.AttachmentList> {
-    return $Call.ByID(299153851, root);
+    return $Call.ByID(62147908, root);
 }
 
 /**
@@ -44,7 +44,7 @@ export function Attachments(root: string): $CancellablePromise<$models.Attachmen
  * cancelled.
  */
 export function ChooseFolder(title: string): $CancellablePromise<$models.DialogResult> {
-    return $Call.ByID(1240358610, title);
+    return $Call.ByID(1225902871, title);
 }
 
 /**
@@ -52,7 +52,7 @@ export function ChooseFolder(title: string): $CancellablePromise<$models.DialogR
  * as a Space.
  */
 export function Create(parent: string, name: string): $CancellablePromise<$models.SpaceInfo> {
-    return $Call.ByID(579321623, parent, name);
+    return $Call.ByID(193494454, parent, name);
 }
 
 /**
@@ -60,7 +60,7 @@ export function Create(parent: string, name: string): $CancellablePromise<$model
  * a page made from a template.
  */
 export function CreatePageFrom(root: string, folder: string, name: string, source: string, scene: format$0.Scene): $CancellablePromise<$models.OpResult> {
-    return $Call.ByID(3882340324, root, folder, name, source, scene);
+    return $Call.ByID(2434907373, root, folder, name, source, scene);
 }
 
 /**
@@ -68,7 +68,7 @@ export function CreatePageFrom(root: string, folder: string, name: string, sourc
  * The Space is only read.
  */
 export function ExportZip(root: string, scope: space$0.ZipScope, out: string): $CancellablePromise<$models.Problem> {
-    return $Call.ByID(2091024444, root, scope, out);
+    return $Call.ByID(310729359, root, scope, out);
 }
 
 /**
@@ -78,7 +78,7 @@ export function ExportZip(root: string, scope: space$0.ZipScope, out: string): $
  * not kept.
  */
 export function FetchCard(root: string, address: string): $CancellablePromise<$models.CardDetails> {
-    return $Call.ByID(728531723, root, address);
+    return $Call.ByID(2780217780, root, address);
 }
 
 /**
@@ -87,21 +87,21 @@ export function FetchCard(root: string, address: string): $CancellablePromise<$m
  * link is never differs between an open page and the others.
  */
 export function Index(root: string, withText: boolean): $CancellablePromise<$models.SpaceIndex> {
-    return $Call.ByID(3863460661, root, withText);
+    return $Call.ByID(530067094, root, withText);
 }
 
 /**
  * List lists one folder of a Space.
  */
 export function List(root: string, folder: string): $CancellablePromise<$models.SpaceList> {
-    return $Call.ByID(3073914039, root, folder);
+    return $Call.ByID(3223540862, root, folder);
 }
 
 /**
  * Open opens a folder as a Space, creating .bava/space.json when missing.
  */
 export function Open(dir: string): $CancellablePromise<$models.SpaceInfo> {
-    return $Call.ByID(1337079187, dir);
+    return $Call.ByID(1390241770, dir);
 }
 
 /**
@@ -109,7 +109,7 @@ export function Open(dir: string): $CancellablePromise<$models.SpaceInfo> {
  * folder, in the platform's file manager. A zero Problem means it worked.
  */
 export function Reveal(root: string, path: string): $CancellablePromise<$models.Problem> {
-    return $Call.ByID(1424773362, root, path);
+    return $Call.ByID(4106168503, root, path);
 }
 
 /**
@@ -117,7 +117,7 @@ export function Reveal(root: string, path: string): $CancellablePromise<$models.
  * group ("" for none); a name the group has is refused unless replace.
  */
 export function SaveTemplate(root: string, group: string, name: string, source: string, scene: format$0.Scene, replace: boolean): $CancellablePromise<$models.OpResult> {
-    return $Call.ByID(3547581276, root, group, name, source, scene, replace);
+    return $Call.ByID(58319853, root, group, name, source, scene, replace);
 }
 
 /**
@@ -126,7 +126,7 @@ export function SaveTemplate(root: string, group: string, name: string, source: 
  * the window with what it holds now, searched in place of its file.
  */
 export function Search(root: string, query: string, open: space$0.OpenPage | null): $CancellablePromise<$models.SpaceSearch> {
-    return $Call.ByID(680926463, root, query, open);
+    return $Call.ByID(2587733098, root, query, open);
 }
 
 /**
@@ -134,14 +134,14 @@ export function Search(root: string, query: string, open: space$0.OpenPage | nul
  * those in no group.
  */
 export function Templates(root: string): $CancellablePromise<$models.TemplateList> {
-    return $Call.ByID(1465367162, root);
+    return $Call.ByID(3511000885, root);
 }
 
 /**
  * Trash lists the Space's Trash, most recently deleted first.
  */
 export function Trash(root: string): $CancellablePromise<$models.TrashList> {
-    return $Call.ByID(2780375675, root);
+    return $Call.ByID(3689949064, root);
 }
 
 /**
@@ -149,5 +149,5 @@ export function Trash(root: string): $CancellablePromise<$models.TrashList> {
  * or the whole Space, as space.Space.ZipPlan describes.
  */
 export function ZipPlan(root: string, scope: space$0.ZipScope): $CancellablePromise<$models.ZipPlanResult> {
-    return $Call.ByID(2908057485, root, scope);
+    return $Call.ByID(1137530854, root, scope);
 }

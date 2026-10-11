@@ -7,7 +7,7 @@ CLAUDE.md; `docs/decisions.md`; the roadmap's Milestone 16 ("The
 publisher's name").
 **File format impact:** none. Nothing Bava writes names the app ID or the
 module; the settings' folder is checked in R1a (below).
-**UI impact:** none drawn but the About screen's `NOTICE` text.
+**UI impact:** none.
 
 ## Constraints
 
@@ -39,25 +39,26 @@ module; the settings' folder is checked in R1a (below).
 **Files:** `go.mod`, every Go import, `frontend/bindings/` (regenerated),
 the frontend's imports of the bindings, `docs/ipc.md`, the build skill's
 toolchain lines.
-- [ ] `go mod edit -module github.com/tharabyte/bava`, imports rewritten,
+- [x] `go mod edit -module github.com/tharabyte/bava`, imports rewritten,
   bindings regenerated; nothing under `frontend/bindings/github.com/tenesh`
-- [ ] Green: every gate
+- [x] Green: every gate
 
 ### Task 2: The app ID and publisher
 **Files:** `build/config.yml` and the files made from it (`Info.plist`,
 `Info.dev.plist`, `info.json`, the MSIX manifests, NSIS, `wails.exe.manifest`,
 `nfpm.yaml`), `internal/app/metadata_test.go` (pinning them), `NOTICE`,
 `README.md`, the roadmap's "publisher's name" paragraph (closed).
-- [ ] Failing test first: the metadata test pins `com.tharabyte.bava`,
+- [x] Failing test first: the metadata test pins `com.tharabyte.bava`,
   "Tharabyte" and the copyright in every platform file
-- [ ] Implement; Green: every gate; `wails3 build` on CI for all three
+- [x] Implement; Green: every gate
+- [ ] `wails3 build` on CI for all three
 
 ### Task 3: The settings' folder
 **Files:** `internal/config` (+ test), `docs/file-format.md` if it names
 the folder.
-- [ ] Read where the folder's name comes from; if it changes, a failing
+- [x] Read where the folder's name comes from; if it changes, a failing
   test that the old folder's settings are moved on first launch
-- [ ] Green: `go test ./internal/config`
+- [x] Green: `go test ./internal/config`
 
 ## R1b: No other apps, and the AI disclosure
 
@@ -96,3 +97,36 @@ build skill's repo state; the roadmap (R1 before 15.3).
 
 - The store and sandbox spec (next, before 15.3).
 - Store builds, signing and listings (Milestone 16).
+
+## As built: R1a (2026-10-11)
+
+The module is `github.com/tharabyte/bava` in `go.mod`, every Go import,
+the regenerated bindings (`frontend/bindings/github.com/tharabyte/`), the
+frontend's imports and test mocks, the browser stand-in's match on the
+bindings' path, the end-to-end driver's service name, the issue tracker's
+address and the docs. The roadmap's history rows keep the old name, as
+history. The app ID `com.tharabyte.bava`, the publisher and the copyright
+"© 2026 Tharabyte" are in the ten platform files under `build/`, all ten
+pinned by a test that also refuses the old owner's name; `NOTICE` reads
+"Copyright 2026 Tharabyte". The README names neither, so it is unchanged.
+The template's leftovers beside the new name went too: "A bava
+application" is now "Diagrams and documents, on your own disk.", the
+Linux package's licence is Apache-2.0 (it said MIT) and its homepage the
+repository (it said wails.io); the template test refuses them.
+
+**Deviations:** Task 3 needed no code: the settings folder is
+`<config>/bava`, the logs `Bava` or `bava`, named after the app alone, so
+nothing moves. On macOS the webview keeps a page's browser storage by app
+ID, so its conveniences (the last Space, the panes' layout) start afresh
+under the new ID; nothing of the user's work is there, and nothing is
+released yet.
+
+**Review** (spec-reviewer): no blockers. Fixed: a CI box ticked early; the
+tenth platform file, NSIS's defaults, added to the test; the macOS
+webview storage noted; the template's licence, homepage and description;
+the plan's UI impact and README claims.
+
+**Checks:** Go vet and tests (Windows vet with `-tags e2e`), `npm test`
+(2,871 passed), check, lint, `npm run browser` 513 passed twice. The test
+pinning the platform files was seen failing first (29 lines missing).
+Proved only on CI: the three builds and the walks at the new address.

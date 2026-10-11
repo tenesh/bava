@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/render"
+	"github.com/tharabyte/bava/internal/render"
 )
 
 const validSource = `users: Users

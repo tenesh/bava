@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/render"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/render"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 func containersSource(t *testing.T) string {

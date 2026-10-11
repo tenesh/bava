@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tenesh/bava/internal/store"
+	"github.com/tharabyte/bava/internal/store"
 )
 
 // TemplatesDir is the Space's templates folder, relative to its root.

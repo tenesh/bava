@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/render"
+	"github.com/tharabyte/bava/internal/render"
 )
 
 // The dark values, from frontend/src/styles/tokens/_color.scss. The token

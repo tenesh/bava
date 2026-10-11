@@ -5,11 +5,11 @@ version: '3'
 
 # This information is used to generate the build assets.
 info:
-  companyName: "tenesh" # The name of the company
+  companyName: "Tharabyte" # The name of the company
   productName: "Bava" # The name of the application
-  productIdentifier: "dev.tenesh.bava" # The unique product identifier
+  productIdentifier: "com.tharabyte.bava" # The unique product identifier
   description: "Local-only diagrams and docs" # The application description
-  copyright: "© 2026, tenesh" # Copyright text
+  copyright: "© 2026 Tharabyte" # Copyright text
   comments: "Diagrams and documents, on your own disk." # Comments
   version: "0.0.1" # The application version
   # cfBundleIconName: "appicon" # The macOS icon name in Assets.car icon bundles (optional)
@@ -46,7 +46,6 @@ dev_mode:
       type: primary
 
 # File Associations
-# More information at: https://v3.wails.io/noit/done/yet
 fileAssociations:
 #  - ext: wails
 #    name: Wails

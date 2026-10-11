@@ -8,7 +8,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/tenesh/bava/internal/app/menu"
+	"github.com/tharabyte/bava/internal/app/menu"
 )
 
 // The frontend may report state before the menu bar exists; that must not

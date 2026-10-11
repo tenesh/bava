@@ -9,9 +9,9 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/tenesh/bava/internal/config"
-	"github.com/tenesh/bava/internal/format"
-	"github.com/tenesh/bava/internal/store"
+	"github.com/tharabyte/bava/internal/config"
+	"github.com/tharabyte/bava/internal/format"
+	"github.com/tharabyte/bava/internal/store"
 )
 
 // FileService is the file surface. It stays thin: read, write, and tell the

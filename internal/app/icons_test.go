@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // The Wails template's icons, by SHA-256, as they were at the scaffold commit.

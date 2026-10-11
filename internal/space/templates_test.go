@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/tenesh/bava/internal/space"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/space"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // withTemplates makes a Space holding the given files under .bava/templates.

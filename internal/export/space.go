@@ -9,8 +9,8 @@ import (
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu"
 
-	"github.com/tenesh/bava/internal/pdfprint"
-	"github.com/tenesh/bava/internal/store"
+	"github.com/tharabyte/bava/internal/pdfprint"
+	"github.com/tharabyte/bava/internal/store"
 )
 
 // SpaceEntry is one entry of a folder's or the Space's PDF, in the Files

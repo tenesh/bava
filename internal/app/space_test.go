@@ -10,11 +10,11 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/tenesh/bava/internal/app"
-	"github.com/tenesh/bava/internal/format"
-	"github.com/tenesh/bava/internal/space"
-	"github.com/tenesh/bava/internal/testutil"
-	"github.com/tenesh/bava/internal/web"
+	"github.com/tharabyte/bava/internal/app"
+	"github.com/tharabyte/bava/internal/format"
+	"github.com/tharabyte/bava/internal/space"
+	"github.com/tharabyte/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/web"
 )
 
 func spaceService(revealed *[2]string) *app.SpaceService {

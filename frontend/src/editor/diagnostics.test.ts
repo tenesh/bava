@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toEditorDiagnostics } from './diagnostics';
-import type { Diagnostic as GoDiagnostic } from '../../bindings/github.com/tenesh/bava/internal/render/models';
+import type { Diagnostic as GoDiagnostic } from '../../bindings/github.com/tharabyte/bava/internal/render/models';
 
 const doc = 'users: Users\nweb: Web App\nbroken: {\n';
 

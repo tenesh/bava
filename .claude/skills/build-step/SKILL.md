@@ -275,9 +275,11 @@ History belongs in each plan's As built, not here.
   38100133614). 15.2d (a folder or
   the Space as one PDF) is committed, CI green with the Space's PDF in the
   `reopen` walk on all three systems 2026-10-11 (run 38107518600, after the
-  walk was taught that Export Space opens on PDF). **Next is R1** (the move
-  to Tharabyte, `.claude/work/plans/R1-move-to-tharabyte.md`), then the
-  store and sandbox spec, then 15.3 import and 15.4 the canvas work. The
+  walk was taught that Export Space opens on PDF). **R1** (the move to
+  Tharabyte, `.claude/work/plans/R1-move-to-tharabyte.md`) is under way:
+  the repository is `tharabyte/bava`; R1a (the rename) is built, not yet
+  seen on CI. Next R1b (no other apps, the AI disclosure), then the store
+  and sandbox spec, then 15.3 import and 15.4 the canvas work. The
   roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **CI** builds a downloadable app per system on every run (artifacts
   `bava-<os>-<commit>`, 14 days).
@@ -291,7 +293,7 @@ History belongs in each plan's As built, not here.
 
 ### Toolchain, verified by command
 
-- Go module path `github.com/tenesh/bava`, `go 1.27.0` directive, toolchain
+- Go module path `github.com/tharabyte/bava`, `go 1.27.0` directive, toolchain
   `go1.27.1 darwin/arm64`. `GOPATH` at `the local GOPATH`.
 - D2 `v0.9.0` is a direct requirement in `go.mod`. TALA ships in-library at
   `d2layouts/d2talalayout`, with no external binary plugin.

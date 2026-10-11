@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/layout"
+	"github.com/tharabyte/bava/internal/layout"
 )
 
 // TALA is the default engine. dagre and elk are user-selectable alternatives,

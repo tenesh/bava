@@ -1,4 +1,4 @@
-module github.com/tenesh/bava
+module github.com/tharabyte/bava
 
 go 1.27.0
 

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/tenesh/bava/internal/format"
+	"github.com/tharabyte/bava/internal/format"
 )
 
 // MaxHits is how many results a search returns; more are only counted.

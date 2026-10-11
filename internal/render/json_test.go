@@ -3,8 +3,8 @@ package render_test
 import (
 	"testing"
 
-	"github.com/tenesh/bava/internal/render"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/render"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // The frontend reads these names. A Go field renamed without its json tag

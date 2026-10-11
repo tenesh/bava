@@ -4,7 +4,7 @@ import { flushSync } from 'svelte';
 import { render, unmount } from './test/render';
 
 // The binding calls into Go, which does not exist in a test process.
-vi.mock('../bindings/github.com/tenesh/bava/internal/app', () => ({
+vi.mock('../bindings/github.com/tharabyte/bava/internal/app', () => ({
   RenderService: {
     Render: vi.fn().mockResolvedValue({ svg: '<svg id="stub"/>', errors: [], nodeMap: {} }),
   },
@@ -50,7 +50,7 @@ import App from './App.svelte';
 
 // The app remembers the last Space and page it had open, in storage the
 // shared teardown empties, so each test starts as a first launch.
-import { SpaceService } from '../bindings/github.com/tenesh/bava/internal/app';
+import { SpaceService } from '../bindings/github.com/tharabyte/bava/internal/app';
 import { PENDING } from './files/tree';
 
 // A native menu click, as Go delivers it.
@@ -110,7 +110,7 @@ describe('App shell integration', () => {
   // the configured one, not a literal.
   // The status bar describes the canvas while it is worked on.
   it('names the configured engine in the status bar on the canvas', async () => {
-    const { FileService } = await import('../bindings/github.com/tenesh/bava/internal/app');
+    const { FileService } = await import('../bindings/github.com/tharabyte/bava/internal/app');
     vi.mocked(FileService.Settings).mockResolvedValueOnce({ debounceMs: 250, layoutEngine: 'elk', autosave: 'off', autosaveDelayMs: 1000 } as never);
     const { target } = render(App);
     menuCommand('file.new');
@@ -296,13 +296,13 @@ describe('launch', () => {
     menuCommand('edit.delete');
     await vi.waitFor(() => expect(target.querySelector('header')?.textContent).toContain('unsaved'));
     menuCommand('file.save');
-    const { FileService } = await import('../bindings/github.com/tenesh/bava/internal/app');
+    const { FileService } = await import('../bindings/github.com/tharabyte/bava/internal/app');
     await vi.waitFor(() => expect(FileService.Save).toHaveBeenCalledWith('/w/Acme/Roadmap.md', '', { version: 1, elements: [] }));
   });
 
   // Go answered and wrote nothing: the page stays unsaved, and says why.
   it('says in the status bar why a save was refused', async () => {
-    const { FileService } = await import('../bindings/github.com/tenesh/bava/internal/app');
+    const { FileService } = await import('../bindings/github.com/tharabyte/bava/internal/app');
     vi.mocked(FileService.Save).mockResolvedValueOnce({ path: '', stamp: { size: 0, modifiedUnixNano: '0' }, error: 'Roadmap.md could not be written.' } as never);
     const { target } = render(App);
     menuCommand('file.openSpace');
@@ -361,7 +361,7 @@ describe('launch', () => {
 
   // Two shapes selected, so grouping them is a real edit when it runs.
   it('a canvas command with the canvas hidden does not dirty the open document', async () => {
-    const { FileService } = await import('../bindings/github.com/tenesh/bava/internal/app');
+    const { FileService } = await import('../bindings/github.com/tharabyte/bava/internal/app');
     const rect = (id: string, x: number) => ({ id, type: 'rect', x, y: 0, w: 40, h: 40, z: 1 });
     vi.mocked(FileService.Open).mockResolvedValueOnce({
       path: '/w/Acme/Roadmap.md',
@@ -407,7 +407,7 @@ describe('launch', () => {
   // Closing the right-click menu once threw: its props were read after the
   // state behind them had been cleared (seen at a running window).
   it('opens the right-click menu on the canvas, and closes it without an error', async () => {
-    const { LogService } = await import('../bindings/github.com/tenesh/bava/internal/app');
+    const { LogService } = await import('../bindings/github.com/tharabyte/bava/internal/app');
     const { target } = render(App);
     menuCommand('file.new');
     await vi.waitFor(() => expect(target.textContent).toContain('untitled'));

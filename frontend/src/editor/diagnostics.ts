@@ -8,7 +8,7 @@
  * frontend to find a position would be a second source of truth.
  */
 import type { Diagnostic as EditorDiagnostic } from '@codemirror/lint';
-import type { Diagnostic as GoDiagnostic } from '../../bindings/github.com/tenesh/bava/internal/render/models';
+import type { Diagnostic as GoDiagnostic } from '../../bindings/github.com/tharabyte/bava/internal/render/models';
 
 export function toEditorDiagnostics(doc: string, diagnostics: GoDiagnostic[]): EditorDiagnostic[] {
   const end = doc.length;

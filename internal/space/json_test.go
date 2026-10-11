@@ -3,8 +3,8 @@ package space_test
 import (
 	"testing"
 
-	"github.com/tenesh/bava/internal/space"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/space"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // These reach the frontend inside the Space service's results, by these names.

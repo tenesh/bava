@@ -21,7 +21,7 @@ func (s *RenderService) Render(source string, opts render.Options) (render.Resul
 ```
 
 Registered as `RenderService` in `main.go`; generated bindings land in
-`frontend/bindings/github.com/tenesh/bava/internal/app/`.
+`frontend/bindings/github.com/tharabyte/bava/internal/app/`.
 
 ### Request
 

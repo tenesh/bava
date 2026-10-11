@@ -12,7 +12,7 @@ import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, lineNumbers, keymap, highlightActiveLine, type KeyBinding } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, redo, selectAll, undo } from '@codemirror/commands';
 import { lintGutter, setDiagnostics } from '@codemirror/lint';
-import type { Diagnostic as GoDiagnostic } from '../../bindings/github.com/tenesh/bava/internal/render/models';
+import type { Diagnostic as GoDiagnostic } from '../../bindings/github.com/tharabyte/bava/internal/render/models';
 import { toEditorDiagnostics } from './diagnostics';
 
 export type SourcePaneOptions = {

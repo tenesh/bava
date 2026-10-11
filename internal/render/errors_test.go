@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/tenesh/bava/internal/render"
+	"github.com/tharabyte/bava/internal/render"
 )
 
 // Line 3 opens a map that is never closed. D2 reports this at its own

@@ -8,8 +8,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/tenesh/bava/internal/app"
-	"github.com/tenesh/bava/internal/logs"
+	"github.com/tharabyte/bava/internal/app"
+	"github.com/tharabyte/bava/internal/logs"
 )
 
 type clock struct{ t time.Time }

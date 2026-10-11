@@ -30,7 +30,7 @@ import * as $models from "./models.js";
  * and pictures inside, prints, and writes. A zero Problem means it worked.
  */
 export function PagePDF(root: string, req: export$0.Request, out: string): $CancellablePromise<$models.Problem> {
-    return $Call.ByID(972298078, root, req, out);
+    return $Call.ByID(3220595031, root, req, out);
 }
 
 /**
@@ -44,7 +44,7 @@ export function PagePDF(root: string, req: export$0.Request, out: string): $Canc
  * folder is an error rather than something silently created.
  */
 export function Save(path: string, contentsBase64: string): $CancellablePromise<string> {
-    return $Call.ByID(15992374, path, contentsBase64);
+    return $Call.ByID(602187313, path, contentsBase64);
 }
 
 /**
@@ -53,5 +53,5 @@ export function Save(path: string, contentsBase64: string): $CancellablePromise<
  * and "page" when a page could not be printed (Page names it).
  */
 export function SpacePDF(root: string, req: export$0.SpaceRequest, out: string): $CancellablePromise<$models.SpacePDFResult> {
-    return $Call.ByID(4205595279, root, req, out);
+    return $Call.ByID(3302529736, root, req, out);
 }

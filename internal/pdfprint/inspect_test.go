@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/pdfprint"
+	"github.com/tharabyte/bava/internal/pdfprint"
 )
 
 func TestInspectReadsPagesAndTheirSize(t *testing.T) {

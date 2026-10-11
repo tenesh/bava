@@ -11,12 +11,12 @@
  * not in a file"). The order the user arranged lives in the Space's own
  * `.bava/space.json`, in Go.
  */
-import { SpaceService } from "../../bindings/github.com/tenesh/bava/internal/app";
-import type { Operation } from "../../bindings/github.com/tenesh/bava/internal/app/models";
+import { SpaceService } from "../../bindings/github.com/tharabyte/bava/internal/app";
+import type { Operation } from "../../bindings/github.com/tharabyte/bava/internal/app/models";
 import { t } from "../i18n/t";
 import { spaceMessage } from "./space-helpers";
 import type { TemplateRef } from "./templates";
-import type { Scene } from "../../bindings/github.com/tenesh/bava/internal/format/models";
+import type { Scene } from "../../bindings/github.com/tharabyte/bava/internal/format/models";
 
 export type EntryKind = "page" | "folder";
 export type SpaceEntry = { name: string; path: string; kind: EntryKind };

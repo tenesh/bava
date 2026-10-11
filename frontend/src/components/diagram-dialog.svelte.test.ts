@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { flushSync } from 'svelte';
 import { render } from '../test/render';
 import DiagramDialog from './DiagramDialog.svelte';
-import type { Diagnostic } from '../../bindings/github.com/tenesh/bava/internal/render/models';
+import type { Diagnostic } from '../../bindings/github.com/tharabyte/bava/internal/render/models';
 
 const broken: Diagnostic[] = [{ message: 'expected a name', line: 1, from: 0, to: 1 }];
 

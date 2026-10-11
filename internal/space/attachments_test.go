@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tenesh/bava/internal/space"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/space"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // outsideFile writes a file outside the Space, as one picked or dropped from

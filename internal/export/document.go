@@ -18,7 +18,7 @@ import (
 
 	"golang.org/x/net/html"
 
-	"github.com/tenesh/bava/internal/pdfprint"
+	"github.com/tharabyte/bava/internal/pdfprint"
 )
 
 // Page is what is printed of a page: the HTML its editor shows, the styles

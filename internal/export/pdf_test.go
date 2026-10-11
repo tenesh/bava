@@ -14,8 +14,8 @@ import (
 
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 
-	"github.com/tenesh/bava/internal/pdfprint"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/pdfprint"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // printed is one print the fake printer was asked for.

@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tenesh/bava/internal/app"
-	"github.com/tenesh/bava/internal/logs"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/app"
+	"github.com/tharabyte/bava/internal/logs"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // On macOS [NSApp terminate:] exits the process once Wails' cleanup has run,

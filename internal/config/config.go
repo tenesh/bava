@@ -12,7 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/tenesh/bava/internal/layout"
+	"github.com/tharabyte/bava/internal/layout"
 )
 
 // Settings are the values a user can change.

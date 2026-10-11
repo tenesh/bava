@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/format"
+	"github.com/tharabyte/bava/internal/format"
 )
 
 // The mandatory test. Write → read → compare, not a writer test plus a reader

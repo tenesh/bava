@@ -3,8 +3,8 @@ package menu_test
 import (
 	"testing"
 
-	"github.com/tenesh/bava/internal/app/menu"
-	"github.com/tenesh/bava/internal/testutil"
+	"github.com/tharabyte/bava/internal/app/menu"
+	"github.com/tharabyte/bava/internal/testutil"
 )
 
 // The frontend sends the state and receives the commands by these names.

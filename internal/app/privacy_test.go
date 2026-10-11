@@ -10,9 +10,9 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/tenesh/bava/internal/app"
-	"github.com/tenesh/bava/internal/logs"
-	"github.com/tenesh/bava/internal/render"
+	"github.com/tharabyte/bava/internal/app"
+	"github.com/tharabyte/bava/internal/logs"
+	"github.com/tharabyte/bava/internal/render"
 )
 
 // A log never contains document prose, D2 source, canvas content or labels,

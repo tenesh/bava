@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/store"
+	"github.com/tharabyte/bava/internal/store"
 )
 
 func TestSaveThenOpenReturnsTheSameContent(t *testing.T) {

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/app"
-	"github.com/tenesh/bava/internal/config"
-	"github.com/tenesh/bava/internal/format"
+	"github.com/tharabyte/bava/internal/app"
+	"github.com/tharabyte/bava/internal/config"
+	"github.com/tharabyte/bava/internal/format"
 )
 
 func TestOpenReturnsProseAndScene(t *testing.T) {

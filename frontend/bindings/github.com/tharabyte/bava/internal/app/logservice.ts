@@ -21,7 +21,7 @@ import * as $models from "./models.js";
  * the platform, and the session's recent log lines, already redacted.
  */
 export function Diagnostics(userAgent: string): $CancellablePromise<string> {
-    return $Call.ByID(2577341313, userAgent);
+    return $Call.ByID(4216349782, userAgent);
 }
 
 /**
@@ -29,14 +29,14 @@ export function Diagnostics(userAgent: string): $CancellablePromise<string> {
  * Returns an error message, or "" on success.
  */
 export function OpenLogsFolder(): $CancellablePromise<string> {
-    return $Call.ByID(3530122168);
+    return $Call.ByID(2363896733);
 }
 
 /**
  * Report writes a frontend error to the log.
  */
 export function Report(entry: $models.LogEntry): $CancellablePromise<void> {
-    return $Call.ByID(2792350165, entry);
+    return $Call.ByID(3608111148, entry);
 }
 
 /**
@@ -44,12 +44,12 @@ export function Report(entry: $models.LogEntry): $CancellablePromise<void> {
  * Returns an error message, or "" on success.
  */
 export function SetVerbose(on: boolean): $CancellablePromise<string> {
-    return $Call.ByID(3465701401, on);
+    return $Call.ByID(3470237268, on);
 }
 
 /**
  * TakeNotices returns pending notices once; a second call returns none.
  */
 export function TakeNotices(): $CancellablePromise<$models.Notice[] | null> {
-    return $Call.ByID(3481836997);
+    return $Call.ByID(711908150);
 }

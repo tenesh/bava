@@ -6,13 +6,13 @@
  * Without the id check a slow TALA render can land after a faster later one and
  * the diagram flickers between states, which looks like a layout bug and is not.
  */
-import { RenderService } from '../../bindings/github.com/tenesh/bava/internal/app';
+import { RenderService } from '../../bindings/github.com/tharabyte/bava/internal/app';
 import type {
   Diagnostic,
   Layout as WireLayout,
   Result,
   Span,
-} from '../../bindings/github.com/tenesh/bava/internal/render/models';
+} from '../../bindings/github.com/tharabyte/bava/internal/render/models';
 
 /** The layout with its lists present, which is what every reader wants. */
 export type Layout = { shapes: NonNullable<WireLayout['shapes']>; connections: NonNullable<WireLayout['connections']> };

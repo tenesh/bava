@@ -30,7 +30,7 @@ import * as $models from "./models.js";
  * ChangedOnDisk reports whether the file moved underneath the editor.
  */
 export function ChangedOnDisk(path: string, stamp: store$0.Stamp): $CancellablePromise<boolean> {
-    return $Call.ByID(1288114517, path, stamp);
+    return $Call.ByID(2663953104, path, stamp);
 }
 
 /**
@@ -40,14 +40,14 @@ export function ChangedOnDisk(path: string, stamp: store$0.Stamp): $CancellableP
  * which is a normal outcome and not something to report as a failure.
  */
 export function ChooseFileToOpen(): $CancellablePromise<$models.DialogResult> {
-    return $Call.ByID(504373913);
+    return $Call.ByID(2737053710);
 }
 
 /**
  * ChooseFileToSave shows the native save dialog.
  */
 export function ChooseFileToSave(suggestedName: string): $CancellablePromise<$models.DialogResult> {
-    return $Call.ByID(931060408, suggestedName);
+    return $Call.ByID(256293611, suggestedName);
 }
 
 /**
@@ -56,7 +56,7 @@ export function ChooseFileToSave(suggestedName: string): $CancellablePromise<$mo
  * and no error.
  */
 export function ChooseMedia(kind: string): $CancellablePromise<$models.PathsResult> {
-    return $Call.ByID(702476426, kind);
+    return $Call.ByID(1287745027, kind);
 }
 
 /**
@@ -65,7 +65,7 @@ export function ChooseMedia(kind: string): $CancellablePromise<$models.PathsResu
  * only, so the image comes through here.
  */
 export function ClipboardImage(): $CancellablePromise<string> {
-    return $Call.ByID(1963423996);
+    return $Call.ByID(1598228423);
 }
 
 /**
@@ -73,14 +73,14 @@ export function ClipboardImage(): $CancellablePromise<string> {
  * user opened. A file that is not there is no error: its card says so.
  */
 export function FileDetails(root: string, rel: string): $CancellablePromise<$models.FileDetailsResult> {
-    return $Call.ByID(2439111753, root, rel);
+    return $Call.ByID(933184208, root, rel);
 }
 
 /**
  * Open reads and parses a file.
  */
 export function Open(path: string): $CancellablePromise<$models.OpenResult> {
-    return $Call.ByID(1348112483, path);
+    return $Call.ByID(2679308708, path);
 }
 
 /**
@@ -89,21 +89,21 @@ export function Open(path: string): $CancellablePromise<$models.OpenResult> {
  * documents). A link on the way to it is refused. An error is its message.
  */
 export function OpenFile(root: string, rel: string): $CancellablePromise<string> {
-    return $Call.ByID(2294496701, root, rel);
+    return $Call.ByID(3463172178, root, rel);
 }
 
 /**
  * Save writes a file, replacing only the canvas block within it.
  */
 export function Save(path: string, source: string, scene: format$0.Scene): $CancellablePromise<$models.SaveResult> {
-    return $Call.ByID(408803850, path, source, scene);
+    return $Call.ByID(553621121, path, source, scene);
 }
 
 /**
  * SaveSettings writes the user's preferences.
  */
 export function SaveSettings(settings: config$0.Settings): $CancellablePromise<string> {
-    return $Call.ByID(1567707823, settings);
+    return $Call.ByID(1633431532, settings);
 }
 
 /**
@@ -112,5 +112,5 @@ export function SaveSettings(settings: config$0.Settings): $CancellablePromise<s
  * The frontend reads these once at start-up.
  */
 export function Settings(): $CancellablePromise<config$0.Settings> {
-    return $Call.ByID(267895474);
+    return $Call.ByID(3604734249);
 }

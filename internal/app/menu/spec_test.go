@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tenesh/bava/internal/app/menu"
+	"github.com/tharabyte/bava/internal/app/menu"
 )
 
 func load(t *testing.T) menu.Spec {

@@ -5,8 +5,8 @@
  * the loaded values and writes back the whole object, so keys it does not edit
  * survive a save.
  */
-import { FileService, LogService } from '../../bindings/github.com/tenesh/bava/internal/app';
-import type { Settings } from '../../bindings/github.com/tenesh/bava/internal/config/models';
+import { FileService, LogService } from '../../bindings/github.com/tharabyte/bava/internal/app';
+import type { Settings } from '../../bindings/github.com/tharabyte/bava/internal/config/models';
 import type { AutosaveMode } from '../files/autosave.svelte';
 import { isLayoutEngine, type LayoutEngine } from './layout-engine';
 
