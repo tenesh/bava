@@ -57,7 +57,8 @@ func TestTheRepositoryNamesNoOtherApp(t *testing.T) {
 		case ".png", ".jpg", ".woff2", ".ico", ".icns", ".pdf", ".zip", ".sum":
 			continue
 		}
-		if rel == "names_test.go" || strings.HasPrefix(rel, "frontend/node_modules/") {
+		// NOTICE is where a licence requires its source be named.
+		if rel == "names_test.go" || rel == "NOTICE" || strings.HasPrefix(rel, "frontend/node_modules/") {
 			continue
 		}
 		data, err := os.ReadFile(filepath.Join(root, rel))

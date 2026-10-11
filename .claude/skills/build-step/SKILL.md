@@ -280,7 +280,9 @@ History belongs in each plan's As built, not here.
   the repository is `tharabyte/bava`; R1a (the rename) is committed, CI
   green 2026-10-11 (run 38109056864, the browser job on a rerun after the
   menu flake below); R1b (no other apps, the AI disclosure) is built, not
-  yet seen on CI. Then the user rewrites the history, then R2 (the
+  yet seen on CI; the history is kept as it is; `NOTICE` attributes the
+  canvas code found adapted. Then R1c (that code written afresh, the
+  roadmap's R1 section), then R2 (the
   stores' sandboxes, a sandboxed run on CI first; the roadmap's R1 and R2
   section), then 15.3 import and 15.4 the canvas work. The
   roadmap (`.claude/plan/roadmap.md`) holds the sequence.

@@ -47,5 +47,18 @@ features) says what Bava does in its own words instead. A rule keeps it so.
 What stays: the names of what Bava is built on and runs on (its
 dependencies, the operating systems, their webviews and stores, file
 formats and standards), since those name parts of Bava, not comparisons.
-The history is cleaned after the move: the user rewrites it, with commands
-prepared for them.
+The history is kept as it is (decided 2026-10-11): it holds ordinary
+comparison and study, the repository was already public, and a rewrite
+changes every commit's id. Code adapted from another project, if any, is
+attributed in `NOTICE` as its licence requires.
+
+### 7. Adapted code: attributed now, written afresh in R1c (2026-10-11)
+
+A function-by-function comparison found parts of the canvas adapted from
+another project's MIT-licensed code; the rest is Bava's own or shares only
+values and behaviour, which the licence does not cover. `NOTICE` carries
+that project's copyright and licence, naming the files. R1c, right after
+R1, replaces each adapted part with code written from a spec of Bava's own
+behaviour (the tests and pictures as the check), never from the original;
+the attribution is removed with the last of it. Chosen over attributing
+only and over rewriting before attributing.

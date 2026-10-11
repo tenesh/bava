@@ -553,8 +553,20 @@ holding, and the file format unchanged (`go test ./internal/format`).
 
 **R1: the move to Tharabyte** (`.claude/work/plans/R1-move-to-tharabyte.md`,
 `.claude/work/specs/release.md`). R1a the rename (module, app ID,
-publisher); R1b no other apps named, the rule, and `AI.md`; then the
-history rewrite, run by the user.
+publisher); R1b no other apps named, the rules, and `AI-DISCLOSURE.md`.
+The history is kept as it is.
+
+**R1c: the adapted canvas code, written afresh** (decided 2026-10-11).
+A comparison found parts of the canvas adapted from another project's MIT
+code; `NOTICE` attributes it meanwhile. R1c replaces each with code written
+from Bava's own description of the behaviour, then drops the attribution:
+elbow segment editing (`elbow-segments.ts`); arrow binding, its reach,
+elbow snapping, anchor points and the inside-out guard (`binding.ts`);
+arrowhead sizes, angles and shapes (`arrows.ts`); closing a line
+(`closed.ts`); angle snapping (`constrain.ts`); a vector's heading
+(`elbow.ts`). Behaviour stays: the existing tests and pictures are the
+specification, and each part is described in a spec before its code is
+replaced, never from the original source.
 
 **R2: the stores' sandboxes, proven first.** Bava ships only through the
 Mac App Store, the Microsoft Store and Flathub (`release.md` decision 1).

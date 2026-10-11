@@ -12,7 +12,7 @@ module; the settings' folder is checked in R1a (below).
 ## Constraints
 
 - The user does every git step: the transfer on GitHub before R1a's code,
-  and the history rewrite after R1b, with commands prepared for them.
+  (the history is not rewritten: decided 2026-10-11, below).
 - The app ID is fixed at `com.tharabyte.bava`; the publisher is
   "Tharabyte"; `NOTICE` says "Copyright 2026 Tharabyte".
 - What stays named (decision 6): Bava's dependencies, the operating
@@ -79,12 +79,14 @@ the list and what stays named), its index row, the spec-reviewer's checks.
 ### Task 6: The AI disclosure
 **Files:** `AI-DISCLOSURE.md`, `README.md` (a line linking it).
 
-### Task 7: The history (prepared, run by the user)
-**Files:** none in the repo: the `git filter-repo` commands, in the report,
-that remove `.claude/work/specs/research/` from every commit and replace
-the listed names in old file contents and commit messages; a check to run
-before the force-push; the note that GitHub support can purge cached
-views.
+### Task 7: The history: not rewritten (decided 2026-10-11)
+Commands to rewrite it were prepared, then the user chose to keep the
+history as it is: what it holds is ordinary comparison and study, the
+repository was already public (caches and clones keep old commits
+whatever is rewritten), and a rewrite changes every commit's id. What
+matters instead is whether any code was adapted from another project,
+which its licence would require attributing in `NOTICE`; that is checked
+separately.
 
 ## Artifacts
 
@@ -172,9 +174,7 @@ Its first version ignored case on the whole pattern and caught CSS's
 (2,871 passed), check, lint, `npm run browser` 513 passed twice after the
 settle fix (and once before it, then one menu flake). No em dash added.
 
-**For the user: the history** (Task 7). The commands are in the report;
-every commit's id changes, so run them right after this is pushed, before
-anyone clones.
+**The history** (Task 7) is kept as it is, by the user's choice.
 
 **Review** (spec-reviewer): no blockers. Fixed: two comments still cited
 the other app's source paths and a function name; a code editor was named as the

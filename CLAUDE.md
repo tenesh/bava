@@ -39,6 +39,7 @@ These hold in every phase, whatever the pressure.
 5. **Bava in its own words.** No spec, decision, plan, comment or test names
    another product as a comparison or a source, and no study of another app
    is kept in the repository (`.ai/rules/own-words.md`, `names_test.go`).
+   `NOTICE` alone names sources, where a licence requires it.
 6. **Never touch the Flathub manifest or submission.** Flathub forbids
    AI-generated or AI-assisted content there; the maintainer writes them.
    `AI-DISCLOSURE.md` stays true (`.ai/rules/ai-disclosure.md`).

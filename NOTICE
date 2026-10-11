@@ -74,6 +74,37 @@ PDF export
   go.yaml.in/yaml/v3 (MIT and Apache-2.0, Copyright The yaml Project
   Contributors).
 
+Canvas (adapted code)
+  Excalidraw: MIT
+    Copyright (c) 2020 Excalidraw
+    https://github.com/excalidraw/excalidraw
+  Parts of Bava's canvas are adapted from Excalidraw's source: elbow arrow
+  segment editing (frontend/src/canvas/elbow-segments.ts), arrow binding,
+  its reach, elbow snapping and anchor points (frontend/src/canvas/binding.ts),
+  arrowhead size, angle and shapes (frontend/src/canvas/arrows.ts), closing a
+  line (frontend/src/canvas/closed.ts), angle snapping
+  (frontend/src/canvas/constrain.ts) and the heading of a vector
+  (frontend/src/canvas/elbow.ts). Its licence:
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be included
+    in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 Icons
   Lucide (@lucide/svelte): ISC
     Copyright (c) 2026 Lucide Icons and Contributors

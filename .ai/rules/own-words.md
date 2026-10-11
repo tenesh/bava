@@ -12,6 +12,10 @@ with one of those words either: "A linear element" passes where the word
 alone, capitalised at the start, would not.
 
 ## What stays named
+`NOTICE`, where a licence requires its source to be named: code adapted
+from another project carries that project's copyright and licence there,
+for as long as the adapted code stays.
+
 What Bava is built on and runs with: its dependencies (as `NOTICE` lists
 them), the operating systems, their webviews and stores, file formats,
 languages and standards (Markdown, D2, Mermaid, TeX), and GitHub, where the
