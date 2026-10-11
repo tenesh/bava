@@ -73,3 +73,26 @@ A Space's Markdown zip holds its pages laid out as in the Space and its
 the settings (page order, page width), so it reopens as the same Space,
 minus what was thrown away. Chosen over an exact copy (the Trash
 included) and over pages with only the images they use.
+
+### 8. Page numbers read as the number alone (2026-10-11)
+
+When turned on, each PDF page carries its number, "3", at the bottom
+centre in Bava's font. Chosen over "3 of 12" and "Page 3 of 12".
+
+### 9. A page fits the paper's width, with no scale to choose (2026-10-11)
+
+The page is laid out at its width in Bava and then shrunk or grown so that
+width fills the paper between the margins: a wide table is never cut, and
+there is no percentage to pick. This replaces decision 48's "scale" and
+decision 2's Scale option. Chosen over a short list of percentages, with
+or without Custom.
+
+### 10. A page's PDF first, a folder's or the Space's after (2026-10-11)
+
+Approved with the plan of 15.2c: 15.2c is a page's PDF (the Document,
+the Canvas or both), proving the printing of real pages on all three
+systems; 15.2d joins many pages into one PDF with a contents page and
+bookmarks, or one per page. A page outside a Space exports a PDF without
+one; only its zip needs a Space. Anything not on disk (a picture from the
+web, an online video, a link card's picture) prints as its address or its
+words; the printing webview reaches nothing.

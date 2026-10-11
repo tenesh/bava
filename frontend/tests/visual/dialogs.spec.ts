@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   THEMES,
   canvasPane,
@@ -44,12 +44,45 @@ for (const theme of THEMES) {
       await shotDialog(page, shot('dialogs', 'search', 'none', theme), palette);
     });
 
-    // Export as a Markdown zip: a page, and the whole Space.
-    test('export a page', async ({ page }) => {
+    // Export a page as a PDF, its first sheet previewed, and as a Markdown
+    // zip; the whole Space as a zip.
+    test('export a page as a PDF', async ({ page }) => {
       await openApp(page, theme);
       await openPage(page, 'Marketing/Launch plan.md');
       await menu(page, 'file.exportPage');
       const dialog = page.getByRole('dialog', { name: 'Export page' });
+      await expect(dialog.getByRole('button', { name: 'Export PDF' })).toBeEnabled();
+      await expect(dialog.frameLocator('iframe').locator('h1').first()).toBeVisible();
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'export-page', 'pdf', theme), dialog);
+    });
+
+    /** Picks an option from one of a dialog's dropdowns. */
+    async function chooseFrom(page: Page, dialog: Locator, name: string, option: string) {
+      await dialog.getByRole('combobox', { name }).click();
+      await page.locator('.bava-select-content').filter({ visible: true }).getByRole('option', { name: option }).click();
+    }
+
+    test('export a page as a PDF, Custom paper and margins, dark', async ({ page }) => {
+      await openApp(page, theme);
+      await openPage(page, 'Marketing/Launch plan.md');
+      await menu(page, 'file.exportPage');
+      const dialog = page.getByRole('dialog', { name: 'Export page' });
+      await expect(dialog.getByRole('button', { name: 'Export PDF' })).toBeEnabled();
+      await chooseFrom(page, dialog, 'Paper', 'Custom');
+      await chooseFrom(page, dialog, 'Margins', 'Custom');
+      await dialog.locator('[data-part="item"]', { hasText: 'Dark' }).click();
+      await expect(dialog.locator('input[aria-label="Width"]')).toBeVisible();
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'export-page', 'pdf-custom', theme), dialog);
+    });
+
+    test('export a page as a zip', async ({ page }) => {
+      await openApp(page, theme);
+      await openPage(page, 'Marketing/Launch plan.md');
+      await menu(page, 'file.exportPage');
+      const dialog = page.getByRole('dialog', { name: 'Export page' });
+      await dialog.locator('[data-part="item"]', { hasText: 'Markdown zip' }).click();
       await expect(dialog).toContainText('Launch plan');
       await expect(dialog.getByRole('button', { name: 'Export zip' })).toBeEnabled();
       await restPointer(page);

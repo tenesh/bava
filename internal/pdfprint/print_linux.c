@@ -78,7 +78,7 @@ static void on_load_changed(WebKitWebView *web, WebKitLoadEvent event, gpointer 
 	g_timeout_add(p->settle_ms, bava_print_now, p);
 }
 
-void bavaPrintPDF(uintptr_t handle, const char *html, const char *path,
+void bavaPrintPDF(uintptr_t handle, const char *page, const char *path,
                   double width, double height,
                   double top, double right, double bottom, double left,
                   int background, int settleMs) {
@@ -113,5 +113,7 @@ void bavaPrintPDF(uintptr_t handle, const char *html, const char *path,
 	gtk_window_set_child(GTK_WINDOW(p->window), GTK_WIDGET(p->web));
 	g_signal_connect(p->web, "load-failed", G_CALLBACK(on_load_failed), p);
 	g_signal_connect(p->web, "load-changed", G_CALLBACK(on_load_changed), p);
-	webkit_web_view_load_html(p->web, html, NULL);
+	char *page_uri = g_filename_to_uri(page, NULL, NULL);
+	webkit_web_view_load_uri(p->web, page_uri);
+	g_free(page_uri);
 }

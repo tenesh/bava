@@ -163,8 +163,9 @@ docs/                       file format, IPC, shortcuts, testing, decisions
 .claude/skills/             build-step, the build loop
 .claude/agents/             spec-reviewer, auditor, visual-reviewer
 internal/                   Go: app (bound services, menus), render and layout
-                            (D2), format, space, store, config, logs, web, e2e,
-                            testutil (tests only)
+                            (D2), format, space, store, config, logs, web,
+                            pdfprint (the system's printing), export (PDFs),
+                            e2e, testutil (tests only)
 frontend/src/canvas/        the Konva scene: elements, tools, bindings, export,
                             import (D2 layout to shapes), code blocks
 frontend/src/docs/          the ProseMirror page

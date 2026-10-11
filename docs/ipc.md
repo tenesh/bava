@@ -11,7 +11,8 @@ a preview SVG for the dialog and the layout the frontend converts into
 ordinary canvas shapes and arrows (`frontend/src/canvas/import/convert.ts`).
 The D2 source is not kept. The canvas scene is drawn in the frontend and never
 round-trips through Go. Exports are drawn in the frontend too
-(`frontend/src/canvas/export/`); `ExportService` only writes the result.
+(`frontend/src/canvas/export/`); `ExportService` only writes the result,
+or, for a PDF, prints what the frontend drew (`internal/export`).
 
 ## Render
 
@@ -236,6 +237,20 @@ Added in Milestone 6.4. Writes an exported picture where the user asked.
 | Method | Returns |
 |---|---|
 | `Save(path, contentsBase64)` | an error string, empty on success |
+| `PagePDF(root, request, out)` | `Problem`: prints a page of the Space at `root` to a PDF at `out`; `code` is `notOpened` (the folder was not opened this session), `unavailable` (no printing on this system), `setup` (a paper or margins that cannot be printed), `nothing` (neither Document nor Canvas) or `failed` (the print, the join or the write failed; `error` says how) |
+
+**A page's PDF** (`request`: `setup`, the page setup of
+`internal/pdfprint`; `document`, the page's HTML, styles and `widthPx`, 0
+for full width; `canvas`, its picture as SVG with its `width` and
+`height`; `dark`, with `paper`, the theme's page colour; `numbers`, with
+`ink`, their colour). The frontend draws the page in its own editor and the
+Canvas through its export; Go puts the fonts (from the app's own files) and
+the pictures (from the opened folders, images only) inside one file, under
+a policy that lets it load nothing else, and has the system's webview print
+it. The Canvas goes on a sheet of its own, landscape when wider than tall,
+scaled down to fit. Dark sheets are filled to their edge and numbers laid
+over them after printing, with pdfcpu (no settings written), and the parts
+joined and written like a save.
 
 **The picture is drawn in the frontend**, which owns the canvas, and crosses as
 base64. The bridge is JSON, so raw bytes would arrive as an array of numbers,

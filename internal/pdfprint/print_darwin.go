@@ -9,7 +9,7 @@ package pdfprint
 #include <stdint.h>
 #include <stdlib.h>
 
-void bavaPrintPDF(uintptr_t handle, const char *html, const char *path,
+void bavaPrintPDF(uintptr_t handle, const char *page, const char *path,
                   double width, double height,
                   double top, double right, double bottom, double left,
                   int background, int settleMs);
@@ -23,11 +23,11 @@ import (
 
 // macOS takes points.
 func printPDF(j job, onMain RunOnMain, timeout time.Duration) error {
-	html, path := C.CString(j.html), C.CString(j.out)
-	defer C.free(unsafe.Pointer(html))
+	page, path := C.CString(j.page), C.CString(j.out)
+	defer C.free(unsafe.Pointer(page))
 	defer C.free(unsafe.Pointer(path))
 	return waitFor(func(handle uintptr) {
-		C.bavaPrintPDF(C.uintptr_t(handle), html, path,
+		C.bavaPrintPDF(C.uintptr_t(handle), page, path,
 			C.double(j.widthMM*pointsPerMM), C.double(j.heightMM*pointsPerMM),
 			C.double(j.margins.Top*pointsPerMM), C.double(j.margins.Right*pointsPerMM),
 			C.double(j.margins.Bottom*pointsPerMM), C.double(j.margins.Left*pointsPerMM),

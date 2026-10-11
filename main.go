@@ -4,6 +4,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"runtime"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/tenesh/bava/internal/app"
 	"github.com/tenesh/bava/internal/logs"
+	"github.com/tenesh/bava/internal/pdfprint"
 )
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
@@ -83,7 +85,13 @@ func main() {
 			ChooseFolder: answers.chooseFolder,
 			Folders:      folders,
 		})),
-		application.NewService(app.NewExportService()),
+		application.NewService(app.NewExportService(app.ExportServiceOptions{
+			Folders: folders,
+			Fonts:   appFiles(),
+			Print: func(html string, setup pdfprint.PageSetup, out string) error {
+				return pdfprint.Print(html, setup, out, application.InvokeSync)
+			},
+		})),
 		application.NewService(menus),
 		application.NewService(logService),
 	}
@@ -125,6 +133,16 @@ type pickers struct {
 	chooseFolder func(title string) (string, error)
 	chooseFiles  func(kind string) ([]string, error)
 	chooseSave   func(suggestedName string) (string, error)
+}
+
+// appFiles are the frontend's built files, as the app serves them: the
+// fonts are at fonts/.
+func appFiles() fs.FS {
+	files, err := fs.Sub(assets, "frontend/dist")
+	if err != nil {
+		return nil
+	}
+	return files
 }
 
 // appOptions is the application's configuration.

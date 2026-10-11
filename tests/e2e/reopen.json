@@ -1,7 +1,7 @@
 {
   "name": "reopen",
   "folders": ["${SCRATCH}/Smoke"],
-  "saves": ["${SCRATCH}/Smoke.zip"],
+  "saves": ["${SCRATCH}/Smoke.zip", "${SCRATCH}/First page.pdf"],
   "steps": [
     { "do": "wait", "target": "header", "timeoutMs": 30000 },
     { "do": "menu", "target": "file.openSpace" },
@@ -52,6 +52,18 @@
     { "do": "click", "target": "[role='dialog'] .bava-button.primary" },
     { "do": "gone", "target": "[role='dialog']" },
     { "do": "zip", "target": "Smoke.zip", "text": "holds=First page.md,Goal.md,.bava/attachments/logo.png,.bava/space.json; lacks=.bava/trash" },
-    { "do": "file", "target": "Smoke/First page.md", "text": "See [Goal](Goal.md)" }
+    { "do": "file", "target": "Smoke/First page.md", "text": "See [Goal](Goal.md)" },
+    { "do": "menu", "target": "file.exportPage" },
+    { "do": "wait", "target": "[role='dialog']", "text": "Export page" },
+    { "do": "wait", "target": "[role='dialog'] .bava-pdf-preview iframe", "timeoutMs": 20000 },
+    { "do": "click", "target": "[role='dialog'] [data-name='Paper'] .bava-select-trigger" },
+    { "do": "click", "target": ".bava-select-item[data-value='A4']" },
+    { "do": "click", "target": "[role='dialog'] .bava-segment[data-value='both']" },
+    { "do": "click", "target": "[role='dialog'] .bava-segment[data-value='dark']" },
+    { "do": "click", "target": "[role='dialog'] .bava-toggle" },
+    { "do": "shot", "name": "export-pdf" },
+    { "do": "click", "target": "[role='dialog'] .bava-button.primary" },
+    { "do": "gone", "target": "[role='dialog']" },
+    { "do": "pdffile", "target": "First page.pdf", "text": "min=2 first=210x297", "timeoutMs": 90000 }
   ]
 }

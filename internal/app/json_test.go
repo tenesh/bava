@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/tenesh/bava/internal/app"
+	"github.com/tenesh/bava/internal/export"
+	"github.com/tenesh/bava/internal/pdfprint"
 	"github.com/tenesh/bava/internal/testutil"
 )
 
@@ -39,6 +41,11 @@ func TestServiceTypesKeepTheirJSONKeys(t *testing.T) {
 		{"TemplateList", app.TemplateList{}, []string{"code", "error", "templates"}},
 		{"SpaceSearch", app.SpaceSearch{}, []string{"code", "error", "hits", "more"}},
 		{"ZipPlanResult", app.ZipPlanResult{}, []string{"code", "error", "files"}},
+		{"export.Request", export.Request{}, []string{"canvas", "dark", "document", "ink", "numbers", "paper", "setup"}},
+		{"export.Page", export.Page{}, []string{"css", "html", "widthPx"}},
+		{"export.Canvas", export.Canvas{}, []string{"height", "svg", "width"}},
+		{"pdfprint.PageSetup", pdfprint.PageSetup{}, []string{"background", "heightMM", "landscape", "margins", "paper", "widthMM"}},
+		{"pdfprint.Margins", pdfprint.Margins{}, []string{"bottom", "left", "right", "top"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

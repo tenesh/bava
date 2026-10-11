@@ -270,8 +270,9 @@ History belongs in each plan's As built, not here.
   export dialogs, the Markdown zip) is committed, CI green with the `zip`
   step on all three systems 2026-10-11 (run 38094792440; the browser job
   passed on a rerun after the Tags dialog's row-menu picture timed out
-  once). **Next is 15.2c** (PDF export), then 15.3
-  import, 15.4 the canvas work. The
+  once). 15.2c (a page as a PDF) is built, its PDF in the `reopen` walk
+  not yet seen on CI. **Next is 15.2d** (a folder's or the Space's PDF),
+  then 15.3 import, 15.4 the canvas work. The
   roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **CI** builds a downloadable app per system on every run (artifacts
   `bava-<os>-<commit>`, 14 days).
@@ -298,7 +299,9 @@ History belongs in each plan's As built, not here.
   `vitest.config.ts` sets `resolve.conditions: ['browser']`, without which
   `mount` throws `lifecycle_function_unavailable` under jsdom.
 - Go packages under `internal/`: `app` (with `app/menu`), `config`, `e2e`,
-  `format`, `layout`, `logs`, `render`, `space`, `store`, `web`; `testutil` (tests only).
+  `export`, `format`, `layout`, `logs`, `pdfprint`, `render`, `space`,
+  `store`, `web`; `testutil` (tests only). pdfcpu `v0.16.1` joins and
+  numbers PDFs, always in its stateless mode.
 - Bindings are regenerated with
   `wails3 generate bindings -f '' -clean=true -ts -i` after any bound Go
   change, including comments (the generated TypeScript copies them). The
@@ -322,13 +325,13 @@ History belongs in each plan's As built, not here.
 | Gate | Result |
 |---|---|
 | `go vet ./internal/... .` | exit 0 (the linker warns about the macOS deployment target; harmless) |
-| `go test ./internal/... .` | exit 0; 12 packages |
+| `go test ./internal/... .` | exit 0; 14 packages |
 | `go test ./internal/render -run Golden` | exit 0 (inside the run above); 2 fixtures under `testdata/golden/`, light and dark |
 | `npm run check` | exit 0; 0 errors, 0 warnings |
 | `npm run lint` | exit 0 |
-| `npm test` | exit 0; 2,833 tests passed and 1 skipped, in 227 files |
+| `npm test` | exit 0; 2,866 tests passed and 1 skipped, in 233 files |
 | `npm run build` | CI's first frontend step. The production minifier rejects some CSS the dev server and the browser tests accept (WebKit-only selectors such as `::selection:window-inactive`) |
-| `npm run browser` | last full runs 2026-10-11: 501 passed, twice in a row; 290 references in `testdata/visual/` |
+| `npm run browser` | last full runs 2026-10-11: 506 passed, twice in a row; 294 references in `testdata/visual/` |
 | CI end-to-end | `create`, `reopen` and `canvas` on all three platforms; see Milestones for the last run |
 | `wails3 build` | CI only |
 
@@ -341,6 +344,7 @@ What no test can see, still waiting for a person, in both themes:
 - The icons at 16px and 1024px.
 - Search and find on the Canvas: the lists in 15.1's As built.
 - Export as a Markdown zip: the list in 15.2b's As built.
+- A page as a PDF: the list in 15.2c's As built.
 - The native menus on each platform (Windows and Linux unseen).
 - A forced panic and a frontend exception found in the log folder in a
   release build.

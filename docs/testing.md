@@ -89,7 +89,10 @@ fresh launch, taking screenshots on the way:
   canvas, search the Space, opening a match in its page, and export the
   Space to a zip, read back (a `zip` step: `holds=` the files it must hold,
   `lacks=` what no file may start with, apart by `;`; the save dialog
-  answered from the scenario's `saves`).
+  answered from the scenario's `saves`), then export the page as a PDF,
+  A4, Document and Canvas, dark, numbered, read back (a `pdffile` step:
+  `min=` the fewest sheets, `first=` and `last=` a sheet's size in
+  millimetres).
 - `canvas`: draw shapes and an attached arrow, move, undo and redo, insert a
   diagram with Diagram from Code, save, and read the saved file back for the
   shapes, the bindings and the diagram's labels.
@@ -97,7 +100,9 @@ fresh launch, taking screenshots on the way:
   as A4 portrait, Letter landscape and A3 with no margins (a `pdf` step:
   the file, its setup as `paper/orientation/margins`, and what it must
   hold, `pages=2 size=210x297`), each read back for its page count and
-  paper size. The PDFs are kept with the run's downloads.
+  paper size, and a page over 2 MB (`A4/portrait/normal/heavy`), past
+  WebView2's limit on HTML given as a string. The PDFs are kept with the
+  run's downloads.
 
 It answers the native pickers from the scenario. It runs on GitHub's Linux,
 macOS and Windows machines after a push; the screenshots are attached to the
@@ -216,7 +221,7 @@ Pictures, about 140 per theme (`testdata/visual/`):
 | `components` | Eight sheets (controls, pickers, menus, fields, canvas chrome, side pane, document floating, feedback), every state of each component side by side; and each piece that opens on a press, opened: the arrowheads picker and its More, the opacity slider, the colour swatches, the right-click menu, the Space switcher, tooltips; the Files tree naming a page | `harness/gallery.test.ts`: every component is on a sheet or in a screen, once |
 | `canvas` | Every seeded scene (`fixtures/canvas-scenes.ts`), two also at about 200%; the empty canvas; one element of each kind of selection chrome selected; everything selected; a handle hovered, also at 200%; a turned shape; long labels; a label and a code block edited; a detached arrow end; the eraser, a marquee, rotating, point editing, snap guides, a shape moving with its position shown, and an arrow's end over a shape, each mid-drag | `fixtures/canvas-scenes.test.ts`: every element type is drawn in a scene |
 | `document` | Sheets of every block, every inline piece and mark, every block unable to draw, and every block empty (`fixtures/document-blocks.ts`); media at each width, tables in both forms, cells selected and merged, a node selected, a canvas embed from another page and one whose frame is gone, a tag being added, a code caption edited, a selection under the bubble, a block's handle and menu, the placeholder, a locked page, Linked from, find, page widths, media full screen | `fixtures/document-blocks.test.ts`: every schema type is on a sheet |
-| `dialogs` | Each dialog in its main state, and the variants with a layout of their own: the Tags dialog managing several and its delete asked, the Templates dialog, Save as template, Trash with attachments and empty, Media chosen, as a list and renaming, a delete asked first, an error without details, the export previews, a name taken, code D2 cannot read; the search palette before typing, with results and with none; find on the Canvas with its matches outlined; Export page and Export Space as a Markdown zip | |
+| `dialogs` | Each dialog in its main state, and the variants with a layout of their own: the Tags dialog managing several and its delete asked, the Templates dialog, Save as template, Trash with attachments and empty, Media chosen, as a list and renaming, a delete asked first, an error without details, the export previews, a name taken, code D2 cannot read; the search palette before typing, with results and with none; find on the Canvas with its matches outlined; Export page as a PDF (its first sheet previewed; Custom paper and margins, dark) and as a Markdown zip, Export Space as a zip | |
 | `settings`, `shell`, `space`, `start` | Each settings tab; the window in each view, a template being edited under its bar, with no page, with the AI pane, a loose page, the splash, a failed pane, a status notice; the side pane open and folded, the tree narrowed by tags and the tag list, New page from template in Add, Media, a page dragged onto a folder and between rows; the start screen with and without recents | |
 
 Behaviour in a real browser (`integration/`): what the canvas does, read from

@@ -15,6 +15,24 @@
 // @ts-ignore: Unused imports
 import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as export$0 from "../export/models.js";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as $models from "./models.js";
+
+/**
+ * PagePDF prints a page of the Space at root to a PDF at out: its
+ * Document, its Canvas or both, as the request says. The page's HTML and
+ * its Canvas's picture are drawn in the frontend; this side puts the fonts
+ * and pictures inside, prints, and writes. A zero Problem means it worked.
+ */
+export function PagePDF(root: string, req: export$0.Request, out: string): $CancellablePromise<$models.Problem> {
+    return $Call.ByID(972298078, root, req, out);
+}
+
 /**
  * Save writes base64-encoded bytes to path, returning a message the user can
  * act on, or "" when it worked.

@@ -4,8 +4,10 @@
 package testutil
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -132,4 +134,32 @@ func Golden(t testing.TB, path, got string) {
 		t.Errorf("output differs from %s (%d bytes vs %d). If this change is intended, regenerate with -update and review the diff by eye.",
 			path, len(got), len(want))
 	}
+}
+
+// BlankPDF is a PDF of n empty pages, each width × height millimetres.
+func BlankPDF(n int, widthMM, heightMM float64) []byte {
+	pt := func(mm float64) float64 { return mm * 72 / 25.4 }
+	var b bytes.Buffer
+	offsets := []int{}
+	obj := func(body string) {
+		offsets = append(offsets, b.Len())
+		fmt.Fprintf(&b, "%d 0 obj\n%s\nendobj\n", len(offsets), body)
+	}
+	b.WriteString("%PDF-1.4\n")
+	obj("<< /Type /Catalog /Pages 2 0 R >>")
+	kids := []string{}
+	for i := range n {
+		kids = append(kids, fmt.Sprintf("%d 0 R", i+3))
+	}
+	obj(fmt.Sprintf("<< /Type /Pages /Kids [%s] /Count %d >>", strings.Join(kids, " "), n))
+	for range n {
+		obj(fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2f %.2f] /Resources << >> >>", pt(widthMM), pt(heightMM)))
+	}
+	xref := b.Len()
+	fmt.Fprintf(&b, "xref\n0 %d\n0000000000 65535 f \n", len(offsets)+1)
+	for _, o := range offsets {
+		fmt.Fprintf(&b, "%010d 00000 n \n", o)
+	}
+	fmt.Fprintf(&b, "trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", len(offsets)+1, xref)
+	return b.Bytes()
 }

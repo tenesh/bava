@@ -66,7 +66,7 @@ static NSMutableSet *bavaPrinters;
 
 @end
 
-void bavaPrintPDF(uintptr_t handle, const char *html, const char *path,
+void bavaPrintPDF(uintptr_t handle, const char *page, const char *path,
                          double width, double height,
                          double top, double right, double bottom, double left,
                          int background, int settleMs) {
@@ -107,5 +107,7 @@ void bavaPrintPDF(uintptr_t handle, const char *html, const char *path,
 	printer.window.releasedWhenClosed = NO;
 	printer.window.contentView = printer.web;
 	[bavaPrinters addObject:printer];
-	[printer.web loadHTMLString:[NSString stringWithUTF8String:html] baseURL:nil];
+	// The page is one self-contained file, and the only one it may read.
+	NSURL *pageURL = [NSURL fileURLWithPath:[NSString stringWithUTF8String:page]];
+	[printer.web loadFileURL:pageURL allowingReadAccessToURL:pageURL];
 }

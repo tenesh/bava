@@ -31,7 +31,7 @@
   onkeydown={modality.onkeydown}
 >
   {#each options as option (option.value)}
-    <SegmentGroup.Item value={option.value} class="bava-segment">
+    <SegmentGroup.Item value={option.value} class="bava-segment" data-value={option.value}>
       <SegmentGroup.ItemText>{option.label}</SegmentGroup.ItemText>
       <SegmentGroup.ItemControl />
       <SegmentGroup.ItemHiddenInput />

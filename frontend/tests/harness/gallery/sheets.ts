@@ -4,7 +4,7 @@
  * or pictured in a screen of the app instead (`IN_SCREENS`).
  */
 export const SHEETS = {
-  controls: ['Segments', 'Select', 'Toggle', 'ViewSwitcher', 'SectionTabs', 'LayoutEnginePicker', 'Splitter', 'Pane', 'Icon', 'ToolIcon', 'Mark'],
+  controls: ['Segments', 'Select', 'Toggle', 'NumberField', 'ViewSwitcher', 'SectionTabs', 'LayoutEnginePicker', 'Splitter', 'Pane', 'Icon', 'ToolIcon', 'Mark'],
   pickers: ['OptionPicker', 'OpacityPicker', 'StyleBar', 'DatePicker', 'EmojiPicker', 'FramePicker', 'TagFilter'],
   menus: ['ContextMenu', 'SlashMenu', 'SpaceSwitcher', 'Tooltip', 'Keycaps'],
   fields: ['LinkField', 'EquationField', 'FindBar'],
@@ -38,6 +38,7 @@ export const IN_SCREENS: Record<string, string> = {
   TagsDialog: 'dialogs',
   SearchPalette: 'dialogs',
   PageExportDialog: 'dialogs',
+  PdfPreview: 'dialogs',
   SpaceExportDialog: 'dialogs',
   ZipContents: 'dialogs',
   SaveTemplateDialog: 'dialogs',

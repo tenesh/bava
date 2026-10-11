@@ -326,11 +326,14 @@ export function createFakes(first: FakeSpace = seedSpace()) {
   const exports: { path: string; contentsBase64: string }[] = [];
   // The Markdown zips written: where, and what each held.
   const zips: { out: string; scope: FakeZipScope; files: string[] }[] = [];
+  // The PDFs asked for: of which folder, where, and what was sent to print.
+  const pdfs: { root: string; out: string; request: { document: unknown; canvas: unknown; setup: unknown; dark: boolean; numbers: boolean } }[] = [];
   // A page on its own, in no Space, and what Open File's picker answers.
   const loose: Record<string, FakePage> = { [`${PARENT}/Notes.md`]: { source: '# Notes\n\nA page kept on its own, in no Space.\n', scene: { version: 1, elements: [] } } };
   const harness = {
     exports,
     zips,
+    pdfs,
     faults,
     /** The settings as last saved, for a test to read what a control changed. */
     settings: () => ({ ...settings }),
@@ -565,6 +568,11 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       async Save(path: string, contentsBase64: string) {
         exports.push({ path, contentsBase64 });
         return '';
+      },
+      async PagePDF(root: string, request: (typeof pdfs)[number]['request'], out: string) {
+        if (!request.document && !request.canvas) return { error: 'a PDF needs the Document, the Canvas or both', code: 'nothing' };
+        pdfs.push({ root, out, request });
+        return { error: '', code: '' };
       },
     },
     MenuService: {

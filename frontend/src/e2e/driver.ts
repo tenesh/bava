@@ -10,7 +10,7 @@ import { Call } from '@wailsio/runtime';
 export type Modifier = 'shift' | 'alt' | 'mod';
 
 export type Step = {
-  do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag' | 'pause' | 'paste' | 'file' | 'pdf' | 'zip';
+  do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag' | 'pause' | 'paste' | 'file' | 'pdf' | 'zip' | 'pdffile';
   /**
    * What a click, wait or drag acts on; for a key, what it is pressed on (else
    * whatever has focus); for a file, its path in the scratch folder.
@@ -33,6 +33,8 @@ export type DriverEnv = {
   printSample?(file: string, setup: string, expect: string): Promise<string>;
   /** A zip in the scratch folder read back by the host: '' when it holds and lacks what it must, else why not. */
   checkZip?(path: string, expect: string): Promise<string>;
+  /** The host reads a PDF the app wrote: '' when it holds what it must, else why not. */
+  checkPdf?(path: string, expect: string): Promise<string>;
   timeoutMs: number;
   /** Whether a found element counts as showing; the page's layout by default. */
   visible?: (el: HTMLElement) => boolean;
@@ -264,6 +266,16 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
+    case 'pdffile': {
+      if (!env.checkPdf) return 'no way to read PDFs';
+      const end = Date.now() + timeout;
+      for (;;) {
+        const failure = await env.checkPdf(s.target!, s.text!);
+        if (!failure) return '';
+        if (Date.now() > end) return failure;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
     // The system's own printing, proven: the host prints and checks the file.
     case 'pdf': {
       if (!env.printSample) return 'no way to print';
@@ -308,6 +320,7 @@ export async function start(): Promise<void> {
     readFile: async (path) => (await Call.ByName(`${SERVICE}.ReadFile`, path)) as { text: string; error: string },
     printSample: async (file, setup, expect) => (await Call.ByName(`${SERVICE}.PrintSample`, file, setup, expect)) as string,
     checkZip: async (path, expect) => (await Call.ByName(`${SERVICE}.CheckZip`, path, expect)) as string,
+    checkPdf: async (path, expect) => (await Call.ByName(`${SERVICE}.CheckPDF`, path, expect)) as string,
     timeoutMs: 10_000,
   }).catch((error: unknown) => `the driver failed: ${String(error)}`);
   await Call.ByName(`${SERVICE}.Done`, failure);

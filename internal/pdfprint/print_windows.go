@@ -39,7 +39,7 @@ func printPDF(j job, onMain RunOnMain, timeout time.Duration) error {
 		window = app.Window.NewWithOptions(application.WebviewWindowOptions{
 			Name:   "bava-print",
 			Hidden: true,
-			HTML:   j.html,
+			URL:    fileURL(j.page),
 			Width:  int((j.widthMM - j.margins.Left - j.margins.Right) * pixelsPerMM),
 			Height: printWindowHeight,
 		})

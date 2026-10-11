@@ -549,22 +549,23 @@ holding, and the file format unchanged (`go test ./internal/format`).
 
 ---
 
-## Milestone 15: Export, import and search *(under way: 15.1, 15.2a and 15.2b committed 2026-10-11; moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
+## Milestone 15: Export, import and search *(under way: 15.1, 15.2a and 15.2b committed 2026-10-11, 15.2c built; moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
 
 **Goal:** Get work out of Bava and into it, and find things across a Space.
 
 **Built in four parts** (`.claude/work/specs/search.md` decision 1): **15.1**
 search across a Space, with find on the Canvas; **15.2** export, itself in three parts
 (`export.md` decision 6: 15.2a a proof of PDF printing on every system,
-15.2b the dialogs and the Markdown zip, 15.2c PDF export); **15.3**
+15.2b the dialogs and the Markdown zip, 15.2c a page's PDF, 15.2d a
+folder's or the Space's PDF, contents and bookmarks); **15.3**
 import; **15.4** the canvas work below. Search is settled in `search.md`.
 
 **Scope:** From the Milestone 8 discussion (`.claude/work/specs/documents.md`,
 decisions 48, 49 and 58):
 - **Export** a page, a folder or a whole Space as PDF (one combined file or
   one per page; paper size, theme, margins, scale, page numbers) or as a
-  Markdown zip laid out as in the Space. Diagram elements export **through
-  the existing `Render` path**, never a second renderer; canvas embeds are
+  Markdown zip laid out as in the Space. A page's Canvas exports through
+  the canvas's own drawing, never a second renderer; canvas embeds are
   already saved as images.
 - **Import** Markdown files and folders, and Bava export zips, into a chosen
   folder; name clashes kept numbered, never overwritten.
@@ -594,9 +595,11 @@ go test ./internal/export ./internal/search -v \
   && (cd frontend && npm run check && npm run lint && npm test)
 ```
 
-green, including a test asserting an exported diagram is byte-identical to the
-`Render` output for the same source, the regression a second render path would
-cause, and a round trip of a Space through export and import.
+green, including a round trip of a Space through export and import. (A
+test that an exported diagram is byte-identical to the `Render` output was
+struck with the user on 2026-10-11: Diagram from Code keeps no D2, its
+diagram becomes ordinary shapes and arrows that export through the
+canvas's own drawing, so there is no diagram element left to compare.)
 
 **Depends on:** Milestone 8, Milestone 5.
 

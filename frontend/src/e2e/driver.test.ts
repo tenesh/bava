@@ -216,6 +216,17 @@ describe('the smoke driver', () => {
     expect(await runScenario([{ do: 'file', target: '../a.md', text: 'x' }], unreadable)).toMatch(/outside the scratch folder/);
   });
 
+  // A PDF the app wrote, read back by the host until it holds what it must:
+  // printing takes a while.
+  it('reads a PDF back until it holds what it must, and fails with why not', async () => {
+    const answers = ['pdf First page.pdf: no such file', ''];
+    const checkPdf = vi.fn(async () => answers.shift() ?? '');
+    expect(await runScenario([{ do: 'pdffile', target: 'First page.pdf', text: 'min=2' }], { ...env(), checkPdf })).toBe('');
+    expect(checkPdf).toHaveBeenCalledWith('First page.pdf', 'min=2');
+    const never = { ...env(), timeoutMs: 50, checkPdf: vi.fn(async () => 'pdf First page.pdf: 1 sheets; want at least 2') };
+    expect(await runScenario([{ do: 'pdffile', target: 'First page.pdf', text: 'min=2' }], never)).toMatch(/want at least 2/);
+  });
+
   // A zip the app wrote, read back by the host until it holds what it must.
   it('reads a zip back until it holds what it must, and fails with why not', async () => {
     const answers = ['zip Smoke.zip: no such file', ''];

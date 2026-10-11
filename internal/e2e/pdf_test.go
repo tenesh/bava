@@ -23,17 +23,32 @@ func TestAPDFStepNeedsAFileASetupAndWhatItMustHold(t *testing.T) {
 }
 
 func TestASetupIsReadFromItsName(t *testing.T) {
-	setup, err := parseSetup("Letter/landscape/none")
-	if err != nil {
+	setup, heavy, err := parseSetup("Letter/landscape/none")
+	if err != nil || heavy {
 		t.Fatal(err)
 	}
 	if setup.Paper != pdfprint.Letter || !setup.Landscape || setup.Margins != (pdfprint.Margins{}) || !setup.Background {
 		t.Errorf("setup = %+v; want Letter, landscape, no margins, backgrounds printed", setup)
 	}
-	for _, bad := range []string{"A4", "A9/portrait/normal", "A4/sideways/normal", "A4/portrait/huge"} {
-		if _, err := parseSetup(bad); err == nil {
+	for _, bad := range []string{"A4", "A9/portrait/normal", "A4/sideways/normal", "A4/portrait/huge", "A4/portrait/normal/light"} {
+		if _, _, err := parseSetup(bad); err == nil {
 			t.Errorf("%q was accepted", bad)
 		}
+	}
+}
+
+// "heavy" prints a page over WebView2's 2 MB limit on HTML given as a
+// string, which a page with its pictures inside often is.
+func TestAHeavySampleIsOverTwoMegabytes(t *testing.T) {
+	_, heavy, err := parseSetup("A4/portrait/normal/heavy")
+	if err != nil || !heavy {
+		t.Fatalf("heavy = %v (%v)", heavy, err)
+	}
+	if n := len(sampleFor(true)); n <= 2<<20 {
+		t.Errorf("the heavy sample is %d bytes; want over 2 MB", n)
+	}
+	if sampleFor(false) != samplePage {
+		t.Error("the plain sample changed")
 	}
 }
 

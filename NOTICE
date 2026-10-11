@@ -63,6 +63,17 @@ Web card details
     Copyright 2009 The Go Authors
     https://cs.opensource.google/go/x/net
 
+PDF export
+  pdfcpu: Apache-2.0
+    Copyright The pdfcpu Authors
+    https://github.com/pdfcpu/pdfcpu
+  Its dependencies: hhrutter/tiff, golang.org/x/image, golang.org/x/crypto,
+  golang.org/x/text (BSD-3-Clause, Copyright The Go Authors);
+  mattn/go-runewidth (MIT, Copyright (c) 2016 Yasuhiro Matsumoto);
+  clipperhouse/uax29 (MIT, Copyright (c) 2020 Matt Sherman);
+  go.yaml.in/yaml/v3 (MIT and Apache-2.0, Copyright The yaml Project
+  Contributors).
+
 Icons
   Lucide (@lucide/svelte): ISC
     Copyright (c) 2026 Lucide Icons and Contributors

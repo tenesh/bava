@@ -22,30 +22,44 @@ body { font: 14px/1.5 sans-serif; color: #0a0a0a; }
 <h1 class="next">Second page</h1><p>Forced onto a page of its own.</p>
 </body></html>`
 
-// parseSetup reads a "pdf" step's setup from its name: paper, orientation
-// and margins, as "Letter/landscape/none". Backgrounds are always printed.
-func parseSetup(name string) (pdfprint.PageSetup, error) {
-	parts := strings.Split(name, "/")
-	if len(parts) != 3 {
-		return pdfprint.PageSetup{}, fmt.Errorf("a pdf step's name is paper/orientation/margins, not %q", name)
+// sampleFor is the sample page, made heavy by a picture's worth of data
+// carried inside it (3 MB), past WebView2's 2 MB limit on HTML given as a
+// string.
+func sampleFor(heavy bool) string {
+	if !heavy {
+		return samplePage
 	}
-	setup := pdfprint.PageSetup{Paper: pdfprint.Paper(parts[0]), Background: true}
+	return strings.Replace(samplePage, "</body>", "<!-- "+strings.Repeat("0123456789abcdef", 3<<16)+" --></body>", 1)
+}
+
+// parseSetup reads a "pdf" step's setup from its name: paper, orientation
+// and margins, as "Letter/landscape/none", then "/heavy" for the heavy
+// sample. Backgrounds are always printed.
+func parseSetup(name string) (setup pdfprint.PageSetup, heavy bool, err error) {
+	parts := strings.Split(name, "/")
+	if len(parts) == 4 && parts[3] == "heavy" {
+		heavy, parts = true, parts[:3]
+	}
+	if len(parts) != 3 {
+		return pdfprint.PageSetup{}, false, fmt.Errorf("a pdf step's name is paper/orientation/margins[/heavy], not %q", name)
+	}
+	setup = pdfprint.PageSetup{Paper: pdfprint.Paper(parts[0]), Background: true}
 	if _, _, err := setup.Size(); err != nil {
-		return pdfprint.PageSetup{}, err
+		return pdfprint.PageSetup{}, false, err
 	}
 	switch parts[1] {
 	case "portrait":
 	case "landscape":
 		setup.Landscape = true
 	default:
-		return pdfprint.PageSetup{}, fmt.Errorf("orientation %q is neither portrait nor landscape", parts[1])
+		return pdfprint.PageSetup{}, false, fmt.Errorf("orientation %q is neither portrait nor landscape", parts[1])
 	}
 	margins, err := pdfprint.NamedMargins(pdfprint.MarginName(parts[2]))
 	if err != nil {
-		return pdfprint.PageSetup{}, err
+		return pdfprint.PageSetup{}, false, err
 	}
 	setup.Margins = margins
-	return setup, nil
+	return setup, heavy, nil
 }
 
 // expectation is what a printed PDF must hold: its pages, each of a size.
@@ -104,7 +118,7 @@ func (s *Service) PrintSample(file, setupName, expect string) string {
 	if s.options.RunOnMain == nil {
 		return "pdf: no main thread to print on"
 	}
-	setup, err := parseSetup(setupName)
+	setup, heavy, err := parseSetup(setupName)
 	if err != nil {
 		return err.Error()
 	}
@@ -113,7 +127,7 @@ func (s *Service) PrintSample(file, setupName, expect string) string {
 		return err.Error()
 	}
 	out := filepath.Join(s.options.Out, filepath.Base(file))
-	if err := pdfprint.Print(samplePage, setup, out, pdfprint.RunOnMain(s.options.RunOnMain)); err != nil {
+	if err := pdfprint.Print(sampleFor(heavy), setup, out, pdfprint.RunOnMain(s.options.RunOnMain)); err != nil {
 		return fmt.Sprintf("%s: %v", file, err)
 	}
 	info, err := pdfprint.Inspect(out)
