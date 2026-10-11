@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 // ForSystem is this system's keeper: bookmarks inside the Mac App Store's
@@ -11,8 +12,7 @@ import (
 func ForSystem() Keeper {
 	switch runtime.GOOS {
 	case "darwin":
-		// The sandbox sets this for every process it contains.
-		if os.Getenv("APP_SANDBOX_CONTAINER_ID") != "" {
+		if macSandboxed() {
 			return bookmarks{}
 		}
 	case "linux":
@@ -38,7 +38,7 @@ func (portal) Restore(token []byte) (string, bool, error) { return string(token)
 // down: the sandbox refuses any other. Outside a sandbox it does nothing.
 // Call it before anything makes a temporary file.
 func UseContainerTemp() error {
-	if runtime.GOOS != "darwin" || os.Getenv("APP_SANDBOX_CONTAINER_ID") == "" {
+	if runtime.GOOS != "darwin" || !macSandboxed() {
 		return nil
 	}
 	home, err := os.UserHomeDir()
@@ -50,4 +50,15 @@ func UseContainerTemp() error {
 		return err
 	}
 	return os.Setenv("TMPDIR", dir)
+}
+
+// macSandboxed is whether this process runs in the Mac App Store's sandbox:
+// the system names its container at a normal launch, and in any case the
+// sandbox makes the home that container's own folder.
+func macSandboxed() bool {
+	if os.Getenv("APP_SANDBOX_CONTAINER_ID") != "" {
+		return true
+	}
+	home, err := os.UserHomeDir()
+	return err == nil && strings.Contains(filepath.ToSlash(home), "/Library/Containers/")
 }

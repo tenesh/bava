@@ -82,3 +82,24 @@ func TestOutsideTheSandboxTemporaryFilesAreLeftAlone(t *testing.T) {
 		t.Errorf("TMPDIR = %q (%v); want it left alone", os.Getenv("TMPDIR"), err)
 	}
 }
+
+// A sandboxed process may be started without the variable the system sets
+// at a normal launch; its home inside the container still gives it away.
+func TestTheMacSandboxIsKnownByItsContainerHome(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("the Mac sandbox's alone")
+	}
+	home := filepath.Join(t.TempDir(), "Library", "Containers", "com.tharabyte.bava", "Data")
+	if err := os.MkdirAll(home, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", home)
+	t.Setenv("APP_SANDBOX_CONTAINER_ID", "")
+	t.Setenv("TMPDIR", "/somewhere/else")
+	if !ForSystem().Sandboxed() {
+		t.Error("a container home was not read as the sandbox")
+	}
+	if err := UseContainerTemp(); err != nil || os.Getenv("TMPDIR") != filepath.Join(home, "tmp") {
+		t.Errorf("TMPDIR = %q (%v)", os.Getenv("TMPDIR"), err)
+	}
+}
