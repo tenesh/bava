@@ -137,8 +137,8 @@ is hidden until release (`REPORT_ISSUE_ENABLED` in
 Wails-branded until release.
 
 **Toolchain:** module `github.com/tharabyte/bava`, Go 1.27.1; D2 `v0.9.0`
-(TALA in-library); Wails `v3.0.0-beta.20`, `@wailsio/runtime` pinned exactly
-to `3.0.0-beta.20`; Node 24 (`.nvmrc`); Ark UI `5.24.2`, Konva `10.5`, Vitest
+(TALA in-library); Wails `v3.0.0-beta.28`, `@wailsio/runtime` pinned exactly
+to `3.0.0-beta.28`; Node 24 (`.nvmrc`); Ark UI `5.24.2`, Konva `10.5`, Vitest
 `5.0.1` with jsdom (`resolve.conditions: ['browser']` is required); pdfcpu
 `v0.16.1`, stateless mode.
 

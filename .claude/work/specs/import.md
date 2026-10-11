@@ -77,3 +77,11 @@ The progress import uses also serves export: a Markdown zip counts
 "Writing 34 of 210" with Cancel, which removes the unfinished zip, and a
 Space's PDF can be cancelled while it prints, not only while its pages are
 drawn. Built in 15.3.
+
+### 11. An imported folder comes in whole (2026-10-12)
+
+Importing a folder brings the folder itself, holding its pages and
+subfolders, into the one chosen: Marketing gets a "Q4 notes" folder, as
+copying it anywhere would. A clash is a folder of the same name there,
+which comes in numbered ("Q4 notes 2"), so decision 1's renamed pages arise
+only when Files brings pages straight into a folder.

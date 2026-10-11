@@ -158,7 +158,7 @@ jobs:
       # betas, so `@latest` here would build with a different version than the
       # one the app is written against.
       - name: Install wails3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.20
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
 
       - name: wails3 build
         run: wails3 build
@@ -267,7 +267,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install wails3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.20
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
 
       - name: build with the smoke driver
         run: wails3 build EXTRA_TAGS=e2e
@@ -333,7 +333,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install wails3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.20
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
 
       - name: package the end-to-end build, signed into the sandbox
         run: |
@@ -395,7 +395,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install wails3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.20
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
 
       - name: build with the smoke driver
         run: wails3 build EXTRA_TAGS=e2e
@@ -503,7 +503,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install wails3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.20
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
 
       - name: build with the smoke driver
         run: wails3 build EXTRA_TAGS=e2e
