@@ -76,7 +76,7 @@ describe('shape outlines', () => {
   });
 });
 
-// Round edges, as Excalidraw rounds them: a fixed radius on a rectangle and a
+// Round edges: a fixed radius on a rectangle and a
 // proportional one on a polygon. Curved outlines have no corners to round.
 describe('rounded outlines', () => {
   const curves = (calls: Call[]) => calls.filter((c) => c.op === 'bezierCurveTo').length;

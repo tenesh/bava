@@ -16,9 +16,8 @@ headings sit one level down. Milestone 7 (`07-snapping.md`) comes after.
 Milestone 6 began as "shapes that look right" and grew, part by part, into
 the whole free-placement canvas: styles, rotation, export, attached arrows
 and frames, diagrams from D2 as ordinary shapes, code blocks, and every line
-and arrow behaviour in `.claude/work/specs/research/excalidraw-lines-inventory.md`
-(90 rows, all same or built by 6.16; B22 kept by the `CLAUDE.md` detached
-rule). Decisions along the way live in `.claude/work/specs/arrows-and-code.md`
+and arrow behaviour in the lines checklist (90 rows, all same or built by
+6.16; B22 kept by the `CLAUDE.md` detached rule). Decisions along the way live in `.claude/work/specs/arrows-and-code.md`
 (1 to 16), `diagrams-as-shapes.md` and `docs/decisions.md`.
 
 Every part is committed. Each part's "Verification" section was owed at a
@@ -39,11 +38,11 @@ running window in both themes; 8.4a settled them (see the note at the top).
 | [6.9](#06.9-code-block-and-selection) | 2026-09-26 | Code block typing and selection feel | A new code block takes typing; selecting and moving frames and groups as any drawing tool does. |
 | [6.10](#06.10-arrows-you-can-shape) | 2026-09-26 | Arrows you can shape | Bends by dragging, ends that stay where put, labels that slide. |
 | [6.11](#06.11-diagram-dialog) | 2026-09-26 | The Diagram from Code dialog | Room to write, engines compared, direction, the engine used named. |
-| [6.12](#06.12-arrows-and-code) | 2026-09-26 | Arrows like Excalidraw, resizable code | Code blocks resize and wrap; Excalidraw's line and arrow chrome and point drags; elbows keep their sides. |
+| [6.12](#06.12-arrows-and-code) | 2026-09-26 | Arrows and lines, resizable code | Code blocks resize and wrap; line and arrow chrome and point drags; elbows keep their sides. |
 | [6.13](#06.13-inside-edit-click) | 2026-09-26 | Pinned ends, point editing, click-by-click lines | An end dropped inside pins; a point-edit mode; lines drawn click by click. |
-| [6.14](#06.14-elbows-cursors-code) | 2026-09-27 | Elbows, cursors and handles | The lines inventory's elbow and selection-chrome rows; the paste bug; code height. |
-| [6.15](#06.15-points-and-creation) | 2026-09-27 | Editing points and drawing lines | The inventory's creation and point-editing rows; closed lines; the tool lock. |
-| [6.16](#06.16-binding-heads-labels) | 2026-09-27 | Attaching, heads, labels | The inventory's last third; attaching and side-middle settings; the inventory complete. |
+| [6.14](#06.14-elbows-cursors-code) | 2026-09-27 | Elbows, cursors and handles | The lines checklist's elbow and selection-chrome rows; the paste bug; code height. |
+| [6.15](#06.15-points-and-creation) | 2026-09-27 | Editing points and drawing lines | The checklist's creation and point-editing rows; closed lines; the tool lock. |
+| [6.16](#06.16-binding-heads-labels) | 2026-09-27 | Attaching, heads, labels | The checklist's last third; attaching and side-middle settings; the checklist complete. |
 | [6.17](#06.17-code-labels) | 2026-09-27 | Code language and size, arrow labels | A code block's language on its edge and its font size; labels typed in place and along the arrow; two bug fixes. |
 
 ---
@@ -979,7 +978,7 @@ exit 0, `go test ./internal/... .` exit 0.
   `⇧⌘←→↑↓`, `⌥H`, `⌥V`, `⌥⌘C`, `⌥⌘V`.
 - `NOTICE`: Lucide.
 - `docs/decisions.md`: rail, insert panel, selection toolbar, context menu,
-  Excalidraw baseline, Lucide brought forward, title bar style, comments
+  the style baseline, Lucide brought forward, title bar style, comments
   dropped, sequencing.
 - Build-step repo state: 06.2 findings.
 
@@ -1017,8 +1016,8 @@ need.
 - `.claude/work/specs/canvas-toolbar.md`: "Constrained drawing and resizing",
   "Toolbar colours show swatches only"
 - `.ai/rules/canvas.md`, `.ai/rules/design-system.md`
-- Excalidraw baseline (researched 2026-09-18): Shift constrains while dragging
-  and is read continuously, not at press time.
+- The style baseline (2026-09-18): Shift constrains while dragging and is
+  read continuously, not at press time.
 
 **File format impact:** none. The colour picker and everything it stores is
 06.3.
@@ -1184,7 +1183,7 @@ moving the pointer is covered by tests only.
 
 ## 06.3: Styles and rotation
 
-**Goal:** The style properties of the adapted Excalidraw baseline, a colour
+**Goal:** The style properties of the adapted baseline, a colour
 picker for any colour, locking, and rotation. Each one is written into
 `docs/file-format.md` with a round-trip test before any code writes it.
 
@@ -1194,7 +1193,7 @@ picker for any colour, locking, and rotation. Each one is written into
 - `docs/file-format.md` (the contract this milestone extends)
 - `.ai/rules/file-format.md`, `.ai/rules/canvas.md`, `.ai/rules/testing.md`,
   `.ai/rules/design-system.md`
-- Excalidraw baseline researched 2026-09-18 (values, arrowheads, roundness)
+- The style baseline of 2026-09-18 (values, arrowheads, roundness)
 
 **File format impact:** eleven new optional keys and a second form for the
 three colour keys. Specified first, round-tripped in Go and in the frontend's
@@ -1381,13 +1380,13 @@ Tasks 8 and 9 (rotation) are not started; the user commits Tasks 1 to 7 first.
   `canvas/property-options.ts`.
 - **`⇧⌘L` locks; `⌥⇧⌘L` unlocks everything.** The plan said one key toggles.
   A locked element cannot be selected, so a toggle has nothing to act on once
-  it is locked. Unlock All is in the right-click menu on empty canvas, as
-  Excalidraw does it.
+  it is locked. Unlock All is in the right-click menu on empty canvas,
+  where it can always be reached.
 - **The selection toolbar lays out in rows.** With every property control the
   bar outgrew the window; `toolbar.ts` `splitForWidth` wraps it against the
   measured width instead of letting it clip.
-- **The swatch palette was cut to Excalidraw's main colours** on the user's
-  instruction, with anything else reached through the colour field.
+- **The swatch palette was cut to a short set of main colours** on the
+  user's instruction, with anything else reached through the colour field.
 
 #### Red-first honesty
 - Tasks 1 and 2 were **not** red first. Go's `internal/format` and the
@@ -1541,7 +1540,7 @@ a file through a settings dialog, in either theme, at 1×, 2× or 3×.
   `.ai/rules/testing.md`
 - Decided with the user 2026-09-19: the export reuses the canvas drawing code;
   the font is embedded in an exported SVG; Copy as PNG goes through the
-  webview's clipboard as Excalidraw does it, falling back to the dialog.
+  webview's clipboard, falling back to the dialog.
 
 **File format impact:** none. Nothing about an export is stored in the user's
 file, and "embed scene" is deliberately absent: the `.md` file is the scene.
@@ -1674,8 +1673,7 @@ handed.
 `frontend/src/canvas/context-menu.ts` (+ test).
 **Behavior:** Copy as SVG writes the SVG text through the Wails clipboard,
 which carries text on all three platforms. Copy as PNG writes an
-`image/png` `ClipboardItem` through the webview clipboard, as Excalidraw does,
-including the promise-shaped retry Safari and WKWebView need. When the write
+`image/png` `ClipboardItem` through the webview clipboard, including the promise-shaped retry Safari and WKWebView need. When the write
 is refused (WebKitGTK is the expected case), the status bar says so and the
 export dialog opens, so the action still ends with the user holding the image.
 - [x] Failing tests: SVG goes to the text clipboard; PNG writes a
@@ -2729,8 +2727,7 @@ a text editor that does not look like the text it edits, and per-frame work
 the canvas does not need.
 
 **Specs:**
-- `.claude/work/specs/research/excalidraw-comparison.md` (2026-09-26): the bug table,
-  sections 1 and 7, appendix A1 and A3
+- The canvas review of 2026-09-26: its bug table, feel and performance notes
 - `docs/file-format.md`, "Style properties": absent `strokeWidth` means 2,
   absent `fontSize` means 20
 - `.ai/rules/canvas.md`: "All pointer input has one path", "Sizes are tokens",
@@ -2759,8 +2756,8 @@ and padding.
   `viewport.zoom`, as `handleSize`, `eraserTolerance`, `hitTolerance` and
   `rotateGap` already are (`App.svelte:94-101`).
 - `--size-hit-tolerance: 4px` and `--size-label-inset: 6px` keep their values.
-  The drag threshold keeps its value, 3, now in screen pixels. Retuning toward
-  Excalidraw's (10 and about 7) is a feel decision for the window.
+  The drag threshold keeps its value, 3, now in screen pixels. Retuning either
+  value is a feel decision for the window.
 - A default a file relies on has one source. `PROPERTY_DEFAULTS` in
   `canvas/style.ts` is the code form of the file format's "Absent" column;
   drawing reads it, never a theme token.
@@ -2796,8 +2793,7 @@ files only; no migration.
 
 #### Task 2: Return to select after a draw, with the new element selected
 **Files:** modify `canvas/pointer.ts`; test `canvas/pointer.test.ts`.
-**Behavior:** as Excalidraw does (`components/App.tsx:11791-11796`,
-`actions/actionFinalize.tsx:363-365`): when a release commits a new element
+**Behavior:** when a release commits a new element
 from rect, ellipse, the seven shape tools, arrow, line or frame, the tool
 becomes `select` and the selection becomes that element alone. The pen and
 the eraser stay on and select nothing. A click that makes nothing (below the
@@ -2939,9 +2935,9 @@ Both themes, at 25%, 100% and 400% zoom:
 
 - Arrow binding (targeting by distance, highlights on endpoint drags, stored
   attach points): waits for the hand-test report.
-- A tool lock (Excalidraw's Q).
+- A tool lock (`Q`).
 - Retuning threshold or tolerance values; edge-band resizing; Shift+wheel pan.
-- The rest of section 7: bounds prefilter for hit tests, culling off-screen
+- The rest of the performance list: bounds prefilter for hit tests, culling off-screen
   elements, rebuilding arrowheads and the selection overlay less often.
 - An arrow label's editor sitting on the arrow's midpoint: it keeps opening
   over the arrow's box, now styled correctly.
@@ -2998,8 +2994,8 @@ selecting, moving and arranging behave the way a user of any drawing tool
 expects, frames and groups included.
 
 **Specs:**
-- `.claude/work/specs/research/excalidraw-comparison.md` (2026-09-26): the bug table,
-  section 2 (selecting and transforming), section 3's text-editor note (A3)
+- The canvas review of 2026-09-26: its bug table, selecting and
+  transforming, the text editor
 - `docs/file-format.md`, "Code blocks" (changed by Task 1), "Attachment and
   containment"
 - `docs/shortcuts.md` (Shift-click, arrow keys, Tab)
@@ -3009,7 +3005,7 @@ expects, frames and groups included.
   selects", "A group is one id standing for its children", "Containment lives
   on the child", "Membership is recorded at every level"
 - Decided with the user 2026-09-26: fix the code block by growing the editor
-  as it is typed in, as Excalidraw's text editor does; a code block is never
+  as it is typed in, as a text editor does; a code block is never
   narrower than 20 columns; selection feel and the frame and group bugs join
   this plan; bendable arrows are a later milestone (06.10) with the arrow
   binding work.
@@ -3066,8 +3062,7 @@ commits, as today.
 
 #### Task 3: Shift-click removes; a click narrows a multi-selection on release
 **Files:** modify `canvas/pointer.ts`; test `canvas/pointer.test.ts`.
-**Behavior:** as Excalidraw does it (`components/App.tsx:12237-12296,12365-12371`),
-decided on release, so a press on a selected element can still start a drag
+**Behavior:** decided on release, so a press on a selected element can still start a drag
 of the whole selection:
 - Shift-press on a selected element, released without dragging: that element
   leaves the selection. Dragged instead: the selection moves, unchanged.
@@ -3087,7 +3082,7 @@ of the whole selection:
 **Files:** modify `canvas/pointer.ts`; test `canvas/pointer.test.ts`.
 **Behavior:** with two or more selected, a press inside the box around them
 where no element is hit moves the whole selection instead of clearing it and
-starting a marquee (Excalidraw, `App.tsx:9611-9618`). Shift-press there still
+starting a marquee. Shift-press there still
 starts an additive marquee.
 - [x] Failing test: `a press in the empty space inside a multi-selection drags it`.
   Expected failure: the selection is cleared (`pointer.ts:277-279`).
@@ -3098,8 +3093,7 @@ starts an additive marquee.
 **Files:** modify `canvas/pointer.ts`, `canvas/keymap.ts`, `docs/shortcuts.md`;
 test `canvas/pointer.test.ts`, `canvas/keymap.test.ts`.
 **Behavior:** a move with Shift held keeps only the larger of dx and dy,
-re-read on every move (Excalidraw, `App.tsx:11010-11025`). Shift+arrow nudges
-5 units, plain arrow 1 (`common/src/constants.ts:28-29`).
+re-read on every move. Shift+arrow nudges 5 units, plain arrow 1.
 - [x] Failing tests: `a shift-drag moves along the dominant axis only`;
   `pressing and releasing Shift mid-drag switches the lock`;
   `Shift+ArrowRight nudges 5`. Expected failure: Shift is ignored by a move
@@ -3190,7 +3184,7 @@ Both themes:
 - Bendable arrows, point editing and the arrow binding changes: 06.10, after
   the hand-test report.
 - Entering a group by double-click, lasso selection, marquee "contain" mode,
-  live marquee: section 2's other rows.
+  live marquee: the review's other selection rows.
 - Frames that cannot rotate, frame clipping, frames adopting what they are
   drawn around.
 - Resize and rotate cursors.
@@ -3242,8 +3236,6 @@ along it.
 **Specs:**
 - `.claude/work/specs/arrows.md`: decisions 1 to 6, made with the user
   2026-09-26 (the source for every behaviour below)
-- `.claude/work/specs/research/excalidraw-comparison.md`: section 3 (arrows and lines),
-  appendix A2 (binding); Excalidraw read at `5db42c3`
 - `docs/file-format.md`: "Lines, arrows and strokes", "Attachment and
   containment", the style table (all changed by Task 1, before any code)
 - `.ai/rules/canvas.md`: "All pointer input has one path", "A drag previews
@@ -3315,7 +3307,7 @@ edges already smooths through its points (`curves.ts`); unchanged.
 
 #### Task 3: Anchors, and ends that aim at their neighbour
 **Files:** modify `canvas/binding.ts`; test `canvas/binding.test.ts`.
-**Behavior (decision 4, Excalidraw `binding.ts:1948-2104`):** an attached
+**Behavior (decision 4):** an attached
 end's spot is the anchor fraction turned into a point on the target (rotated
 with it), or the centre when absent. The end sits where the segment from the
 spot towards the end's neighbour (the next bend, else the other end's spot
@@ -3335,12 +3327,11 @@ target), the end keeps its point, as the "aimless" rule does today.
 #### Task 4: Finding a target by distance
 **Files:** modify `canvas/binding.ts`, `canvas/pointer.ts`, `App.svelte`;
 test `canvas/binding.test.ts`.
-**Behavior (appendix A2, Excalidraw `binding.ts:133-143`,
-`collision.ts:430-477`):** `targetAt(scene, point, exclude, reach)` returns
+**Behavior:** `targetAt(scene, point, exclude, reach)` returns
 the eligible element whose outline is nearest the point, within `reach`
 scene units, from inside or outside; a point inside a smaller element that
-sits within a larger one prefers the smaller. `reach` is Excalidraw's
-`clamp(15 / (1.5 × zoom), 15, 30)`, passed in by the pointer from an option
+sits within a larger one prefers the smaller. `reach` is
+`clamp(15 / (1.5 × zoom), 15, 30)`, so it grows on screen as the user zooms out, passed in by the pointer from an option
 the app fills from the zoom (constants `BINDING_REACH_MIN = 15`,
 `BINDING_REACH_MAX = 30`).
 - [x] Failing tests: `a point just outside a shape finds it`;
@@ -3357,8 +3348,7 @@ the app fills from the zoom (constants `BINDING_REACH_MIN = 15`,
 anchor for each end that attaches: the drop point as a fraction of the
 target's upright box, clamped to 0..1, snapped to a side's middle when the
 drop is outside the shape and within the binding reach of that middle
-(Excalidraw `getSnapOutlineMidPoint`, `element/src/utils.ts:717-737,789-807`;
-its 5% tolerance is for elbow arrows only). Letting go of a shape
+(the 5% tolerance is for elbow arrows only). Letting go of a shape
 removes both the binding and its anchor. `bindingCandidates` reports the
 target under the dragged end during an endpoint drag too, not only while
 drawing (`pointer.ts:216-223`). Alt still leaves an end free.
@@ -3379,8 +3369,8 @@ drawing (`pointer.ts:216-223`). Alt still leaves an end free.
 **Behavior (decisions 1 and 2):** one selected line or non-elbow arrow shows
 a handle on every point (ends included; lines gain end handles, which they
 lack today) and a smaller handle at the middle of each segment at least
-`--size-bend-min-segment` long on screen (Excalidraw hides under 40 screen
-px, `linearElementEditor.ts:935-974`). Dragging a point handle moves that
+`--size-bend-min-segment` long on screen, so a short segment is not crowded
+by handles. Dragging a point handle moves that
 point; dragging an end handle keeps today's attach behaviour; dragging a
 middle handle inserts a point there and drags it. Double-clicking a bend's
 handle deletes that bend (ends cannot be deleted); a double-click elsewhere on
@@ -3399,7 +3389,7 @@ handles take precedence over the box's resize handles.
 
 #### Task 7: Dragging an attached arrow's body lets it go
 **Files:** modify `canvas/pointer.ts`; test `canvas/pointer.test.ts`.
-**Behavior (decision 5, Excalidraw `dragElements.ts:130-158`):** a move of a
+**Behavior (decision 5):** a move of a
 selection containing an arrow removes the binding and anchor of each end whose
 target is not moving too. An arrow moved together with both its shapes stays
 attached.
@@ -3428,8 +3418,8 @@ exporter both read it. Double-clicking the label still edits it.
 #### Task 9: Heads stay solid on a dashed arrow in export
 **Files:** modify `canvas/export/svg.ts`; test `canvas/export/svg.test.ts`.
 **Behavior:** from the bug table: the exporter draws a dashed arrow's heads
-dashed, the canvas solid. Heads are drawn without the dash, as the stage and
-Excalidraw (`element/src/shape.ts:326-343`) do.
+dashed, the canvas solid. Heads are drawn without the dash, as the stage
+draws them.
 - [x] Failing test: `a dashed arrow exports solid heads`. Expected failure:
   `paintAttributes` adds `stroke-dasharray` to the head path (`svg.ts:58-63`).
 - [x] Implement.
@@ -3450,8 +3440,7 @@ Excalidraw (`element/src/shape.ts:326-343`) do.
 - `.ai/rules/canvas.md`: "An attached end aims through its anchor at its
   neighbour"; "Bends are points; the kind decides how they are drawn".
 - Repo-state section of `build-step/SKILL.md`: a 06.10 line.
-- No NOTICE entry: behaviour and constants are adopted, no Excalidraw code is
-  copied.
+- No NOTICE entry: no third-party code is added.
 
 ### Verification at the window (owed by a human)
 
@@ -3469,7 +3458,7 @@ Both themes, at 50%, 100% and 200% zoom:
 ### Out of scope
 
 - Elbow routing that leaves from the side its end is on, avoids shapes, or has
-  a draggable middle segment (section 3's elbow rows).
+  a draggable middle segment (the review's elbow rows).
 - An "inside" attach mode (decision 4 chose edge mode only).
 - Click-by-click drawing and a separate point-editing mode (decision 2).
 - Heads that shrink on short arrows; head size by stroke width.
@@ -3684,18 +3673,16 @@ test asserts the wide size).
 
 <a id="06.12-arrows-and-code"></a>
 
-## 06.12: Arrows and lines like Excalidraw, and resizable code blocks
+## 06.12: Arrows and lines, and resizable code blocks
 
 **Goal:** From the user's window report of 2026-09-26: a code block is resized
-like a shape and wraps; a selected line or arrow shows what Excalidraw shows;
-dragging points feels like Excalidraw; elbow arrows keep the side they were
+like a shape and wraps; a selected line or arrow shows its points and middles;
+dragging points feels precise; elbow arrows keep the side they were
 attached on and route around shapes.
 
 **Specs:**
 - `.claude/work/specs/arrows-and-code.md`: decisions 1 to 6 (06.12
   carries 1, 2, 3, 5, 6 and the drag details of 4)
-- `.claude/work/specs/research/excalidraw-elbow-routing.md`: the routing algorithm,
-  constants and file:line references
 - `.claude/work/specs/arrows.md` (06.10 decisions; decision 3 there is
   amended by Task 1 below)
 - `docs/file-format.md` ("Code blocks", "Lines, arrows and strokes",
@@ -3705,12 +3692,11 @@ attached on and route around shapes.
 **File format impact:** rules, not keys, all specified before code:
 - A code block's `w` is the user's; its lines wrap to it and `h` is the
   wrapped height. Existing blocks were sized to fit, so they draw unchanged.
-- An elbow arrow's `points` hold its route, as Excalidraw stores it. A file
+- An elbow arrow's `points` hold its route. A file
   with a two-point elbow (every elbow written so far) is routed when opened.
   Switching an arrow to elbow replaces its bends with the route; switching
   away keeps only its ends. This amends 06.10's "switching kinds never loses
-  a bend", which cannot hold once the route is stored; Excalidraw resets to
-  two points the same way (`actions/actionProperties.tsx:2057-2131`).
+  a bend", which cannot hold once the route is stored.
 - An elbow end's anchor names the side it keeps.
 
 **UI impact:** no component. Tokens: `--size-point-handle` (10px, a 5 px
@@ -3719,7 +3705,7 @@ gains resize handles.
 
 ### Constraints
 
-- Excalidraw values, with file:line, as recorded in the specs: point handle
+- Values, as recorded in the specs: point handle
   radius 5 screen px, hit 11; a middle handle hidden under 40 px, inserting
   only after 10 px; a new line or arrow needs a 20 px drag; Shift snaps a
   dragged point to 15° about its neighbour; elbow padding 40; bend cost
@@ -3798,7 +3784,7 @@ divided by zoom) and a shorter drag makes nothing.
 **Files:** create `canvas/elbow.ts`; modify `canvas/binding.ts` (`reroute`,
 `anchorFor`), `canvas/arrows.ts` (`routePoints` for a stored route); test
 `canvas/elbow.test.ts`, `binding.test.ts`.
-**Behavior (`excalidraw-elbow-routing.md`):** headings from the side each end
+**Behavior:** headings from the side each end
 is on (outward), or towards the other end when free; padded boxes, a grid on
 their edges, A* with the bend cost, no reversing, no entering a box;
 collinear and near-duplicate points dropped. `reroute` routes every elbow and
@@ -3873,10 +3859,10 @@ points are its route; Tab and `/` do nothing; `Mod-/` is the editor's again.
 - `scaleInto` no longer leaves code blocks unscaled; text still is not.
 - Old-width rounding: `columnsFor` has a hundredth of a column of slack, with a
   test that fails without it.
-- The router is Bava's own, following Excalidraw's method with a margin of
-  20 on every side (`--size-elbow-margin`; Excalidraw pads up to 40 on far
-  sides, less on the heading side). A bend costs four times the grid's span
-  rather than Excalidraw's cube of the dongle distance. Shapes that overlap,
+- The router is Bava's own, a grid search with a margin of 20 on every side
+  (`--size-elbow-margin`) rather than the planned 40 on far sides and less on
+  the heading side. A bend costs four times the grid's span rather than the
+  planned cube of the dongle distance. Shapes that overlap,
   touch or share both ends are routed round as one. Routes are cached by
   their inputs, since `reroute` runs on every change and preview frame.
 - `docs/shortcuts.md` is now checked both ways against the spec.
@@ -3902,14 +3888,12 @@ replaced on open; the kept-shortcut test checks both ways.
 
 ## 06.13: Pinned ends, point editing, and click-by-click lines
 
-**Goal:** The last of Excalidraw's arrow behaviours the user asked for: an end
+**Goal:** The last of the arrow behaviours the user asked for: an end
 dropped inside a shape is pinned there, lines and arrows have a point-edit
 mode, and a line or arrow can be drawn click by click.
 
 **Specs:**
 - `.claude/work/specs/arrows-and-code.md`: decisions 4, 7, 8 and 9
-- `.claude/work/specs/research/excalidraw-comparison.md` section 3; Excalidraw at
-  `5db42c3`, file:line references in the decisions
 - `docs/file-format.md` ("Attachment and containment", style table; changed
   first, by Task 1), `docs/shortcuts.md`
 - `.ai/rules/canvas.md`: one pointer path, preview equals release, modifiers
@@ -3921,7 +3905,7 @@ pins the end at its anchor, inside the shape. Absent means the edge, as every
 file today; an older Bava keeps the key verbatim.
 
 **UI impact:** no component. Point-edit mode reuses the point and middle
-handles, drawn larger for points in the mode (Excalidraw's 10 px radius) and
+handles, drawn larger for points in the mode (a 10 px radius) and
 filled when selected. No new token beyond `--size-point-handle-editing` (20px,
 the diameter).
 
@@ -4063,15 +4047,13 @@ editing.
 
 ## 06.14: Elbows you can shape, cursors and handles, the paste bug, code height
 
-**Goal:** The first third of `excalidraw-lines-inventory.md`, built in full:
+**Goal:** The first third of the lines checklist, built in full:
 every elbow item (E), every selection-chrome, handle and cursor item (S), the
 duplicate/paste bug (B23), and a code block's height.
 
 **Specs:**
-- `.claude/work/specs/research/excalidraw-lines-inventory.md`: sections 2 (S), 4 (E)
-  and row B23, with Excalidraw file:line for every item
-- `.claude/work/specs/arrows-and-code.md`: decisions 10, 11, 12
-- `.claude/work/specs/research/excalidraw-elbow-routing.md`
+- `.claude/work/specs/arrows-and-code.md`: decisions 10, 11, 12 (the
+  checklist's selection chrome (S) and elbow (E) items, and row B23)
 - `docs/file-format.md` (changed first, by Task 1), `docs/decisions.md`,
   `docs/shortcuts.md`
 - `.ai/rules/canvas.md` (one pointer path, preview equals release, the chrome
@@ -4081,17 +4063,17 @@ duplicate/paste bug (B23), and a code block's height.
 **File format impact:** one optional key, specified first:
 `fixedSegments` on an elbow `arrow`: a list of `{ "index": n, "start": [x, y],
 "end": [x, y] }`, the middle segments the user dragged, in the arrow's own
-coordinates (Excalidraw's shape, `element/src/types.ts:385-401`). Absent means
+coordinates. Absent means
 fully routed, as every file today. A code block's `h` becomes the user's
 (taller than its code allowed); every existing block's `h` is its code's, so
 it draws unchanged.
 
 **UI impact:** no component. Canvas cursors (CSS `cursor` on the canvas host).
-Tokens: `--size-hit-tolerance` 4px to 7px (Excalidraw 6.8); `--size-elbow-margin`
+Tokens: `--size-hit-tolerance` 4px to 7px; `--size-elbow-margin`
 split into `--size-elbow-padding` (40) and `--size-elbow-head-room`;
 `--size-elbow-corner` (16); `--size-bent-box-padding` (10).
 
-### Excalidraw wins over earlier Bava choices (decision 12)
+### The checklist wins over earlier Bava choices (decision 12)
 - E16: a bound elbow alone cannot be dragged by its body (06.10 decision 5
   let it go).
 - S8: a segment's middle beats the arrow's label under it (06.13 hid it).
@@ -4110,7 +4092,7 @@ double-click to release, cursors).
 `canvas/stage.ts`, `canvas/hit.ts`, `canvas/export/svg.ts`,
 `styles/tokens/_space.scss`; tests `elbow.test.ts`, `binding.test.ts`,
 `arrows.test.ts`, `stage.test.ts`, `svg.test.ts`.
-**Behavior:** padding as Excalidraw (40 far sides; heading side 40 - 30 with a
+**Behavior:** padding of 40 on far sides (heading side 40 - 30 with a
 head, 40 - 10 without); corners drawn as curves of radius min(16, half each
 neighbouring segment), by one function used by stage, hit test and export; an
 elbow end snaps to a side's middle within a band of 5% of the side (clamped 5
@@ -4123,8 +4105,7 @@ corner is moved just past it.
 **Files:** `canvas/elbow.ts`, `canvas/binding.ts`, `canvas/pointer.ts`,
 `canvas/stage.ts`, `canvas/scene.ts`, `App.svelte`; tests `elbow.test.ts`,
 `pointer.test.ts`, `stage.test.ts`.
-**Behavior (Excalidraw `elbowArrow.ts:282-900`, `App.tsx:10662-10711,
-7268-7329`):** a selected elbow shows a handle at the middle of every segment
+**Behavior:** a selected elbow shows a handle at the middle of every segment
 (hollow when free, filled when fixed; hidden under 5 screen px). Dragging a
 middle segment moves it perpendicular to itself at once and fixes it
 (`fixedSegments`); dragging the first or last segment inserts a stub 40 out
@@ -4147,7 +4128,7 @@ alone cannot be dragged by its body (no move, no move cursor); in a
 multi-selection it moves only when both its shapes move.
 - [x] Failing tests per item. Implement. Green.
 
-#### Task 5: Handles as Excalidraw draws them (S2, S6, S7, S8, S9, S12, S13)
+#### Task 5: Handles and their chrome (S2, S6, S7, S8, S9, S12, S13)
 **Files:** `canvas/stage.ts`, `canvas/pointer.ts`, `canvas/selection-chrome.ts`,
 `App.svelte`, tokens; tests `stage.test.ts`, `pointer.test.ts`.
 **Behavior:** a bent line's box padded 10 px; a point on its neighbour drawn
@@ -4162,7 +4143,7 @@ box.
 #### Task 6: Cursors (S10, S11)
 **Files:** create `canvas/cursor.ts`; `canvas/pointer.ts`, `App.svelte`; tests
 `cursor.test.ts`.
-**Behavior (Excalidraw `App.tsx:8322-8555`):** one pure `cursorAt(state, point)`
+**Behavior:** one pure `cursorAt(state, point)`
 the app applies to the canvas host on every move: pointer over a point, middle,
 segment or focus handle; resize cursors on box handles, turned with the
 selection; the rotate cursor on the rotate handle; move over a selectable
@@ -4200,11 +4181,10 @@ taller height and grows it when the code needs more.
 - `docs/file-format.md`, `docs/decisions.md`, `docs/shortcuts.md` (Task 1).
 - `.ai/rules/canvas.md`: "Fixed segments keep the route's interior";
   "Cursors are decided by one function".
-- `excalidraw-lines-inventory.md`: each built row marked with 06.14.
 - Repo-state section of `build-step/SKILL.md`: a 06.14 line.
 
 ### Out of scope
-Nothing from this milestone's rows. Everything else in the inventory is in
+Nothing from this milestone's rows. Everything else in the checklist is in
 06.15 (P, C) and 06.16 (B except B23, H, L, V, T, X, O), already agreed.
 
 ### As built (2026-09-27)
@@ -4215,22 +4195,21 @@ all green. The export fixture changed in one place, the elbow `a2`, whose two
 corners are now curves of radius 16; looked at before it was updated.
 
 **Deviations and findings:**
-- E2 was misread by the inventory. Excalidraw pads the heading side less but
-  grows the shape there first, so the net is 40 clear on every side, head or
-  not. Built as that: `--size-elbow-margin` is 40; no `--size-elbow-padding`
+- E2 was misread by the checklist. Padding the heading side less is offset
+  by growing the shape there first, so the net is 40 clear on every side,
+  head or not. Built as that: `--size-elbow-margin` is 40; no `--size-elbow-padding`
   or `--size-elbow-head-room` split was needed.
 - E4's radius (16) is a constant in `arrows.ts` (`ELBOW_CORNER`), not a token:
-  it is in scene units, as Excalidraw's, not a length on screen.
+  it is in scene units, not a length on screen.
 - E6 already held: a corner anchor leaves by one side, a gap out. Kept as a
   guard test, not a change.
-- E8: the segment moves by the drag, not to the pointer (Excalidraw jumps it
-  to the cursor); a free last end keeps its point where Excalidraw can lose it;
-  a straight-through merge keeps the segment fixed if either part was. From
-  `.claude/work/specs/research/excalidraw-elbow-segments.md`, section 8.
+- E8: the segment moves by the drag, rather than jumping to the pointer; a
+  free last end keeps its point; a straight-through merge keeps the segment
+  fixed if either part was.
 - E14's re-attach uses the elbow snap at the end's drawn point; E15 re-attaches
   at the current spot, which for Bava's anchors changes nothing in practice.
-- S9: Excalidraw also hides a focus point that falls outside its shape's drawn
-  outline (an ellipse's box corner); Bava shows it. Not built.
+- S9: a focus point that falls outside its shape's drawn outline (an
+  ellipse's box corner) is shown, not hidden. Hiding it was not built.
 - Tokens added: `--size-snap-dot` (8), `--size-bent-box-padding` (10),
   `--size-point-hover` (20), `--size-focus-point` (9); `--size-hit-tolerance`
   is 7. The rotate cursor is an inline image (decisions row).
@@ -4251,8 +4230,8 @@ anchor line's dash and the overlap distance are tokens (`--size-marquee-dash`,
 `--size-point-overlap`); doc comments moved back to their functions. Notes
 taken: a diamond's edge middles show dots; the hover disc is cleared when the
 handles redraw; the shortcuts document says an elbow attached at both ends;
-`fixedSegments` on a non-elbow is dropped. Kept as Excalidraw: a segment drag
-starts on any movement, with no threshold. Final gates: `npm test` exit 0,
+`fixedSegments` on a non-elbow is dropped. Kept as the checklist has it: a
+segment drag starts on any movement, with no threshold. Final gates: `npm test` exit 0,
 1284 tests; check, lint, `go vet`, `go test` green.
 
 ### Verification at the window (owed by a human)
@@ -4269,17 +4248,16 @@ bottom edge.
 
 <a id="06.15-points-and-creation"></a>
 
-## 06.15: Editing points and drawing lines, as Excalidraw
+## 06.15: Editing points and drawing lines
 
-**Goal:** The second third of `excalidraw-lines-inventory.md`, built in full:
+**Goal:** The second third of the lines checklist, built in full:
 every creation item (C) and every point-editing item (P) not already the
 same, plus V2 (a two-point curve is straight), which the new curved default
 needs.
 
 **Specs:**
-- `.claude/work/specs/research/excalidraw-lines-inventory.md`: sections 1 (C) and 3
-  (P), row V2, with Excalidraw file:line for every item
-- `.claude/work/specs/arrows-and-code.md`: decisions 12 to 15 (13 to 15
+- `.claude/work/specs/arrows-and-code.md`: decisions 12 to 15 (the
+  checklist's creation (C) and point-editing (P) items, row V2; 13 to 15
   are recorded by Task 1 from the user's answers of 2026-09-27)
 - `docs/file-format.md` (changed first, by Task 1), `docs/decisions.md`,
   `docs/shortcuts.md`, `internal/app/menu/spec.json`
@@ -4287,18 +4265,18 @@ needs.
   `.ai/rules/ipc.md` (the menu), `.ai/rules/file-format.md`
 
 **The user's answers (2026-09-27):**
-- New arrows and lines are **curved**, as Excalidraw. Existing files are
+- New arrows and lines are **curved**. Existing files are
   unchanged: an absent key still means straight/sharp, so the new default is
   written into each new element.
 - **All three shortcuts:** `Q` keeps the tool; `⌘`/`Ctrl`+`Enter` edits an
   arrow's points; `⌘`/`Ctrl`+`D` in point editing duplicates the selected
   points.
-- **Excalidraw for both deletes:** `Delete` in point editing with no point
+- **The checklist for both deletes:** `Delete` in point editing with no point
   selected does nothing; double-clicking a bend no longer removes it.
 
 **File format impact** (specified first, with round-trip tests):
 - `closed: true` on a `line`: its last point is its first, and it stays a
-  loop when either is moved or deleted (Excalidraw's `polygon`). Absent means
+  loop when either is moved or deleted. Absent means
   open, as every file today.
 - `fill` (and its colour keys, as shapes have) accepted on a `line`, drawn
   only while it is closed.
@@ -4309,13 +4287,13 @@ needs.
 through its model (`canvas/toolbar.ts`): Edit points, Close line / Open line,
 and Done (shown alone while a line is drawn by clicks). `ToolRail` gains a
 lock toggle (Lucide `lock`/`lock-open` through `ToolIcon`). New strings go to
-the translation file. No new token: Close line's 20 (Excalidraw's
-`LINE_POLYGON_POINT_MERGE_DISTANCE`) is in scene units, so a constant, and
+the translation file. No new token: Close line's 20 (the distance
+at which the ends merge) is in scene units, so a constant, and
 the 8 px closing zone reuses `--size-line-confirm`.
 
-### Conflicts with earlier Bava choices (decision 12: Excalidraw wins)
+### Conflicts with earlier Bava choices (decision 12: the checklist wins)
 - **V2, a visible change to existing files:** a two-point curved arrow is
-  drawn straight, as Excalidraw's. Today Bava bows it 0.2 of its length. Any
+  drawn straight, since two points give a curve nothing to bend through. Today Bava bows it 0.2 of its length. Any
   two-point curved arrow already in a file will draw straight. Curves through
   bends are unchanged.
 - **P24:** double-click on a bend no longer removes it (06.10 decision 2),
@@ -4325,7 +4303,7 @@ the 8 px closing zone reuses `--size-line-confirm`.
 - **C14:** new arrows curved, new lines round (06.12 default straight), by the
   user's answer.
 - **P25:** dragging the line itself in point editing moves the whole line
-  (today it moves nothing); verified at `App.tsx:10925-10940`.
+  (today it moves nothing).
 
 ### Constraints
 - One pointer path; the preview is the release's recipe; one `history.mutate`
@@ -4357,7 +4335,7 @@ release still turns into click-by-click drawing, drawing nothing); between
 clicks, a pointer inside the 8 px zone of the last point hides the floating
 segment; Shift snaps each click-drawn segment to 15° about the last point;
 Shift on a dragged point also snaps to the angle its segment had when the
-drag began, within 2.5° (Excalidraw's `getLockedLinearCursorAlignSize`); Alt
+drag began, within 2.5°, so a straight run stays straight; Alt
 and `⌘`/`Ctrl` held at the press decide the start end (pinned, or free), the
 release the other.
 - [x] Failing tests per item, named for it. Implement. Green.
@@ -4382,7 +4360,8 @@ shows in the toolbar while drawing and finishes it.
 `keymap.test.ts`, create `components/tool-rail.test.ts`.
 **Behavior:** every property chosen in the toolbar becomes the style of the
 next element of that kind (arrow kind, heads, stroke colour, width, dash,
-edges, opacity, fill), as Excalidraw's `currentItem*`; it starts at arrows
+edges, opacity, fill), so a run of elements shares a look without
+restyling each; it starts at arrows
 curved, lines round, heads none and arrow. A two-point curved arrow is
 straight (V2). `Q` or the rail's lock keeps the tool after a draw, with
 nothing selected; unlocked, a draw returns to Select with the new element
@@ -4445,11 +4424,10 @@ for an elbow.
   last-used style, in memory only".
 - `.ai/rules/design-system.md` inventory: `SelectionToolbar` and `ToolRail`
   entries mention the new actions.
-- `excalidraw-lines-inventory.md`: each built row marked "built 06.15".
 - Repo-state section of `build-step/SKILL.md`: a 06.15 line.
 
 ### Out of scope
-Everything else in the inventory is 06.16 (B, H, L, V except V2, T, X, O).
+Everything else in the checklist is 06.16 (B, H, L, V except V2, T, X, O).
 Grid snapping (Bava has no grid).
 
 ### As built (2026-09-27)
@@ -4512,27 +4490,26 @@ with nothing selected, drag the line itself. `⌘Enter` on an arrow.
 
 <a id="06.16-binding-heads-labels"></a>
 
-## 06.16: Attaching, heads, labels and the rest, as Excalidraw
+## 06.16: Attaching, heads, labels and the rest
 
-**Goal:** The last third of `excalidraw-lines-inventory.md`: every binding
+**Goal:** The last third of the lines checklist: every binding
 (B), arrowhead (H), label (L), styling (T), transform (X) and other (O) item
-not already the same or built, so the inventory is complete.
+not already the same or built, so the checklist is complete.
 
 **Specs:**
-- `.claude/work/specs/research/excalidraw-lines-inventory.md`: sections 5 (B), 6 (H),
-  7 (L), 9 (T), 10 (X), 11 (O), with Excalidraw file:line for every item
-- `.claude/work/specs/arrows-and-code.md`: decisions 12 and 16
+- `.claude/work/specs/arrows-and-code.md`: decisions 12 and 16 (the
+  checklist's binding (B), head (H), label (L), styling (T), transform (X)
+  and other (O) items)
 - `docs/file-format.md` (changed first, by Task 1), `docs/decisions.md`,
   `docs/shortcuts.md`, `docs/ipc.md` (settings)
 - `.ai/rules/canvas.md`, `design-system.md`, `svelte.md`, `file-format.md`,
   `ipc.md`
 
-**Checked in Excalidraw for the two unverified rows:**
+**Settled for the two unverified rows:**
 - L9: a new label takes the current stroke colour, and a stroke-colour
-  change includes the arrow's label (`App.tsx:7080-7095`, `:3110-3125`): the
-  label follows the arrow's stroke colour.
-- O1: undo and redo do nothing while a line is drawn by clicks
-  (`actions/actionHistory.tsx:26-45`).
+  change includes the arrow's label: the label follows the arrow's stroke
+  colour.
+- O1: undo and redo do nothing while a line is drawn by clicks.
 
 **File format impact** (specified first, with round-trip tests):
 - Six new head names on `startArrowhead`/`endArrowhead`: `one`, `many`,
@@ -4546,11 +4523,11 @@ not already the same or built, so the inventory is complete.
 
 **UI impact:** Settings gains a Canvas section (two `Toggle`s: attach arrows
 to shapes; snap ends to side middles). The head picker gains the six
-cardinality heads behind a More row, as Excalidraw's. The arrow-kind picker
+cardinality heads behind a More row, so the common heads stay one click
+away. The arrow-kind picker
 gains Line, so a line and an arrow convert both ways (X11). Tokens:
 `--color-binding-highlight` (light and dark) and `--size-label-drag` (10px).
-The label's clearance (5) and the head sizes are scene units
-(`common/src/constants.ts:418`, `element/src/bounds.ts:710-744`), so named
+The label's clearance (5) and the head sizes are scene units, so named
 constants, and the `--size-arrowhead` token is retired.
 
 ### Conflicts with earlier Bava choices
@@ -4675,8 +4652,7 @@ keeping points where it can.
 **Files:** `App.svelte` (`placeText`, the Text tool's click), create
 `canvas/arrow-text.ts`; tests `arrow-text.test.ts`.
 **Behavior:** with the Text tool, a click by an unattached arrow end starts a
-text there, and the end attaches to it (Excalidraw's
-`arrowEndpointText.ts`).
+text there, and the end attaches to it.
 - [x] Failing tests. Implement. Green.
 
 #### Task 11: Undo while drawing by clicks (O1)
@@ -4696,11 +4672,10 @@ text there, and the end attaches to it (Excalidraw's
   by kind, in scene units".
 - `.ai/rules/design-system.md`: `OptionPicker`'s More row; the Canvas settings
   section.
-- The inventory: every row "built 06.16", or kept with the reason (B22).
 - Repo-state section of `build-step/SKILL.md`: a 06.16 line.
 
 ### Out of scope
-Nothing from the inventory beyond B22, kept by the project rule. Grid
+Nothing from the checklist beyond B22, kept by the project rule. Grid
 snapping (Bava has no grid).
 
 ### As built (2026-09-27)
@@ -4737,7 +4712,7 @@ handle's label test moved off the line.
 curved arrow's head was capped by its drawn curve's samples (2.9 instead of
 25), and an elbow's head differed between canvas and export: both renderers
 now cap a head by the arrow's own last segment. The inside-out guard (B18)
-lacked Excalidraw's size test, so a child's arrow to its container started
+lacked a size test, so a child's arrow to its container started
 from the child's middle; it now applies only between shapes of like size.
 Warnings fixed: an elbow drawn from a shape back onto it attaches both ends,
 as a dragged one does; a focus drag may land on the other end's shape; a
@@ -4745,15 +4720,15 @@ text at a diagonal arrow end leaves the arrow where it was (Bava's gap is
 along the ray); the typing field opens where an arrow-end text will land
 (its height anchor; it still grows rightward while typed, settling on
 commit); arrow keys count a frame's contents as moving; the highlight's
-width clamp and pulse depth are named constants with their citation; the
+width clamp and pulse depth are named constants; the
 pulse has tests; `docs/shortcuts.md` covers attaching off, Shift on an end,
 both ends on one shape, the label threshold, text at an arrow end and undo
 held while drawing; a line keeps no label keys; the More row focuses the
 first revealed choice and resets on close; the resize test checks the size.
 Notes taken: heads use the line's thicker stroke when dashed; the stray
 comment; the Go test checks its errors; the B3 and L9 rows. Left, with
-reasons: there is no image element to be opaque; Excalidraw's shortening of
-rectangle diagonals by 15 is not copied; the kind switch re-anchors with the
+reasons: there is no image element to be opaque; shortening rectangle
+diagonals by 15 is not built; the kind switch re-anchors with the
 snap on (it has no settings); the highlight is sharp-cornered on a round
 shape; `targetAt` sorts on each call (not measured as slow).
 

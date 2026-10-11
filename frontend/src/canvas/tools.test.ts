@@ -85,7 +85,7 @@ describe('the code tool', () => {
   });
 });
 
-// The tool lock, as Excalidraw's.
+// The tool lock: a tool kept on after drawing.
 describe('the tool lock', () => {
   it('toggles, and survives a change of tool', () => {
     const tools = createTools();

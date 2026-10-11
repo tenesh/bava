@@ -58,8 +58,8 @@ describe('how an element paints', () => {
     expect(paint.font.size).toBe(20);
   });
 
-  // Excalidraw's patterns, scaled by the stroke width, and a
-  // non-solid line drawn half a unit thicker (`element/src/shape.ts:168-216`).
+  // Dash patterns scaled by the stroke width, and a non-solid line drawn
+  // half a unit thicker.
   it('turns a line style into a dash pattern that grows with the width', () => {
     expect(paintFor(el({ strokeStyle: 'dashed' }), theme).dash).toEqual([8, 10]);
     expect(paintFor(el({ strokeStyle: 'dotted' }), theme).dash).toEqual([1.5, 8]);

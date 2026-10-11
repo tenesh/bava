@@ -12,8 +12,8 @@ questions below are answered; until then this file is the record.
 ### A generated diagram becomes ordinary canvas elements (2026-09-17)
 The user's words: "when i ask the AI to generate, it generates on the canvas
 and then i can freely move and edit the diagram on canvas like how i can
-freely add any shapes". Evidence: the Eraser reference screenshots, where a
-container inside a generated diagram is selected with its own handles.
+freely add any shapes": a container inside a generated diagram is selected
+with its own handles, like any other shape.
 
 So a diagram is not a live block rendered from D2 whose interior the layout
 engine owns. D2 produces the diagram once: the source is compiled, laid out,
@@ -53,9 +53,9 @@ pasted D2, previews it, and inserts it as free shapes. This is Milestone 6's
 feature; the AI in Milestone 11 reuses the same conversion. Diagrams therefore
 work with no AI provider configured.
 
-### The canvas gets the shape set D2 and Eraser share (2026-09-17)
-Asked and answered, after comparing D2 v0.9.0's shape list (`lib/shape`) with
-Eraser's flowchart docs. Canvas shapes, drawable by hand and produced by
+### The canvas gets the flowchart shapes D2 can produce (2026-09-17)
+Asked and answered, from D2 v0.9.0's shape list (`lib/shape`) and the
+shapes a flowchart needs. Canvas shapes, drawable by hand and produced by
 conversion:
 
 rectangle, ellipse, diamond, cylinder, hexagon, parallelogram, document,
@@ -63,8 +63,8 @@ person, cloud.
 
 D2's rarer shapes (queue, page, package, step, callout, stored data, C4
 person) convert to a rectangle and keep their label. SQL table, UML class and
-code blocks are deferred to a later milestone. Star, trapezoid and triangle
-(Eraser only) are not in the set; D2 cannot produce them.
+code blocks are deferred to a later milestone. Star, trapezoid and triangle are
+not in the set; D2 cannot produce them.
 
 ### Arrows stay attached to the shapes they connect, from Milestone 6 (2026-09-17)
 Asked and answered. A converted diagram's edges become arrows attached to
@@ -76,7 +76,7 @@ snapping to shapes and detached-arrow handling.
 ### Containers own their contents (2026-09-17)
 Asked and answered. A D2 container converts to a labelled container element
 that owns the elements inside it: dragging it moves them; dragging an element
-out removes it; dropping one in adds it. Same model as a Figma frame. The
+out removes it; dropping one in adds it. The
 existing `frame` element is the natural home for this behaviour.
 
 ### Shapes have colours, from a palette (2026-09-17)

@@ -1,10 +1,10 @@
 /**
- * The style a new element takes: what was last chosen in the toolbar, as
- * Excalidraw's `currentItem*` (`excalidraw/appState.ts:33-45`). Per viewer and
+ * The style a new element takes: what was last chosen in the toolbar, so a
+ * run of elements drawn alike needs choosing only once. Per viewer and
  * per session, held in memory: it is not document state, and nothing of it is
  * written anywhere but into the elements it styles.
  *
- * It starts with arrows curved and lines round, as Excalidraw's do. A value
+ * It starts with arrows curved and lines round. A value
  * equal to its file-format default is written as
  * nothing, so an element carries only what differs from an absent key.
  */

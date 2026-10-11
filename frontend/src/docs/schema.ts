@@ -142,7 +142,8 @@ export const schema = new Schema({
     /**
      * A callout: `kind` as written in the file (`info`, `note`, `success`,
      * `warning`, `error`, or another kept as is); a custom one is a note with
-     * a colour and an icon. An Obsidian title and fold sign are kept.
+     * a colour and an icon. A title and fold sign
+     * written by another Markdown editor are kept.
      */
     callout: {
       group: 'block',

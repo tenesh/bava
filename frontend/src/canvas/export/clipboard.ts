@@ -5,7 +5,7 @@
  * on all three platforms and asks no permission.
  *
  * A picture cannot: the pinned Wails clipboard carries text only. So a PNG
- * goes the way Excalidraw does it, through the webview's own clipboard with an
+ * goes through the webview's own clipboard with an
  * `image/png` item, including the retry that WKWebView and Safari need, where
  * the item is built from a promise so the write starts inside the user's
  * gesture. Where that is refused (WebKitGTK is the expected case) the caller

@@ -3,7 +3,7 @@
  * handle. One answer for the stage that draws them and the pointer that
  * presses them, so a handle is never drawn without working or the reverse.
  *
- * As Excalidraw (`transformHandles.ts:328-354`): one straight (two-point)
+ * One straight (two-point)
  * line or arrow, or one elbow arrow, shows no box at all, only its points; one
  * bent line or arrow shows the box with its four corners and the rotate
  * handle; anything else shows the box, all eight handles and, if it can turn,
@@ -17,8 +17,7 @@ import { endSegment, headReach, LABEL_CLEARANCE } from './arrows';
 
 /**
  * `padded`: the box stands clear of what it holds by `--size-bent-box-padding`
- * on screen, as Excalidraw's for a bent line (`transformHandles.ts:312-316`),
- * so its handles are not on top of its points. Only the box and its handles
+ * on screen for a bent line, so its handles are not on top of its points. Only the box and its handles
  * move out; a resize still acts on the tight bounds, by the drag.
  */
 export type Chrome = { box: boolean; handles: readonly Handle[]; rotate: boolean; padded?: boolean };
@@ -40,8 +39,8 @@ const CODE_HANDLES: readonly Handle[] = ['left', 'right', 'bottom', 'bottom-righ
 
 /**
  * Whether a line or arrow offers its segments' middles for bending: a
- * two-point one always, a bent one only in point editing (Excalidraw's
- * `interactiveScene.ts:1206-1217`). The stage draws them and the pointer
+ * two-point one always, a bent one only in point editing, where bends are
+ * meant to change. The stage draws them and the pointer
  * presses them by this one rule.
  */
 export function offersMiddles(element: SceneElement, editing: boolean): boolean {
@@ -83,8 +82,7 @@ export type SegmentHandle = { index: number; at: Point; fixed: boolean };
 
 /**
  * The handles a selected elbow shows, one at the middle of each segment at
- * least `shortest` long (Excalidraw hides those under 5 screen px,
- * `linearElementEditor.ts:943-948`). Segment `index` runs from point
+ * least `shortest` long (a shorter one has no room for a handle). Segment `index` runs from point
  * `index - 1` to point `index`. The stage draws them, filled when fixed, and
  * the pointer presses them, by this one rule.
  */
@@ -105,8 +103,7 @@ export function elbowSegmentHandles(element: SceneElement, shortest: number): Se
 export type FocusSpot = { side: 'start' | 'end'; at: Point; end: Point };
 
 /**
- * The anchors a selected arrow shows, as Excalidraw's focus points
- * (`arrows/focus.ts:37-100`): a straight two-point arrow's attached ends,
+ * The anchors a selected arrow shows: a straight two-point arrow's attached ends,
  * each where its anchor is on its shape, unless that is within `apart` of the
  * end itself (the end's handle is there). An elbow shows none: its ends are
  * its anchors. The stage draws them and the pointer presses them by this rule.

@@ -55,8 +55,8 @@ describe('squareBox in the mixed quadrants', () => {
 });
 
 // Shift on a dragged point also snaps to the angle its segment
-// started at, within 2.5°, splitting its 15° step there
-// (Excalidraw's `getLockedLinearCursorAlignSize`).
+// started at, within 2.5°, splitting its 15° step there, so a point can
+// return to where it was.
 describe('snapping to the angle a segment started at', () => {
   const at = (degrees: number) => ({ x: Math.cos((degrees * Math.PI) / 180) * 100, y: Math.sin((degrees * Math.PI) / 180) * 100 });
   const angle = (p: { x: number; y: number }) => Math.round((Math.atan2(p.y, p.x) * 180) / Math.PI);

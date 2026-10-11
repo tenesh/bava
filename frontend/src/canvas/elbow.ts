@@ -2,9 +2,8 @@
  * Routing an elbow arrow: right angles only, leaving each attached shape from
  * the side its end is on, going around both shapes.
  *
- * Excalidraw's method (`element/src/elbowArrow.ts`), in Bava's own code: each
- * shape is grown by a margin and treated as an obstacle; each end steps out
- * of its grown shape in its heading (the "dongle"); the edges of the grown
+ * Each shape is grown by a margin and treated as an obstacle; each end steps
+ * out of its grown shape in its heading (the "dongle"); the edges of the grown
  * shapes, the line midway between them and a border around everything make a
  * grid; and a shortest path over that grid, with each bend costing more than
  * any length could, gives the fewest bends first and the shortest route
@@ -23,10 +22,9 @@ export type Box = { x: number; y: number; w: number; h: number };
 /**
  * How far a route keeps from the shapes it joins, in scene units. The token
  * `--size-elbow-margin` is the source; this is its value at the default theme,
- * for a pure function that takes no reader, as `BINDING_GAP` is. Excalidraw's
- * `BASE_PADDING`: it pads the heading side by less but grows the shape there
- * first, so a route keeps 40 clear on every side, head or not
- * (`elbowArrow.ts:1308-1394`). Close shapes share the gap between them.
+ * for a pure function that takes no reader, as `BINDING_GAP` is. The heading
+ * side is padded by less but the shape grown there first, so a route keeps 40
+ * clear on every side, head or not. Close shapes share the gap between them.
  */
 export const ELBOW_MARGIN = 40;
 
@@ -39,7 +37,7 @@ export const VECTOR: Record<Heading, Point> = {
 
 export const OPPOSITE: Record<Heading, Heading> = { up: 'down', right: 'left', down: 'up', left: 'right' };
 
-/** The heading of a vector, as Excalidraw's `vectorToHeading`. */
+/** The heading of a vector: the way it mostly runs. */
 export function headingOf(dx: number, dy: number): Heading {
   if (dx > Math.abs(dy)) return 'right';
   if (dx <= -Math.abs(dy) && dx !== 0) return 'left';
@@ -50,8 +48,7 @@ export function headingOf(dx: number, dy: number): Heading {
 /**
  * The side of a shape an anchor is on, facing outward: the anchor's offset
  * from the centre, measured against the box's own proportions, so a spot on a
- * wide box's top edge is on its top, not its side. Excalidraw's triangle test
- * (`heading.ts:231-281`) comes to the same.
+ * wide box's top edge is on its top, not its side.
  */
 export function sideOf(anchor: [number, number]): Heading | null {
   const dx = anchor[0] - 0.5;
@@ -174,9 +171,9 @@ function search(
   const endI = gridX.indexOf(to.x);
   const endJ = gridY.indexOf(to.y);
   // Four times the grid's whole span: a leg can be no longer than the span, so
-  // a bend costs more than the detours that matter here. Excalidraw cubes
-  // the dongle distance instead, which loses float precision on a large
-  // canvas and is too cheap when the ends are close but the shapes big.
+  // a bend costs more than the detours that matter here. A cost built from
+  // the dongle distance would lose float precision on a large canvas and be
+  // too cheap when the ends are close but the shapes big.
   const span = gridX[gridX.length - 1] - gridX[0] + (gridY[gridY.length - 1] - gridY[0]);
   const bend = Math.max(1, span) * 4;
   // The last leg runs from the end's dongle into the shape: arriving already

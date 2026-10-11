@@ -50,7 +50,7 @@ describe('what is under a point', () => {
   });
 });
 
-// Frames and linear elements draw no area: the eraser hits what is drawn,
+// Frames, lines and strokes draw no area: the eraser hits what is drawn,
 // not the element's box.
 describe('hitting what is drawn', () => {
   const drawn: SceneData = {

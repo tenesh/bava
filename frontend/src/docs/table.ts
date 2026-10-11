@@ -405,7 +405,7 @@ export function tablePlugins() {
 // ---- pasting spreadsheet cells ---------------------------------------------------
 
 /**
- * Tab-separated rows, as Excel, Numbers and Google Sheets copy cells: a cell
+ * Tab-separated rows, as a spreadsheet copies cells: a cell
  * holding a tab, a line break or a quote is quoted, its quotes doubled. Null
  * for text with no tab, which is text, not cells. Rows are made as wide as
  * the widest.

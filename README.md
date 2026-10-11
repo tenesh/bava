@@ -16,6 +16,9 @@ freely.
 
 Bava is under active development and not yet released.
 
+Bava is built with help from AI, reviewed by a person; see
+[`AI-DISCLOSURE.md`](AI-DISCLOSURE.md).
+
 ## Building from source
 
 Needs Go 1.27+, Node 24 and the [Wails v3](https://v3.wails.io/) CLI.

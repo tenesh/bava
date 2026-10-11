@@ -1,6 +1,6 @@
 /**
  * Closed lines: a line whose last point is its first, kept a loop
- * (`closed: true`, `docs/file-format.md`), as Excalidraw's polygon.
+ * (`closed: true`, `docs/file-format.md`), so it can be filled like a shape.
  */
 import { settledAround, unturned } from './binding';
 import type { History } from './history';
@@ -8,8 +8,8 @@ import type { ElementId, LineElement, SceneElement } from './scene';
 
 /**
  * Within this of the first point, Close line moves the last point onto it
- * rather than adding one (Excalidraw's `LINE_POLYGON_POINT_MERGE_DISTANCE`,
- * in the line's own units, so a constant rather than a token).
+ * rather than adding one (in the line's own units, so a constant rather than
+ * a token).
  */
 export const CLOSE_MERGE_DISTANCE = 20;
 
@@ -21,8 +21,7 @@ export function isClosed(element: SceneElement): boolean {
 /**
  * Close a line into a loop, as one step: its last point moves onto the first
  * when it is within `CLOSE_MERGE_DISTANCE` of it and there are corners to
- * spare, and otherwise a point is added there
- * (Excalidraw's `toggleLinePolygonState`).
+ * spare, and otherwise a point is added there.
  */
 export function closeLine(history: History, id: ElementId): void {
   history.mutate((scene) => {
@@ -53,8 +52,7 @@ export function openLine(history: History, id: ElementId): void {
 
 /**
  * A closed line's points after `moved` of them moved: its first and last stay
- * on each other, the one that moved taking the other with it (Excalidraw's
- * `linearElementEditor.ts:1590-1603`).
+ * on each other, the one that moved taking the other with it.
  */
 export function keepLoop(points: number[], moved: number[]): number[] {
   const last = points.length / 2 - 1;

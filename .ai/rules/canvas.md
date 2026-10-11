@@ -105,8 +105,8 @@ release, so pressing or releasing a key mid-drag changes the preview at once.
 A modifier captured in `down()` cannot do that, which is how Shift silently
 did nothing for new shapes.
 
-## A linear element is hit by its path, not its box
-A line, arrow or stroke is tested against what it draws, with a tolerance, by
+## Lines, arrows and strokes are hit by their path, not their box
+Each is tested against what it draws, with a tolerance, by
 `hit.ts`: its box is mostly empty space, and an axis-aligned one has no height
 at all. Selection, the eraser and the label editor all go through
 `nearElement`. An arrow's stored box is settled around its drawn path, so an
@@ -311,12 +311,13 @@ stored width is tidied to three decimals.
 ## What a selection shows is decided once
 `selection-chrome.ts` says which outline, handles and rotate handle a
 selection has; the stage draws exactly those and the pointer presses exactly
-those. A straight line or arrow, or an elbow, has no box (Excalidraw's rule).
+those. A straight line or arrow, or an elbow, has no box: its points are its
+handles.
 
 ## A pinned end sits inside
 An end with `mode: "inside"` sits at its anchor, inside its shape, not on the
 outline; it is set by a drop strictly inside the shape or with Alt, and
-Cmd/Ctrl leaves an end free (Excalidraw's rule). The mode, the binding and
+Cmd/Ctrl leaves an end free. The mode, the binding and
 the anchor are written and removed together. An elbow is never pinned.
 
 ## Point editing and click-by-click drawing are modes of the pointer
@@ -359,7 +360,7 @@ lines round, writes only what differs from an absent key, and is never
 stored: not in the file, not in browser storage.
 
 ## Targets are found front to back
-`targetAt` searches from the top of the stack down, as Excalidraw's: a shape
+`targetAt` searches from the top of the stack down, as the user sees it: a shape
 or code block holding the point hides everything behind it (locked ones too,
 though they never attach), a frame is attached to from outside only, and the
 nearest outline wins over the smallest shape. The gap an end keeps is
@@ -367,7 +368,7 @@ nearest outline wins over the smallest shape. The gap an end keeps is
 
 ## Heads are sized by kind, in scene units
 `drawHead` in `arrows.ts` is the one head geometry, for the stage and the
-exporter alike: Excalidraw's size and angle per kind, capped by the last
+exporter alike: a fixed size and angle per kind, capped by the last
 segment, returning how the head is filled (the line's colour, the canvas's
 for an outline head). Dash patterns come from `dashFor(style, width)`, not
 tokens: they are scene units that scale with the stroke.

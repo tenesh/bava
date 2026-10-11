@@ -64,7 +64,7 @@ export function toolForKey(key: string): ToolId | undefined {
 
 export function createTools() {
   let active = $state.raw<ToolId>('select');
-  // Kept on after a draw, with nothing selected, as Excalidraw's tool lock.
+  // The tool lock: kept on after a draw, with nothing selected.
   let locked = $state(false);
 
   return {

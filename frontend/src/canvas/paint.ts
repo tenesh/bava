@@ -12,7 +12,7 @@ import { isOutlineShape } from './shapes';
 import { isShapeType, type SceneElement } from './scene';
 import { CODE_FONT_SIZE, PROPERTY_DEFAULTS } from './style-defaults';
 
-/** Excalidraw's proportional radius: a quarter of the shorter side. */
+/** The proportional radius: a quarter of the shorter side. */
 export const ROUND_SHARE = 0.25;
 
 /**
@@ -67,8 +67,8 @@ type StyleProps = {
 
 /**
  * The dash pattern for a line style at a stroke width, in scene units:
- * Excalidraw's dashed [8, 8 + width] and dotted [1.5, 6 + width]
- * (`element/src/shape.ts:200-216`).
+ * dashed [8, 8 + width] and dotted [1.5, 6 + width], so the gaps open up
+ * as the line thickens.
  */
 export function dashFor(style: string | undefined, width: number): number[] {
   if (style === 'dashed') return [8, 8 + width];
@@ -88,7 +88,7 @@ export function paintFor(element: SceneElement, read: ReadVariable): Paint {
     fill: isShapeType(element.type) ? style.fill : '',
     stroke: element.type === 'text' ? '' : style.stroke,
     // A dashed or dotted line is drawn half a unit thicker, so its dashes
-    // read as heavy as a solid line (Excalidraw's `shape.ts:168-170`).
+    // read as heavy as a solid line.
     strokeWidth: props.strokeStyle === 'dashed' || props.strokeStyle === 'dotted' ? strokeWidth + 0.5 : strokeWidth,
     dash: dashFor(props.strokeStyle, strokeWidth),
     opacity: props.opacity === undefined ? 1 : Math.min(100, Math.max(0, props.opacity)) / 100,
@@ -145,7 +145,7 @@ export function paintFor(element: SceneElement, read: ReadVariable): Paint {
       break;
     case 'arrow':
       // The heads are filled in the line's colour, and the label is written
-      // in it, as Excalidraw's.
+      // in it, so the arrow reads as one colour.
       paint.fill = style.stroke;
       paint.font.colour = style.stroke;
       break;

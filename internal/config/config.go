@@ -27,7 +27,7 @@ type Settings struct {
 	LayoutEngine string `json:"layoutEngine"`
 	// Autosave is when an open, titled document is written without being
 	// asked: never, a quiet period after the last change, or when the window
-	// loses focus. The names follow VS Code's files.autoSave.
+	// loses focus: off, afterDelay, onFocusChange.
 	Autosave string `json:"autosave"`
 	// AutosaveDelayMS is the quiet period for AutosaveAfterDelay.
 	AutosaveDelayMS int `json:"autosaveDelayMs"`
@@ -42,7 +42,7 @@ type Settings struct {
 	MidpointSnap bool `json:"midpointSnap"`
 	// ObjectSnap is whether a moved, resized or drawn shape snaps to other
 	// elements' edges, centres and spacing; Cmd/Ctrl turns it over for one
-	// drag. Off by default, as Excalidraw's.
+	// drag. Off by default, so shapes move freely.
 	ObjectSnap bool `json:"objectSnap"`
 	// PageWidth is how wide a page shows in the Document when neither the
 	// page nor its Space sets one: narrow, wide or full. A preference of this
@@ -72,10 +72,10 @@ func Defaults() Settings {
 		// Off: writing to someone's files unasked is a choice they make.
 		Autosave:        AutosaveOff,
 		AutosaveDelayMS: 1000,
-		// As Excalidraw's: arrows attach, and ends snap to side middles.
+		// Arrows attach, and ends snap to side middles.
 		ArrowBinding: true,
 		MidpointSnap: true,
-		// Off, as Excalidraw's: shapes move freely unless asked to snap.
+		// Off: shapes move freely unless asked to snap.
 		ObjectSnap: false,
 		PageWidth:  "wide",
 	}

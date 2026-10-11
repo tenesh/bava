@@ -1,6 +1,6 @@
 /**
- * Callouts: Confluence's five panels and a custom one, written as the
- * `> [!kind]` callouts Obsidian and GitHub read. A custom callout is a note
+ * Callouts: five panels and a custom one, written as the `> [!kind]`
+ * callouts GitHub and other Markdown editors read. A custom callout is a note
  * with a colour and an emoji icon, kept in its invisible mark.
  */
 import { wrapIn } from 'prosemirror-commands';

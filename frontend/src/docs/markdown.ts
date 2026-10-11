@@ -397,7 +397,8 @@ function inlineRule(state: StateInline, silent: boolean): boolean {
     state.pos = end + 1;
     return true;
   }
-  // `$$…$$` inside a line (Obsidian's display maths) is kept as written.
+  // `$$…$$` inside a line (display maths in other Markdown editors) is kept
+  // as written.
   if (src.startsWith('$$', at)) {
     const end = closingDollar(src, at + 2, '$$');
     if (end < 0 || end === at + 2) return false;

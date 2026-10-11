@@ -48,7 +48,7 @@ export function handleKey(
     case 'Enter':
       actions.editSelection();
       return true;
-    // One unit, or five with Shift, as Excalidraw steps.
+    // One unit, or five with Shift.
     case 'ArrowLeft':
       actions.nudge(-nudgeStep(event), 0);
       return true;
@@ -82,7 +82,7 @@ export function handleKey(
 
 /**
  * How far an arrow key moves the selection, in scene units, and with Shift
- * held (Excalidraw's steps). Scene units, not a length on screen, so these are
+ * held. Scene units, not a length on screen, so these are
  * constants rather than tokens.
  */
 export const NUDGE_STEP = 1;

@@ -28,8 +28,7 @@ export function squareBox(origin: Point, point: Point): Box {
  * The drag's end point rotated to the nearest `step` degrees, same length.
  * With `own` (degrees), the angle a dragged point's segment started at, the
  * step holding it splits there instead: within a sixth of a step (2.5°) the
- * point keeps its own angle, and otherwise it takes the step on its side of it
- * (Excalidraw's `getLockedLinearCursorAlignSize`).
+ * point keeps its own angle, and otherwise it takes the step on its side of it.
  */
 export function snapAngle(origin: Point, point: Point, step = ANGLE_STEP, own?: number): Point {
   const dx = point.x - origin.x;

@@ -146,8 +146,8 @@ describe('what links to a page, across the Space', () => {
 });
 
 describe('links the review placed wrongly', () => {
-  const zed = [{ from: 'b.md', to: 'Zed.md' }];
-  const rename = (src: string) => rewritePageLinks('r.md', src, zed);
+  const zeta = [{ from: 'b.md', to: 'Zeta.md' }];
+  const rename = (src: string) => rewritePageLinks('r.md', src, zeta);
 
   it('leaves a definition running over two quoted lines as it was, and counts it', () => {
     const src = '[x][q]\n\n> [q]:\n> b.md\n';
@@ -157,36 +157,36 @@ describe('links the review placed wrongly', () => {
   it("finds a table cell by the row's own split, never inside an earlier cell's code, comment or equation", () => {
     for (const first of ['`a \\| [x](b.md)`', '<!-- \\| [x](b.md) -->', '$a \\| [x](b.md)$']) {
       const src = `| h | i |\n|---|---|\n| ${first} | [x](b.md) |\n`;
-      expect(rename(src)?.text, first).toBe(`| h | i |\n|---|---|\n| ${first} | [x](Zed.md) |\n`);
+      expect(rename(src)?.text, first).toBe(`| h | i |\n|---|---|\n| ${first} | [x](Zeta.md) |\n`);
     }
   });
 
   it("reads an HTML table's links with the table's own reader", () => {
     const upper = '<table>\n<tr><th>A</th><th>B</th></tr>\n<tr><td><a href="b.md">b</A></td><td><a href="c.md">c</a></td></tr>\n</table>\n';
-    expect(rename(upper)?.text).toBe(upper.replace('<a href="b.md">b</A>', '<a href="Zed.md">Zed</A>'));
+    expect(rename(upper)?.text).toBe(upper.replace('<a href="b.md">b</A>', '<a href="Zeta.md">Zeta</A>'));
     const titled = '<table>\n<tr><th>A</th></tr>\n<tr><td><a title="see href=" href="b.md">b</a></td></tr>\n</table>\n';
-    expect(rename(titled)?.text).toBe(titled.replace('href="b.md">b<', 'href="Zed.md">Zed<'));
+    expect(rename(titled)?.text).toBe(titled.replace('href="b.md">b<', 'href="Zeta.md">Zeta<'));
   });
 });
 
 describe('a rewrite is checked by reading the page again', () => {
-  const moves = [{ from: 'b.md', to: 'Zed.md' }];
+  const moves = [{ from: 'b.md', to: 'Zeta.md' }];
 
   it('passes when only link addresses and words changed', () => {
-    expect(onlyLinksChanged('r.md', 'See [b](b.md) and `c`.\n', 'See [Zed](Zed.md) and `c`.\n', moves)).toBe(true);
+    expect(onlyLinksChanged('r.md', 'See [b](b.md) and `c`.\n', 'See [Zeta](Zeta.md) and `c`.\n', moves)).toBe(true);
   });
 
   it('fails when anything else changed, or a link went somewhere else', () => {
-    expect(onlyLinksChanged('r.md', 'See [b](b.md) and `c`.\n', 'See [Zed](Zed.md) and `d`.\n', moves)).toBe(false);
+    expect(onlyLinksChanged('r.md', 'See [b](b.md) and `c`.\n', 'See [Zeta](Zeta.md) and `d`.\n', moves)).toBe(false);
     expect(onlyLinksChanged('r.md', 'See [b](b.md).\n', 'See [b](Other.md).\n', moves)).toBe(false);
-    expect(onlyLinksChanged('r.md', 'See [b](b.md).\n', 'See [b](Zed.md) [c](c.md).\n', moves)).toBe(false);
-    expect(onlyLinksChanged('r.md', '---\na: 1\n---\n[b](b.md)\n', '---\na: 2\n---\n[b](Zed.md)\n', moves)).toBe(false);
+    expect(onlyLinksChanged('r.md', 'See [b](b.md).\n', 'See [b](Zeta.md) [c](c.md).\n', moves)).toBe(false);
+    expect(onlyLinksChanged('r.md', '---\na: 1\n---\n[b](b.md)\n', '---\na: 2\n---\n[b](Zeta.md)\n', moves)).toBe(false);
   });
 });
 
 describe("the fourth review's inputs", () => {
-  const zed = [{ from: 'b.md', to: 'Zed.md' }];
-  const rename = (src: string) => rewritePageLinks('r.md', src, zed);
+  const zeta = [{ from: 'b.md', to: 'Zeta.md' }];
+  const rename = (src: string) => rewritePageLinks('r.md', src, zeta);
 
   it("never takes a quote marker for part of a definition's address", () => {
     for (const src of ['[x][q]\n\n>[q]:\n>b.md\n', '- [x][q]\n\n  > [q]:\n  >b.md\n  > more\n']) {
@@ -195,24 +195,24 @@ describe("the fourth review's inputs", () => {
   });
 
   it('keeps the CR of a CRLF line after an address', () => {
-    expect(rename('[x][q]\r\n\r\n[q]: b.md\r\n')?.text).toBe('[x][q]\r\n\r\n[q]: Zed.md\r\n');
-    expect(rename('See [x](b.md)\r\n')?.text).toBe('See [x](Zed.md)\r\n');
+    expect(rename('[x][q]\r\n\r\n[q]: b.md\r\n')?.text).toBe('[x][q]\r\n\r\n[q]: Zeta.md\r\n');
+    expect(rename('See [x](b.md)\r\n')?.text).toBe('See [x](Zeta.md)\r\n');
   });
 
   it('keeps the angle brackets an address was written in', () => {
-    expect(rename('[x](<b.md>)\n')?.text).toBe('[x](<Zed.md>)\n');
-    expect(rename('[x][q]\n\n[q]: <b.md>\n')?.text).toBe('[x][q]\n\n[q]: <Zed.md>\n');
+    expect(rename('[x](<b.md>)\n')?.text).toBe('[x](<Zeta.md>)\n');
+    expect(rename('[x][q]\n\n[q]: <b.md>\n')?.text).toBe('[x][q]\n\n[q]: <Zeta.md>\n');
   });
 });
 
 describe('a label defined twice', () => {
   it('is placed at the definition the page uses, the first, or not at all', () => {
-    const zed = [{ from: 'b.md', to: 'Zed.md' }];
+    const zeta = [{ from: 'b.md', to: 'Zeta.md' }];
     const unused = '[x][q]\n\n[q]:\nb.md\n\n[q]: b.md\n';
     expect(pageLinks(unused)[0].dest).toBeNull();
-    expect(rewritePageLinks('r.md', unused, zed)).toEqual({ text: unused, unplaced: 1 });
+    expect(rewritePageLinks('r.md', unused, zeta)).toEqual({ text: unused, unplaced: 1 });
     const used = '[x][q]\n\n[q]: b.md\n\n[q]: other.md\n';
-    expect(rewritePageLinks('r.md', used, zed)?.text).toBe('[x][q]\n\n[q]: Zed.md\n\n[q]: other.md\n');
+    expect(rewritePageLinks('r.md', used, zeta)?.text).toBe('[x][q]\n\n[q]: Zeta.md\n\n[q]: other.md\n');
   });
 });
 

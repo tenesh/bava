@@ -288,7 +288,7 @@ func TestOnlyTheKeptShortcutsAreBound(t *testing.T) {
 		"canvas.flipHorizontal": true, "canvas.flipVertical": true, "canvas.duplicate": true, "canvas.lock": true,
 		// The user asked for it.
 		"canvas.editPoints": true,
-		// The user chose Excalidraw's Alt+S.
+		// The user chose Alt+S.
 		"canvas.snapToObjects": true,
 		// ⌘O opens a Space, ⇧⌘O a file.
 		"file.openSpace": true,

@@ -123,7 +123,7 @@ introduce a second portal root, and do not set a raw `z-index` anywhere.
 
 This is a desktop app, not a web page. Base font size is 13px and the spacing
 unit is 4px. Web-scaled spacing looks bloated in a tool window. Calibrate
-against desktop editors (Linear, Zed, Sublime), not web apps.
+against native desktop editors, not web apps.
 
 ## Ark UI usage
 

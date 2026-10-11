@@ -228,7 +228,7 @@ export async function shotDialog(page: Page, name: string[], dialog: Locator = o
   await expect(dialog).toHaveScreenshot(name);
 }
 
-/** How long a floating piece may take to settle, and how often it is looked at. */
+/** How long a floating piece may take to settle, how often it is looked at, and how long one look may take. */
 const PLACED_WAIT_MS = 5000;
 const PLACED_POLL_MS = 100;
 
@@ -249,7 +249,10 @@ export async function placed(floating: Locator) {
   let before = '';
   const end = Date.now() + PLACED_WAIT_MS;
   while (Date.now() < end) {
-    const boxes: Box[] = await Promise.all((await floating.all()).map((part) => part.boundingBox()));
+    // A piece listed can unmount before it is measured (a submenu closing
+    // as another opens): its box is asked for briefly, and a piece gone
+    // reads as not yet placed rather than waiting for it to come back.
+    const boxes: Box[] = await Promise.all((await floating.all()).map((part) => part.boundingBox({ timeout: PLACED_POLL_MS }).catch(() => null)));
     const now = JSON.stringify(boxes.map((box) => box && { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height) }));
     if (now === before && boxes.every(inside)) return;
     if (now !== before) seen.push(`${now}${boxes.every(inside) ? '' : ' (outside the window)'}`);

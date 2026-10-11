@@ -279,7 +279,8 @@ History belongs in each plan's As built, not here.
   Tharabyte, `.claude/work/plans/R1-move-to-tharabyte.md`) is under way:
   the repository is `tharabyte/bava`; R1a (the rename) is committed, CI
   green 2026-10-11 (run 38109056864, the browser job on a rerun after the
-  menu flake below). Next R1b (no other apps, the AI disclosure), then R2 (the
+  menu flake below); R1b (no other apps, the AI disclosure) is built, not
+  yet seen on CI. Then the user rewrites the history, then R2 (the
   stores' sandboxes, a sandboxed run on CI first; the roadmap's R1 and R2
   section), then 15.3 import and 15.4 the canvas work. The
   roadmap (`.claude/plan/roadmap.md`) holds the sequence.
@@ -386,13 +387,13 @@ What no test can see, still waiting for a person, in both themes:
   (`frontend/tests/integration/document.spec.ts`): the embed's picture
   arrives after the save. Seen during 15.2d, which does not touch embeds;
   not yet investigated.
-- **A floating menu's picture can time out waiting for it to settle**
-  (`placed` in `frontend/tests/helpers.ts`): once on CI (the Tags dialog's
-  row menu, 2026-10-11), once locally and once more on CI (New page from
-  template; 30 of 30 alone). Both hold a submenu. `placed` now says, when
-  it gives up, the last positions it saw and whether they were inside the
-  window: the next failure shows whether the submenu keeps moving or sits
-  past the edge.
+- **A floating menu's picture timed out waiting for it to settle**
+  (`placed` in `frontend/tests/helpers.ts`), twice on CI and once locally,
+  both with a submenu. Found 2026-10-11: a piece listed could unmount
+  before it was measured (a submenu closing as another opens), and asking
+  its box then waited for it until the test's timeout. Each box is now
+  asked for briefly and a piece gone reads as not yet placed; 100 of 100
+  repeats and two full runs passed. Watch CI before calling it gone.
 
 ### Traps
 

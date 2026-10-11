@@ -103,7 +103,7 @@ describe('style properties', () => {
 
   it('names the keys each element type takes', () => {
     expect(propertyKeysFor('rect')).toContain('edges');
-    // An ellipse has no corners, as in Excalidraw.
+    // An ellipse has no corners.
     expect(propertyKeysFor('ellipse')).not.toContain('edges');
     expect(propertyKeysFor('arrow')).toEqual(
       expect.arrayContaining(['strokeWidth', 'strokeStyle', 'opacity', 'arrowType', 'startArrowhead', 'endArrowhead']),
@@ -177,10 +177,9 @@ describe('the properties an arrow takes', () => {
   });
 });
 
-// Copy and Paste Styles carry what Excalidraw's do
-// (`actions/actionStyles.ts:118-186`): colours, width, line style, opacity,
+// Copy and Paste Styles carry the look, never the content: colours, width, line style, opacity,
 // edges, text size and, arrow to arrow, both heads.
-describe('copying and pasting a style, as Excalidraw', () => {
+describe('copying and pasting a style', () => {
   it('carries widths, line style, opacity, edges and heads', () => {
     const history = createHistory({
       elements: [
@@ -200,7 +199,7 @@ describe('copying and pasting a style, as Excalidraw', () => {
 });
 
 // The kind picker turns a line into an arrow and back, keeping
-// its points (Excalidraw's `ConvertElementTypePopup.tsx:529-601`).
+// its points.
 describe('turning a line into an arrow and back', () => {
   it('makes a line an arrow of the chosen kind, its points kept', () => {
     const history = createHistory({

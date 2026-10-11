@@ -46,14 +46,13 @@ function toHex([r, g, b]: [number, number, number]): string {
   return `#${part(r)}${part(g)}${part(b)}`;
 }
 
-// How far dark mode inverts a picked colour: Excalidraw's invert(93%).
+// How far dark mode inverts a picked colour: 93%, so white is not quite black.
 const INVERT = 0.93;
 
 /**
  * A picked colour, as the canvas it is drawn on shows it.
  *
- * On a light canvas, exactly as picked. On a dark one, as Excalidraw's dark
- * mode shows it: inverted (93%, so white is not quite black) and its hue
+ * On a light canvas, exactly as picked. On a dark one, inverted (93%, so white is not quite black) and its hue
  * turned 180 degrees back, so a pale blue fill becomes a deep blue one. The
  * rule uses only the value and the canvas, so the file never records which
  * theme it was picked in. Named swatches have their own designed dark values

@@ -310,10 +310,9 @@ describe('the canvas distances the pointer uses', () => {
   );
 });
 
-// A line is hit within Excalidraw's 0.85 × 8 = 6.8 screen px
-// (`App.tsx:6808-6816`), rounded to a whole pixel.
+// A line is hit within 0.85 × 8 = 6.8 screen px, rounded to a whole pixel.
 describe('how near a line counts as on it', () => {
-  it("is Excalidraw's 6.8 screen px, rounded to 7", () => {
+  it("is 6.8 screen px, rounded to 7", () => {
     const css = compile(fileURLToPath(new URL('./index.scss', import.meta.url)), { style: 'expanded' }).css;
     expect(css).toMatch(/--size-hit-tolerance:\s*7px/);
   });
@@ -332,7 +331,7 @@ describe('the attach highlight tokens', () => {
   });
 });
 
-// Snapping to objects, Excalidraw's values.
+// Snapping to objects: reach, guides and spacing marks.
 describe('the snapping tokens', () => {
   const css = compile(fileURLToPath(new URL('./index.scss', import.meta.url)), { style: 'expanded' }).css;
   it.each([

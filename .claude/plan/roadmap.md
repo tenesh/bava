@@ -309,8 +309,8 @@ reopen, and confirm the drawing is intact.
 
 **Scope:** The native menu declared as data (`internal/app/menu/spec.json`),
 grouped for the items later milestones add; one `menu:command` path into the
-frontend; the JS keymap stripped of whatever the menu binds; autosave settings
-modelled on VS Code, off by default. The brand mark was in scope; it moved to
+frontend; the JS keymap stripped of whatever the menu binds; autosave settings,
+off by default. The brand mark was in scope; it moved to
 Milestone 5.7 and shipped there.
 
 **Exit criterion:**
@@ -407,7 +407,7 @@ automatic upload: never.
 ## Milestone 6: Canvas *(built in parts 6 to 6.17, all committed; window checks settled by 8.4a)*
 
 **Goal:** A free-placement canvas that draws, styles, connects, exports and
-edits everything a diagram needs, and behaves as Excalidraw does.
+edits everything a diagram needs.
 
 **Plans:** one file, `.claude/work/plans/06-canvas.md`: an overview table,
 then each part's plan, as built and spec review in full. Decisions in
@@ -429,7 +429,7 @@ references elsewhere ("Milestone 6.5") still name them:
 | 6.6, 6.11 | Diagram from code: D2 typed in a dialog, previewed and inserted as ordinary shapes; the dialog's engines and direction |
 | 6.7, 6.9 | Code blocks: highlighted, in Geist Mono, edited in place *(moved forward from Milestone 15)* |
 | 6.8 | Feel fixes: styles at their size, tools that let go, zoom-steady distances |
-| 6.10, 6.12 to 6.16 | Every line and arrow behaviour Excalidraw has (a 90-row inventory; B3 in part, B22 kept as Bava's rule): bends, elbows, pinned ends, point editing, click-by-click lines, heads, labels, attaching settings |
+| 6.10, 6.12 to 6.16 | Every line and arrow behaviour a diagram needs (a 90-row inventory; B3 in part, B22 kept as Bava's rule): bends, elbows, pinned ends, point editing, click-by-click lines, heads, labels, attaching settings |
 | 6.17 | A code block's language and font size; arrow labels typed in place and along the arrow; the false "changed on disk" prompt and the right-click Reload fixed |
 
 **Exit criterion:**
@@ -455,7 +455,7 @@ ones, and shapes line up with each other.
 
 **Scope, as built.** Attaching, choosing the side, the detached state,
 rotation, stroke width and dash were built early, in 6.3 to 6.16. Plan
-`.claude/work/plans/07-snapping.md` added the exit tests and Excalidraw's
+`.claude/work/plans/07-snapping.md` added the exit tests and
 object snapping (the user's request): off by default, `⌥S`, every element
 snapping by its box, equal spacing between neighbours. No spatial index:
 measured on 2,000 shapes and not needed (`docs/decisions.md`). Checked at a
@@ -567,8 +567,7 @@ works inside a store's sandbox. R2, in order:
   a Space, a loose page, recent Spaces, the pickers, import and export
   reach files under each sandbox; where settings and logs land; what the
   Microsoft Store's MSIX (full trust, virtualised files) changes.
-- **A sandboxed run on CI first**, after another project's
-  self-test: the end-to-end build packaged and signed as a store would ship
+- **A sandboxed run on CI first**: the end-to-end build packaged and signed as a store would ship
   it (macOS: an ad-hoc signed `.app` with the App Sandbox entitlements;
   Windows: an MSIX CI signs and installs; Linux: a Flatpak once its
   manifest exists), running the walks, its result read from where the
@@ -604,8 +603,8 @@ decisions 48, 49 and 58):
 - **Search** across a Space, with results, jump-to-match, and the
   `EmptyState` the design system already assumes exists for it.
 
-**Canvas work with no other home** (chosen 2026-09-26 from a comparison
-with Excalidraw), none built yet:
+**Canvas work with no other home** (chosen 2026-09-26 by the user), none
+built yet:
 - Zoom to fit and zoom to selection.
 - A command palette.
 - Paste from other apps onto the canvas: text as a text element, and Bava
@@ -906,6 +905,5 @@ CI run on all three systems.
 Asked by the user on 2026-10-10. Once every milestone is built, go through
 every Markdown file (`docs/`, `.ai/rules/`, `.claude/`, `CLAUDE.md`, the
 README): fold what still matters into the specs and docs it belongs in,
-drop what only recorded how the work went, and remove `research/` once its
-studies are folded in or no longer cited.
+and drop what only recorded how the work went.
 

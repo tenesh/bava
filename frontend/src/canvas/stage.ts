@@ -76,13 +76,13 @@ const number = (read: ReadVariable, name: string) => parseFloat(read(name)) || 0
  */
 const MIDDLE_HANDLE_OPACITY = 0.6;
 
-/** The hover disc under a handle: Excalidraw's 0.4. */
+/** The hover disc under a handle: faint, so the handle stays readable. */
 const HOVER_OPACITY = 0.4;
 
 /**
  * The attach highlight's width, in screen px, between which it follows the
- * shape's stroke: Excalidraw's clamp(1.75, strokeWidth, 4)
- * (`interactiveScene.ts:123-131`). Excalidraw's own values, kept with it.
+ * shape's stroke: clamp(1.75, strokeWidth, 4), so a hairline shape still
+ * shows its highlight and a heavy one is not drowned by it.
  */
 const HIGHLIGHT_MIN = 1.75;
 const HIGHLIGHT_MAX = 4;
@@ -371,9 +371,8 @@ export class CanvasStage {
     for (const id of this.#candidateIds) {
       const element = this.#last.elements.find((e) => e.id === id);
       if (!element) continue;
-      // The shape's own outline, turned with it (Excalidraw's
-      // `interactiveScene.ts:292-557`), as wide as its stroke within 1.75 and
-      // 4 on screen.
+      // The shape's own outline, turned with it, as wide as its stroke within
+      // 1.75 and 4 on screen.
       const width = (element as { strokeWidth?: number }).strokeWidth ?? 2;
       const kind = element.type === 'ellipse' ? 'ellipse' : isOutlineShape(element.type) ? element.type : 'rect';
       const outline = new Konva.Shape({
@@ -400,7 +399,7 @@ export class CanvasStage {
       this.#candidates.push(outline);
       this.#overlay.add(outline);
     }
-    // A gentle pulse while anything is highlighted, as Excalidraw's; none
+    // A gentle pulse while anything is highlighted, to draw the eye; none
     // under reduced motion (the token is 0 there).
     const beat = number(read, '--duration-pulse');
     if (this.#candidates.length > 0 && !this.#pulse && this.#overlay && beat > 0) {
@@ -518,8 +517,7 @@ export class CanvasStage {
   }
 
   /**
-   * A translucent disc under the handle the pointer is over (Excalidraw's
-   * `interactiveScene.ts:163-216`), or none.
+   * A translucent disc under the handle the pointer is over, or none.
    */
   setHoverHandle(at: Point | null): void {
     if (!this.#overlay) return;
@@ -626,7 +624,7 @@ export class CanvasStage {
     // same on screen however far in or out the canvas is.
     const scale = 1 / this.#zoom;
     // What this selection shows, decided with the pointer (`selection-chrome.ts`).
-    // A line in point editing shows its points alone, as Excalidraw's editor.
+    // A line in point editing shows its points alone, nothing to resize.
     // A code block whose editor is open shows none: the editor covers it.
     const editingThis = selected.length === 1 && this.#pointEditing?.id === selected[0].id;
     const chrome = chromeFor(selected, editingFor(selected, this.#pointEditing?.id ?? null, this.#editing));
@@ -685,10 +683,10 @@ export class CanvasStage {
     if (linear) {
       // Where the points are drawn, a turn included, as the pointer tests them.
       const drawn = drawnPoints(linear);
-      // Excalidraw's point handle: 5 px in radius on screen (the token is its
+      // The point handle: 5 px in radius on screen (the token is its
       // diameter), and a middle handle the same size.
       const pointRadius = (number(read, '--size-point-handle') / 2) * scale;
-      // In point editing, points are larger (Excalidraw's 10 px) and the
+      // In point editing, points are larger (10 px) and the
       // selected ones filled.
       const editRadius = (number(read, '--size-point-handle-editing') / 2) * scale;
       const chosen = new Set(editingThis ? this.#pointEditing!.selected : []);
@@ -711,7 +709,7 @@ export class CanvasStage {
         const isEnd = i === 0 || i === count - 1;
         const detached = linear.type === 'arrow' && ((i === 0 && gone(startId)) || (i === count - 1 && gone(endId)));
         // A point on top of the one before it is drawn larger and hollow, so
-        // both show (Excalidraw's `interactiveScene.ts:268-289`, `:1120-1127`).
+        // both show.
         const overlapping = i > 0 && Math.hypot(drawn[i * 2] - drawn[i * 2 - 2], drawn[i * 2 + 1] - drawn[i * 2 - 1]) <= number(read, '--size-point-overlap') * scale;
         const radius = editingThis ? editRadius : pointRadius;
         const point = { x: drawn[i * 2], y: drawn[i * 2 + 1] };
@@ -840,7 +838,7 @@ export class CanvasStage {
 
   /**
    * Draw the guides a snap made, or clear them with an empty list:
-   * Excalidraw's, solid, screen-sized at every zoom. Aligned points get a
+   * solid, screen-sized at every zoom. Aligned points get a
    * line through them and a cross at each; a pointer snap a cross at its
    * target and a line to the pointer; equal spacing a line along each gap
    * with a tick at each end and two marks at its middle.
@@ -1221,7 +1219,7 @@ export class CanvasStage {
           return new Konva.Shape({
             sceneFunc: (context, shape) => {
               context.beginPath();
-              // Excalidraw's proportional radius: a quarter of the shorter side.
+              // The proportional radius: a quarter of the shorter side.
               const radius = shape.getAttr('bavaRound')
                 ? Math.min(shape.width(), shape.height()) * ROUND_SHARE
                 : 0;
@@ -1300,7 +1298,7 @@ export class CanvasStage {
       entry.label.verticalAlign(props.verticalAlign ?? defaultVerticalAlign(element.type));
       if (isArrow) {
         // Centred on the middle point (or where it was slid), in the group's
-        // own space, and wrapped as Excalidraw wraps it: the exporter does the
+        // own space, and wrapped by `labelLayout`: the exporter does the
         // same, so a long label breaks identically in both.
         const routed = (body as Konva.Line).points();
         const paint = paintFor(element, read);
@@ -1472,7 +1470,7 @@ export class CanvasStage {
 
     const props = element as SceneElement & ArrowProps;
     const points = (entry.body as Konva.Line).points();
-    // The arrow's own points cap a head's size, as Excalidraw's: a drawn
+    // The arrow's own points cap a head's size: a drawn
     // curve's samples and an elbow's rounded corners do not.
     const route = ('points' in element ? element.points : []) as number[];
     const colour = resolveStyle(element as { stroke?: string }, read).stroke;

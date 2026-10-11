@@ -23,7 +23,7 @@ module; the settings' folder is checked in R1a (below).
 1. **Two build steps, each committed and green on CI before the next:**
    R1a the rename (mechanical, every file), R1b the research removal, the
    rule and the AI disclosure (judgement, line by line).
-2. **The AI disclosure is `AI.md` at the root**, linked from the README.
+2. **The AI disclosure is `AI-DISCLOSURE.md` at the root**, linked from the README.
 3. **Behaviour stays as built.** A decision that cited another app keeps
    its outcome and its date; only its reason is reworded in Bava's terms
    (what the user sees, why it is right for Bava). A comment that named a
@@ -64,13 +64,12 @@ the folder.
 
 ### Task 4: The studies and every mention
 **Files:** delete `.claude/work/specs/research/`; reword every other
-mention (by count today: Excalidraw in 78 files, 42 under
-`frontend/src/canvas`; also Notion, Eraser, Obsidian, Miro, tldraw, Figma,
-Google Docs, and browsers' own features), including test names and
-CLAUDE.md's opening ("Eraser.io in spirit").
-- [ ] A test, failing first: no tracked file outside `frontend/node_modules`
+mention of another product (about a hundred files, most of them under
+`frontend/src/canvas`, the specs, the plans and `docs/decisions.md`),
+including test names and CLAUDE.md's opening line.
+- [x] A test, failing first: no tracked file outside `frontend/node_modules`
   and the licence texts names a listed product
-- [ ] Reworded file by file; behaviour unchanged (every gate green, no
+- [x] Reworded file by file; behaviour unchanged (every gate green, no
   picture changed)
 
 ### Task 5: The rule
@@ -78,7 +77,7 @@ CLAUDE.md's opening ("Eraser.io in spirit").
 the list and what stays named), its index row, the spec-reviewer's checks.
 
 ### Task 6: The AI disclosure
-**Files:** `AI.md`, `README.md` (a line linking it).
+**Files:** `AI-DISCLOSURE.md`, `README.md` (a line linking it).
 
 ### Task 7: The history (prepared, run by the user)
 **Files:** none in the repo: the `git filter-repo` commands, in the report,
@@ -131,3 +130,59 @@ the plan's UI impact and README claims.
 pinning the platform files was seen failing first (29 lines missing).
 CI green at the new address (run 38109056864): the three builds and the
 walks, the driver's renamed service included.
+
+## As built: R1b (2026-10-11)
+
+The studies under `.claude/work/specs/research/` are deleted. Every other
+mention of another product, about a hundred files, now says what Bava does
+in its own words: comments and test names across `frontend/src/canvas`
+(only comment lines and test names changed there, checked by diff), the
+other frontend files, the specs, the plans, `docs/decisions.md` and
+`docs/file-format.md` with their fixture copies, `.ai/rules`, CLAUDE.md
+(its opening line, and two new non-negotiables) and two Go comments.
+Paths and function names from another app's source went with them.
+Compatibility is said without brands ("other Markdown editors"); GitHub,
+the dependencies, the systems, their webviews and Mermaid stay named.
+`names_test.go` fails on the listed names in any file git would keep. Two
+rules, `.ai/rules/own-words.md` and `.ai/rules/ai-disclosure.md` (no AI in
+Flathub's manifest or submission, the disclosure kept true), are in the index and the spec-reviewer's checks.
+`AI-DISCLOSURE.md` is at the root, linked from the README.
+
+**Deviations**
+- **`AI-DISCLOSURE.md`, not `AI.md`**: the name a store reviewer looks for.
+- **Reasons written afresh.** Where a decision's only reason was another
+  app, a reason in Bava's terms was written from context: `docs/decisions.md`
+  rows 162, 166, 167, 177, 178, 183, 213 and 232; `arrows-and-code.md`
+  decisions 13, 15 and 16; `arrows.md` 4 and 5; and a few comments (the
+  bend minimum, entity-relation heads behind More, hover-disc opacity, the
+  highlight clamp). Worth the user's reading.
+- **"Eraser" as the other product** cannot be told from Bava's eraser tool
+  by a pattern, so it is not in `names_test.go`; the mentions were found by
+  reading and reworded (the shape set is now "the flowchart shapes D2 can
+  produce").
+- **The menu flake's cause found on the way** (the build skill's open
+  problems): the settle wait asked a piece that had unmounted for its box
+  and waited for it; it now asks briefly.
+
+**Red first:** `names_test.go` failed on 899 lines before the rewording.
+Its first version ignored case on the whole pattern and caught CSS's
+`linear-gradient`; the flag now covers only the product names.
+
+**Checks:** Go vet and tests (Windows vet with `-tags e2e`), `npm test`
+(2,871 passed), check, lint, `npm run browser` 513 passed twice after the
+settle fix (and once before it, then one menu flake). No em dash added.
+
+**For the user: the history** (Task 7). The commands are in the report;
+every commit's id changes, so run them right after this is pushed, before
+anyone clones.
+
+**Review** (spec-reviewer): no blockers. Fixed: two comments still cited
+the other app's source paths and a function name; a code editor was named as the
+model for autosave, the hidden folder and backups in eight places (now
+guarded too); spreadsheet apps named where "a spreadsheet" says it; rows
+for `release.md` decisions 5 and 6; the inventory row bounded to its 90
+items, pointing at the plan that tracks them; the disclosure names
+claude.ai for the design and says the rule checks are review agents'; the
+disclosure rule says what the settings deny; the settle helper's timing
+comment. Left to the user: whether naming sync services and the sibling
+project counts, and the reasons written afresh (Deviations).

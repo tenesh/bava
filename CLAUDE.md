@@ -1,7 +1,7 @@
 # Bava
 
-Local-only, open-source diagrams-and-docs desktop app, Apache-2.0. Eraser.io in
-spirit: offline, free, file-based.
+Local-only, open-source diagrams-and-docs desktop app, Apache-2.0: offline,
+free and file-based, with diagrams and documents side by side.
 
 A free-placement canvas (place, draw and connect anything, anywhere) where a
 diagram can also be written as D2 code: Bava lays it out once and turns it
@@ -36,6 +36,12 @@ These hold in every phase, whatever the pressure.
 4. **Never run git write operations.** No add, commit, push, tag, branch,
    worktree, stash or reset. The user does all git himself, whatever a skill
    instructs. Read-only git (status, diff, log, rev-parse) is fine.
+5. **Bava in its own words.** No spec, decision, plan, comment or test names
+   another product as a comparison or a source, and no study of another app
+   is kept in the repository (`.ai/rules/own-words.md`, `names_test.go`).
+6. **Never touch the Flathub manifest or submission.** Flathub forbids
+   AI-generated or AI-assisted content there; the maintainer writes them.
+   `AI-DISCLOSURE.md` stays true (`.ai/rules/ai-disclosure.md`).
 
 ## Stack
 
@@ -159,7 +165,7 @@ docs/                       file format, IPC, shortcuts, testing, decisions
 .ai/rules/                  committed, glob-scoped rules (index.md maps them)
 .claude/plan/               roadmap
 .claude/work/plans/         per-milestone plans, each with an As built
-.claude/work/specs/         design specs (research/ for studies of other apps)
+.claude/work/specs/         design specs
 .claude/skills/             build-step, the build loop
 .claude/agents/             spec-reviewer, auditor, visual-reviewer
 internal/                   Go: app (bound services, menus), render and layout

@@ -92,7 +92,7 @@ function pointAtCopies(scene: Scene, copies: SceneElement[], byOriginal: Map<Ele
 
 /**
  * A copied arrow lets go of any shape that was not copied with it (binding,
- * anchor and mode), as Excalidraw's copies do: kept, re-aiming pulls the copy
+ * anchor and mode): kept, re-aiming would pull the copy
  * back onto the original's shapes. A target already gone stays named, so the
  * copy is detached as its original is.
  */
@@ -196,8 +196,8 @@ export function duplicate(
  * screen, and its lean mirrors with it.
  */
 export function flip(scene: Scene, selection: SceneElement[], axis: 'horizontal' | 'vertical'): void {
-  // A selection of attached arrows only swaps their heads, as Excalidraw's
-  // (`actionFlip.ts:116-129`): mirroring would only pull them off their shapes.
+  // A selection of attached arrows only swaps their heads: mirroring would
+  // only pull them off their shapes.
   const attachedArrows =
     selection.length > 0 &&
     selection.every((e) => {
@@ -320,7 +320,7 @@ export function steppedOrder(scene: Scene, selectedIds: ElementId[], direction: 
 
 /**
  * What arrow keys move of `ids`: an attached arrow whose shape is not moving
- * with it stays where it is (Excalidraw's `App.tsx:5812-5835`).
+ * with it stays where it is, rather than being pulled off its shape.
  */
 export function nudged(scene: SceneData, ids: ElementId[]): ElementId[] {
   // What really moves: frames with their contents, groups with their children.

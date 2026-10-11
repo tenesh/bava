@@ -1,5 +1,5 @@
 /**
- * The editor's keys: Notion's and the Markdown editors' usual set, ⌘ on a Mac
+ * The editor's keys: the usual set of block and Markdown editors, ⌘ on a Mac
  * and Ctrl elsewhere (ProseMirror's "Mod"). Undo and redo come from the
  * native menu through the app's edit routing, and here for the keys too.
  */
@@ -11,7 +11,7 @@ import { splitListItem } from 'prosemirror-schema-list';
 import { commands } from './commands';
 import { schema } from './schema';
 
-/** Backspace at the start of a heading makes it text again, as Notion does. */
+/** Backspace at the start of a heading makes it text again. */
 const headingToText: Command = (state, dispatch) => {
   const { $from, empty } = state.selection;
   if (!empty || $from.parentOffset !== 0 || $from.parent.type !== schema.nodes.heading) return false;

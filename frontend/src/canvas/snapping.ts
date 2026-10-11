@@ -1,5 +1,5 @@
 /**
- * Snapping to objects: Excalidraw's rules, with Bava's box rule.
+ * Snapping to objects: points, equal gaps and the box rule.
  *
  * Pure: scene data in, offsets and guides out, in scene units. The pointer
  * gathers the targets once per drag (`snapReferences`) and asks for an offset
@@ -82,7 +82,7 @@ export type Guide =
 export type Snap = { offset: Point; guides: Guide[] };
 
 /**
- * Points are compared at six decimals, as Excalidraw's are: a box moved by
+ * Points are compared at six decimals: a box moved by
  * floating-point sums must still line up exactly with one it was snapped to.
  */
 function round(value: number): number {
@@ -199,8 +199,7 @@ export function snapReferences(scene: SceneData, moving: ElementId[], visible: B
 /**
  * The gaps between neighbours: two boxes with space between them on an axis,
  * a range shared on the other, and nothing else reaching into that space
- * within that range. Excalidraw counts every pair; Bava counts neighbours
- * only, since every pair is 90,000 gaps on a board of
+ * within that range. Neighbours only, not every pair: every pair is 90,000 gaps on a board of
  * 2,000 shapes zoomed out, and a gap across other shapes is one nobody sees.
  */
 function gapsBetween(boxes: Box[]): Gap[] {
@@ -313,7 +312,7 @@ function createCover() {
 /** How a gap is matched: centred in it, or its length repeated after its end or before its start. */
 type GapFit = 'centre' | 'after' | 'before';
 
-/** The offsets that fit a moving box to a gap, in the order Excalidraw tries them. */
+/** The offsets that fit a moving box to a gap, in the order they are tried. */
 function gapFits(gap: Gap, box: Box): { fit: GapFit; offset: number }[] {
   const [pos, size, across, span] = gap.axis === 'x' ? (['x', 'w', 'y', 'h'] as const) : (['y', 'h', 'x', 'w'] as const);
   if (box[across] > gap.overlap[1] || box[across] + box[span] < gap.overlap[0]) return [];
@@ -411,8 +410,8 @@ export function snapMove(refs: References, points: Point[], box: Box, reach: num
 }
 
 /**
- * Snap the corners a resize or a drawing moves, to points only (Excalidraw
- * keeps equal spacing for drags). The caller keeps only the axes the handle
+ * Snap the corners a resize or a drawing moves, to points only (equal
+ * spacing is kept for drags). The caller keeps only the axes the handle
  * moves along, and draws the guides of the box it ends with (`guidesFor`).
  */
 export function snapCorners(refs: References, points: Point[], reach: number): { offset: Point } {

@@ -37,7 +37,7 @@ describe('palette', () => {
 });
 
 // A picked colour shows as picked on a light canvas, and on a dark canvas is
-// shown as Excalidraw's dark mode shows it: inverted, hue turned back.
+// shown inverted, hue turned back.
 describe('literal colours', () => {
   const light = (name: string) => (name === '--color-canvas-bg' ? '#efefec' : `var(${name})`);
   const dark = (name: string) => (name === '--color-canvas-bg' ? '#131416' : `var(${name})`);
@@ -48,7 +48,7 @@ describe('literal colours', () => {
     }
   });
 
-  it('inverts white and black on a dark canvas as Excalidraw does', () => {
+  it('inverts white and black on a dark canvas', () => {
     expect(resolveStyle({ fill: '#ffffff' }, dark).fill).toBe('#121212');
     expect(resolveStyle({ stroke: '#000000' }, dark).stroke).toBe('#ededed');
   });

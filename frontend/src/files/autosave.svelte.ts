@@ -1,8 +1,8 @@
 /**
  * Autosave: writing an open document without being asked.
  *
- * Modes follow VS Code's `files.autoSave`. It is off by default, and it never
- * writes an untitled document: that would mean a save dialog nobody asked
+ * Three modes: off, after a quiet period, when focus leaves. It is off by
+ * default, and it never writes an untitled document: that would mean a save dialog nobody asked
  * for, or a path made up for them.
  *
  * A conflict (another program wrote the file) pauses autosave rather than

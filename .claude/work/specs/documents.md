@@ -15,10 +15,10 @@ look was redone on 2026-10-11: `look.md`.
 
 ## Decisions
 
-### 1. The editor is Notion-like; Markdown is never shown (2026-09-27)
+### 1. The editor shows formatted text; Markdown is never shown (2026-09-27)
 
-The user: "I am looking for something like Notion and prefer not to see
-markdown when editing so non developers can use this app."
+The user prefers not to see Markdown while editing, "so non developers can
+use this app."
 
 - The document is edited as formatted text. No Markdown marks (`#`, `**`,
   `-`) are visible while editing, not even on the line being edited.
@@ -30,7 +30,7 @@ markdown when editing so non developers can use this app."
   document back out as Markdown, so hand-written Markdown can come back
   normalised; decision 51 accepts that (saving tidies the whole page).
 
-### 2. Documents live in a collection, as Obsidian's vault (2026-09-27)
+### 2. Documents live in a collection (2026-09-27)
 
 The user: "Lets do vault but use different name or concept." A folder the user
 opens as the root of their work, which Bava treats as one collection: links
@@ -43,12 +43,12 @@ still be opened, are the next questions.
 ### 3. It is called a Space (2026-09-27)
 
 The user chose "Space": Open Space, recent spaces. Chosen over Workspace
-(Notion's word for a team account, which Bava has none of), Project and
+(a word that suggests a team account, which Bava has none of), Project and
 Library. The code's `workspace` names are renamed when Spaces are built.
 
 ### 4. Spaces and single files (2026-09-27)
 
-The user chose both, as Obsidian: a Space opens a folder as a collection; a
+The user chose both: a Space opens a folder as a collection; a
 single `.md` file still opens and edits on its own, as it does today. Links,
 backlinks and search work only inside a Space.
 
@@ -73,9 +73,9 @@ Space: see decision 52.
 ### 7. Folders and pages, as a file system; no sub-pages (2026-09-27)
 
 The user: "I am inclined to filesystem where you can create folders and
-pages. Folders can have subfolders but not pages." Read as Obsidian's model:
+pages. Folders can have subfolders but not pages." Read as:
 a Space holds folders and pages; a folder holds subfolders and pages; a page
-never holds pages (no Notion sub-pages). What the tree lets a user do is
+never holds pages (no sub-pages). What the tree lets a user do is
 decided in decision 9; attachments in decision 10.
 
 ### 8. The words: Space, Folder, Page, Document and Canvas (2026-09-27)
@@ -89,7 +89,7 @@ in the interface, the docs and the code.
 
 - Always: create, rename, delete and move pages and folders; folders in
   folders; collapse and expand.
-- **Ordered by hand**, as Notion's: drag to arrange; new items go at the
+- **Ordered by hand**: drag to arrange; new items go at the
   end. The order is saved in the Space's own file (decision 5), so it
   travels with the folder.
 - **Bava's own trash**: a deleted page or folder goes to a Trash in the
@@ -105,7 +105,7 @@ in the interface, the docs and the code.
 ### 10. Attachments live in one hidden folder per Space (2026-09-27)
 
 This refines decision 6. The user weighed keeping a page's files beside it in
-the Space (Obsidian), a hidden folder managed by Bava (Notion's feel), a
+the Space, a hidden folder managed by Bava, a
 bundle per page, the file itself, and Bava's own storage (ruled out by
 non-negotiable 2). The chosen form:
 - Pasted and inserted files go into **one hidden attachments folder for the
@@ -150,16 +150,13 @@ dividers. All plain Markdown except the lettered and roman styles, which
 CommonMark does not have: their form in the file is decided with the file
 format (for example HTML `<ol type="a">`).
 
-### 13. Callouts follow Confluence's panels (2026-09-27)
+### 13. Callouts: five kinds and a custom one (2026-09-27)
 
-The user: "Follow what Confluence has." Confluence Cloud's panels: **Info**
-(blue), **Note** (purple), **Success** (green), **Warning** (orange),
-**Error** (red), and a **custom** panel with any colour from the palette and
-any emoji or no icon
-([support.atlassian.com](https://support.atlassian.com/confluence-cloud/docs/insert-the-info-tip-note-and-warning-macros/),
-[community.atlassian.com](https://community.atlassian.com/forums/Confluence-questions/Panels-Info-Note-Error-Success-Warning/qaq-p/1632781)).
+Callouts: **Info** (blue), **Note** (purple), **Success** (green),
+**Warning** (orange), **Error** (red), and a **custom** callout with any
+colour from the palette and any emoji or no icon, chosen by the user.
 Proposed form in the file, decided with the file format: the callout syntax
-`> [!info]`, which Obsidian displays for all five kinds; GitHub displays
+`> [!info]`, which other Markdown editors display for all five kinds; GitHub displays
 Note and Warning and shows the rest as quotes. The custom panel's colour and
 icon need a Bava addition to it.
 
@@ -173,7 +170,7 @@ the next heading of its size. A toggle list is stored as HTML `<details>`,
 which GitHub and most viewers also fold. For a toggle heading, the file
 format decides between marking the heading (so it stays a heading
 elsewhere) and letting every heading fold, with the fold state kept outside
-the file as a convenience, as Obsidian does. In the Document, a fold is the
+the file as a convenience. In the Document, a fold is the
 HTML `<details>` element drawn by ProseMirror. Nothing else in the app uses
 Ark UI's Collapsible or Accordion: the side pane's Files and Media fold from
 their headers' own buttons (`aria-expanded`), and `Disclosure`, the wrapper
@@ -188,8 +185,8 @@ viewers show the text uncoloured.
 
 ### 16. Nesting: lists and quotes only (2026-09-27)
 
-Tab nests list items (and content inside toggles and quotes), as Word and
-Google Docs do; not Notion's indent-anything, which Markdown cannot hold.
+Tab nests list items (and content inside toggles and quotes), as word
+processors do; not indenting any block, which Markdown cannot hold.
 
 ### 17. Empty lines close up (2026-09-27)
 
@@ -199,7 +196,7 @@ while typing; it is dropped on save.
 
 ### 18. `>` then space makes a quote (2026-09-27)
 
-As Markdown has it, not Notion's toggle; toggles come from the `/` menu (a
+As Markdown has it, not a toggle; toggles come from the `/` menu (a
 typing shortcut of their own is decided with the editing interactions).
 
 ### 19. Code blocks, as on the canvas, with copy, wrap and caption (2026-09-27)
@@ -209,7 +206,7 @@ language list as the canvas's code blocks; a **copy button**; a per-block
 **wrap long lines** switch; a **caption** under the block. Wrap and caption
 are small Bava additions in the file, decided with the file format.
 
-### 20. Rich tables, as Notion or Confluence (2026-09-27)
+### 20. Rich tables (2026-09-27)
 
 A grid with a header row and a header column, add, remove and drag rows and
 columns, alignment, **merged cells, cell colours (from the palette) and
@@ -233,11 +230,11 @@ list written out) is decided with the file format.
 ### 23. Equations, as blocks and inline (2026-09-27)
 
 TeX formulas drawn properly, on a line of their own (`$$...$$`) and inside a
-sentence (`$...$`), forms GitHub and Obsidian also draw.
+sentence (`$...$`), forms GitHub and other Markdown editors also draw.
 
 ### 86. A table cell holds formatted text, never blocks (2026-09-28)
 
-The user's choice, as Notion's tables: bold, italic, underline, strike,
+The user's choice: bold, italic, underline, strike,
 code, links, colours, highlights, equations and line breaks, but no lists,
 headings or other blocks. Both table forms hold that, so other apps show the
 same table. A line break is `<br>`; in an HTML table, formatting is written
@@ -248,22 +245,20 @@ as HTML, which is all GitHub draws inside one.
 The user: "Document should show the image but its live?", confirmed as: the
 Document shows part of the Canvas as an **image that Bava redraws by itself**
 whenever those shapes change (at once in the Document; the image file on
-save). The image is saved in the Space's attachments, so GitHub, Obsidian and
-any viewer show the same current picture; the file references both the
+save). The image is saved in the Space's attachments, so GitHub, other Markdown
+editors and any viewer show the same current picture; the file references both the
 frame and the image. Clicking it opens the Canvas with the frame selected
 (the roadmap's decision: no editor inside the Document). Never stale, no
 Update button. What it shows: a frame (decision 26); when the frame is
 deleted: decision 27.
 
-### 25. Code diagrams reach the Document as Eraser's do (2026-09-27)
+### 25. Code diagrams reach the Document through the Canvas (2026-09-27)
 
 `/` then Diagram from Code, in the Document, opens the same dialog, places the
 D2 diagram on the page's Canvas, and embeds its live image (decision 24) in
 the text at that spot. There is no document-only diagram block, and no
-Mermaid rendering: a pasted Mermaid block stays a code block. As in Eraser
-([docs.eraser.io/diagram-as-code](https://docs.eraser.io/diagram-as-code)),
-one diagram lives on the Canvas and the Document shows it; unlike Eraser,
-Bava keeps no live code (2026-09-17: D2 becomes ordinary shapes).
+Mermaid rendering: a pasted Mermaid block stays a code block. One diagram
+lives on the Canvas and the Document shows it, and Bava keeps no live code (2026-09-17: D2 becomes ordinary shapes).
 
 ### 26. An embed shows a frame (2026-09-27)
 
@@ -368,7 +363,7 @@ time, it stays a plain link until switched again.
 
 ### 37. No web embeds (2026-09-27)
 
-Live pieces of other sites (maps, Miro, Figma, CodePen) are not embedded;
+Live pieces of other sites (maps, whiteboards, design files, code playgrounds) are not embedded;
 they are links or cards (decision 36). Online videos (decision 32) are the
 one exception, loaded on click.
 
@@ -404,11 +399,11 @@ without accounts). Out, since they assume other people and a service:
 ### 42. Footnotes (2026-09-27)
 
 Numbered automatically, their notes at the foot of the page; stored as
-Markdown footnotes (`[^1]`), which GitHub and Obsidian show.
+Markdown footnotes (`[^1]`), which GitHub and other Markdown editors show.
 
-### 43. The core Notion interactions (2026-09-27)
+### 43. The core editing interactions (2026-09-27)
 
-The `/` menu and the `+` button to insert; Notion's typing shortcuts (`#` for
+The `/` menu and the `+` button to insert; typing shortcuts (`#` for
 a heading, `-` for a list, `[]` for a to-do; `>` a quote, decision 18); a
 formatting bubble on selected text; the ⋮⋮ handle to drag a block and open
 its menu (turn into, duplicate, delete, colour); multi-block selection;
@@ -478,8 +473,8 @@ Markdown bundle, HTML).
 ### 49. Import Markdown files and folders, and Bava export zips (2026-09-27, revisited)
 
 Revisited with the user the same day; this replaces the first answer
-(Markdown and Notion exports). Notion exports and Obsidian vaults are not
-imported as such (their Markdown files still come in as plain Markdown).
+(Markdown and other apps' exports). Other apps' exports are not imported as
+such (their Markdown files still come in as plain Markdown).
 - **What:** Markdown files and folders, their images copied into
   `.bava/attachments`; and a **Bava export zip** (decision 48), merged with
   its attachments.
@@ -492,7 +487,7 @@ imported as such (their Markdown files still come in as plain Markdown).
 
 ### 50. No AI and no databases in Milestone 8 (2026-09-27)
 
-AI in the Document comes with Milestones 11 to 14; databases (Notion's tables
+AI in the Document comes with Milestones 11 to 14; databases (tables
 of pages) are a separate product and not planned.
 
 ### 51. Saving tidies the whole page (2026-09-27)
@@ -548,8 +543,7 @@ From the UI review. Opening Bava with no Space shows a **start screen**: recent
 Spaces, **New Space** (make a folder), **Open Space** (pick a folder) and Open
 file; next time Bava reopens the last Space. Inside a Space, its name sits at
 the top of the side pane, above Files: clicking it opens the **Space
-switcher** (recent Spaces, New Space, Open Space, Space settings), as
-Notion's workspace switcher. A Space's name is its folder's name.
+switcher** (recent Spaces, New Space, Open Space, Space settings). A Space's name is its folder's name.
 
 ### 56. The title is inside the page; the tree shows the file name (2026-09-27)
 
@@ -570,8 +564,7 @@ Nothing Space-wide in Milestone 8: search belongs to the roadmap's Milestone
 
 ### 59. Backlinks at the bottom of the page (2026-09-27)
 
-A "Linked from" list after the page's content, as Obsidian can show it,
-listing the pages that link to this one (decision 39); shown only in a
+A "Linked from" list after the page's content, listing the pages that link to this one (decision 39); shown only in a
 Space, and only when there are any.
 
 ### 60. The page's ⋯ menu, and the word count in the status bar (2026-09-27)
@@ -620,7 +613,7 @@ dialog (decision 11).
 
 ### 64. One page open at a time (2026-09-27)
 
-Clicking a page in the tree opens it in place, as Notion. Leaving a page with
+Clicking a page in the tree opens it in place. Leaving a page with
 unsaved changes asks to save (decision 57), unless autosave is on. No tabs.
 
 ### 65. Space settings (2026-09-27)
@@ -636,7 +629,7 @@ page's own, else the Space's default, else the app-wide default (decision
 
 Asked by the user after the first mockups. A page can have several tags,
 added under its title and stored in the page's front matter as a plain list
-(`tags: [launch, q4]`), readable by Obsidian and other Markdown tools.
+(`tags: [launch, q4]`), readable by other Markdown tools.
 - **No tag colours:** every tag is a plain grey chip.
 - **A Tags section** in the side pane lists every tag in the Space with its
   page count; clicking tags filters the Files tree to the pages that have
@@ -657,11 +650,11 @@ once. Built in 8.6a.
 ## Cloud, discussed (2026-09-27, no decision)
 
 The user asked what cloud features (sync, sharing, live collaboration) would
-take. Discussed: sync through iCloud, Dropbox or Git works on plain files
+take. Discussed: syncing the folder a Space lives in works on plain files
 today; live collaboration needs a server whoever runs it; a Bava cloud would
 need non-negotiable 1 changed (and cloud-only, non-negotiable 2 too); LLM
-keys can stay on the device either way; a community plugin system (as
-Obsidian's) would let others build sync without a Bava service, and is its
+keys can stay on the device either way; a community plugin system
+would let others build sync without a Bava service, and is its
 own future milestone. Nothing changes for Milestone 8. Proposed for its
 plan, to keep those doors open at little cost: stable block ids in the
 Document (in memory, not in the file), every file change through one place
@@ -695,7 +688,7 @@ Settled while planning 8.1, one question at a time:
   decision 10); File ▸ Open File still opens one.
 - **Restoring from the Trash recreates the original folder** when it has
   gone, so an item always returns to the exact path it came from.
-- **The hidden folder stays `.bava`** (as `.git`, `.vscode`, `.obsidian`).
+- **The hidden folder stays `.bava`** (as `.git`).
   `docs/file-format.md` rejects a `.bava/` directory only as a place for a
   page's canvas, which would be lost when one file is copied; `.bava` holds
   Space data, never a page's text or canvas, so that reasoning stands, and
@@ -709,9 +702,9 @@ Settled while planning 8.1, one question at a time:
 The user: "Since its local app, do we need to delete?" Changes decisions 9,
 63 and 65. Deleted items stay in `.bava/trash` until the user deletes them
 there or presses Empty Trash, as the Finder's Trash does; the Trash dialog
-shows its total size. No trash period, so Space settings has none. The
-30 days came from Notion, which empties its trash for its own server
-storage; a local app has no such reason. Known cost: the Trash is inside
+shows its total size. No trash period, so Space settings has none. A
+trash period suits an app that keeps deleted work on its own server; a
+local app has no such reason. Known cost: the Trash is inside
 the Space, so folder sync and Git carry it until emptied.
 
 ### 71. 8.1 details: ⌘O, a loose page's side pane, ⌘N (2026-09-27)
@@ -748,7 +741,7 @@ the Space, so folder sync and Git carry it until emptied.
 - Lock and the page's own width (decision 45) are written in the page's
   front matter, the lines between `---` marks at the very top, under a
   `bava:` key (`locked: true`, `width: wide`). Other editors hide it or show
-  it as a small table; Obsidian calls it Properties. Tags (decision 66) go
+  it as a small table. Tags (decision 66) go
   in the same header, as a plain `tags:` list other tools read too (built
   in 8.6a).
 - Keys Bava does not know are kept as they are.
@@ -788,7 +781,7 @@ kinds have theirs; other apps show a plain note box. The five named kinds are
 
 *Reversed by decision 91: there are no toggle headings.*
 
-The user's choice, as Notion: "Toggle heading" is chosen from the `/` menu or
+The user's choice: "Toggle heading" is chosen from the `/` menu or
 the block menu, and marked with the invisible mark `<!-- bava: toggle -->`
 above the heading. Other apps show an ordinary heading with its section
 visible. Toggle lists stay HTML `<details>` (decision 14).
@@ -814,7 +807,7 @@ before; the caption shows only in Bava.
 
 The user's choice. The file holds the list of links itself between two
 invisible marks, `<!-- bava: contents -->` and `<!-- bava: /contents -->`,
-rewritten on every save, so GitHub, Obsidian and exports show a working
+rewritten on every save, so GitHub, other Markdown editors and exports show a working
 contents list. Links use the standard heading anchors (`#goals`), which
 GitHub also follows.
 
@@ -843,8 +836,8 @@ whole list at once. Every other block has no Turn into: Quote, Toggle list,
 Callout, Code, Equation, Divider, Contents, footnotes and kept blocks. They
 keep their own switches (a callout's Kind, a code block's language, a
 heading's toggle, a numbered list's Numbering); the callout's "Turn into
-quote" goes. Enter in a footnote stays a new line in that note, as Google
-Docs and Word do.
+quote" goes. Enter in a footnote stays a new line in that note, as word
+processors do.
 
 ### 85. A table is a Markdown table until it uses a rich option (2026-09-28)
 
@@ -852,7 +845,7 @@ The user's choice, as decision 20 proposed. A table with only a header row,
 cell text and column alignment is written as a Markdown (GitHub) table. Once
 it uses a rich option (merged cells, a cell colour, column widths, a header
 column or no header row), the whole table is written as an HTML `<table>`, which GitHub and
-Obsidian also draw.
+other Markdown editors also draw.
 
 ### 87. A date chip is a date tag around the readable date (2026-09-28)
 
@@ -862,10 +855,10 @@ plain text. A date typed as ordinary text never becomes a chip.
 
 ### 88. A page link's text follows the page's name, unless reworded (2026-09-28)
 
-The user's choice, as Obsidian. A page link is `[Launch plan](../Marketing/Launch%20plan.md)`:
+The user's choice. A page link is `[Launch plan](../Marketing/Launch%20plan.md)`:
 the path relative to the linking page, spaces and other characters a
 Markdown link cannot hold written as `%20` and so on, which GitHub and
-Obsidian both follow. Its text starts as the page's file name. When the page
+other Markdown editors follow. Its text starts as the page's file name. When the page
 is renamed or moved inside Bava, every link's path is updated, and its text
 too wherever it still reads the old name; a link reworded by hand keeps its
 words.
@@ -887,15 +880,14 @@ The user's choice, after finding no way out of a table at the end of a page.
 The page always ends with an empty line, which is never saved (decision 17).
 One way works for every block: ⌘Enter adds an empty line after the nearest
 block that can have one beside it, ⇧⌘Enter one before, as ProseMirror
-editors leave a code block and as Notion's `+` works on the block it is
-beside. The block menu and the handle's `+` (⌥ for above) do the same.
+editors leave a code block. The block menu and the handle's `+` (⌥ for above) do the same.
 
 ### 91. No toggle headings (2026-09-28)
 
 The user's choice, reversing decision 79. A toggle heading folded every block
 after it up to the next heading of its size, so a line after a folded heading
-was hidden too; Notion's toggle heading holds only what is put inside it,
-which Markdown cannot hold without a second mark. A toggle list folds what
+was hidden too; a heading holding only what is put inside it would need a
+second mark in the file. A toggle list folds what
 is inside it and nothing after, so it is the one fold. A heading carrying the
 old `<!-- bava: toggle -->` mark keeps it as written (an unknown key) and no
 longer folds.
@@ -913,13 +905,13 @@ alignment and caption.
 The user's choice: `![Demo](.bava/attachments/demo.mp4)`, the image form
 pointing at the video, its settings in the mark above:
 `<!-- bava: width=large poster=".bava/attachments/demo-poster.png" loop muted -->`.
-Obsidian plays it; GitHub shows a broken-image icon with the alt text; Bava
+Some Markdown editors play it; GitHub shows a broken-image icon with the alt text; Bava
 plays it with its poster, looped and muted as set.
 
 ### 94. An online video is written as an image, with a mark (2026-09-28)
 
 The user's choice, the same shape as a video file: `![Launch demo](https://www.youtube.com/watch?v=abc123)`
-with its settings in the mark above. Obsidian embeds the player; GitHub
+with its settings in the mark above. Some Markdown editors embed the player; GitHub
 shows a broken-image icon; Bava shows a placeholder and loads the video only
 when play is pressed (decision 32).
 
@@ -949,8 +941,7 @@ click); **8.4.3** the Media section and dialog. Named 8.4.1 to 8.4.3 because
 
 ## Features
 
-Chosen from Notion's editor, one question at a time (decisions 12 to 50),
-from the inventory in `research/notion-editor-features.md`. The discussion
+Chosen one question at a time (decisions 12 to 50). The discussion
 finished on 2026-09-27.
 
 ## Media, background (2026-09-27; the decisions are 30 to 37 and 54)

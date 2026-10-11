@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createCurrentStyle } from './current-style';
 
-// A new element takes the style last chosen, as Excalidraw's
-// `currentItem*`, starting with arrows curved and lines round.
+// A new element takes the style last chosen, starting with arrows curved
+// and lines round.
 describe('the style a new element takes', () => {
   it('starts with arrows curved and lines round, and nothing for a shape', () => {
     const style = createCurrentStyle();

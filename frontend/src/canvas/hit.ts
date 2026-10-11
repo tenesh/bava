@@ -73,7 +73,7 @@ export function nearElement(element: SceneElement, point: Point, tolerance: numb
 
 /**
  * Whether a point is inside a closed line that has a fill: then it is grabbed
- * from inside, as a shape is (Excalidraw's `collision.ts:85-98`).
+ * from inside, as a shape is, so a filled outline acts as one solid thing.
  */
 export function insideFilledLine(element: SceneElement, point: Point): boolean {
   if (element.type !== 'line') return false;

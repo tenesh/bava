@@ -1,10 +1,10 @@
 /**
  * Segments of an elbow the user dragged, and how the route keeps them.
  *
- * Excalidraw's fixed segments (`element/src/elbowArrow.ts:113-900`), in
- * Bava's own code. A fixed segment is an index: segment `i` runs from point
- * `i - 1` to point `i`, and the points say where it is. Once any segment is fixed the arrow is no longer routed
- * whole: it keeps its interior and only the legs at its ends adapt.
+ * A fixed segment is an index: segment `i` runs from point `i - 1` to point
+ * `i`, and the points say where it is. Once any segment is fixed the arrow is
+ * no longer routed whole: it keeps its interior and only the legs at its ends
+ * adapt.
  *
  * Pure: scene-space points in, points out. `binding.ts` converts at the
  * boundary and stores the result.
@@ -24,7 +24,7 @@ const PADDING = ELBOW_MARGIN;
 /** Shorter than this, a dragged first or last segment's stub is half of it. */
 const SHORT = PADDING + 5;
 
-/** A segment shorter than this is no segment (Excalidraw's `DEDUP_TRESHOLD`). */
+/** A segment shorter than this is no segment. */
 const DEGENERATE = 1;
 
 const horizontal = (a: Point, b: Point) => Math.abs(b.y - a.y) <= Math.abs(b.x - a.x);
@@ -63,8 +63,8 @@ export function moveSegment(
   let moved = index;
   if (index === last) {
     // The end's leg runs along its heading when bound, along the dragged
-    // segment when free (Excalidraw takes the heading either way, and loses
-    // a free end whose segment runs the other way).
+    // segment when free (taking the heading either way would lose a free
+    // end whose segment runs the other way).
     if (end.box) push(b, end.heading, pad);
     const legOnX = end.box ? onXAxis(end.heading) : across;
     const corner = legOnX ? { x: b.x, y: finish.y } : { x: finish.x, y: b.y };
@@ -187,10 +187,9 @@ export function releaseSegment(
 }
 
 /**
- * A shaped route tidied, as Excalidraw does on release: a jog shorter than a
- * unit is taken out, a point the route runs straight through is dropped (the
- * merged segment fixed if either part was), and a fixed first or last
- * segment is let go. The same route gives the same result, so it runs on
+ * A shaped route tidied: a jog shorter than a unit is taken out, a point the
+ * route runs straight through is dropped (the merged segment fixed if either
+ * part was), and a fixed first or last segment is let go. The same route gives the same result, so it runs on
  * every change. Null when no fixed segment is left.
  */
 export function renormalise(points: Point[], fixed: number[]): Shaped | null {

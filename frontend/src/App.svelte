@@ -512,7 +512,7 @@
     toolbarCapacity = Math.max(1, Math.floor((width - margin) / (button + gap)));
   }
 
-  // Changing tool finishes a line being drawn click by click, as Excalidraw's,
+  // Changing tool finishes a line being drawn click by click,
   // and keeps the tool picked; Line to Arrow and back finishes it too.
   let drawingWith = tools.active;
   $effect(() => {
@@ -2481,7 +2481,7 @@
         code: () => codeEditor?.selectAll(),
         field: fieldCommand('selectAll'),
         canvas: () => {
-          // In point editing, Select All does nothing, as in Excalidraw.
+          // In point editing, Select All does nothing.
           if (pointer.selectAll()) return;
           canvasCommands.selectAll();
           syncSelection();
@@ -2848,14 +2848,13 @@
     const onDoubleClick = (event: MouseEvent) => {
       if (labelEditor?.contains(event.target)) return;
       // A double-click on a fixed segment of the selected elbow lets it go,
-      // before it could open the label editor. On a bend it removes nothing,
-      // as in Excalidraw.
+      // before it could open the label editor. On a bend it removes nothing.
       if (pointer.releaseSegmentAt(scenePoint(event as PointerEvent))) {
         commit();
         return;
       }
       // A line's points are edited by double-click, an arrow's with Cmd/Ctrl
-      // (a plain double-click types its label), as in Excalidraw.
+      // (a plain double-click types its label).
       if (pointer.doubleClick(scenePoint(event as PointerEvent), { mod: event.metaKey || event.ctrlKey })) {
         syncSelection();
         return;

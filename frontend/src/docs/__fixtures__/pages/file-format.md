@@ -179,8 +179,8 @@ A paragraph in red on yellow.
   block, or at the end) is kept as it is, where it was.
 
 ### Callouts
-A quote whose first line is a kind in brackets. Obsidian draws all five;
-GitHub draws Note and Warning and shows the others as quotes.
+A quote whose first line is a kind in brackets. Other Markdown editors draw
+all five; GitHub draws Note and Warning and shows the others as quotes.
 
 ```markdown
 > [!warning]
@@ -195,8 +195,8 @@ GitHub draws Note and Warning and shows the others as quotes.
   Another kind (`[!tip]`, `[!NOTE]`) is kept as written and shown as the
   nearest of the five, or as a note.
 - Text after the marker on its first line is a title (`> [!info] Heads up`),
-  and `-` or `+` straight after the brackets folds it in Obsidian; both are
-  kept as written.
+  and `-` or `+` straight after the brackets folds it in other Markdown
+  editors; both are kept as written.
 - A custom callout is `[!note]` with `color` and `icon` in the mark above it.
 - The callout's first block follows the marker's line directly when it is
   plain text, and after a `>` line otherwise, so it is never read as more of
@@ -251,7 +251,7 @@ func main() {}
   after its first, the whole list is written loose.
 
 ### Equations
-TeX, drawn in Bava and by GitHub and Obsidian:
+TeX, drawn in Bava and by GitHub and other Markdown editors:
 
 ```markdown
 The area is $\pi r^2$.
@@ -267,11 +267,12 @@ $$
   odd run of backslashes is part of the TeX, not its end. TeX edited in Bava
   is kept on one line, trimmed, with any `$` in it escaped; a block's TeX
   never holds a line of `$$` alone.
-- `$$…$$` inside a line (Obsidian's display maths) is kept as written.
+- `$$…$$` inside a line (display maths in some other editors) is kept as
+  written.
 
 ### Footnotes
 A reference `[^label]` in the text and its note `[^label]: …`, which GitHub
-and Obsidian draw as numbered notes.
+and other Markdown editors draw as numbered notes.
 
 ```markdown
 Bava keeps files plain.[^1]
@@ -318,7 +319,7 @@ A table is written in one of two forms, chosen on each save by what the
 table uses.
 
 **A Markdown table**, while it has only a header row, cell text and column
-alignment. GitHub, Obsidian and most editors draw it:
+alignment. GitHub and most Markdown editors draw it:
 
 ```markdown
 | Name | Role   | Hours |
@@ -334,8 +335,8 @@ alignment. GitHub, Obsidian and most editors draw it:
   meaning.
 
 **An HTML table**, as soon as the table has a merged cell, a cell colour, a
-column width, a header column or no header row. GitHub and Obsidian draw it
-too:
+column width, a header column or no header row. GitHub and other Markdown
+editors draw it too:
 
 ```html
 <table>
@@ -378,7 +379,7 @@ See the [Launch plan](../Marketing/Launch%20plan.md) and its
 - The path is relative to the linking page, with `/` between folders. A
   space is written `%20`, and so is every other character a link's address
   cannot hold as it is (`(`, `)`, `<`, `>`, `%`, `#`, `?`, `|`); GitHub and
-  Obsidian read it back the same.
+  other Markdown editors read it back the same.
 - A link to a heading adds the heading's anchor, the same anchors as the
   contents block's (GitHub's). A link to a heading on the same page is the
   anchor alone (`#timeline`).
@@ -452,8 +453,8 @@ image, its settings in the mark above.
   - `poster="<file>"`, a video's still, by its name in the attachments
     folder (never a path, so moving the page never changes it); `loop`;
     `muted`.
-- Other apps show the image (and Obsidian plays the video; GitHub shows a
-  video as a broken image); the settings show in Bava only. A video never
+- Other apps show the image (and some Markdown editors play the video;
+  GitHub shows a video as a broken image); the settings show in Bava only. A video never
   plays by itself.
 
 **An online video** is the same form, at the video's page on YouTube
@@ -476,7 +477,7 @@ image, its settings in the mark above.
   (`dnt=1`), and Loom's as Loom serves it (it has no such setting). Where
   YouTube will not play inside Bava's window (macOS, whose page has no web
   address), play opens the video in the browser.
-  Obsidian embeds the player; GitHub shows a broken image.
+  Some Markdown editors embed the player; GitHub shows a broken image.
 - The page of any other site stays a kept image, as written.
 
 ### Cards
@@ -588,7 +589,7 @@ Nine closed shapes, each filling its `x, y, w, h` box:
 | `cloud` | cloud |
 
 `rect` and `ellipse` keep the names Milestone 5 wrote, so files from before
-Milestone 6 read unchanged. The shape set is the one D2 and Eraser share; see
+Milestone 6 read unchanged. The shape set is the flowchart shapes D2 can produce; see
 `.claude/work/specs/diagrams-as-shapes.md`.
 
 Optional keys on every shape:
@@ -621,9 +622,8 @@ file: `gray`, `blue`, `green`, `yellow`, `orange`, `red`, `purple`, `pink`.
 unchanged**, like any unknown value: a newer Bava may add swatches.
 
 A **literal colour** is what the user picked. In the light theme it is drawn
-exactly as stored. In the dark theme it is drawn as Excalidraw's dark mode
-draws it: inverted by 93% and its hue turned 180 degrees back, so a pale fill
-becomes a deep one of the same hue. The rule works from the value alone, so
+exactly as stored. In the dark theme it is inverted by 93% and its hue
+turned 180 degrees back, so a pale fill becomes a deep one of the same hue. The rule works from the value alone, so
 the file never records which theme it was picked in and a file written in one
 theme reads in the other. A malformed `#` value draws as the
 default and is written back unchanged.
@@ -680,13 +680,13 @@ takes `fill`, drawn while it is closed; opening it removes the fill. On a
 closed line an absent `fill` means none, not the theme's shape fill.
 
 **A new line or arrow is written with its kind.** Bava draws new arrows
-curved (`arrowType: "arc"`) and new lines round (`edges: "round"`), as
-Excalidraw does, and writes the key into each new element: an absent key
+curved (`arrowType: "arc"`) and new lines round (`edges: "round"`), the
+look a hand-drawn diagram wants, and writes the key into each new element: an absent key
 still means straight and sharp, so older files draw as they always have.
 
 **The kind decides how bends are drawn.** A straight arrow or a line runs
 through its points with sharp corners. An arc curves smoothly through them;
-with no bends it is straight, as Excalidraw's (it bowed once before 06.15, so
+with no bends it is straight (it bowed once before 06.15, so
 an older two-point arc now draws straight). An elbow's `points` are its
 route: right-angled, leaving each attached shape from the side its end is on
 and going around both shapes, recomputed whenever either moves. Switching an

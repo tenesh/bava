@@ -55,7 +55,7 @@ describe('OptionPicker', () => {
   });
 });
 
-// The crow's-foot heads sit behind a More row, as Excalidraw's.
+// The crow's-foot heads sit behind a More row, out of the everyday set.
 describe("OptionPicker's More row", () => {
   const heads = PROPERTY_OPTIONS.endArrowhead;
   const items = () => document.querySelectorAll('[data-part="item"]').length;

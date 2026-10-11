@@ -84,7 +84,7 @@ describe('scaleInto for text', () => {
 });
 
 // Shift keeps the proportions from any handle: an edge scales the other axis
-// about the opposite edge, as Excalidraw does.
+// about the opposite edge.
 describe('keeping proportions', () => {
   const box = { x: 0, y: 0, w: 100, h: 50 };
 

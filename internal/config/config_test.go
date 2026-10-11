@@ -209,8 +209,8 @@ func TestArrowSettingsDefaultOn(t *testing.T) {
 	}
 }
 
-// Snapping to objects is off unless the user turns it on
-// (Excalidraw's default), including for a settings file written before it
+// Snapping to objects is off unless the user turns it on,
+// including for a settings file written before it
 // existed, and it survives a save.
 func TestObjectSnapDefaultOff(t *testing.T) {
 	if config.Defaults().ObjectSnap {

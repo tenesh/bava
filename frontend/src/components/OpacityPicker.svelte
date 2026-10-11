@@ -17,7 +17,7 @@
 
   let { current, onSelect }: Props = $props();
 
-  /** Ten steps, as Excalidraw's opacity slider has. */
+  /** Ten steps: fine enough to judge by eye, few enough to land on. */
   const STEP = 10;
 
   const label = t('style.opacity');

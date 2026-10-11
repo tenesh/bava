@@ -199,10 +199,9 @@ describe('switching a pinned arrow to elbow', () => {
   });
 });
 
-describe('an elbow shaped as Excalidraw draws it', () => {
-  // Excalidraw grows the shape by 10 on its heading side (30 with a
-  // head) and pads by 40 less that, so a route keeps 40 clear on every side,
-  // head or not (`elbowArrow.ts:1308-1394`).
+describe('an elbow kept clear of its shapes', () => {
+  // The shape grows by 10 on its heading side (30 with a head) and pads by
+  // 40 less that, so a route keeps 40 clear on every side, head or not.
   it('keeps 40 clear of the shape it leaves', () => {
     const points = routed({
       elements: [
@@ -297,8 +296,8 @@ describe('an elbow with a fixed segment', () => {
   });
 });
 
-// Switching kinds as Excalidraw does (`actionProperties.tsx:2077-2221`).
-describe('switching kinds, as Excalidraw does', () => {
+// Switching an arrow between straight, curved and elbow.
+describe('switching kinds', () => {
   it('to elbow: two points, its turn and its fixed segments gone', () => {
     const history = createHistory({
       elements: [{ id: 'e', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 9, angle: 90, points: [0, 0, 100, 40, 200, 0] } as never],

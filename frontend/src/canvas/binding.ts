@@ -22,8 +22,8 @@ export type Point = { x: number; y: number };
 
 /**
  * How far clear of the outline an attached end stops, in scene units:
- * Excalidraw's 5 plus half the shape's stroke width (`getBindingGap`,
- * `element/src/binding.ts:117`, `:125-131`). This is its value for a shape at
+ * 5 plus half the shape's stroke width, so the head clears a thick outline.
+ * This is its value for a shape at
  * the default width; `gapOf` gives any shape's.
  */
 export const BINDING_GAP = 6;
@@ -197,15 +197,14 @@ export function routeFor(arrow: SceneElement, scene: SceneData): number[] {
   // it there would collapse the arrow to a point. It keeps the point it was
   // drawn with until its neighbour moves somewhere else.
   // An end whose outline point falls inside the other, overlapping shape
-  // would turn the arrow inside out: it sits at its anchor instead
-  // (Excalidraw's `element/src/binding.ts:2037-2094`).
+  // would turn the arrow inside out: it sits at its anchor instead.
   const place = (shape: SceneElement, spot: Point, towards: Point, index: number) => {
     const anchor = anchorOn(shape, towards, spot);
     if (anchor.x === spot.x && anchor.y === spot.y) return;
     const other = shape === startShape ? endShape : startShape;
     // Only between shapes of like size: a child's arrow to its container
-    // still leaves the child's edge (Excalidraw's area test, and its gap as
-    // the reach of "inside").
+    // still leaves the child's edge (an area test, with the gap as the reach
+    // of "inside").
     const inverts =
       other !== undefined &&
       other !== shape &&
@@ -232,7 +231,7 @@ export function routeFor(arrow: SceneElement, scene: SceneData): number[] {
     else place(endShape, endSpot, endTarget, last);
   }
   // Shorter than the least an arrow can be, its edge ends fall back to their
-  // anchors too (Excalidraw's `BASE_ARROW_MIN_LENGTH`).
+  // anchors too, so the arrow keeps a visible length.
   if (Math.hypot(points[last] - points[0], points[last + 1] - points[1]) < MIN_ARROW_LENGTH) {
     if (startShape && bound.startMode !== 'inside') pin(startSpot, 0);
     if (endShape && bound.endMode !== 'inside') pin(endSpot, last);
@@ -240,18 +239,18 @@ export function routeFor(arrow: SceneElement, scene: SceneData): number[] {
   return points;
 }
 
-/** The shortest an attached arrow's ends may be apart, in scene units (Excalidraw's 10). */
+/** The shortest an attached arrow's ends may be apart, in scene units. */
 const MIN_ARROW_LENGTH = 10;
 
-/** The least reach, in scene units, at 100% zoom and closer (Excalidraw's). */
+/** The least reach, in scene units, at 100% zoom and closer. */
 export const BINDING_REACH_MIN = 15;
 /** The most reach, in scene units, however far the view zooms out. */
 export const BINDING_REACH_MAX = 30;
 
 /**
  * How near an end must come to a shape's outline to attach, in scene units,
- * at `zoom`: Excalidraw's `maxBindingDistance_simple`, which reaches further
- * as the view zooms out and never less than at 100%.
+ * at `zoom`: it reaches further as the view zooms out, so the pointer covers
+ * about the same distance on screen, and never less than at 100%.
  */
 export function bindingReach(zoom: number): number {
   const scale = zoom > 0 && zoom < 1 ? zoom : 1;
@@ -386,17 +385,16 @@ const ELBOW_DIRECTION: Record<Heading, Point> = {
  *
  * Found by its drawn outline, not its box: the eligible element the point is
  * inside, the smallest if several (a small shape within a big one), or else
- * the one whose outline is nearest, within `reach` scene units. Excalidraw's
- * rule; strict containment made an end dropped just short of an edge let go.
+ * the one whose outline is nearest, within `reach` scene units. Strict
+ * containment made an end dropped just short of an edge let go.
  *
  * A frame is not a target: an arrow drawn inside one would otherwise attach to
  * the container rather than to the shape the user aimed at. Neither is a
- * group, which draws nothing, nor another linear element, which has no
- * outline to anchor on.
+ * group, which draws nothing, nor another line, arrow or stroke, which has
+ * no outline to anchor on.
  */
 export function targetAt(scene: SceneData, point: Point, exclude: ElementId, reach = BINDING_REACH_MIN): SceneElement | undefined {
-  // Front to back, as Excalidraw's `getBindingCandidates`
-  // (`element/src/collision.ts:346-404`): a shape holding the point hides
+  // Front to back: a shape holding the point hides
   // everything behind it, locked or not, and a locked one is never a target.
   const candidates: { element: SceneElement; distance: number }[] = [];
   const ordered = [...scene.elements].sort((a, b) => b.z - a.z);
@@ -413,7 +411,7 @@ export function targetAt(scene: SceneData, point: Point, exclude: ElementId, rea
     // what is in it.
     if (element.type === 'frame' && contains) continue;
     if (!contains && distance > reach) continue;
-    // Positive inside, negative outside, as Excalidraw measures.
+    // Positive inside, negative outside.
     if (element.locked !== true) candidates.push({ element, distance: contains ? distance : -distance });
     if (contains && opaque(element)) break;
   }
@@ -458,7 +456,7 @@ const SIDE_MIDDLES: [number, number][] = [
  * The anchor for an end dropped at `point` on `shape`: where it landed, as a
  * fraction of the shape's upright box, clamped to it. Dropped outside the
  * shape within `reach` of a side's middle, it snaps to that middle
- * (Excalidraw's `getSnapOutlineMidPoint` for ordinary arrows). An `inside`
+ * (for ordinary arrows). An `inside`
  * (pinned) end keeps the exact spot, neither snapped nor taken to the outline.
  * An `elbow` end snaps by the elbow's own rule (`elbowSnap`) and is never
  * pinned.
@@ -477,8 +475,8 @@ export function anchorFor(
     if (snapped) return snapped;
     inside = false;
   } else if (!inside && !measureAgainst(shape, point).contains) {
-    // A side's middle within reach plus half the stroke width (Excalidraw's
-    // `getSnapOutlineMidPoint`); off with Shift or the setting.
+    // A side's middle within reach plus half the stroke width; off with
+    // Shift or the setting.
     const best = snap ? nearestMiddle(shape, point, reach + strokeOf(shape) / 2) : null;
     if (best) return best.anchor;
     // Carried onto the shape's nearer diagonal along the line from the other
@@ -511,8 +509,7 @@ const DIAMOND_EDGE_MIDDLES: [number, number, number, number][] = [
 const ELBOW_SNAP_BAND = 0.05;
 
 /**
- * Excalidraw's elbow snap (`getElbowArrowSnapMidPoint`, `utils.ts:640-786`):
- * a point within a band either side of the line through the centre, 5% of
+ * The elbow snap: a point within a band either side of the line through the centre, 5% of
  * the side and clamped between 5 and `reach`, snaps to the middle of the side
  * it is towards, from inside the shape or out; on a diamond, a point near an
  * edge's middle (a gap outside it) snaps there. Null when neither.
@@ -555,7 +552,7 @@ export function elbowSnapSpots(shape: SceneElement): Point[] {
  * The drop point carried along the line from `from` onto the nearer of the
  * shape's diagonals (centre lines for a curved or pointed shape), as a
  * fraction of its box; null when the arrow has no length to aim by or the
- * point found is off the shape (Excalidraw's `projectFixedPointOntoDiagonal`).
+ * point found is off the shape.
  */
 function ontoDiagonal(shape: SceneElement, point: Point, from: Point): [number, number] | null {
   if (Math.abs(point.x - from.x) < 3 && Math.abs(point.y - from.y) < 3) return null;

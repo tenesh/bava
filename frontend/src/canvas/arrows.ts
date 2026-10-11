@@ -13,7 +13,7 @@ import { LINE_TENSION } from './paint';
 
 export type ArrowType = 'straight' | 'elbow' | 'arc';
 
-/** An elbow's corners are drawn round, at most this radius (Excalidraw's 16). */
+/** An elbow's corners are drawn round, at most this radius. */
 export const ELBOW_CORNER = 16;
 
 /** Points on each rounded corner of an elbow, both ends of the curve included. */
@@ -31,9 +31,8 @@ export function pathOf(points: number[], type: string | undefined): number[] {
 
 /**
  * A right-angled route with each corner a quadratic curve of radius
- * min(`ELBOW_CORNER`, half of either neighbouring segment), as Excalidraw's
- * `generateElbowArrowShape` (`element/src/shape.ts:1018-1081`), sampled so
- * every renderer draws the same points.
+ * min(`ELBOW_CORNER`, half of either neighbouring segment), so a short
+ * segment never overshoots, sampled so every renderer draws the same points.
  */
 export function roundCorners(route: number[]): number[] {
   const count = route.length / 2;
@@ -85,7 +84,7 @@ export function routePoints(points: number[], type: string | undefined): number[
       : [x1, y1, x1, (y1 + y2) / 2, x2, (y1 + y2) / 2, x2, y2];
   }
 
-  // A curve through two points is straight, as Excalidraw's.
+  // A curve through two points has nothing to bend around: it is straight.
   return points;
 }
 
@@ -105,9 +104,7 @@ export function headAt(points: number[], end: 'start' | 'end'): { x: number; y: 
 export type HeadFill = 'stroke' | 'surface' | 'none';
 
 /**
- * How big each head is, in scene units, and the half-angle of its barbs, as
- * Excalidraw's `getArrowheadSize` and `getArrowheadAngle`
- * (`element/src/bounds.ts:710-744`).
+ * How big each head is, in scene units, and the half-angle of its barbs.
  */
 function headSize(kind: string): number {
   switch (kind) {
@@ -165,7 +162,7 @@ export function headReach(kind: string | undefined, segment: number): number {
 
 /**
  * Draw an arrowhead into a sink, pointing along +x with its tip at the
- * origin, as Excalidraw draws it (`element/src/shape.ts:290-575`): sized by
+ * origin: sized by
  * kind, never more than half the last segment (a quarter for a diamond), a
  * circle growing with the stroke width. Returns how it is filled.
  */
@@ -173,7 +170,7 @@ export function drawHead(sink: PathSink, kind: string | undefined, segment: numb
   if (kind === 'none') return 'none';
   const name = kind !== undefined && KNOWN_HEADS.has(kind) ? kind : 'arrow';
   // Where a head of `as` sits, `offset` of its size back from the tip, and its
-  // barbs' ends (x3, x4): Excalidraw's `getArrowheadPoints`.
+  // barbs' ends (x3, x4).
   const place = (as: string, offset = 0) => {
     const size = headExtent(as, segment);
     const tip = -size * offset;
@@ -271,8 +268,7 @@ export function endSegment(route: number[], end: 'start' | 'end'): number {
 
 /**
  * A head's dash: solid, except a stroke-only head on a dotted line, dotted a
- * little tighter than the line (Excalidraw's `getArrowheadLineOptions`,
- * `element/src/shape.ts:326-343`).
+ * little tighter than the line so the head still reads as a shape.
  */
 export function headDash(kind: string | undefined, strokeStyle: string | undefined, width: number): number[] {
   if (strokeStyle !== 'dotted' || !headIsStrokes(kind)) return [];
@@ -310,8 +306,7 @@ export function pathLength(points: number[]): number {
  * Where an arrow's label is centred, in the arrow's own coordinates: where
  * the user slid it (`labelPosition`, along the drawn path's length), or else
  * the middle point, the middle one of an odd number of points or the middle
- * of the middle segment, on the curve for a curved arrow (Excalidraw's
- * `linearElementEditor.ts:1942-1961`). `tension` is the
+ * of the middle segment, on the curve for a curved arrow. `tension` is the
  * line's smoothing (`hit.ts`, `tensionOf`).
  */
 export function labelSpot(element: SceneElement, tension: number, drawn?: number[]): { x: number; y: number } {
@@ -336,7 +331,7 @@ export type LabelLayout = { at: { x: number; y: number }; lines: string[]; width
 
 /**
  * An arrow's label laid out, in the arrow's own coordinates: on its spot
- * (`labelSpot`), wrapped as Excalidraw wraps it, and with
+ * (`labelSpot`), wrapped by `labelWrapWidth`, and with
  * `labelDirection: along` turned to the path's direction there, flipped so it
  * never reads upside down. The stage, the exporter and the label
  * editor all lay it out here, so the three agree.
@@ -431,14 +426,14 @@ function readable(angle: number): number {
 }
 
 /**
- * How far round an arrow's label its line is hidden, in scene units
- * (Excalidraw's `ARROW_LABEL_CLEARANCE`, `common/src/constants.ts:418`).
+ * How far round an arrow's label its line is hidden, in scene units, so the
+ * line never touches the text.
  */
 export const LABEL_CLEARANCE = 5;
 
 /**
  * How wide an arrow's label wraps: 0.7 of the arrow's width or 11 times the
- * font size, the wider (Excalidraw's `textElement.ts:511-521`).
+ * font size, the wider, so a short arrow's label still reads on a few lines.
  */
 export function labelWrapWidth(element: SceneElement, fontSize: number): number {
   return Math.max(0.7 * element.w, fontSize * 11);

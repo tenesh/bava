@@ -3,16 +3,16 @@
 > Historical: built and committed; see the roadmap for what followed.
 
 **Goal:** close Milestone 7: pin its three exit behaviours with tests, and add
-Excalidraw's object snapping (edges, centres and equal spacing, with guides).
+object snapping (edges, centres and equal spacing, with guides).
 
 **Specs:**
 - `.claude/plan/roadmap.md`, Milestone 7 (scope and exit criterion).
-- `.claude/work/specs/research/excalidraw-object-snapping.md` (Excalidraw at `5db42c3`:
-  rules, values, and the design for Bava this plan follows).
+- `docs/decisions.md`, the snapping rows of 2026-09-27 (rules, values, and
+  the design this plan follows).
 - The user's answers (2026-09-27): off by default; Alt+S toggles it; every
-  element snaps by its box ("use the box rule"), a departure from Excalidraw.
-- `.claude/work/specs/arrows-and-code.md`, decision 12 (Excalidraw wins
-  unless the user says otherwise).
+  element snaps by its box ("use the box rule").
+- `.claude/work/specs/arrows-and-code.md`, decision 12 (the agreed
+  behaviour stands unless the user says otherwise).
 - `docs/decisions.md`, `docs/ipc.md`, `docs/shortcuts.md`
 - `.ai/rules/canvas.md`, `.ai/rules/design-system.md`, `.ai/rules/wails.md`
 
@@ -58,22 +58,21 @@ the shape through the Delete command, and undo restoring the attachment.
 - Everything in the setting and toolbar path stays off the Svelte canvas: the
   stage draws guides on its non-listening overlay.
 
-## The box rule, the user's departure from Excalidraw (2026-09-27)
-Excalidraw gives a rectangle its corners and centre, and an ellipse or diamond
-its side middles and centre. Bava gives every element all nine points of its
-box, so there is one rule matching the selection box, a rectangle can line up
+## The box rule, the user's choice (2026-09-27)
+Per-shape points would give a rectangle its corners and centre, and an
+ellipse or diamond its side middles and centre. Bava gives every element all
+nine points of its box, so there is one rule matching the selection box, a rectangle can line up
 by its side middles, and new element types (images, icons) need nothing. A
 guide may end at a box corner with nothing drawn there (an ellipse's, a
 cloud's); the line itself is exact.
 
-## Choices made by following Excalidraw (decision 12), flagged
+## Choices made by following the plan (decision 12), flagged
 - **Kept:** no distance labels; the text tool's click snaps its origin;
   snapping is off by default.
-- **Two departures, both Excalidraw quirks:** a dragged frame's contents and
-  the arrows attached to a moving shape are not snap targets. Excalidraw
-  snaps to them at their old positions, which draws guides to places nothing
-  is.
-- **Not copied:** Excalidraw's grid (Bava has none), and "a press with ⌘ never
+- **Two exclusions:** a dragged frame's contents and the arrows attached to
+  a moving shape are not snap targets. Snapping to them at their old
+  positions would draw guides to places nothing is.
+- **Not built:** a grid (Bava has none), and "a press with ⌘ never
   drags" (Bava's press with ⌘ keeps what it does today).
 
 ## Tasks
@@ -211,7 +210,7 @@ and the loop arrow (a target only its own centre lines up with).
 
 **Deviations:**
 - **Equal spacing counts neighbours only** (the user's choice, raised by
-  Task 8): Excalidraw's every-pair scan cost 152 ms to start and 8.3 ms a
+  Task 8): scanning every pair cost 152 ms to start and 8.3 ms a
   move on 2,000 shapes seen at once.
 - **No spatial index.** The cost was the number of pairs and of point
   comparisons, not finding shapes. Snapping keeps its targets' x and y sorted
@@ -236,4 +235,4 @@ shapes starting at one place lost one as a neighbour; the Shift test now
 shows the snap off its axis. Also: the box tools are an allow-list; the
 shortcuts row says a selected line or arrow snaps when dragged by its body.
 Declined: considering every fit of a gap rather than the first that matches,
-which is Excalidraw's rule as the research spec records it (`SN:480-542`).
+which is the rule the plan set.

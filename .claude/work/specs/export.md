@@ -34,7 +34,7 @@ page numbers.
 ### 3. Paper: the common sizes, and Custom (2026-10-11)
 
 A3, A4, A5, B4, B5, Letter, Legal and Tabloid, the sizes most apps offer
-(Chrome's and Notion's PDF, Google Docs); **Custom** for anything else,
+(a browser's Print to PDF, word processors); **Custom** for anything else,
 posters such as A0 to A2 included, as a width and height in millimetres or
 inches. The first choice follows the computer's region: Letter in the US
 and Canada, A4 elsewhere. Asked about the A and B series in full, the JIS,

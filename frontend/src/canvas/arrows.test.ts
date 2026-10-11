@@ -27,8 +27,7 @@ describe('routePoints', () => {
     expect(routePoints([0, 0, 20, 100], 'elbow')).toEqual([0, 0, 0, 50, 20, 50, 20, 100]);
   });
 
-  // A curve through two points is straight, as Excalidraw's
-  // (`element/src/shape.ts:934-935`).
+  // A curve through two points has nothing to bend around, so it is straight.
   it('draws a two-point arc straight', () => {
     expect(routePoints(from, 'arc')).toEqual(from);
   });
@@ -42,8 +41,7 @@ describe('routePoints', () => {
   });
 });
 
-// Heads as Excalidraw draws them (`element/src/bounds.ts:710-845`,
-// `element/src/shape.ts:290-575`), tip at the origin, pointing along +x.
+// Heads drawn with the tip at the origin, pointing along +x.
 describe('arrowhead shapes', () => {
   const sink = () => {
     const calls: string[] = [];
@@ -66,7 +64,7 @@ describe('arrowhead shapes', () => {
     expect(s.calls).toEqual([]);
   });
 
-  it('sizes each kind as Excalidraw does', () => {
+  it('sizes each kind by its own size and barb angle', () => {
     const size = (kind: string) => {
       const s = sink();
       drawHead(s, kind, long, 2);
@@ -212,8 +210,7 @@ describe('a head on a dotted line', () => {
   });
 });
 
-// Where a label sits and how wide it wraps, as Excalidraw's
-// (`linearElementEditor.ts:1942-1961`, `textElement.ts:511-521`).
+// Where a label sits and how wide it wraps.
 describe("an arrow's label", () => {
   const arrow = (over: Record<string, unknown>) => ({ id: 'a', type: 'arrow', x: 0, y: 0, w: 100, h: 300, z: 1, ...over }) as never;
 

@@ -104,7 +104,7 @@ Held by a test that performs an open, an edit, a render and a save on a fixture
 with distinctive content, then asserts none of that content appears in the log.
 
 ### 8. Not in this design
-- **Recovering unsaved work after a crash**, meaning VS Code-style backups
+- **Recovering unsaved work after a crash**, meaning backups kept
   outside the project. Related, but a separate mechanism with its own format
   questions. Destination: Milestone 16, unless brought forward.
 - **Any automatic upload.** Ruled out by the first non-negotiable, not by

@@ -41,7 +41,7 @@ describe('exporting to SVG', () => {
 
   it('writes a dashed line as a dash array', () => {
     const svg = svgOf([{ id: 'l', type: 'line', x: 0, y: 0, w: 50, h: 0, z: 1, points: [0, 0, 50, 0], strokeStyle: 'dashed' }]);
-    // Excalidraw's [8, 8 + width], and half a unit thicker.
+    // Dashes of 8 with gaps of 8 plus the width, and half a unit thicker.
     expect(svg).toContain('stroke-width="2.5" stroke-dasharray="8 10"');
   });
 
@@ -258,7 +258,7 @@ describe('an arrow label placed along its arrow', () => {
   });
 });
 
-// The canvas draws heads solid on a dashed arrow (and Excalidraw does too); a
+// The canvas draws heads solid on a dashed arrow, so they read as heads; a
 // dashed head exported as broken strokes disagreed with it.
 describe('the heads of a dashed arrow', () => {
   it('are exported solid, while the line stays dashed', () => {

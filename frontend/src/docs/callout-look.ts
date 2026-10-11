@@ -25,8 +25,8 @@ const LOOKS: Record<string, CalloutLook> = {
 };
 
 /**
- * How a kind written in a file looks: Obsidian's kinds shown as the nearest
- * of Confluence's five, and any other as a note. The kind itself is kept as
+ * How a kind written in a file looks: a kind from other Markdown editors
+ * shown as the nearest of Bava's five, and any other as a note. The kind itself is kept as
  * written.
  */
 export function calloutLook(kind: string): CalloutLook {

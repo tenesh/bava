@@ -27,6 +27,14 @@ Check every item. **Absence of evidence is a finding, not a pass.**
   code.
 - No remote fonts, icons or stylesheets for the app itself. Everything
   bundled.
+- **Own words** (`.ai/rules/own-words.md`): flag any spec, decision, plan,
+  rule, comment or test name that names another product as a comparison or
+  a source, or a study of another app; `names_test.go` lists the names
+  known so far. A new one is a finding, and belongs on that list.
+- **AI disclosure** (`.ai/rules/ai-disclosure.md`): any change to the
+  Flatpak manifest (`com.tharabyte.bava.*`) by an agent is a blocker; a
+  change that alters how the project uses AI without updating
+  `AI-DISCLOSURE.md` is a finding.
 
 ## 2. Files as source of truth
 

@@ -71,7 +71,7 @@ describe('ToolRail focus', () => {
   });
 });
 
-// The rail's tool lock, as Excalidraw's.
+// The rail's tool lock, which keeps a tool picked after it draws.
 describe("ToolRail's lock", () => {
   it('shows whether the tool is kept, and reports a press', () => {
     const onLock = vi.fn();

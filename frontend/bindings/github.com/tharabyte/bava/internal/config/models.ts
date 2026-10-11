@@ -22,7 +22,7 @@ export interface Settings {
     /**
      * Autosave is when an open, titled document is written without being
      * asked: never, a quiet period after the last change, or when the window
-     * loses focus. The names follow VS Code's files.autoSave.
+     * loses focus: off, afterDelay, onFocusChange.
      */
     "autosave": string;
 
@@ -52,7 +52,7 @@ export interface Settings {
     /**
      * ObjectSnap is whether a moved, resized or drawn shape snaps to other
      * elements' edges, centres and spacing; Cmd/Ctrl turns it over for one
-     * drag. Off by default, as Excalidraw's.
+     * drag. Off by default, so shapes move freely.
      */
     "objectSnap": boolean;
 

@@ -12,7 +12,7 @@ import {
   type Guide,
 } from './snapping';
 
-// Snapping to objects, Excalidraw's rules with the box rule: every element
+// Snapping to objects, with the box rule: every element
 // offers its box's four corners, four side middles and centre.
 
 const rect = (id: string, x: number, y: number, w: number, h: number, extra: Record<string, unknown> = {}) =>

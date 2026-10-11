@@ -21,7 +21,7 @@ describe('copying an SVG', () => {
 });
 
 describe('copying a PNG', () => {
-  // As Excalidraw does it: an image/png ClipboardItem through the webview's
+  // An image/png ClipboardItem through the webview's
   // own clipboard, since Wails carries text only.
   it('writes an image item built from the pending picture', async () => {
     const write = vi.fn().mockResolvedValue(undefined);

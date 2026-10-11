@@ -1,6 +1,6 @@
 /**
  * The canvas cursor: one answer for what the pointer is over and what the app
- * is doing, as Excalidraw decides it (`App.tsx:8322-8555`). The pointer
+ * is doing, so it always shows what a press would do. The pointer
  * handler says what is under the pointer (`cursorTarget`); this turns that
  * into a CSS cursor, and the app sets it on the canvas host on every move.
  */

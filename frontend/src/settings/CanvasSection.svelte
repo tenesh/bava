@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * Settings ▸ Canvas: whether arrow ends attach to shapes, whether they
-   * snap to a side's middle (Excalidraw's two toggles), and whether shapes
+   * snap to a side's middle (two toggles), and whether shapes
    * snap to other objects.
    *
    * Presentational. The caller holds the values and persists changes.

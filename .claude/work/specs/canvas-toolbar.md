@@ -2,9 +2,9 @@
 
 > Historical: implemented (or superseded); kept as the record.
 
-Decided with the user on 2026-09-17 and 2026-09-18, from the user's Eraser
-screenshots (reference only; nothing reads them) and review of the running
-window. The screenshots are not vendored: they are another product's UI.
+Decided with the user on 2026-09-17 and 2026-09-18, from the user's
+reference screenshots (reference only; nothing reads them) and review of the
+running window. The screenshots are not vendored.
 
 ## Tool rail: decided 2026-09-18
 
@@ -16,7 +16,7 @@ itself in a tooltip ("Rectangle  R"). Icons are Lucide.
 |---|---|
 | Insert | **+** (`/`): opens the insert panel; becomes × while open |
 | Common | Select `V`, Rectangle `R`, Ellipse `O`, Arrow `A`, Line `L`, Draw `D`, Text `T` |
-| Canvas | Frame `F`, Eraser (key from the Excalidraw baseline) |
+| Canvas | Frame `F`, Eraser (key from the baseline below) |
 
 The rail holds common shapes and actions only. Every other shape is in the
 insert panel. The native Canvas ▸ Tools menu keeps listing every tool.
@@ -77,13 +77,12 @@ the native Arrange menu, and have shortcuts (`⌘]` forward, `⌘[` backward, `�
 
 ## Baseline and scope: decided 2026-09-18
 
-Eraser's documentation does not describe its selection toolbar per element
-(researched 2026-09-18), so **Excalidraw's properties panel is the baseline**
-for what each element type offers, with these additions and changes from the
-user:
+The screenshots do not show the selection toolbar for every element, so **a
+properties panel per element type is the baseline** for what each element
+offers, with these additions and changes from the user:
 
 - **Edges:** a shape's corners are sharp or round.
-- **Multi-selection** can align (and Excalidraw's distribute comes with it).
+- **Multi-selection** can align (and distribute comes with it).
 - **Arrows are connectors, lines are not.** An arrow can attach to shapes; a
   line never attaches. Arrow routing is **straight, elbow or arc**.
 - **Eraser tool** to clear elements by dragging over them.
@@ -95,13 +94,12 @@ user:
   separators, with submenus where a group is large (not one flat list).
 - **Export opens a dialog** with export settings.
 
-The exact controls and option values per element type are taken from the
-Excalidraw research and recorded here before planning.
+The exact controls and option values per element type are recorded here
+before planning.
 
 ## Adapted baseline: agreed 2026-09-18
 
-From Excalidraw's source (`master` `c0ad61c`, researched 2026-09-18), adapted
-to Bava. All recommendations accepted by the user.
+Adapted to Bava. All recommendations accepted by the user.
 
 **Left out:** sloppiness, hachure and cross-hatch fills, font family choice
 (Bava bundles only Geist and Geist Mono), sticky notes, laser, bucket fill,
@@ -171,9 +169,9 @@ On empty canvas: Paste, Select All, Unlock All (when something is locked).
 
 ### Shortcuts
 
-Excalidraw's, where they do not clash with Bava's menu: `⌘]` forward, `⌘[`
-backward, `⌥⌘]` to front, `⌥⌘[` to back; `⌘D` duplicate; `⇧⌘L` lock; `E`
-eraser; `⇧⌘←→↑↓` align; `⌥H`, `⌥V` distribute; `⌥⌘C`, `⌥⌘V` copy and paste
+The keys drawing tools commonly use, where they do not clash with Bava's
+menu: `⌘]` forward, `⌘[` backward, `⌥⌘]` to front, `⌥⌘[` to back; `⌘D`
+duplicate; `⇧⌘L` lock; `E` eraser; `⇧⌘←→↑↓` align; `⌥H`, `⌥V` distribute; `⌥⌘C`, `⌥⌘V` copy and paste
 styles; `⇧H`, `⇧V` flip; `⇧⌥C` copy as PNG; `⇧⌘E` export. Each is checked
 against the menu spec before it is bound.
 
@@ -216,18 +214,16 @@ comment has no one to address. The rail has no Comment tool.
 
 - **The swatch palette stays as it is**: the eight main hues (gray, blue,
   green, yellow, orange, red, purple, pink) plus the theme default, each
-  resolving to a light and a dark value. Main colours only, no shades, as in
-  Excalidraw's quick row. The file keeps storing the name.
+  resolving to a light and a dark value. Main colours only, no shades, so
+  the quick row stays short. The file keeps storing the name.
 - **A colour picker joins them** (06.3), for any colour. The picked value is
   stored once and **adjusted for the other theme** so it stays legible; the
   picker previews both. Not a pair of values: one colour, one documented rule.
-  Asked and answered: Excalidraw stores a literal colour and inverts the whole
-  canvas in dark mode, which Bava cannot do because it themes per element. The
-  user confirmed Eraser's colours differ between themes, and Eraser's docs
-  agree: `color` takes a name or a hex value, dark mode is a per-user setting
-  (never stored in the file), and a team palette's "Colors adapt automatically
-  for dark mode" (docs.eraser.io/custom-styles, /dark-mode). One authored
-  colour, adapted at render, is what both products do.
+  Asked and answered: inverting the whole canvas in dark mode is not open to
+  Bava, because it themes per element. The user confirmed colours should
+  differ between themes: `color` takes a name or a hex value, dark mode is a
+  per-user setting (never stored in the file), and one authored colour is
+  adapted at render.
 - The picker's exact storage (`"#e03131"` beside a swatch name) and the
   adjustment rule are specified in `docs/file-format.md` before any code
   writes them.
@@ -271,8 +267,8 @@ Specified here, then in `docs/file-format.md` before any code writes it.
 | `startArrowhead`, `endArrowhead` | none, arrow, bar, triangle, triangle-outline, circle, circle-outline, diamond, diamond-outline | none at the start, arrow at the end | arrow |
 | `angle` | degrees, 0 to 359, clockwise about the element's centre | 0 | every element except an elbow arrow |
 
-Numbers rather than names for width and size, as Excalidraw stores them: a
-later custom value needs no new vocabulary. Unknown values follow the existing
+Numbers rather than names for width and size: a later custom value needs no
+new vocabulary. Unknown values follow the existing
 rule: drawn as the default, written back unchanged.
 
 The ER arrowheads (one, many, one or many, zero or one, zero or many, exactly
@@ -293,7 +289,7 @@ another user in the other theme still reads.
 
 ### Locking: decided 2026-09-18
 
-Excalidraw's behaviour: a locked element cannot be selected by click or
+A locked element cannot be selected by click or
 marquee, moved, resized, restyled or erased. It draws and exports normally.
 Unlock All is the way back, from right-click on empty canvas or `⌥⇧⌘L`. Bava
 does not offer Unlock on the element itself: hit-testing skips a locked
@@ -311,7 +307,7 @@ A shape, an arrow and a text element each get a different, short set. When the
 row does not fit the canvas, the controls that do not fit move into the More
 menu rather than the bar growing, wrapping or scrolling.
 
-Round edges follow Excalidraw: a fixed 32px radius on a rectangle, a quarter
+Round edges: a fixed 32px radius on a rectangle, a quarter
 of the shorter side on a polygon (diamond, hexagon, parallelogram) and on a
 line; an ellipse has no Edges control, and neither do the already-curved
 outlines (cylinder, document, person, cloud).

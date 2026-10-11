@@ -38,7 +38,7 @@ const HEADS: PropertyOption[] = [
   { value: 'circle-outline', labelKey: 'option.circle-outline', icon: 'headCircleOutline' },
   { value: 'diamond', labelKey: 'option.diamond', icon: 'headDiamond' },
   { value: 'diamond-outline', labelKey: 'option.diamond-outline', icon: 'headDiamondOutline' },
-  // The entity-relation heads, behind More as Excalidraw's.
+  // The entity-relation heads, behind More: specialist, so kept off the main row.
   { value: 'one', labelKey: 'option.one', icon: 'headOne', more: true },
   { value: 'many', labelKey: 'option.many', icon: 'headMany', more: true },
   { value: 'oneOrMany', labelKey: 'option.oneOrMany', icon: 'headOneOrMany', more: true },

@@ -471,7 +471,7 @@ describe('a resize drag', () => {
   });
 });
 
-// Shift is read while dragging, as Excalidraw does: pressing or releasing it
+// Shift is read while dragging: pressing or releasing it
 // mid-drag changes what the preview shows and what release commits.
 describe('Shift during a drag', () => {
   it('constrains when Shift goes down mid-drag, and stops when it is released', () => {
@@ -751,8 +751,7 @@ describe('resizing a selection that holds a rotated element', () => {
   });
 });
 
-// Drawing an arrow that starts or ends on a shape attaches it, as Excalidraw
-// does, and Alt held during the drag leaves it free. The modifier is read on
+// Drawing an arrow that starts or ends on a shape attaches it, and Alt held during the drag leaves it free. The modifier is read on
 // every move, never at the press (.ai/rules/canvas.md).
 describe('attaching an arrow while drawing it', () => {
   function withShapes(tool: 'arrow' | 'line' = 'arrow') {
@@ -1048,7 +1047,7 @@ describe('guards on the endpoint drag', () => {
     expect(history.current.elements).toHaveLength(0);
   });
 
-  // As Excalidraw: both ends may attach to one shape,
+  // Both ends may attach to one shape,
   // both pinned where they are, so the arrow never collapses to its centre.
   it('binds both ends to the same shape, pinned, without collapsing', () => {
     const { handler, arrow } = bound();
@@ -1170,7 +1169,7 @@ describe('a freshly placed code block', () => {
   });
 });
 
-// As Excalidraw does: a shape tool lets go once it has made something, so the
+// A shape tool lets go once it has made something, so the
 // next press selects rather than drawing again. The pen is used stroke after
 // stroke and the eraser pass after pass, so both stay on.
 describe('the tool after a draw', () => {
@@ -1238,7 +1237,7 @@ describe('the drag threshold', () => {
   });
 });
 
-// Decided on release, as Excalidraw does: a press on a selected element may be
+// Decided on release: a press on a selected element may be
 // the start of a drag of the whole selection, so only a click changes it.
 describe('clicking inside a selection', () => {
   function threeSelected() {
@@ -1359,7 +1358,7 @@ describe('a shift-drag', () => {
   });
 });
 
-// Alt while moving copies instead, as in Excalidraw: the originals stay, the
+// Alt while moving copies instead: the originals stay, the
 // copies move and become the selection. Read on every move, like Shift.
 describe('an alt-drag', () => {
   function withGroup() {
@@ -1678,7 +1677,7 @@ describe('bending a line or arrow', () => {
     expect(world()).toEqual([0, 0, 120, 60, 200, 0]);
   });
 
-  // As Excalidraw, a double-click on a bend removes nothing.
+  // A double-click on a bend removes nothing: it is not a delete.
   it('removes nothing on a double-click on a bend', () => {
     const { handler, world } = selected({ ...straight, type: 'line', h: 80, points: [0, 0, 100, 80, 200, 0] });
     handler.doubleClick(at(101, 79));
@@ -1722,7 +1721,7 @@ describe('bending a line or arrow', () => {
 });
 
 // An attached arrow dragged by its body lets go of every shape not moving
-// with it, as Excalidraw does, rather than silently undoing the drag.
+// with it, rather than silently undoing the drag.
 describe('dragging an attached arrow by its body', () => {
   function attached() {
     const history = createHistory({
@@ -2008,7 +2007,7 @@ describe('resizing a code block', () => {
   });
 });
 
-describe('pressing on a selected line or arrow, as Excalidraw', () => {
+describe('pressing on a selected line or arrow', () => {
   function selected(element: Record<string, unknown>) {
     const history = createHistory({ elements: [{ id: 'l', z: 1, ...element }] as never });
     const selection = createSelection();
@@ -2036,11 +2035,10 @@ describe('pressing on a selected line or arrow, as Excalidraw', () => {
   });
 });
 
-// Excalidraw's drag details (linearElementEditor.ts:542-557,1233-1240,
-// 1736-1779; App.tsx:11745-11815): a point keeps its grab offset, Shift snaps
+// Dragging points: a point keeps its grab offset, Shift snaps
 // it to 15° about its neighbour, a middle adds a bend only after 10 px, and a
 // new line or arrow needs a 20 px drag.
-describe('dragging points like Excalidraw', () => {
+describe('dragging points', () => {
   function selected(element: Record<string, unknown>) {
     const history = createHistory({ elements: [{ id: 'l', z: 1, ...element }] as never });
     const selection = createSelection();
@@ -2094,7 +2092,7 @@ describe('dragging points like Excalidraw', () => {
   });
 });
 
-describe('dragging an arrow end like Excalidraw', () => {
+describe('dragging an arrow end', () => {
   it('keeps the grab offset and snaps with Shift', () => {
     const history = createHistory({ elements: [{ id: 'a', type: 'arrow', x: 0, y: 0, w: 200, h: 0, z: 1, points: [0, 0, 200, 0] }] as never });
     const selection = createSelection();
@@ -2109,7 +2107,7 @@ describe('dragging an arrow end like Excalidraw', () => {
 });
 
 // Inside a shape pins the end, just outside attaches it to
-// the edge, Alt pins, Cmd/Ctrl leaves it free (Excalidraw binding.ts:830-860).
+// the edge, Alt pins, Cmd/Ctrl leaves it free.
 describe('where a dropped end attaches, inside or at the edge', () => {
   function withShape() {
     const kit = harness('select');
@@ -2170,7 +2168,7 @@ describe('where a dropped end attaches, inside or at the edge', () => {
   });
 });
 
-// Point-edit mode, as Excalidraw's linear editor.
+// Point-edit mode: a line's points chosen and moved on their own.
 describe('editing the points of a line', () => {
   function editing(points = [0, 0, 100, 0, 200, 0]) {
     const history = createHistory({ elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 200, h: 0, z: 1, points }] as never });
@@ -2208,7 +2206,7 @@ describe('editing the points of a line', () => {
   });
 
   // The point before is selected after, and a line
-  // left with fewer than two points is deleted, as Excalidraw's.
+  // left with fewer than two points is deleted.
   it('removes the selected points, then selects the one before', () => {
     const { handler, world } = editing();
     handler.down(at(100, 0));
@@ -2245,7 +2243,7 @@ describe('editing the points of a line', () => {
 });
 
 // Outside the mode, only a two-point line or arrow offers its middle; a bent
-// one's bends are added in the mode (Excalidraw interactiveScene.ts:1206-1217).
+// one's bends are added in the mode.
 describe('a bent line outside point editing', () => {
   it('offers no middle to bend', () => {
     const history = createHistory({ elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 200, h: 100, z: 1, points: [0, 0, 100, 0, 200, 100] }] as never });
@@ -2259,8 +2257,8 @@ describe('a bent line outside point editing', () => {
   });
 });
 
-// Click-by-click drawing, as Excalidraw's multi-point
-// lines (App.tsx:10232-10256,11745-11781; LINE_CONFIRM_THRESHOLD 8).
+// Click-by-click drawing: each click adds a point, and a click within 8 px
+// of the last one finishes.
 describe('drawing a line by clicks', () => {
   function tool(kind: 'line' | 'arrow', elements: unknown[] = []) {
     const history = createHistory({ elements: elements as never });
@@ -2468,7 +2466,7 @@ describe('modes of the pointer', () => {
     expect(handler.editingPoints).toEqual({ id: 'l', selected: [] });
   });
 
-  // As Excalidraw, Delete with no point selected does nothing.
+  // Delete with no point selected does nothing, rather than delete the line.
   it('lets Delete do nothing when no point is selected', () => {
     const { selection, handler } = kit([line()]);
     selection.click('l');
@@ -2685,8 +2683,8 @@ describe("dragging an elbow's segments", () => {
   });
 });
 
-// A bound elbow alone is not dragged by its body (Excalidraw's
-// `dragElements.ts:46-67`); with others it moves only when both its shapes do.
+// A bound elbow alone is not dragged by its body (its route belongs to its
+// shapes); with others it moves only when both its shapes do.
 describe('dragging a bound elbow by its body', () => {
   function scene() {
     const kit = harness('select');
@@ -2758,8 +2756,7 @@ describe("a bent line's padded box", () => {
 });
 
 
-// A selected element that shows a box is hit anywhere in it
-// (Excalidraw's `App.tsx:6824-6842`), so a bent line is grabbed by its box.
+// A selected element that shows a box is hit anywhere in it, so a bent line is grabbed by its box.
 describe('grabbing a selected bent line', () => {
   function bent() {
     const kit = harness('select');
@@ -2822,8 +2819,7 @@ describe('the handle under the pointer', () => {
 
 // A selected two-point attached arrow shows each end's anchor as a
 // disc; dragging it moves the anchor, onto another shape re-attaches, Alt
-// pins it inside, and off every shape the end lets go there (Excalidraw's
-// `arrows/focus.ts:211-340`).
+// pins it inside, and off every shape the end lets go there.
 describe("dragging an arrow end's anchor", () => {
   function aimed() {
     const kit = harness('select');
@@ -2936,8 +2932,8 @@ describe('what the cursor is over', () => {
   });
 });
 
-// Drawing a line or arrow, as Excalidraw.
-describe('drawing a line, as Excalidraw', () => {
+// Drawing a line or arrow.
+describe('drawing a line', () => {
   it('shows the line from the first move, and a short release goes on by clicks', () => {
     const { handler, history } = harness('line');
     handler.down(at(0, 0));
@@ -3111,8 +3107,8 @@ describe('what drawing makes', () => {
   });
 });
 
-// Choosing and moving points, as Excalidraw's linear editor.
-describe('choosing and moving points, as Excalidraw', () => {
+// Choosing and moving points in point editing.
+describe('choosing and moving points', () => {
   function editing(points = [0, 0, 100, 0, 200, 0]) {
     const history = createHistory({ elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 200, h: 0, z: 1, points }] as never });
     const selection = createSelection();
@@ -3203,8 +3199,8 @@ describe('choosing and moving points, as Excalidraw', () => {
   });
 });
 
-// Removing and duplicating points, as Excalidraw.
-describe('removing and duplicating points, as Excalidraw', () => {
+// Removing and duplicating points.
+describe('removing and duplicating points', () => {
   function editing(points = [0, 0, 100, 0, 200, 0]) {
     const history = createHistory({ elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 200, h: 0, z: 1, points }] as never });
     const selection = createSelection();
@@ -3429,8 +3425,8 @@ describe('an arrow attached to a shape above it', () => {
   });
 });
 
-// Where an end attaches, as Excalidraw.
-describe('attaching an end, as Excalidraw', () => {
+// Where an end attaches.
+describe('attaching an end', () => {
   function withArrow(bindings: Record<string, unknown> = {}) {
     const kit = harness('select');
     kit.history.mutate((scene) => {
@@ -3542,7 +3538,7 @@ describe('the canvas settings, as the pointer reads them', () => {
 });
 
 // A lone attached arrow, dragged, turned or resized.
-describe('a lone attached arrow, as Excalidraw', () => {
+describe('a lone attached arrow', () => {
   function attached(points = [0, 0, 100, 0], h = 0) {
     const kit = harness('select');
     kit.history.mutate((scene) => {
@@ -3597,8 +3593,7 @@ describe('a lone attached arrow, as Excalidraw', () => {
   });
 });
 
-// Grabbing an arrow's label, as Excalidraw
-// (`App.arrowText.ts:255-305`).
+// Grabbing an arrow's label.
 describe("grabbing an arrow's label", () => {
   function labelled() {
     const history = createHistory({
@@ -3636,7 +3631,7 @@ describe("grabbing an arrow's label", () => {
 });
 
 // Undo and redo wait while a gesture is under way, a line drawn by
-// clicks included (Excalidraw's `actions/actionHistory.tsx:26-45`).
+// clicks included.
 describe('undo during a gesture', () => {
   it('is held while a line is drawn by clicks or a drag is down', () => {
     const { handler } = harness('line');
@@ -3720,7 +3715,7 @@ describe('resizing a code block at its own size', () => {
   });
 });
 
-// Snapping to objects, as Excalidraw's, read by the pointer.
+// Snapping to objects, read by the pointer.
 describe('snapping to objects', () => {
   function kit(tool: Parameters<ReturnType<typeof createTools>['activate']>[0], objectSnap: boolean, extra: Record<string, unknown> = {}) {
     const history = createHistory({ elements: [] });
@@ -3776,7 +3771,7 @@ describe('snapping to objects', () => {
   });
 
   // Shift drops the smaller move, but the snap still moves m off that axis to
-  // line up (Excalidraw's): from y 3, the locked drag leaves it at 3, and the
+  // line up: from y 3, the locked drag leaves it at 3, and the
   // snap takes it to t's top.
   it('still snaps a Shift-locked drag, off its axis too', () => {
     const { handler, element } = kit('select', true, { y: 3 });

@@ -4,15 +4,13 @@
 > Decisions 2, 4, 5 and 7 are superseded by `arrows-and-code.md`
 > (decisions 7 to 9) and `docs/decisions.md`.
 
-Decisions made with the user, recorded as they are made. Background and
-Excalidraw references: `.claude/work/specs/research/excalidraw-comparison.md`, section
-3 and appendix A2.
+Decisions made with the user, recorded as they are made.
 
 ## Decisions
 
 1. **Arrows and lines are both bendable** (2026-09-26). Both get points the
    user can add, drag and delete, edited the same way; a line is an arrow
-   without heads. As Excalidraw does.
+   without heads, so one set of gestures shapes both.
 
 2. **A bend is added by dragging the middle of a straight piece** (2026-09-26).
    A selected arrow or line shows a handle at the middle of each segment;
@@ -27,15 +25,15 @@ Excalidraw references: `.claude/work/specs/research/excalidraw-comparison.md`, s
    kinds never loses anything. A line's `edges: round` smooths through its
    bends as an arc does. **Amended 2026-09-26 (06.12, decision 5):** an
    elbow's route is stored in its points, so switching to elbow replaces
-   bends and switching away keeps only the ends, as Excalidraw does.
+   bends and switching away keeps only the ends.
 
-4. **An attached end aims at the spot it was dropped on: Excalidraw's edge
-   mode** (2026-09-26). Each attached end remembers a spot on its shape, as a
+4. **An attached end aims at the spot it was dropped on: edge mode**
+   (2026-09-26). Each attached end remembers a spot on its shape, as a
    fraction of the shape's box. The end stops on the outline, a gap clear of
    it, on the line from that spot towards the arrow's neighbouring point (the
    next bend, or the other end), and keeps aiming there as either shape moves.
    Dropped just outside a side, within reach of its middle, it snaps to that
-   middle (Excalidraw's rule for ordinary arrows). No "inside"
+   middle, since a side's middle is where an arrow usually meets it. No "inside"
    mode. An end with no remembered spot (every existing file) aims at the
    shape's centre, which is today's behaviour. Changes what Bava writes: one
    value per attached end, specified in `docs/file-format.md` before the code.
@@ -43,7 +41,7 @@ Excalidraw references: `.claude/work/specs/research/excalidraw-comparison.md`, s
 5. **Dragging an attached arrow's body lets it go** (2026-09-26). The arrow
    moves, and each end attached to a shape that is not moving with it
    detaches (its binding and remembered spot are removed). Dropping an end
-   back on a shape reattaches it. As Excalidraw does.
+   back on a shape reattaches it, so moving an arrow is how it is let go.
 
 6. **An arrow's label can be slid along it** (2026-09-26). Dragging a label
    moves it along the path; its place is stored as a fraction of the path's

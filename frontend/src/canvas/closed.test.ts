@@ -3,8 +3,7 @@ import { closeLine, openLine } from './closed';
 import { createHistory } from './history';
 import { drawnPoints } from './binding';
 
-// Close line and Open line, as Excalidraw's polygon toggle
-// (`element/src/shape.ts:1138-1180`, `actions/actionLinearEditor.tsx:106-212`).
+// Close line and Open line, turning a line into a loop and back.
 const line = (points: number[], over: Record<string, unknown> = {}) =>
   createHistory({ elements: [{ id: 'l', type: 'line', x: 0, y: 0, w: 100, h: 100, z: 1, points, ...over }] as never });
 const current = (history: ReturnType<typeof line>) => history.current.elements[0] as unknown as Record<string, unknown> & { points: number[] };

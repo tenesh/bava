@@ -42,7 +42,7 @@ function ellipse(p: PathSink, cx: number, cy: number, rx: number, ry: number) {
  *
  * Each corner becomes a curve that starts and ends on the sides meeting there,
  * so the path stays inside the box. The radius is capped at half the shorter
- * side meeting the corner, as Excalidraw caps its proportional radius.
+ * side meeting the corner, so neighbouring curves never overlap.
  */
 function polygon(p: PathSink, points: [number, number][], radius = 0): void {
   if (radius <= 0) {

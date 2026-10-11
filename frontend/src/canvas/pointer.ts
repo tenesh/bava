@@ -117,7 +117,7 @@ export type PointerHandlerOptions = {
   bendMinSegment?: () => number;
   /**
    * The shortest elbow segment, in scene units, that shows a handle at its
-   * middle for dragging it: Excalidraw's 5 screen px, half of
+   * middle for dragging it: 5 screen px, half of
    * `--size-point-handle`, divided by the zoom.
    */
   segmentMin?: () => number;
@@ -130,24 +130,22 @@ export type PointerHandlerOptions = {
   bentBoxPadding?: () => number;
   /**
    * How near a press must come to a line's or arrow's point to take it, in
-   * scene units: Excalidraw's 11 screen px (`linearElementEditor.ts:1433-1458`),
-   * which the caller divides by the zoom.
+   * scene units: 11 screen px, a little wider than the handle drawn, which the caller divides by the zoom.
    */
   pointHit?: () => number;
   /**
    * How far a segment's middle must be dragged before it adds a bend, in
-   * scene units: Excalidraw's 10 screen px, divided by the zoom.
+   * scene units: 10 screen px, divided by the zoom, so a click does not bend.
    */
   bendInsertDistance?: () => number;
   /**
-   * The shortest line or arrow a drag draws, in scene units: Excalidraw's
-   * 20 screen px (`MINIMUM_ARROW_SIZE`), divided by the zoom.
+   * The shortest line or arrow a drag draws, in scene units: 20 screen px,
+   * divided by the zoom.
    */
   minLinear?: () => number;
   /**
    * While drawing a line click by click, how near the last point a click
-   * finishes it, in scene units: Excalidraw's `LINE_CONFIRM_THRESHOLD`, 8
-   * screen px, divided by the zoom.
+   * finishes it, in scene units: 8 screen px, divided by the zoom.
    */
   confirmDistance?: () => number;
   /**
@@ -165,22 +163,21 @@ export type PointerHandlerOptions = {
   newStyle?: (type: SceneElement['type']) => Record<string, unknown>;
   /**
    * Whether an arrow's ends attach to shapes (Settings ▸ Canvas, on by
-   * default); Cmd/Ctrl turns it over for a drag, as Excalidraw's.
+   * default); Cmd/Ctrl turns it over for a drag.
    */
   bindingEnabled?: () => boolean;
   /** Whether an end snaps to a side's middle (Settings ▸ Canvas, on by default). */
   midpointSnap?: () => boolean;
   /**
    * How far an arrow's label is dragged before it slides, in scene units:
-   * Excalidraw's 10 screen px (`--size-label-drag`) over the zoom.
+   * 10 screen px (`--size-label-drag`) over the zoom.
    */
   labelDrag?: () => number;
   /** How a code block is measured: the mono advance, line height and padding. */
   codeMetrics?: (element?: SceneElement) => CodeMetrics;
   /**
    * Whether a moved, resized or drawn shape snaps to other elements
-   * (Settings ▸ Canvas, off by default); Cmd/Ctrl turns it over for a drag,
-   * as Excalidraw's.
+   * (Settings ▸ Canvas, off by default); Cmd/Ctrl turns it over for a drag.
    */
   objectSnap?: () => boolean;
   /** How near an alignment snaps, in scene units: `--size-snap-distance` over the zoom. */
@@ -238,7 +235,7 @@ type Drag = {
   /**
    * Set in point editing when the press took points: they move together.
    * `deselect`: a Shift-press on a selected point, which drops it only if the
-   * press is released without a drag (Excalidraw's).
+   * press is released without a drag, so a Shift-drag moves it with the rest.
    */
   points?: { id: ElementId; indices: number[]; original: SceneElement; deselect?: number };
   /** Set in point editing for a press that changes nothing when dragged. */
@@ -262,7 +259,7 @@ type Drag = {
   pendingClear?: boolean;
   /**
    * Snapping to objects, gathered at the first move that needs it and kept
-   * for the drag (Excalidraw's cache): for a move, for an Alt-copy (whose
+   * for the drag, not gathered again each frame: for a move, for an Alt-copy (whose
    * originals stay put, so they are targets), and for a resize or drawing.
    */
   snap?: { move?: SnapSource; copy?: SnapSource; corners?: References };
@@ -298,8 +295,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   let mod = false;
   /**
    * Alt and Cmd/Ctrl as they were at the press that started a line or arrow:
-   * they decide its start end (pinned, or free), as Excalidraw reads them
-   * (`App.tsx:10142-10148`, `:10404`); the release decides the other end.
+   * they decide its start end (pinned, or free); the release decides the
+   * other end.
    */
   let pressed = { alt: false, mod: false };
   // Point editing: the line or arrow whose points are being edited,
@@ -355,7 +352,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   // The guides of the last drag frame, or of the pointer hovering with a tool
   // that draws a box.
   let guides: Guide[] = [];
-  /** Whether a tool places a box, whose corner snaps (Excalidraw's shape, frame and text tools). */
+  /** Whether a tool places a box, whose corner snaps (the shape, frame and text tools). */
   const placesBox = (tool: ToolId) => BOX_TOOLS.has(tool);
   /** Whether a new arrow would be an elbow, by the style it would take. */
   const drawsElbow = () => (newStyle('arrow') as { arrowType?: unknown }).arrowType === 'elbow';
@@ -390,14 +387,13 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       if (isLocked(e)) return false;
       if (!isLinear(e.type)) return containsPoint(e, point);
       if (nearElement(e, point, tolerance) || insideFilledLine(e, point)) return true;
-      // An arrow's label is part of it where it reaches past the line
-      // (Excalidraw's `App.tsx:6844-6852`).
+      // An arrow's label is part of it where it reaches past the line.
       if (e.type === 'arrow' && 'label' in e && e.label) {
         const box = options.labelBounds?.(e.id);
         if (box && point.x >= box.x && point.x <= box.x + box.w && point.y >= box.y && point.y <= box.y + box.h) return true;
       }
       // Selected alone and showing a box (a bent line), it is hit anywhere in
-      // the box as drawn, its padding included (Excalidraw's `App.tsx:6824-6842`).
+      // the box as drawn, its padding included.
       if (selection.ids.length !== 1 || !selection.has(e.id)) return false;
       const chrome = chromeFor([e], editingFor([e], currentEditing()?.id ?? null, editingText()));
       return chrome.box && containsPoint({ ...e, ...grown(e, chrome.padded ? bentBoxPadding() : tolerance) }, point);
@@ -414,7 +410,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   }
 
   /**
-   * What a drag of the body moves, as Excalidraw's (`dragElements.ts:46-67`):
+   * What a drag of the body moves:
    * an attached elbow alone not at all (its route belongs to its shapes), and
    * an elbow attached at both ends only when both its shapes move too.
    */
@@ -431,8 +427,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
   /**
    * What moves with a drag, plus every arrow with both ends on one shape
-   * that moves: its bends go with it (Excalidraw's
-   * `linearElementEditor.ts:1706-1713`).
+   * that moves: its bends go with it.
    */
   function withLoops(targets: SceneElement[]): SceneElement[] {
     const ids = new Set(targets.map((e) => e.id));
@@ -485,7 +480,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
     /**
      * Whether undo and redo must wait: a drag is down or a line is being
-     * drawn by clicks (Excalidraw's `actions/actionHistory.tsx:26-45`).
+     * drawn by clicks, so an undo never lands in the middle of a gesture.
      */
     get holdsHistory(): boolean {
       return drag !== null || clicking !== null;
@@ -566,7 +561,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
     /**
      * The spots an elbow end being dragged can snap to on the shape it would
-     * attach to, for the stage to show as dots (Excalidraw's elbow midpoints).
+     * attach to, for the stage to show as dots.
      * Empty for any other drag.
      */
     get snapSpots(): Point[] {
@@ -574,7 +569,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const elbowEnd = Boolean(drag?.endpoint && isElbow(drag.endpoint.original));
       // An elbow shows every middle it can snap to; a straight or curved
       // arrow the nearest, once the end is within twice the reach of it and
-      // outside the shape (Excalidraw's `interactiveScene.ts:503-529`).
+      // outside the shape.
       const end = drag?.endpoint ? (endAim ?? lastPoint) : drag && tools.active === 'arrow' ? lastPoint : null;
       if (!end) return [];
       return this.bindingCandidates.flatMap((id) => {
@@ -632,7 +627,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         // An elbow's segment handle.
         const segment = end ? null : segmentAt(point);
         // Every handle beats the label over it, a middle included, so a
-        // labelled arrow can still be bent (as Excalidraw's); the rest of the
+        // labelled arrow can still be bent; the rest of the
         // label slides it.
         const label = end || focus || segment || bend ? null : labelAt(point);
         if (end || focus || bend || segment || label) {
@@ -692,7 +687,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
       let pendingClick: Drag['pendingClick'];
       // Empty space between selected shapes is still the selection: a press
-      // there drags it (Excalidraw does the same), and a click clears it.
+      // there drags it, and a click clears it.
       const insideSelection =
         tools.active === 'select' && hits.length === 0 && !options.additive && selection.ids.length > 1 && withinSelection(point);
       if (tools.active === 'select' && hits.length > 0) {
@@ -711,8 +706,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         originals.set(element.id, { x: element.x, y: element.y });
       }
 
-      // A box tool starts where the pointer snapped while hovering (Excalidraw's
-      // `originSnapOffset`); Cmd/Ctrl as pressed decides it.
+      // A box tool starts where the pointer snapped while hovering, where its
+      // guide showed; Cmd/Ctrl as pressed decides it.
       const start = tools.active !== 'select' && placesBox(tools.active) ? snappedStart(point, Boolean(options.mod)) : null;
       const origin = start?.point ?? point;
       guides = start?.guides ?? [];
@@ -741,7 +736,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       mod = Boolean(options.mod);
       lastPoint = point;
       if (!drag) {
-        // Before a box is drawn, where its start would snap (Excalidraw's).
+        // Before a box is drawn, where its start would snap.
         guides = placesBox(tools.active) ? snappedStart(point, mod).guides : [];
         return;
       }
@@ -777,7 +772,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       if (!clicking) return null;
       const last = clicking.points[clicking.points.length - 1];
       // Back on the last point, the next segment is not drawn: a click there
-      // finishes (Excalidraw's `App.tsx:8066-8101`). Shift snaps it to 15°.
+      // finishes. Shift snaps it to 15°.
       const onLast = Math.hypot(point.x - last.x, point.y - last.y) <= confirmDistance();
       const next = options.shift ? snapAngle(last, point) : point;
       const points = onLast ? clicking.points : [...clicking.points, next];
@@ -791,7 +786,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     /**
      * While Alt is held in point editing, the line with the point an
      * Alt-click would add, running to `point` (Shift snaps it); null
-     * otherwise (Excalidraw's `linearElementEditor.ts:1099-1140`).
+     * otherwise.
      */
     appendPreview(point: Point, options: { shift?: boolean } = {}): SceneData | null {
       const editing = currentEditing();
@@ -847,7 +842,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const editing = currentEditing();
       if (!editing) return false;
       // With none selected, nothing: deleting the line is most likely a
-      // mistake (Excalidraw's `actionDeleteSelected.tsx:225-231`).
+      // mistake.
       if (editing.selected.length === 0) return true;
       this.removeSelectedPoints();
       return true;
@@ -899,8 +894,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const gone = new Set(editing.selected);
       // A closed line loses its first and last together, and closes again.
       const loop = isClosed(base) ? removeFromLoop(all, gone) : null;
-      // Fewer than two left is no line: it goes, as Excalidraw's
-      // (`actionDeleteSelected.tsx:233-251`).
+      // Fewer than two left is no line: it goes.
       // A loop counts its closing point once.
       if ((loop ? loop.points.length / 2 - 1 : all.length / 2 - gone.size) < 2) {
         history.mutate((scene) => {
@@ -931,7 +925,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     /**
      * Duplicate the selected points, as one step: each gains a copy halfway
      * to the next point, and the last one a copy 30, 30 away; the copies are
-     * selected (Excalidraw's `linearElementEditor.ts:1500-1574`). Returns
+     * selected. Returns
      * whether it did, so `⌘`/`Ctrl`+`D` duplicates nothing else.
      */
     duplicatePoints(): boolean {
@@ -967,7 +961,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       return true;
     },
 
-    /** Select All while editing points does nothing (Excalidraw's). Whether it took it. */
+    /** Select All while editing points does nothing, so the line stays the one edited. Whether it took it. */
     selectAll(): boolean {
       return currentEditing() !== null;
     },
@@ -1140,21 +1134,20 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         const next = shift ? snapAngle(last, point) : point;
         const first = clicking.points[0];
         // A line clicked back on its first point finishes there, closed into a
-        // loop when it has a corner to go round (Excalidraw's `isPathALoop`).
+        // loop when it has a corner to go round.
         if (clicking.type === 'line' && clicking.points.length >= 2 && Math.hypot(next.x - first.x, next.y - first.y) <= confirmDistance()) {
           clicking.points.push({ ...first });
           finishClicking({ closed: clicking.points.length >= 4 });
           return null;
         }
         clicking.points.push(next);
-        // An elbow is only its two ends: the second click finishes it
-        // (Excalidraw's `App.tsx:10180-10191`).
+        // An elbow is only its two ends: the second click finishes it.
         if (clicking.type === 'arrow' && drawsElbow()) {
           finishClicking();
           return null;
         }
-        // An arrow clicked just outside a shape attaches there and finishes
-        // (Excalidraw's `App.tsx:10221-10255`); inside one it is a point.
+        // An arrow clicked just outside a shape attaches there and finishes;
+        // inside one it is a point.
         if (clicking.type === 'arrow' && attaching()) {
           const target = targetAt(history.current, next, clicking.id, reach());
           if (target && !isInside(target, next)) finishClicking();
@@ -1232,7 +1225,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       // One step for the whole gesture, however many move events it had.
       copied = [];
       // A line or arrow press released before the minimum length starts one
-      // drawn click by click, from where the press was (Excalidraw's).
+      // drawn click by click, from where the press was.
       if ((tools.active === 'line' || tools.active === 'arrow') && Math.hypot(point.x - started.origin.x, point.y - started.origin.y) < minLinear()) {
         clicking = { type: tools.active, points: [started.origin], id: started.newId };
         return null;
@@ -1322,7 +1315,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const base = unturned(original);
       const points = [...(('points' in base ? base.points : []) as number[])];
       // One point with Shift snaps to 15° about its neighbour, or to the angle
-      // it started at (Excalidraw's `linearElementEditor.ts:542-556`).
+      // it started at.
       if (shift && indices.length === 1 && points.length >= 4) {
         const index = indices[0];
         const next = index === 0 ? 1 : index - 1;
@@ -1354,7 +1347,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
     if (started.label) {
       const { id, original } = started.label;
-      // A label slides only once dragged a little way, as Excalidraw's.
+      // A label slides only once dragged a little way, so a click on it does not.
       if (Math.hypot(point.x - started.origin.x, point.y - started.origin.y) <= labelDrag()) return null;
       const props = original as SceneElement & ArrowProps;
       // The path as drawn, which the stage centres the label on.
@@ -1412,7 +1405,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
     if (started.segment) {
       const { id, index, original } = started.segment;
-      // It moves at once, as Excalidraw's; a click without moving fixes nothing.
+      // It moves at once; a click without moving fixes nothing.
       if (point.x === started.origin.x && point.y === started.origin.y) return null;
       const points = ('points' in original ? original.points : []) as number[];
       const world: Point[] = [];
@@ -1439,8 +1432,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const { id, index, insert, original, at } = started.bend;
       // A click on a handle is not a drag: it neither moves nor adds a point.
       if (!farEnough(started.origin, point)) return null;
-      // A middle adds a bend only once dragged a little way, as Excalidraw's.
-      // In point editing it adds one at once (Excalidraw's).
+      // A middle adds a bend only once dragged a little way, so a click does
+      // not bend. In point editing it adds one at once.
       if (insert && pointEditing?.id !== id && Math.hypot(point.x - started.origin.x, point.y - started.origin.y) < bendInsertDistance()) return null;
       // A turned line has its turn written into its points first, so the
       // edit is in scene space and nothing else it draws moves.
@@ -1491,12 +1484,11 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const aimed = aimedPoint(point, started, started.endpoint.at, neighbour);
       endAim = aimed;
       // With Shift the shape is the one under the pointer, not under the
-      // snapped end, and the side-middle snap is off (Excalidraw's
-      // `element/src/binding.ts:733-749`).
+      // snapped end, and the side-middle snap is off.
       const grabbed = { x: point.x + started.endpoint.at.x - started.origin.x, y: point.y + started.endpoint.at.y - started.origin.y };
       const target = attaching() ? targetAt(history.current, shift ? grabbed : aimed, id, reach()) : undefined;
-      // Both ends on one shape: allowed, both pinned where they are
-      // (Excalidraw's `element/src/binding.ts:777-828`); an elbow routes round it.
+      // Both ends on one shape: allowed, both pinned where they are; an
+      // elbow routes round it.
       const sameShape = Boolean(target) && target!.id === other && !elbow;
       // The other end, which the edge anchor is carried from: its own anchor
       // on a two-point arrow attached there, else the neighbouring point.
@@ -1539,7 +1531,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       // frame, and the result is put back where that frame leaves it.
       const local = deltaInFrame(dx, dy, angle);
       // An upright resize snaps the corners its handle moves, before Shift
-      // keeps the ratio; a single turned element never snaps (Excalidraw's).
+      // keeps the ratio; a single turned element never snaps.
       if (angle === 0 && snapping()) {
         started.snap ??= {};
         started.snap.corners ??= snapReferences(history.current, [...originals.keys()], visibleBox(), false);
@@ -1595,8 +1587,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       // Under the threshold a press is a click, in the preview as on release.
       if (!farEnough(started.origin, point)) return null;
       // A lone attached arrow needs a real drag before it lets go of its
-      // shapes: a nudge while selecting it would (Excalidraw's
-      // `dragElements.ts:130-158`).
+      // shapes: a nudge while selecting it would otherwise detach it.
       if (started.moving.length === 1) {
         const only = history.current.elements.find((e) => e.id === started.moving[0]);
         const { start, end } = only?.type === 'arrow' ? bindingsOf(only) : {};
@@ -1611,7 +1602,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         else dx = 0;
       }
       // Snapping adds its offset after the Shift lock, on both axes, so a
-      // locked drag can still settle into line (Excalidraw's).
+      // locked drag can still settle into line.
       guides = [];
       if (snapping()) {
         const source = snapSource(started, alt);
@@ -1670,7 +1661,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           element.x = tidy(from.x + dx);
           element.y = tidy(from.y + dy);
           // An attached arrow moved by its body lets go of every shape not
-          // moving with it (Excalidraw does the same); otherwise re-aiming
+          // moving with it; otherwise re-aiming
           // would pull its ends back and undo the move without a word.
           if (element.type === 'arrow') {
             const bound = element as SceneElement & Record<string, unknown>;
@@ -1697,7 +1688,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
     const type = tools.active;
     const linear = type === 'line' || type === 'arrow';
-    // A box's dragged corner snaps to other elements' points (Excalidraw's).
+    // A box's dragged corner snaps to other elements' points.
     let corner = point;
     guides = [];
     if (!linear && placesBox(type) && snapping()) {
@@ -1708,8 +1699,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     }
     // Shift constrains: a square box, or an angle in 15° steps.
     const end = shift && linear ? snapAngle(started.origin, point) : corner;
-    // Under the minimum length it is still drawn (Excalidraw's, from the
-    // first move): released there, `up` goes on drawing it click by click.
+    // Under the minimum length it is still drawn, from the first move: released there, `up` goes on drawing it click by click.
     const raw = shift && !linear ? squareBox(started.origin, corner) : boxBetween(started.origin, end);
     // Tidy: a zoom or fractional pan leaves 83.33333333333333, written into
     // the user's file otherwise.
@@ -1865,7 +1855,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   /**
    * After a draw: back to Select with the new element selected; with the tool
    * locked, the tool stays and nothing is selected, so the next press draws
-   * again (Excalidraw's `App.tsx:11791-11817`).
+   * again.
    */
   function afterDraw(id: ElementId): void {
     if (tools.locked) {
@@ -1898,8 +1888,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
   /**
    * A line or arrow settled around points some of which moved: a closed line
    * keeps its first and last together; a line's end dropped within the
-   * closing distance of its other end snaps onto it and closes the line
-   * (Excalidraw's `linearElementEditor.ts:738-775`).
+   * closing distance of its other end snaps onto it and closes the line.
    */
   function settleLine(base: SceneElement, points: number[], moved: number[]): SceneElement {
     if (isClosed(base)) return settledAround(base, keepLoop(points, moved));
@@ -1967,7 +1956,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     }
     if (options.alt) {
       // After the last point, or before an attached end; selected, and the
-      // same press drags it (Excalidraw's `linearElementEditor.ts:1258-1335`).
+      // same press drags it.
       const count = drawn.length / 2;
       // Before an attached end, or a closed line's closing point, which stay.
       const endBound = (element.type === 'arrow' && (element as SceneElement & ArrowProps).endBinding !== undefined) || isClosed(element);
@@ -2138,8 +2127,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 
   /**
    * Whether an end dropped at `point` on `target` is pinned inside it: strictly
-   * inside its drawn outline, or anywhere on it with Alt (Excalidraw's
-   * "inside" mode). An elbow end never is: it keeps to a side.
+   * inside its drawn outline, or anywhere on it with Alt. An elbow end never is: it keeps to a side.
    */
   function pinnedAt(target: SceneElement, point: Point, arrow?: SceneElement, held = alt): boolean {
     if (arrow && isElbow(arrow)) return false;
@@ -2175,9 +2163,8 @@ export function createPointerHandler(options: PointerHandlerOptions) {
 }
 
 /**
- * An arrow resized or turned lets go of every shape not transformed with it
- * (Excalidraw's `resizeElements.ts:241-252`, `:464-475`, `:930-945`): alone,
- * of both; its binding, anchor and mode go together.
+ * An arrow resized or turned lets go of every shape not transformed with it:
+ * alone, of both; its binding, anchor and mode go together.
  */
 function letGoOutside(element: SceneElement, kept: Set<ElementId>): SceneElement {
   if (element.type !== 'arrow') return element;
@@ -2194,19 +2181,18 @@ function letGoOutside(element: SceneElement, kept: Set<ElementId>): SceneElement
   return changed ? (record as unknown as SceneElement) : element;
 }
 
-/** How far a lone attached arrow is dragged before it moves, in scene units (Excalidraw's 10). */
+/** How far a lone attached arrow is dragged before it moves, in scene units. */
 const LONE_ARROW_DRAG = 10;
 
 /**
  * How far Duplicate puts the copy of a line's last point, in scene units
- * (Excalidraw's 30, 30, `linearElementEditor.ts:1500-1574`).
+ * (30, 30), clear of the point it copies.
  */
 const DUPLICATE_POINT_OFFSET = 30;
 
 /**
- * Put an arrow just above the shape it attaches to when it is below it, as
- * Excalidraw's `moveArrowAboveBindable` (`element/src/zindex.ts:153-187`):
- * whatever sat above the shape moves up one to make room.
+ * Put an arrow just above the shape it attaches to when it is below it, so
+ * the shape never hides it: whatever sat above the shape moves up one to make room.
  */
 function raiseAbove(elements: SceneElement[], id: ElementId, targetId: ElementId): void {
   const arrow = elements.find((e) => e.id === id);

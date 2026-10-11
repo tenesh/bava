@@ -25,9 +25,9 @@ As a tag is typed, capitals become lowercase and a space becomes a dash
 spaces (`Launch`, `Road Map`) is shown and matched converted, and the file
 is rewritten only when that page's tags are edited.
 
-### 4. Tags sit at the bottom of the page, as Confluence's labels (2026-10-06)
+### 4. Tags sit at the bottom of the page (2026-10-06)
 
-The user: "should be like confluence page, at the bottom of the page." A
+Chosen by the user: the tags close the page, out of the way of its title. A
 row of grey chips after the page's content, before Linked from, with
 "+ Add tag" at its end. Decision 66's "under its title" is replaced.
 

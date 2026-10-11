@@ -4,8 +4,8 @@ import { createHistory } from './history';
 import type { SceneElement } from './scene';
 
 // With the Text tool, a click by a free arrow end starts a text
-// there that the end attaches to, the arrow staying where it is
-// (Excalidraw's `element/src/arrowEndpointText.ts`).
+// there that the end attaches to, the arrow staying where it is, so a
+// label can be added to an end without redrawing the arrow.
 const arrow = (over: Record<string, unknown> = {}) =>
   ({ id: 'r', type: 'arrow', x: 0, y: 0, w: 100, h: 0, z: 1, points: [0, 0, 100, 0], ...over }) as never as SceneElement;
 const measure = () => ({ width: 40, height: 20 });

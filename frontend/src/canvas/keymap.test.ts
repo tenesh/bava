@@ -41,7 +41,7 @@ describe('keymap', () => {
     expect(a.nudge).toHaveBeenCalledWith(0, -1);
   });
 
-  // Excalidraw's step: 1, or 5 with Shift, so moving far by keyboard is not
+  // A step of 1, or 5 with Shift, so moving far by keyboard is not
   // a hundred presses.
   it('nudges five with Shift held', () => {
     const a = actions();
@@ -136,7 +136,7 @@ function eventFor(accelerator: string, primary: 'metaKey' | 'ctrlKey'): Keyboard
   });
 }
 
-// Q keeps the tool after drawing, as Excalidraw's.
+// Q keeps the tool after drawing, for drawing several of a kind in a row.
 describe('the tool lock key', () => {
   it('toggles the lock on Q, not with a modifier', () => {
     const a = actions();

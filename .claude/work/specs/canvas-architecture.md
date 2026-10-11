@@ -130,12 +130,13 @@ for arrow geometry, `@dagrejs/dagre` (MIT) for optional auto-arrange, `rbush`
 (MIT) for spatial indexing when element counts climb, `roughjs` (MIT) if a
 hand-drawn style is wanted.
 
-Rejected: **tldraw**, whose licence is not a standard open-source licence;
-**elkjs**, EPL-2.0/GPL where dagre is MIT and does the same job; embedding
-**Excalidraw**, which is MIT but would put React inside a Svelte app.
+Rejected: a ready-made whiteboard library whose licence is not a standard
+open-source licence; **elkjs**, EPL-2.0/GPL where dagre is MIT and does the
+same job; embedding a ready-made MIT whiteboard editor, which would put React
+inside a Svelte app.
 
 ## What Bava will not have
 
 Real-time collaboration, shareable canvas links, and third-party integrations
-(Confluence, Notion, GitHub) all require a backend. They are ruled out by the
+(hosted wikis, note apps, GitHub) all require a backend. They are ruled out by the
 first non-negotiable, not by effort. Comments exist as local annotations.

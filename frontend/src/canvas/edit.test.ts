@@ -247,7 +247,7 @@ describe('duplicate with an offset and names', () => {
 });
 
 // Arrow keys leave an attached arrow alone unless its shapes move
-// too (Excalidraw's `App.tsx:5812-5835`).
+// too, so a nudge never pulls an arrow off its shapes.
 describe('what arrow keys move', () => {
   it('leaves out an arrow whose shape is not moving with it', () => {
     const scene = {
@@ -263,8 +263,8 @@ describe('what arrow keys move', () => {
   });
 });
 
-// Flipping as Excalidraw's `actionFlip.ts:110-195`.
-describe('flipping, as Excalidraw', () => {
+// Flipping a selection about its centre.
+describe('flipping', () => {
   it('swaps the heads of a selection of attached arrows only, moving nothing', () => {
     const scene = createScene({
       elements: [

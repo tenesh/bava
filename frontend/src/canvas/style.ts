@@ -86,7 +86,7 @@ const NOT_A_STYLE: PropertyKey[] = ['arrowType', 'language'];
 /**
  * The style of one element, for Paste Styles: its colours, and the other
  * style keys it takes (width, line style, opacity, edges, text size and
- * alignment, an arrow's heads), as Excalidraw's `actionStyles.ts:118-186`.
+ * alignment, an arrow's heads).
  */
 export function copyStyle(element: SceneElement): CopiedStyle {
   const styled = element as unknown as Record<string, string | number | undefined>;
@@ -144,7 +144,7 @@ export type PropertyKey =
 
 export type PropertyValue = string | number;
 
-/** Shapes drawn as polygons: their corners can round. Excalidraw rounds these. */
+/** Shapes drawn as polygons: their corners can round. */
 const ROUNDABLE = new Set(['rect', 'diamond', 'hexagon', 'parallelogram', 'line']);
 
 const STROKE_KEYS: PropertyKey[] = ['strokeWidth', 'strokeStyle'];
@@ -215,8 +215,8 @@ export function applyProperty(
       // The element's own types name each key; a generic setter writes through
       // a record view of the same object.
       const styled = element as unknown as Record<string, PropertyValue | undefined>;
-      // A line and an arrow turn into each other through the kind picker
-      // (Excalidraw's `ConvertElementTypePopup.tsx:529-601`), points kept.
+      // A line and an arrow turn into each other through the kind picker,
+      // points kept.
       if (key === 'arrowType' && (element.type === 'line' || element.type === 'arrow')) {
         const kind = value ?? 'straight';
         const record = element as unknown as Record<string, unknown>;
@@ -235,7 +235,7 @@ export function applyProperty(
           for (const gone of ['edges', 'closed', 'fill']) delete record[gone];
         }
       }
-      // Switching kinds as Excalidraw does (`actionProperties.tsx:2077-2221`):
+      // Switching kinds:
       // only the ends are kept, where they are drawn, and each attached end
       // is attached again there by the new kind's rule. Becoming an elbow, the
       // arrow loses its turn and `reroute` routes it; an elbow end is never

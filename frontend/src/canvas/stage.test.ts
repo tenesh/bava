@@ -315,7 +315,7 @@ describe('CanvasStage', () => {
     });
   });
 
-  // The guides snapping draws, Excalidraw's, screen-sized.
+  // The guides snapping draws, screen-sized.
   describe('snap guides', () => {
     const guideTheme = reader({
       '--color-snap-guide': 'tomato',
@@ -554,7 +554,7 @@ describe('style properties on the stage', () => {
     expect(label.verticalAlign()).toBe('top');
   });
 
-  it('rounds a polygon shape proportionally, as Excalidraw does', () => {
+  it('rounds a polygon shape proportionally', () => {
     const stage = mounted(theme);
     const drawn = (element: Record<string, unknown>) => {
       stage.render(one({ type: 'diamond', x: 0, y: 0, w: 100, h: 60, ...element }));
@@ -800,8 +800,7 @@ describe('an arrow with a label', () => {
 // the user can see the attachment before letting go.
 describe('the attachment highlight', () => {
   // The shape's own outline in the highlight colour, as wide as
-  // its stroke within 1.75 and 4 screen px (Excalidraw's
-  // `interactiveScene.ts:292-557`).
+  // its stroke within 1.75 and 4 screen px.
   it('outlines the candidates it is given, and clears them', () => {
     const stage = newStage({ read: reader({ '--color-binding-highlight': 'orchid' }) });
     stage.mount(host());
@@ -824,7 +823,7 @@ describe('the attachment highlight', () => {
     expect(stage.bindingHighlights()).toHaveLength(0);
   });
   // While an elbow end is dragged, the spots it can snap to show
-  // as dots (Excalidraw's 4 px radius midpoints).
+  // as dots of 4 px radius.
   it('draws the snap spots it is given as dots, and clears them', () => {
     const stage = newStage({ read: reader({ '--color-selection-handle': 'dodgerblue', '--size-snap-dot': '8px' }) });
     stage.mount(host());
@@ -1262,7 +1261,7 @@ describe('the handles under a label', () => {
   });
 });
 
-// As Excalidraw shows it (transformHandles.ts:328-354): a two-point line or
+// A two-point line or
 // arrow, or an elbow, has no box; a bent one has the box with four corners
 // and the rotate handle.
 describe('what a selected line or arrow shows', () => {
@@ -1309,8 +1308,7 @@ describe('what a selected line or arrow shows', () => {
     expect(stage.rotateHandle()).not.toBeNull();
   });
 
-  // A bent line's box stands 10 px clear of its points
-  // (Excalidraw's `transformHandles.ts:312-316`); other boxes are tight.
+  // A bent line's box stands 10 px clear of its points; other boxes are tight.
   it("pads a bent line's box by 10 px, its handles with it", () => {
     const stage = selected({ type: 'line', x: 0, y: 0, w: 200, h: 80, points: [0, 0, 100, 80, 200, 0] });
     const outline = stage.selectionOutline()!;
@@ -1318,8 +1316,7 @@ describe('what a selected line or arrow shows', () => {
   });
 
   // A point on top of the one before it is drawn twice the size
-  // and hollow (1.5 times in point editing), so both can be seen and grabbed
-  // (Excalidraw's `interactiveScene.ts:268-289`, `:1120-1127`).
+  // and hollow (1.5 times in point editing), so both can be seen and grabbed.
   it('draws a point on its neighbour larger and hollow', () => {
     const stage = selected({ type: 'line', x: 0, y: 0, w: 200, h: 80, points: [0, 0, 100, 80, 101, 80, 200, 0] });
     const radii = stage.endpointHandles().map((h) => h.radius());
@@ -1392,8 +1389,8 @@ describe('a line in point editing', () => {
   });
 });
 
-// The line is hidden under its label's box plus 5, as Excalidraw's
-// `renderElement.ts:787-817`.
+// The line is hidden under its label's box plus 5, so the label reads clear
+// of it.
 describe("the line under an arrow's label", () => {
   it('is clipped out where the label sits, and only when there is one', () => {
     const stage = mounted(themeA);

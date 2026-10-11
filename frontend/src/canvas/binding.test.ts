@@ -12,8 +12,8 @@ const at = (point: { x: number; y: number }) => [close(point.x), close(point.y)]
 describe('where an arrow touches a shape', () => {
   const box = el({ x: 0, y: 0, w: 100, h: 60 });
 
-  // Aim at the centre, stop at the outline, a gap clear of it: the rule the
-  // user picked, and what Excalidraw and Eraser do.
+  // Aim at the centre, stop at the outline, a gap clear of it, so the head
+  // never sits on the line it points at.
   it('meets the edge facing the other end, with the gap', () => {
     // From the right: the anchor is on the right edge, at the centre height.
     expect(at(anchorOn(box, { x: 300, y: 30 }))).toEqual([100 + BINDING_GAP, 30]);
@@ -326,7 +326,7 @@ describe('an end with an anchor', () => {
   });
 });
 
-// As in Excalidraw, a target is found by how near its outline is, from inside
+// A target is found by how near its outline is, from inside
 // or out, within a reach that grows as the view zooms out, rather than only by
 // the pointer being strictly inside its box.
 describe('finding what an end attaches to', () => {
@@ -522,8 +522,7 @@ describe('the spots an elbow end shows', () => {
   });
 });
 
-// What an end attaches to, as Excalidraw's
-// `getHoveredElementForBinding` (`element/src/collision.ts:346-478`).
+// What an end attaches to: front to back, the smallest that holds it.
 describe('the shape an end attaches to', () => {
   const rect = (id: string, x: number, y: number, w: number, h: number, z: number, over: Record<string, unknown> = {}) =>
     ({ id, type: 'rect', x, y, w, h, z, ...over }) as never as SceneElement;
@@ -566,8 +565,8 @@ describe('the shape an end attaches to', () => {
   });
 });
 
-// The gap is 5 plus half the target's stroke width, as
-// Excalidraw's `getBindingGap` (`element/src/binding.ts:117`, `:125-131`).
+// The gap is 5 plus half the target's stroke width, so a head clears a
+// thick outline.
 describe('the gap an attached end keeps', () => {
   it('grows with the shape’s stroke width', () => {
     const thin = { id: 'a', type: 'rect', x: 0, y: 0, w: 100, h: 60, z: 1 } as never as SceneElement;
@@ -580,8 +579,7 @@ describe('the gap an attached end keeps', () => {
 
 // An end attached at the edge is stored as the drop point carried
 // onto the shape's nearer diagonal (centre lines for a curved shape), along
-// the line from the arrow's other end (`projectFixedPointOntoDiagonal`,
-// `element/src/utils.ts:810-903`).
+// the line from the arrow's other end.
 describe('where an edge anchor is stored', () => {
   const box = { id: 'a', type: 'rect', x: 0, y: 0, w: 100, h: 100, z: 1 } as never as SceneElement;
   const ellipse = { ...(box as object), type: 'ellipse' } as never as SceneElement;
@@ -606,7 +604,7 @@ describe('where an edge anchor is stored', () => {
 
 // An arrow never turns inside out: an end whose outline point is
 // inside the other, overlapping shape, or an arrow under 10 long, sits at its
-// anchor instead (`element/src/binding.ts:2037-2094`).
+// anchor instead.
 describe('an arrow between overlapping shapes', () => {
   it('ends at its anchor when its outline point is inside the other shape', () => {
     const data: SceneData = {
@@ -624,7 +622,7 @@ describe('an arrow between overlapping shapes', () => {
 });
 
 // The inside-out guard applies only between shapes of like
-// size (Excalidraw's area test), so a child's arrow to its container still
+// size (an area test), so a child's arrow to its container still
 // leaves the child's edge.
 describe('an arrow from a child to its container', () => {
   it('leaves the child from its edge', () => {

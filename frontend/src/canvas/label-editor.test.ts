@@ -273,7 +273,7 @@ describe('finding a code block to edit', () => {
 
 // The field is where the text is typed, so it must look like the text: the
 // element's font, size, colour, alignment and opacity, at the current zoom,
-// with nothing around it (Excalidraw's wysiwyg does the same).
+// with nothing around it, so typing never shifts the text it becomes.
 describe('the editor looks like the text it edits', () => {
   const font = { family: 'Geist', size: 28, lineHeight: 1.2, align: 'right' as const, verticalAlign: 'middle' as const, colour: 'red' };
 

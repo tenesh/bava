@@ -1,5 +1,4 @@
-// Spacing. 4px unit, desktop density, calibrated against Linear and Zed, not
-// against web layouts.
+// Spacing. 4px unit, desktop density, as a native editor, not a web layout.
 :root {
   // Hairline gaps: between a segmented control's options, a toolbar's buttons.
   --space-half: 2px;
@@ -149,20 +148,20 @@
   --size-handle-border: 1.5px;
   // How far an elbow's route keeps from the shapes it joins (canvas/elbow.ts).
   --size-elbow-margin: 40px;
-  // How near a line counts as a click on it: Excalidraw's 0.85 × 8 = 6.8 px.
+  // How near a line counts as a click on it: 0.85 × 8 = 6.8 px.
   --size-hit-tolerance: 7px;
   // How far a press must travel, on screen, before it is a drag, not a click.
   --size-drag-threshold: 3px;
   // The shortest segment, on screen, that offers a handle at its middle to
-  // bend it (Excalidraw hides its midpoint handles under 40px).
+  // bend it; a shorter one is too small to grab.
   --size-bend-min-segment: 40px;
-  // A line's or arrow's point handle, and a segment's middle: Excalidraw's
+  // A line's or arrow's point handle, and a segment's middle: a
   // 5 px radius (this is the diameter), taken from within 11 px.
   --size-point-handle: 10px;
   --size-point-hit: 11px;
-  // A point handle while editing a line's points: Excalidraw's 10 px radius.
+  // A point handle while editing a line's points: a 10 px radius.
   --size-point-handle-editing: 20px;
-  // The spots an elbow end snaps to, shown while one is dragged: Excalidraw's
+  // The spots an elbow end snaps to, shown while one is dragged: a
   // 4 px radius (this is the diameter).
   --size-snap-dot: 8px;
   // The Files tree: how far each folder level indents, and the
@@ -172,7 +171,7 @@
   // How far a pane splitter's handle answers the pointer on each side of its
   // drawn line.
   --size-splitter-reach: 3px;
-  // Snapping to objects, Excalidraw's values: the reach,
+  // Snapping to objects: the reach,
   // 8 px on screen at any zoom; a guide line's width; the cross at each
   // aligned point, 2 px each way (this is end to end); and a spacing
   // guide's end ticks, 8 px each way, and its two middle marks, 4 px each
@@ -182,30 +181,30 @@
   --size-snap-cross: 4px;
   --size-snap-gap-tick: 16px;
   --size-snap-gap-mark: 8px;
-  // The translucent disc under the handle the pointer is over: Excalidraw's
+  // The translucent disc under the handle the pointer is over: a
   // 10 px radius.
   --size-point-hover: 20px;
-  // The disc on an attached arrow end's anchor: Excalidraw's focus point,
+  // The disc on an attached arrow end's anchor: its focus point,
   // 10 / 1.5 / 1.5 px in radius (this is the diameter, rounded).
   --size-focus-point: 9px;
   // A point this near the one before it is drawn larger, so both show
-  // (Excalidraw's 2 px).
+  // (2 px).
   --size-point-overlap: 2px;
-  // How far an arrow's label is dragged before it slides (Excalidraw's 10).
+  // How far an arrow's label is dragged before it slides.
   --size-label-drag: 10px;
   // How far from a code block's left corner its language is named.
   --size-code-language-inset: 12px;
   // How far round that name its border is hidden.
   --size-code-language-clearance: 4px;
   // A bent line's selection box stands this clear of it, so its corner
-  // handles are not on its points (Excalidraw's 10 px).
+  // handles are not on its points.
   --size-bent-box-padding: 10px;
   // How far a segment's middle is dragged before it adds a bend, and the
-  // shortest line or arrow a drag draws (Excalidraw's 10 and 20).
+  // shortest line or arrow a drag draws.
   --size-bend-insert: 10px;
   --size-min-linear: 20px;
   // While drawing a line click by click, a click this near the last point
-  // finishes it (Excalidraw's LINE_CONFIRM_THRESHOLD).
+  // finishes it.
   --size-line-confirm: 8px;
   // How far the rotate handle sits above the selection, clear of the top one.
   --size-rotate-gap: 16px;
