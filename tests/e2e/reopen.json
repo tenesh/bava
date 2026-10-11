@@ -49,6 +49,8 @@
     { "do": "key", "text": "Escape" },
     { "do": "menu", "target": "file.exportSpace" },
     { "do": "wait", "target": "[role='dialog']", "text": "Export Space" },
+    { "do": "click", "target": "[role='dialog'] .bava-segment[data-value='zip']" },
+    { "do": "wait", "target": "[role='dialog'] .bava-button.primary", "text": "Export zip" },
     { "do": "click", "target": "[role='dialog'] .bava-button.primary" },
     { "do": "gone", "target": "[role='dialog']" },
     { "do": "zip", "target": "Smoke.zip", "text": "holds=First page.md,Goal.md,.bava/attachments/logo.png,.bava/space.json; lacks=.bava/trash" },
