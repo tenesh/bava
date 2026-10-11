@@ -278,8 +278,9 @@ History belongs in each plan's As built, not here.
   walk was taught that Export Space opens on PDF). **R1** (the move to
   Tharabyte, `.claude/work/plans/R1-move-to-tharabyte.md`) is under way:
   the repository is `tharabyte/bava`; R1a (the rename) is built, not yet
-  seen on CI. Next R1b (no other apps, the AI disclosure), then the store
-  and sandbox spec, then 15.3 import and 15.4 the canvas work. The
+  seen on CI. Next R1b (no other apps, the AI disclosure), then R2 (the
+  stores' sandboxes, a sandboxed run on CI first; the roadmap's R1 and R2
+  section), then 15.3 import and 15.4 the canvas work. The
   roadmap (`.claude/plan/roadmap.md`) holds the sequence.
 - **CI** builds a downloadable app per system on every run (artifacts
   `bava-<os>-<commit>`, 14 days).

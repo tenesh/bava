@@ -549,6 +549,38 @@ holding, and the file format unchanged (`go test ./internal/format`).
 
 ---
 
+## R1 and R2: Tharabyte, and the stores' sandboxes *(added 2026-10-11, before 15.3)*
+
+**R1: the move to Tharabyte** (`.claude/work/plans/R1-move-to-tharabyte.md`,
+`.claude/work/specs/release.md`). R1a the rename (module, app ID,
+publisher); R1b no other apps named, the rule, and `AI.md`; then the
+history rewrite, run by the user.
+
+**R2: the stores' sandboxes, proven first.** Bava ships only through the
+Mac App Store, the Microsoft Store and Flathub (`release.md` decision 1).
+Two of them sandbox the app: it may touch only what the user chose through
+the system's own dialogs, and must ask the system again to reopen a Space
+later (on macOS a security-scoped bookmark, on Flathub a portal). Today's
+end-to-end walks run the plain binary, unsandboxed, so nothing proves Bava
+works inside a store's sandbox. R2, in order:
+- **A spec** (`.claude/work/specs/stores.md`), one question at a time: how
+  a Space, a loose page, recent Spaces, the pickers, import and export
+  reach files under each sandbox; where settings and logs land; what the
+  Microsoft Store's MSIX (full trust, virtualised files) changes.
+- **A sandboxed run on CI first**, after another project's
+  self-test: the end-to-end build packaged and signed as a store would ship
+  it (macOS: an ad-hoc signed `.app` with the App Sandbox entitlements;
+  Windows: an MSIX CI signs and installs; Linux: a Flatpak once its
+  manifest exists), running the walks, its result read from where the
+  sandbox puts it. Expected to fail at first; the failures guide the file
+  access work.
+- **The file access each sandbox needs**, until the sandboxed walks pass.
+  Before 15.3, since import reaches files the same way.
+
+Store signing, listings and submission stay in Milestone 16.
+
+---
+
 ## Milestone 15: Export, import and search *(under way: 15.1 and 15.2a to 15.2d committed 2026-10-11, CI green; R1, the move to Tharabyte, comes before 15.3; moved up to follow Milestone 8, 2026-09-27; its number kept so references hold)*
 
 **Goal:** Get work out of Bava and into it, and find things across a Space.
