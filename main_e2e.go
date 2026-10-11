@@ -35,7 +35,18 @@ func smokeRun(_ func() *application.App, closeSession func()) (application.Servi
 	// scenarios and fixtures built into it, and BAVA_E2E_SCENARIO is a
 	// scenario's name.
 	capture := e2e.Capture
-	if os.Getenv("BAVA_E2E_SANDBOX") == "1" {
+	name := os.Getenv("BAVA_E2E_SCENARIO")
+	sandboxed := os.Getenv("BAVA_E2E_SANDBOX") == "1"
+	// A package the system starts gets no environment: the walk is named in
+	// a file in the home, and runs as it does in a sandbox.
+	if name == "" {
+		if home, err := os.UserHomeDir(); err == nil {
+			if from, ok := e2e.RunFile(home); ok {
+				name, sandboxed = from, true
+			}
+		}
+	}
+	if sandboxed {
 		// The sandbox may refuse the screenshot tool: a picture is noted
 		// missing, never a reason the walk fails.
 		capture = func(path string) error {
@@ -53,7 +64,7 @@ func smokeRun(_ func() *application.App, closeSession func()) (application.Servi
 			os.Exit(2)
 		}
 		read = func() ([]byte, error) {
-			return smokeScenarios.ReadFile("tests/e2e/" + os.Getenv("BAVA_E2E_SCENARIO") + ".json")
+			return smokeScenarios.ReadFile("tests/e2e/" + name + ".json")
 		}
 	}
 	vars := map[string]string{"SCRATCH": scratch, "REPO": repo}

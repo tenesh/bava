@@ -11,7 +11,7 @@
     Name="com.tharabyte.bava"
     Publisher="CN=Tharabyte"
     Version="0.1.0.0" 
-    ProcessorArchitecture="arm64" />
+    ProcessorArchitecture="x64" />
   
   <Properties>
     <DisplayName>Bava</DisplayName>
@@ -29,7 +29,7 @@
   </Resources>
   
   <Applications>
-    <Application Id="com.tharabyte.bava" Executable="bava" EntryPoint="Windows.FullTrustApplication">
+    <Application Id="com.tharabyte.bava" Executable="bava.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="Bava"
         Description="Diagrams and documents, on your own disk."
@@ -41,7 +41,7 @@
       </uap:VisualElements>
       
       <Extensions>
-        <desktop:Extension Category="windows.fullTrustProcess" Executable="bava" />
+        <desktop:Extension Category="windows.fullTrustProcess" Executable="bava.exe" />
         
         
       </Extensions>

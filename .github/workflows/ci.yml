@@ -369,6 +369,93 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  # The walks from an installed package, as the Microsoft Store ships Bava:
+  # the end-to-end build packed as an MSIX, signed with a certificate made
+  # here (no account needed), installed and started by Windows. A package
+  # starts without the shell's environment, so each walk is named in
+  # ~/.bava-e2e and lays itself out in the home.
+  sandbox-windows:
+    name: packaged run (windows)
+    runs-on: windows-latest
+    needs: test
+    env:
+      VITE_BAVA_E2E: '1'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install wails3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.20
+
+      - name: build with the smoke driver
+        run: wails3 build EXTRA_TAGS=e2e
+
+      - name: pack, sign and install it as the Microsoft Store would
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+          $sdk = Split-Path $tool.FullName
+          $layout = "$env:RUNNER_TEMP\msix"
+          New-Item -ItemType Directory -Force "$layout\Assets" | Out-Null
+          Copy-Item bin\bava.exe $layout
+          Copy-Item build\windows\msix\app_manifest.xml "$layout\AppxManifest.xml"
+          # The tiles' real art comes with the store work; the icon stands in.
+          foreach ($tile in 'StoreLogo', 'Square150x150Logo', 'Square44x44Logo', 'Wide310x150Logo', 'SplashScreen') {
+            Copy-Item build\windows\appicon-windows.png "$layout\Assets\$tile.png"
+          }
+          & "$sdk\makeappx.exe" pack /d $layout /p "$env:RUNNER_TEMP\bava.msix" /o
+          if ($LASTEXITCODE) { throw "makeappx failed" }
+          $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=Tharabyte" -KeyUsage DigitalSignature -FriendlyName "Bava CI" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
+          $secret = ConvertTo-SecureString -String "ci" -Force -AsPlainText
+          Export-PfxCertificate -Cert $cert -FilePath "$env:RUNNER_TEMP\ci.pfx" -Password $secret | Out-Null
+          & "$sdk\signtool.exe" sign /fd SHA256 /f "$env:RUNNER_TEMP\ci.pfx" /p ci "$env:RUNNER_TEMP\bava.msix"
+          if ($LASTEXITCODE) { throw "signtool failed" }
+          Import-PfxCertificate -FilePath "$env:RUNNER_TEMP\ci.pfx" -CertStoreLocation Cert:\LocalMachine\TrustedPeople -Password $secret | Out-Null
+          Add-AppxPackage "$env:RUNNER_TEMP\bava.msix"
+          Get-AppxPackage com.tharabyte.bava | Format-List Name, PackageFamilyName, InstallLocation
+
+      - name: run the walks from the installed package
+        shell: pwsh
+        timeout-minutes: 14
+        run: |
+          $package = Get-AppxPackage com.tharabyte.bava
+          $out = "$env:USERPROFILE\smoke-out"
+          $failed = 0
+          foreach ($scenario in 'create', 'reopen', 'canvas', 'export-proof') {
+            Set-Content -NoNewline "$env:USERPROFILE\.bava-e2e" $scenario
+            Start-Process "shell:AppsFolder\$($package.PackageFamilyName)!com.tharabyte.bava"
+            Start-Sleep -Seconds 5
+            $deadline = (Get-Date).AddMinutes(4)
+            while ((Get-Process bava -ErrorAction SilentlyContinue) -and ((Get-Date) -lt $deadline)) { Start-Sleep -Seconds 2 }
+            Get-Process bava -ErrorAction SilentlyContinue | Stop-Process -Force
+            $result = "$out\$scenario-result.txt"
+            if (-not (Test-Path $result)) { Write-Host "::error::$scenario left no result in the package"; $failed = 1; continue }
+            Get-Content $result
+            if (-not ((Get-Content $result -First 1) -like 'PASS*')) { Write-Host "::error::$scenario failed in the package"; $failed = 1 }
+          }
+          Remove-Item "$env:USERPROFILE\.bava-e2e" -ErrorAction SilentlyContinue
+          exit $failed
+
+      - name: upload what the packaged walks left
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sandbox-windows
+          path: ~/smoke-out/
+          if-no-files-found: warn
+          retention-days: 14
+
   # A normal build must not contain the smoke driver: its frontend bundle is
   # checked here, its Go side by release_test.go.
   release-has-no-driver:

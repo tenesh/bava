@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // SandboxRun lays a walk out inside a sandbox's own home, which is all a
@@ -38,4 +39,17 @@ func SandboxRun(home string, fixtures fs.FS) (repo, scratch, out string, err err
 		return "", "", "", fmt.Errorf("sandboxed run: %w", err)
 	}
 	return repo, scratch, out, nil
+}
+
+// RunFile is the walk a packaged run is asked for, the first line of
+// `.bava-e2e` in the home, which CI writes before starting the app: the
+// system starts a package without the shell's environment. False when
+// there is no such file.
+func RunFile(home string) (string, bool) {
+	data, err := os.ReadFile(filepath.Join(home, ".bava-e2e"))
+	if err != nil {
+		return "", false
+	}
+	name, _, _ := strings.Cut(strings.TrimSpace(string(data)), "\n")
+	return strings.TrimSpace(name), name != ""
 }

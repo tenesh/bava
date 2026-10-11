@@ -73,6 +73,12 @@ the end-to-end build as an `.app`, signs it ad hoc with
 (its scenarios and fixtures are built in) and leaves its result there.
 Screenshots the sandbox refuses are skipped, not failures.
 
+As the Microsoft Store ships Bava, the `packaged run (windows)` job packs
+the end-to-end build as an MSIX (`build/windows/msix/app_manifest.xml`),
+signs it with a certificate it makes, installs it and starts it through
+Windows. A package starts without the shell's environment, so each walk is
+named in `~/.bava-e2e` and lays itself out in the home.
+
 ## Rules for every test
 
 - **One behaviour per test**, named as a sentence. Know which code change would fail it.

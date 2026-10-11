@@ -29,3 +29,18 @@ func TestASandboxedRunLaysItselfOutInItsHome(t *testing.T) {
 		t.Errorf("fixture: %q %v", b, err)
 	}
 }
+
+// A packaged app is started by the system, not a shell: the walk to run is
+// read from a file in the home instead of the environment.
+func TestARunFileNamesTheWalkWhenTheEnvironmentCannot(t *testing.T) {
+	home := t.TempDir()
+	if name, ok := RunFile(home); ok || name != "" {
+		t.Errorf("no file read as %q, %v", name, ok)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".bava-e2e"), []byte("reopen\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if name, ok := RunFile(home); !ok || name != "reopen" {
+		t.Errorf("run file = %q, %v; want reopen", name, ok)
+	}
+}
