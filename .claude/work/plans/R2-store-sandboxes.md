@@ -73,7 +73,9 @@ per system), `tests/e2e` (scratch folders the sandbox may reach).
   entitlements, runs the walks (green 2026-10-11, run 38122540515, after
   Bava learned to keep its temporary files in the container and to know
   the sandbox by its container home)
-- [ ] Windows: a self-signed MSIX of it, installed, runs the walks
+- [x] Windows: a self-signed MSIX of it, installed, runs the walks (green
+  2026-10-11, run 38141862243; the walk is named in `~/.bava-e2e`, written
+  with a .NET call because `Set-Content` silently left no file)
 - [ ] Linux: a test-only manifest (`tests/flatpak/bava-ci.yml`, ID
   `com.tharabyte.bava.Devel`, never submitted) builds a Flatpak of it that
   runs the walks

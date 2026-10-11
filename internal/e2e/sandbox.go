@@ -53,3 +53,13 @@ func RunFile(home string) (string, bool) {
 	name, _, _ := strings.Cut(strings.TrimSpace(string(data)), "\n")
 	return strings.TrimSpace(name), name != ""
 }
+
+// SandboxHome is where a sandboxed run lays itself out: the home, or inside
+// Flatpak the app's own folder under it, the only part of the home the
+// sandbox lets it reach.
+func SandboxHome(home string) string {
+	if id := os.Getenv("FLATPAK_ID"); id != "" {
+		return filepath.Join(home, ".var", "app", id)
+	}
+	return home
+}

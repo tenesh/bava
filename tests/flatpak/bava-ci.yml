@@ -1,0 +1,21 @@
+# For CI only: the end-to-end build inside Flatpak's sandbox, with no more
+# access than a store build would ask for. Never submitted to Flathub.
+app-id: com.tharabyte.bava.Devel
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+command: bava
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+modules:
+  - name: bava
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 bava /app/bin/bava
+    sources:
+      # Built by CI beforehand with `wails3 build EXTRA_TAGS=e2e`.
+      - type: file
+        path: ../../bin/bava

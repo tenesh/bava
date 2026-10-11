@@ -466,6 +466,86 @@ jobs:
 
   # A normal build must not contain the smoke driver: its frontend bundle is
   # checked here, its Go side by release_test.go.
+  # The walks inside Flatpak's sandbox, as Flathub ships Bava: the
+  # end-to-end build packed by a test-only manifest (tests/flatpak/, never
+  # the submitted one), each walk laid out in the app's own folder.
+  sandbox-linux:
+    name: sandboxed run (linux)
+    runs-on: ubuntu-24.04
+    needs: test
+    env:
+      VITE_BAVA_E2E: '1'
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Linux webview dependencies, Flatpak and a virtual screen
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config \
+            libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev libglib2.0-dev \
+            flatpak flatpak-builder xvfb dbus-x11
+          # Flatpak's sandbox needs unprivileged user namespaces, which
+          # Ubuntu 24.04 restricts through AppArmor. Lifted on this throwaway
+          # runner only.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install wails3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.20
+
+      - name: build with the smoke driver
+        run: wails3 build EXTRA_TAGS=e2e
+
+      - name: pack and install it as a Flatpak
+        run: |
+          flatpak-builder --user --install-deps-from=flathub --install --force-clean \
+            "$RUNNER_TEMP/flatpak-build" tests/flatpak/bava-ci.yml
+
+      - name: run the walks sandboxed
+        shell: bash
+        timeout-minutes: 12
+        run: |
+          set -euo pipefail
+          data="$HOME/.var/app/com.tharabyte.bava.Devel"
+          # Every walk runs, so one failing does not hide what the others show.
+          failed=0
+          for scenario in create reopen canvas export-proof; do
+            # WebKitGTK without a GPU: software drawing, or the window is blank.
+            dbus-run-session -- xvfb-run -a -s "-screen 0 1440x900x24" \
+              flatpak run \
+                --env=BAVA_E2E_SANDBOX=1 --env=BAVA_E2E_SCENARIO="$scenario" \
+                --env=WEBKIT_DISABLE_DMABUF_RENDERER=1 --env=GSK_RENDERER=cairo --env=LIBGL_ALWAYS_SOFTWARE=1 \
+                com.tharabyte.bava.Devel || true
+            result="$data/smoke-out/$scenario-result.txt"
+            if [[ ! -f "$result" ]]; then echo "::error::$scenario left no result in the sandbox"; failed=1; continue; fi
+            cat "$result"
+            grep -q '^PASS' "$result" || { echo "::error::$scenario failed in the sandbox"; failed=1; }
+          done
+          exit "$failed"
+
+      - name: upload what the sandboxed walks left
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sandbox-linux
+          path: |
+            ~/.var/app/com.tharabyte.bava.Devel/smoke-out/
+            ~/.var/app/com.tharabyte.bava.Devel/cache/Bava/logs/
+          if-no-files-found: warn
+          retention-days: 14
+
   release-has-no-driver:
     name: release bundle has no driver
     runs-on: ubuntu-latest

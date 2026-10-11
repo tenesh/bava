@@ -44,3 +44,18 @@ func TestARunFileNamesTheWalkWhenTheEnvironmentCannot(t *testing.T) {
 		t.Errorf("run file = %q, %v; want reopen", name, ok)
 	}
 }
+
+// Inside Flatpak the app reaches only its own folder under the home: a
+// sandboxed run lays itself out there.
+func TestASandboxedRunInFlatpakLaysItselfOutInTheAppsOwnFolder(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("FLATPAK_ID", "com.tharabyte.bava.Devel")
+	want := filepath.Join(home, ".var", "app", "com.tharabyte.bava.Devel")
+	if got := SandboxHome(home); got != want {
+		t.Errorf("SandboxHome = %q, want %q", got, want)
+	}
+	t.Setenv("FLATPAK_ID", "")
+	if got := SandboxHome(home); got != home {
+		t.Errorf("outside Flatpak SandboxHome = %q, want the home %q", got, home)
+	}
+}

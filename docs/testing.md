@@ -79,6 +79,12 @@ signs it with a certificate it makes, installs it and starts it through
 Windows. A package starts without the shell's environment, so each walk is
 named in `~/.bava-e2e` and lays itself out in the home.
 
+As Flathub ships Bava, the `sandboxed run (linux)` job packs the end-to-end
+build with a test-only manifest (`tests/flatpak/bava-ci.yml`, ID
+`com.tharabyte.bava.Devel`, never submitted), installs it and runs the walks
+with `flatpak run`; each lays itself out in the app's own folder,
+`~/.var/app/com.tharabyte.bava.Devel`.
+
 ## Rules for every test
 
 - **One behaviour per test**, named as a sentence. Know which code change would fail it.

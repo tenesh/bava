@@ -60,7 +60,7 @@ func smokeRun(_ func() *application.App, closeSession func()) (application.Servi
 		}
 		home, err := os.UserHomeDir()
 		if err == nil {
-			repo, scratch, out, err = e2e.SandboxRun(home, smokeFixtures)
+			repo, scratch, out, err = e2e.SandboxRun(e2e.SandboxHome(home), smokeFixtures)
 		}
 		if err != nil {
 			stop("sandboxed run", err)
