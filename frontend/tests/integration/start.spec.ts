@@ -90,3 +90,15 @@ test.describe('removing a Space from the list', () => {
     await expect(page.locator('.bava-space-switcher')).toContainText('Acme Product');
   });
 });
+
+// A store's sandbox can forget a Space; the start screen offers to find it
+// again, opening the folder dialog where it last was.
+test('a recent Space Bava cannot reach is found again from the start screen', async ({ page }) => {
+  await openApp(page, 'light', { 'bava.recents': JSON.stringify(RECENTS) }, { lost: [SPACE] });
+  const row = page.locator('.recent', { hasText: 'Acme Product' });
+  await expect(row).toContainText("Can't open: find it again");
+  await row.click();
+  await expect(page.locator('.bava-space-switcher')).toContainText('Acme Product');
+  const near = await page.evaluate(() => (window as unknown as { __bava: { fakes: { harness: { chosenNear: string[] } } } }).__bava.fakes.harness.chosenNear);
+  expect(near).toEqual([SPACE]);
+});

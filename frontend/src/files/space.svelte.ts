@@ -86,7 +86,8 @@ export type SpaceIO = {
     error: string;
     code?: string;
   }>;
-  chooseFolder(title: string): Promise<{ path: string; error: string }>;
+  chooseFolder(title: string, near?: string): Promise<{ path: string; error: string }>;
+  reachable(paths: string[]): Promise<boolean[]>;
   create(
     parent: string,
     name: string,
@@ -153,7 +154,8 @@ const overIPC: SpaceIO = {
   exportZip: (root, scope, out) => SpaceService.ExportZip(root, scope, out),
   trash: (root) =>
     SpaceService.Trash(root) as unknown as ReturnType<SpaceIO["trash"]>,
-  chooseFolder: (title) => SpaceService.ChooseFolder(title),
+  chooseFolder: (title, near = '') => SpaceService.ChooseFolder(title, near),
+  reachable: async (paths) => (await SpaceService.Reachable(paths)) ?? paths.map(() => true),
   create: (parent, name) => SpaceService.Create(parent, name),
   reveal: (root, path) => SpaceService.Reveal(root, path),
   templates: (root) => SpaceService.Templates(root) as unknown as ReturnType<SpaceIO["templates"]>,
@@ -536,7 +538,9 @@ export function createSpace(
       const result = await io.reveal(root, path);
       return result.error ? spaceMessage(result) : "";
     },
-    chooseFolder: (title: string) => io.chooseFolder(title),
+    chooseFolder: (title: string, near = '') => io.chooseFolder(title, near),
+    /** Whether Bava may reach each path now (a store's sandbox may have forgotten it). */
+    reachable: (paths: string[]) => io.reachable(paths),
 
     /** Make a new folder named `name` in `parent`, ready to open as a Space. */
     async create(

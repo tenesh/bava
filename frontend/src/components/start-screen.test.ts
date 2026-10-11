@@ -24,9 +24,18 @@ describe('the start screen’s recent Spaces', () => {
     expect(props.onOpenRecent).not.toHaveBeenCalled();
   });
 
-  it('removes a Space whose folder is gone, while its row cannot open', () => {
+  // A Space Bava cannot open is not a dead end: choosing it finds it again.
+  it('offers to find a Space it cannot open again', () => {
     const props = setup();
-    expect(document.querySelector<HTMLButtonElement>('.recent[disabled]')).not.toBeNull();
+    const gone = [...document.querySelectorAll<HTMLButtonElement>('.recent')].find((b) => b.textContent?.includes('Gone'))!;
+    expect(gone.disabled).toBe(false);
+    expect(gone.textContent).toContain("Can't open: find it again");
+    gone.click();
+    expect(props.onOpenRecent).toHaveBeenCalledWith('/Users/you/Gone');
+  });
+
+  it('removes a Space whose folder is gone', () => {
+    const props = setup();
     expect(remove('Gone').disabled).toBe(false);
     expect(remove('Gone').closest('[data-missing]')).not.toBeNull();
     remove('Gone').click();

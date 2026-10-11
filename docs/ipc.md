@@ -125,7 +125,7 @@ A Space on disk (`docs/file-format.md`, "Spaces"), changed through one
 | `ZipPlan(root, scope)` | `ZipPlanResult`: `files` (`path` in the zip, `size`), sorted by path. `scope`: `kind` (`space`, `folder`, `page`), `path`, `attachments` (names the pages use). A Space's zip is every file with `.bava` minus its Trash; a folder's or page's keeps its place with only the named attachments. Hidden files and links never followed |
 | `ExportZip(root, scope, out)` | `Problem`: writes that zip to `out` via a temporary file renamed into place |
 | `Trash(root)` | `TrashList`: items (origin, kind, when, size) and total size |
-| `ChooseFolder(title)` | `DialogResult`: native folder picker (can make a folder); empty when cancelled |
+| `ChooseFolder(title, near)` | `DialogResult`: native folder picker (can make a folder), opening at `near` or the nearest folder above it still there; empty when cancelled |
 | `Reachable(paths)` | `[]bool`: whether Bava may reach each path now (inside a store's sandbox, only what the user allowed) |
 | `Reveal(root, path)` | `Problem` (`error`, `code`), empty on success: the Space folder, or an item selected in it (an attachment as `.bava/attachments/<name>`; other hidden paths refused); `revealUnavailable` with no file manager |
 

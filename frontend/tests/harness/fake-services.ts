@@ -55,6 +55,8 @@ export type Boot = {
   settings?: Record<string, unknown>;
   /** What Go tells the page once at launch: the last session ended unexpectedly, or the window was reloaded. */
   notices?: { kind: string; session: string }[];
+  /** Folders a store's sandbox no longer lets Bava reach at launch. */
+  lost?: string[];
 };
 
 const boot = (): Boot => (globalThis as { __bavaBoot?: Boot }).__bavaBoot ?? {};
@@ -345,7 +347,9 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     spacePdfs,
     faults,
     /** Paths a store's sandbox no longer lets Bava reach. */
-    lost: [] as string[],
+    lost: [...(boot().lost ?? [])] as string[],
+    /** Where each folder dialog was asked to open, in order. */
+    chosenNear: [] as string[],
     /** The settings as last saved, for a test to read what a control changed. */
     settings: () => ({ ...settings }),
     /** The canvas embeds' pictures saved, in base64, by name. */
@@ -495,7 +499,9 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         if (!space) return { items: null, size: 0, ...refusal('notSpace', 'not a Space') };
         return { items: space.trash, size: space.trash.reduce((sum, item) => sum + item.size, 0), error: '', code: '' };
       },
-      async ChooseFolder(_title: string) {
+      async ChooseFolder(_title: string, near = '') {
+        harness.chosenNear.push(near);
+        harness.lost = harness.lost.filter((p) => p !== SPACE_ROOT);
         return { path: SPACE_ROOT, error: '' };
       },
       // Everything is reachable unless a test marks it lost.

@@ -47,7 +47,7 @@
         <h2>{t('space.recent')}</h2>
         {#each recents as recent (recent.path)}
           <div class="entry" data-missing={recent.missing ? '' : undefined}>
-            <button type="button" class="recent" disabled={recent.missing} onclick={() => onOpenRecent(recent.path)}>
+            <button type="button" class="recent" onclick={() => onOpenRecent(recent.path)}>
               <span class="tile" style:background={TILE_FILL} style:color={TILE_TEXT} aria-hidden="true">{initial(recent.name)}</span>
               <span class="text">
                 <span class="name">{recent.name}</span>

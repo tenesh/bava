@@ -797,8 +797,40 @@
 
   // The open Space, and the last one, reopened at launch.
   const LAST_SPACE_KEY = 'bava.lastSpace';
-  // Spaces that failed to open this session: the start screen marks them.
+  // Spaces that failed to open this session, or that a store's sandbox no
+  // longer lets Bava reach: the start screen and switcher mark them, and
+  // choosing one finds it again.
   let missingSpaces = $state.raw<string[]>([]);
+  let lostSpaces = $state.raw<string[]>([]);
+  const cannotOpen = $derived([...missingSpaces, ...lostSpaces]);
+
+  // Asked again whenever the recent Spaces change.
+  $effect(() => {
+    const paths = recents.entries.filter((entry) => entry.kind === 'space').map((entry) => entry.path);
+    void space.reachable(paths).then(
+      (ok) => (lostSpaces = paths.filter((_, i) => !ok[i])),
+      () => (lostSpaces = []),
+    );
+  });
+
+  /**
+   * A recent Space Bava cannot open: the folder dialog where it last was;
+   * the folder chosen opens, and takes the old entry's place if it moved.
+   */
+  async function findAgain(path: string) {
+    const chosen = await space.chooseFolder(t('space.findAgain'), path);
+    if (!chosen.path) return;
+    if (chosen.path !== path) recents.remove(path);
+    missingSpaces = missingSpaces.filter((each) => each !== path);
+    lostSpaces = lostSpaces.filter((each) => each !== path);
+    await openSpace(chosen.path);
+  }
+
+  /** A recent Space chosen: opened, or found again when Bava cannot. */
+  function openRecentSpace(path: string) {
+    if (cannotOpen.includes(path)) void findAgain(path);
+    else void openSpace(path);
+  }
 
   function rememberLastSpace(root: string | null) {
     try {
@@ -3317,7 +3349,7 @@
 
   {#snippet start()}
     <StartScreen
-      recents={spaceChoices(recents.entries, missingSpaces).map((choice) => ({
+      recents={spaceChoices(recents.entries, cannotOpen).map((choice) => ({
         path: choice.path,
         name: choice.name,
         when: choice.openedAt ? new Date(choice.openedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '',
@@ -3326,7 +3358,7 @@
       onNewSpace={openNewSpace}
       onOpenSpace={() => void chooseSpace()}
       onOpenFile={() => void openFile()}
-      onOpenRecent={(path) => void openPath(path)}
+      onOpenRecent={(path) => (cannotOpen.includes(path) ? void findAgain(path) : void openPath(path))}
       onRemoveRecent={(path) => void removeSpace(path)}
     />
   {/snippet}
@@ -3336,9 +3368,9 @@
       <SpaceSwitcher
         name={space.name}
         root={space.root}
-        recents={spaceChoices(recents.entries, []).map(({ path, name }) => ({ path, name }))}
+        recents={spaceChoices(recents.entries, cannotOpen).map(({ path, name, missing }) => ({ path, name, missing }))}
         onSelect={(id) => {
-          if (id.startsWith('recent:')) void openSpace(id.slice('recent:'.length));
+          if (id.startsWith('recent:')) openRecentSpace(id.slice('recent:'.length));
           else if (id === 'space.new') openNewSpace();
           else if (id === 'space.open') void chooseSpace();
           else if (id === 'file.open') void openFile();

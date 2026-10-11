@@ -692,10 +692,14 @@ test.describe('canvas embeds', () => {
       await picker.getByRole('option', { name }).click();
       await expect(picker).toHaveCount(0);
     }
-    const sizes = await page.evaluate(() => {
-      const all = (window as unknown as PictureHarness).__bava.fakes.harness.pictures();
-      return { drawn: all['Architecture - Drawn around.png']?.length ?? 0, empty: all['Architecture - Empty.png']?.length ?? 0 };
-    });
+    // The pictures are drawn and saved a moment after each embed lands.
+    const read = () =>
+      page.evaluate(() => {
+        const all = (window as unknown as PictureHarness).__bava.fakes.harness.pictures();
+        return { drawn: all['Architecture - Drawn around.png']?.length ?? 0, empty: all['Architecture - Empty.png']?.length ?? 0 };
+      });
+    await expect.poll(async () => Math.min((await read()).drawn, (await read()).empty)).toBeGreaterThan(0);
+    const sizes = await read();
     expect(sizes.empty).toBeGreaterThan(0);
     expect(sizes.drawn).toBeGreaterThan(sizes.empty * 1.2);
   });

@@ -23,10 +23,10 @@ for (const theme of THEMES) {
     });
 
     // Reopening the last Space at launch finds its folder gone: its row
-    // says so, with its remove button always showing.
+    // offers to find it again, with its remove button always showing.
     test('with a recent Space whose folder is gone', async ({ page }) => {
       await openApp(page, theme, { 'bava.recents': JSON.stringify(RECENTS), 'bava.lastSpace': RECENTS[1].path });
-      await expect(page.getByText('Folder not found')).toBeVisible();
+      await expect(page.getByText("Can't open: find it again")).toBeVisible();
       await restPointer(page);
       await expect(page).toHaveScreenshot(shot('start', 'screen', 'missing', theme));
     });

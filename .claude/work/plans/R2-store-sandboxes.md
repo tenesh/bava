@@ -42,16 +42,16 @@ does nothing.
 **Files:** `internal/access` (+ tests; macOS bookmarks through cgo, as
 `internal/pdfprint` does), `internal/app` (the open and save paths call
 it), `docs/file-format.md` (where `access.json` lives), `docs/ipc.md`.
-- [ ] Failing tests: a grant is saved for a chosen folder or file; restored
+- [x] Failing tests: a grant is saved for a chosen folder or file; restored
   on the next launch; a stale or missing one is reported, never silently
   dropped; on a system without a sandbox each is a no-op that always
   succeeds
-- [ ] Green: `go test ./internal/access ./internal/app`
+- [x] Green: `go test ./internal/access ./internal/app`
 
 ### Task 2: A recent Space Bava can no longer reach (decision 2)
 **Files:** `internal/app/space.go`, `frontend/src/components/StartScreen.svelte`,
 `SpaceSwitcher.svelte`, `App.svelte`, `messages.ts`.
-- [ ] Failing tests: an unreachable recent Space reads "Can't open"; choosing
+- [x] Failing tests: an unreachable recent Space reads "Can't open"; choosing
   it opens the folder dialog at its last place; picking it restores it;
   Remove still removes it
 

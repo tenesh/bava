@@ -373,7 +373,10 @@ func (s *SpaceService) Trash(root string) TrashList {
 // ChooseFolder shows the native folder picker, which can also make a new
 // folder, titled as the frontend words it. An empty path means the user
 // cancelled.
-func (s *SpaceService) ChooseFolder(title string) DialogResult {
+//
+// near, when given, is where the dialog opens: to find a Space again where
+// it last was.
+func (s *SpaceService) ChooseFolder(title, near string) DialogResult {
 	if s.options.ChooseFolder != nil {
 		path, err := s.options.ChooseFolder(title)
 		if err != nil {
@@ -387,6 +390,9 @@ func (s *SpaceService) ChooseFolder(title string) DialogResult {
 	dialog.CanChooseFiles(false)
 	dialog.CanChooseDirectories(true)
 	dialog.CanCreateDirectories(true)
+	if start := StartFolder(near); start != "" {
+		dialog.SetDirectory(start)
+	}
 	path, err := dialog.PromptForSingleSelection()
 	if err != nil {
 		return DialogResult{Error: err.Error()}

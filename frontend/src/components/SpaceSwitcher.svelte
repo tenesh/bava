@@ -14,7 +14,8 @@
   type Props = {
     name: string;
     root: string;
-    recents: { path: string; name: string }[];
+    /** `missing`: Bava cannot open it now; choosing it finds it again. */
+    recents: { path: string; name: string; missing?: boolean }[];
     onSelect: (id: string) => void;
   };
 
@@ -47,6 +48,7 @@
               <Menu.Item value={`recent:${recent.path}`} class="bava-menu-item">
                 <span class="tile small" style:background={TILE_FILL} style:color={TILE_TEXT} aria-hidden="true">{initial(recent.name)}</span>
                 <span class="bava-menu-label">{recent.name}</span>
+                {#if recent.missing}<span class="lost">{t('space.cantOpen')}</span>{/if}
                 {#if recent.path === root}<span class="current"><ToolIcon id="finishLine" size="sm" /></span>{/if}
               </Menu.Item>
             {/each}
@@ -158,6 +160,11 @@
     font-family: var(--font-label);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+  .lost {
+    margin-inline-start: auto;
+    font-size: var(--text-note);
     color: var(--color-text-muted);
   }
 </style>

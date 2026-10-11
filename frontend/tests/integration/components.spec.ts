@@ -356,11 +356,12 @@ test.describe('dialogs and screens, alone', () => {
     await expect(openDialog(page).getByText('The Trash is empty.')).toBeVisible();
   });
 
-  test('the start screen offers a recent Space that is gone as disabled, and none when there are none', async ({ page }) => {
+  test('the start screen offers a recent Space that is gone to be found again, and none when there are none', async ({ page }) => {
     await openGallery(page, 'StartScreen', 'light');
     const recents = stage(page).locator('.recent');
     await expect(recents).toHaveCount(3);
-    await expect(recents.nth(1)).toBeDisabled();
+    await expect(recents.nth(1)).toBeEnabled();
+    await expect(recents.nth(1)).toContainText("Can't open: find it again");
     await openGallery(page, 'StartScreen', 'light', 'empty');
     await expect(stage(page).locator('.recent')).toHaveCount(0);
   });

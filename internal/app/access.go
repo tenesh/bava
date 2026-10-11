@@ -3,6 +3,7 @@ package app
 import (
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/tharabyte/bava/internal/access"
 )
@@ -37,4 +38,20 @@ func reachable(grants *access.Store, path string) bool {
 		return err == nil
 	}
 	return grants.Reachable(path)
+}
+
+// StartFolder is where a folder dialog opens to find near again: near
+// itself, or the nearest folder above it that is still there; "" for none.
+func StartFolder(near string) string {
+	if near == "" {
+		return ""
+	}
+	for dir := filepath.Clean(near); ; dir = filepath.Dir(dir) {
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			return dir
+		}
+		if filepath.Dir(dir) == dir {
+			return ""
+		}
+	}
 }

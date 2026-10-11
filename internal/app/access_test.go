@@ -35,7 +35,7 @@ func TestWhatTheUserPicksIsKept(t *testing.T) {
 		ChooseFiles: func(string) ([]string, error) { return []string{file}, nil },
 		ChooseSave:  func(string) (string, error) { return saved, nil },
 	})
-	spaces.ChooseFolder("Open Space")
+	spaces.ChooseFolder("Open Space", "")
 	files.ChooseMedia("image")
 	files.ChooseFileToSave("Plan.pdf")
 	for _, p := range []string{folder, file, saved} {
@@ -59,5 +59,21 @@ func TestWhichPathsAreReachable(t *testing.T) {
 	// Without a store, whatever exists is reachable.
 	if got := app.NewSpaceService(app.SpaceServiceOptions{}).Reachable([]string{open, "/no/such/folder"}); !got[0] || got[1] {
 		t.Errorf("without a store: %v", got)
+	}
+}
+
+// "Find it again" opens the folder dialog where the Space last was, or the
+// nearest folder above it that is still there.
+func TestAFolderDialogStartsAtTheNearestPlaceStillThere(t *testing.T) {
+	root := t.TempDir()
+	gone := filepath.Join(root, "Moved", "Acme Product")
+	if got := app.StartFolder(gone); got != root {
+		t.Errorf("start = %q; want %q", got, root)
+	}
+	if got := app.StartFolder(root); got != root {
+		t.Errorf("start = %q; want the folder itself", got)
+	}
+	if got := app.StartFolder(""); got != "" {
+		t.Errorf("start = %q; want none", got)
 	}
 }

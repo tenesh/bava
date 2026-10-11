@@ -42,9 +42,12 @@ export function Attachments(root: string): $CancellablePromise<$models.Attachmen
  * ChooseFolder shows the native folder picker, which can also make a new
  * folder, titled as the frontend words it. An empty path means the user
  * cancelled.
+ * 
+ * near, when given, is where the dialog opens: to find a Space again where
+ * it last was.
  */
-export function ChooseFolder(title: string): $CancellablePromise<$models.DialogResult> {
-    return $Call.ByID(1225902871, title);
+export function ChooseFolder(title: string, near: string): $CancellablePromise<$models.DialogResult> {
+    return $Call.ByID(1225902871, title, near);
 }
 
 /**

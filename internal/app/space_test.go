@@ -180,7 +180,7 @@ func TestChooseFolderUsesTheGivenPicker(t *testing.T) {
 	s := app.NewSpaceService(app.SpaceServiceOptions{
 		ChooseFolder: func(title string) (string, error) { return "/scratch/" + title, nil },
 	})
-	if got := s.ChooseFolder("Spaces"); got.Path != "/scratch/Spaces" || got.Error != "" {
+	if got := s.ChooseFolder("Spaces", ""); got.Path != "/scratch/Spaces" || got.Error != "" {
 		t.Errorf("ChooseFolder = %+v", got)
 	}
 }
