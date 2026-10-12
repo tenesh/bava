@@ -132,8 +132,8 @@ What is true now and affects the gates. Update it when a milestone closes.
 attributed in `NOTICE` for good). R2 done (the stores' sandboxes: the same walks pass inside the Mac sandbox,
 the installed MSIX and Flatpak, run 38143080459). 15.3 done (import;
 its walk passes on all three systems and inside each store's package, run
-38197233990). 15.4a (zoom to fit, labels that fit, drags the system ends)
-built, awaiting CI. Next 15.4b (palette), 15.4c (paste), 15.4d (shapes),
+38197233990). 15.4a done (zoom to fit, labels that fit, drags the system
+ends; run 38250684449). Next 15.4b (palette), 15.4c (paste), 15.4d (shapes),
 Milestone 16, Milestone 17. Help ▸ Report Issue
 is hidden until release (`REPORT_ISSUE_ENABLED` in
 `frontend/src/shell/report-issue.ts`); the DMG icon and background stay
