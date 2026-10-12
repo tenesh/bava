@@ -309,6 +309,42 @@ func TestAZipsTopFileTakesNoNameInTheFolder(t *testing.T) {
 	equal(t, landing(plan), []string{"file Marketing", "page Notes.md"})
 }
 
+// Names inside what comes in that differ only in case are kept apart: a disk
+// that ignores case would take them for one.
+func TestNamesDifferingOnlyInCaseAreNumbered(t *testing.T) {
+	s := newSpace(t)
+	z := zipOf(t, map[string]string{"D/A.md": "a", "D/a.md": "b", "D/Sub/x.md": "x", "D/sub/y.md": "y", "D/Sub/z.md": "z"})
+	plan, err := s.ImportPlan([]string{z}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	equal(t, landing(plan), []string{
+		"folder D", "page D/A.md", "folder D/Sub", "page D/Sub/x.md", "page D/Sub/z.md",
+		"page D/a 2.md", "folder D/sub 2", "page D/sub 2/y.md",
+	})
+	if _, err := s.Import(context.Background(), []string{z}, "", nil); err != nil {
+		t.Fatal(err)
+	}
+	for _, landed := range []string{"D/A.md", "D/a 2.md", "D/Sub/x.md", "D/Sub/z.md", "D/sub 2/y.md"} {
+		if _, err := os.Stat(filepath.Join(s.Root, filepath.FromSlash(landed))); err != nil {
+			t.Error(err)
+		}
+	}
+}
+
+// A folder from a disk that tells case apart is numbered the same way.
+func TestAFoldersNamesDifferingOnlyInCaseAreNumbered(t *testing.T) {
+	src := outside(t, map[string]string{"D/A.md": "a", "D/a.md": "b"})
+	if items, err := os.ReadDir(filepath.Join(src, "D")); err != nil || len(items) != 2 {
+		t.Skip("this disk ignores case")
+	}
+	plan, err := newSpace(t).ImportPlan([]string{filepath.Join(src, "D")}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	equal(t, landing(plan), []string{"folder D", "page D/A.md", "page D/a 2.md"})
+}
+
 func TestAFileThatIsNotAZipIsRefused(t *testing.T) {
 	s := newSpace(t)
 	src := outside(t, map[string]string{"Broken.zip": "not a zip"})

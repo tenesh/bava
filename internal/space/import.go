@@ -147,6 +147,23 @@ func (p *planner) landing(name string, folder bool) string {
 	return got
 }
 
+// inside is where name lands in parent, a folder this import makes: numbered
+// against what the import already put there, case aside, for a disk that
+// ignores case would take "a.md" and "A.md" for one.
+func (p *planner) inside(parent, name string, folder bool) string {
+	key := func(n string) string { return "in/" + strings.ToLower(join(parent, n)) }
+	taken := func(n string) bool { return p.given[key(n)] }
+	got := FreeName(name, taken)
+	if folder {
+		got = FreeFolderName(name, taken)
+	}
+	p.given[key(got)] = true
+	if got != name {
+		p.plan.Renames = append(p.plan.Renames, ImportRename{From: strings.TrimSuffix(name, PageExt), To: strings.TrimSuffix(got, PageExt)})
+	}
+	return got
+}
+
 // template is where a template called file in group lands, numbered when the
 // templates folder or this import already has it.
 func (p *planner) template(group, file string) string {
@@ -209,8 +226,9 @@ func (p *planner) walk(origin int, dir, from, to string) error {
 		full := filepath.Join(dir, name)
 		switch {
 		case item.IsDir():
-			p.add(ImportEntry{Kind: ImportFolder, Origin: origin, From: from + "/" + name, To: join(to, name)})
-			if err := p.walk(origin, full, from+"/"+name, join(to, name)); err != nil {
+			landed := join(to, p.inside(to, name, true))
+			p.add(ImportEntry{Kind: ImportFolder, Origin: origin, From: from + "/" + name, To: landed})
+			if err := p.walk(origin, full, from+"/"+name, landed); err != nil {
 				return err
 			}
 		case item.Type().IsRegular():
@@ -219,7 +237,7 @@ func (p *planner) walk(origin int, dir, from, to string) error {
 				return fmt.Errorf("import %s: %w", name, err)
 			}
 			if strings.EqualFold(filepath.Ext(name), PageExt) {
-				p.add(ImportEntry{Kind: ImportPage, Origin: origin, From: from + "/" + name, To: join(to, name), Size: info.Size()})
+				p.add(ImportEntry{Kind: ImportPage, Origin: origin, From: from + "/" + name, To: join(to, p.inside(to, name, false)), Size: info.Size()})
 			} else {
 				p.add(ImportEntry{Kind: ImportFile, Origin: origin, From: from + "/" + name, To: name, Size: info.Size()})
 			}
@@ -324,7 +342,7 @@ func (p *planner) zip(origin int, source string) error {
 		tops[name] = got
 		return got
 	}
-	folders := map[string]bool{}
+	landed := map[string]string{}
 	for _, it := range items {
 		parts := strings.Split(it.name, "/")
 		if parts[0] == Dir {
@@ -340,14 +358,27 @@ func (p *planner) zip(origin int, source string) error {
 			p.add(ImportEntry{Kind: ImportFile, Origin: origin, From: it.name, Entry: it.name, To: it.name, Size: it.size})
 			continue
 		}
-		top := topOf(parts[0], len(parts) > 1)
-		to := join(p.plan.Into, strings.Join(append([]string{top}, parts[1:]...), "/"))
-		for i := 1; i < len(parts); i++ {
-			folderTo := join(p.plan.Into, strings.Join(append([]string{top}, parts[1:i]...), "/"))
-			if !folders[folderTo] {
-				folders[folderTo] = true
-				p.add(ImportEntry{Kind: ImportFolder, Origin: origin, From: strings.Join(parts[:i], "/"), Entry: strings.Join(parts[:i], "/") + "/", To: folderTo})
+		// Each folder lands once, by its path in the zip.
+		parent := p.plan.Into
+		for i := 0; i < len(parts)-1; i++ {
+			from := strings.Join(parts[:i+1], "/")
+			if got, ok := landed[from]; ok {
+				parent = got
+				continue
 			}
+			if i == 0 {
+				parent = join(p.plan.Into, topOf(parts[0], true))
+			} else {
+				parent = join(parent, p.inside(parent, parts[i], true))
+			}
+			landed[from] = parent
+			p.add(ImportEntry{Kind: ImportFolder, Origin: origin, From: from, Entry: from + "/", To: parent})
+		}
+		to := join(parent, parts[len(parts)-1])
+		if len(parts) == 1 {
+			to = join(p.plan.Into, topOf(parts[0], false))
+		} else if isPage {
+			to = join(parent, p.inside(parent, parts[len(parts)-1], false))
 		}
 		if isPage {
 			p.add(ImportEntry{Kind: ImportPage, Origin: origin, From: it.name, Entry: it.name, To: to, Size: it.size})
