@@ -135,9 +135,10 @@ func TestHiddenFilesAndLinksStayBehind(t *testing.T) {
 
 // A name the Space would trim stays behind, as any name it cannot hold: it
 // would land under another name than its links say.
+// On disk the names lead with a space: Windows cannot make one ending in one.
 func TestANameWithSpacesAtItsEndsStaysBehind(t *testing.T) {
 	s := newSpace(t)
-	src := outside(t, map[string]string{"Notes/Page.md": "# Page\n", "Notes/ Padded.md": "x", "Notes/Sub /A.md": "a"})
+	src := outside(t, map[string]string{"Notes/Page.md": "# Page\n", "Notes/ Padded.md": "x", "Notes/ Sub/A.md": "a"})
 	if _, err := s.Import(context.Background(), []string{filepath.Join(src, "Notes")}, "", nil); err != nil {
 		t.Fatal(err)
 	}
