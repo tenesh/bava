@@ -24,7 +24,8 @@
     { "do": "wait", "target": "footer", "text": "Imported into Imported." },
     { "do": "file", "target": "Smoke/Imported/First page.md", "text": "../.bava/attachments/logo.png" },
     { "do": "file", "target": "Smoke/Imported/First page.md", "text": "See [Goal](Goal.md)" },
-    { "do": "file", "target": "Smoke/Imported/Goal.md", "text": "Goal" },
+    { "do": "click", "target": "[data-path='Imported']" },
+    { "do": "wait", "target": "[data-path='Imported/Goal.md']" },
     { "do": "file", "target": "Smoke/.bava/templates/First page 2.md", "text": "tags: [smoke-run]" }
   ]
 }

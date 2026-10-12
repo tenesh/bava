@@ -73,6 +73,9 @@ test.describe('import', () => {
     const into = dialog(page).getByRole('combobox', { name: 'Into' });
     // Into waits for the plan, as Import does.
     await expect(into).toBeEnabled();
+    // The dialog gives focus to what comes in a moment after it opens: once
+    // it has, it cannot take focus from the list opened next.
+    await expect(dialog(page).locator('.zip-contents')).toBeFocused();
     await into.focus();
     await page.keyboard.press('Enter');
     // Chosen by keys, as a list that floats can still be settling under a click.
