@@ -1593,3 +1593,53 @@ describe('the selection handles', () => {
     expect(square.cornerRadius()).toBe(1);
   });
 });
+
+describe('pictures on the stage', () => {
+  const picture = { type: 'image', file: 'har gow.png', x: 10, y: 20, w: 200, h: 150 } as const;
+  const loaded = () => {
+    const image = document.createElement('canvas');
+    image.width = 400;
+    image.height = 300;
+    return image;
+  };
+
+  it('draws a picture filling its box, turned and see-through as the element says', () => {
+    const stage = mounted();
+    stage.render(one({ ...picture, angle: 30, opacity: 50 } as never));
+    stage.setPicture('har gow.png', loaded());
+    const node = stage.pictureNode('e1')!;
+    expect(node).toBeInstanceOf(Konva.Image);
+    expect([node.x(), node.y(), node.width(), node.height()]).toEqual([0, 0, 200, 150]);
+    expect(stage.nodeFor('e1')!.rotation()).toBe(30);
+    expect(stage.nodeFor('e1')!.opacity()).toBe(0.5);
+    expect(stage.placeholderNode('e1')!.visible()).toBe(false);
+  });
+
+  it('shows the placeholder until the picture arrives, naming it once it is missing', () => {
+    const stage = mounted();
+    stage.render(one(picture as never));
+    expect(stage.pictureNode('e1')).toBeNull();
+    const placeholder = stage.placeholderNode('e1')!;
+    expect(placeholder.visible()).toBe(true);
+    const words = () => placeholder.find<Konva.Text>('Text').map((node) => node.text());
+    expect(words()).toEqual([]);
+    stage.setPicture('har gow.png', null);
+    expect(words()).toEqual(['har gow.png is missing', "Not in the Space's attachments"]);
+    const box = placeholder.findOne<Konva.Rect>('Rect')!;
+    expect(box.dash().length).toBeGreaterThan(0);
+    expect([box.width(), box.height()]).toEqual([200, 150]);
+  });
+
+  it('draws a picture that arrives for a file every element using it', () => {
+    const stage = mounted();
+    stage.render({
+      elements: [
+        { id: 'a', z: 1, ...picture },
+        { id: 'b', z: 2, ...picture, x: 300 },
+      ] as unknown as SceneElement[],
+    });
+    stage.setPicture('har gow.png', loaded());
+    expect(stage.pictureNode('a')).not.toBeNull();
+    expect(stage.pictureNode('b')).not.toBeNull();
+  });
+});

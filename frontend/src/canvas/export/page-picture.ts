@@ -23,6 +23,8 @@ export type PagePictureOptions = {
   /** Highlighted code, by element id, when the Canvas is open. */
   codeRuns?: Record<string, Run[][]>;
   monoAdvance?: number;
+  /** Each picture element's picture, by attachment name, as data addresses (`pictures-data.ts`). */
+  pictures?: Record<string, string | null>;
 };
 
 /** The Canvas as a picture; null when it holds nothing. */
@@ -33,7 +35,7 @@ export async function pagePicture(scene: SceneData, options: PagePictureOptions)
   const area = exportArea(produce(scene, (draft) => reroute(draft)), []);
   if (area.elements.length === 0) return null;
   const css = await fontCss(area.elements, options.fonts);
-  const draw = (read: ReadVariable) => toSvg(area, { read, background: true, css, codeRuns: options.codeRuns, monoAdvance: options.monoAdvance });
+  const draw = (read: ReadVariable) => toSvg(area, { read, background: true, css, codeRuns: options.codeRuns, monoAdvance: options.monoAdvance, pictures: options.pictures });
   const svg = options.read ? draw(options.read) : withTheme(options.theme ?? 'light', draw);
   return { svg, width: area.box.w, height: area.box.h };
 }

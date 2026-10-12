@@ -40,7 +40,7 @@ const AREA = 'canvas';
 const AT_TWICE: (keyof typeof SCENES)[] = ['styles', 'heads'];
 
 /** One element of each kind of selection chrome. */
-const SELECTED: Kind[] = ['rect', 'line-bent', 'arrow-straight', 'arrow-elbow', 'stroke', 'text', 'code', 'frame', 'group'];
+const SELECTED: Kind[] = ['rect', 'line-bent', 'arrow-straight', 'arrow-elbow', 'stroke', 'text', 'code', 'frame', 'group', 'image'];
 
 /** A point of a scene clear of every cell, for a press on empty canvas. */
 const EMPTY = { x: 900, y: 600 };

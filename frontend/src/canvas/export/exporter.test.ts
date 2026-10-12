@@ -200,3 +200,53 @@ describe('exporting a code block', () => {
     expect(options.codeRuns).toMatchObject({ c: expect.any(Array) });
   });
 });
+
+// A picture travels inside what is written or copied; the preview, on screen,
+// shows it from the app's own address.
+describe('pictures in an export', () => {
+  const withPicture: SceneData = { elements: [{ id: 'p', type: 'image', file: 'a.png', x: 0, y: 0, w: 20, h: 20, z: 1 }] as never[] };
+
+  function pictured(overrides: Record<string, unknown> = {}) {
+    const io = {
+      choosePath: vi.fn().mockResolvedValue('/w/diagram.svg'),
+      save: vi.fn().mockResolvedValue(''),
+      copyPng: vi.fn(async (png: Promise<Blob>) => (await png, { copied: true })),
+      copySvg: vi.fn().mockResolvedValue({ copied: true }),
+      toPng: vi.fn().mockResolvedValue(new Blob(['png'], { type: 'image/png' })),
+      ...overrides,
+    };
+    const exporter = createExporter({
+      scene: () => withPicture,
+      selection: () => [],
+      documentName: () => 'plan.md',
+      io: io as never,
+      notify: vi.fn(),
+      pictures: async () => ({ 'a.png': 'data:image/png;base64,AAAA' }),
+      picturesShown: () => ({ 'a.png': '/bava-file/?path=a.png' }),
+    });
+    return { exporter, io };
+  }
+
+  it('are carried in an SVG written, and copied', async () => {
+    const { exporter, io } = pictured();
+    await exporter.exportAs('svg');
+    expect(atob(io.save.mock.calls[0][1])).toContain('href="data:image/png;base64,AAAA"');
+    await exporter.copyFromMenu('svg');
+    expect(io.copySvg.mock.calls[0][0]).toContain('href="data:image/png;base64,AAAA"');
+    expect(await exporter.carrying(withPicture.elements)).toContain('href="data:image/png;base64,AAAA"');
+  });
+
+  it('are handed to the PNG drawing', async () => {
+    const { exporter, io } = pictured({ choosePath: vi.fn().mockResolvedValue('/w/diagram.png') });
+    await exporter.exportAs('png');
+    await exporter.copyFromMenu('png');
+    for (const call of io.toPng.mock.calls) expect(call[1].pictures).toEqual({ 'a.png': 'data:image/png;base64,AAAA' });
+    expect(io.toPng).toHaveBeenCalledTimes(2);
+  });
+
+  it('are shown in the preview from where the canvas loads them', () => {
+    const { exporter } = pictured();
+    exporter.open();
+    expect(exporter.preview()).toContain('href="/bava-file/?path=a.png"');
+  });
+});

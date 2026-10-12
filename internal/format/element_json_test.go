@@ -82,6 +82,18 @@ func TestSceneSurvivesTheFrontendBridge(t *testing.T) {
       "z": 2
     },
     {
+      "file": "har gow.png",
+      "fit": "a key from later",
+      "h": 30,
+      "id": "pic1",
+      "opacity": 50,
+      "type": "image",
+      "w": 40,
+      "x": 0,
+      "y": 160,
+      "z": 9
+    },
+    {
       "code": "const x = 1 // a comment",
       "h": 24,
       "id": "code1",

@@ -41,6 +41,7 @@ import { besideLabel, chromeFor, editingFor, elbowSegmentHandles, focusSpots, gr
 import { angleOfElement, centreOf, rotatedBounds, selectionFrame } from './rotate';
 import type { Guide } from './snapping';
 import { gridDots } from './grid';
+import { PICTURE_ICON, PLACEHOLDER_LOOK, placeholderLayout } from './picture-placeholder';
 
 export type CanvasStageOptions = {
   /** Reads a CSS custom property. Injected so tests need no stylesheet. */
@@ -70,6 +71,7 @@ function cached(read: ReadVariable): ReadVariable {
 }
 
 const number = (read: ReadVariable, name: string) => parseFloat(read(name)) || 0;
+
 
 /**
  * How faint a segment's middle handle is beside the point handles: it offers
@@ -117,6 +119,9 @@ type Entry = {
   /** What those nodes were built from, so a redraw can skip unchanged runs. */
   drawnRuns: Run[][] | null;
   drawnPaint: string;
+  /** A picture element's picture, once it has arrived, and what shows until then. */
+  picture: Konva.Image | null;
+  placeholder: Konva.Group | null;
 };
 
 export class CanvasStage {
@@ -150,6 +155,8 @@ export class CanvasStage {
   #snapDots: Konva.Circle[] = [];
   /** Tokenised code per block, handed in by the caller. */
   #codeRuns = new Map<ElementId, Run[][]>();
+  /** Pictures by attachment name, handed in by the caller; null: it cannot be loaded. */
+  #pictures = new Map<string, CanvasImageSource | null>();
   #marquee: Konva.Rect | null = null;
   /** The guides snapping to objects draws, and their lines. */
   #snapGuides: Guide[] = [];
@@ -431,6 +438,115 @@ export class CanvasStage {
     const entry = this.#entries.get(id);
     const element = this.#last.elements.find((e) => e.id === id);
     if (entry && element) this.#drawCode(entry, element, cached(this.#read));
+  }
+
+  /**
+   * The picture for an attachment, or null when it cannot be loaded. Loading
+   * is asynchronous and the stage synchronous, so pictures arrive here, as
+   * code runs do; until then a picture element shows its placeholder.
+   */
+  setPicture(file: string, picture: CanvasImageSource | null): void {
+    this.#pictures.set(file, picture);
+    const read = cached(this.#read);
+    for (const element of this.#last.elements) {
+      if (element.type !== 'image' || element.file !== file) continue;
+      const entry = this.#entries.get(element.id);
+      if (entry) this.#drawPicture(entry, element, read);
+    }
+    this.#layer?.batchDraw();
+  }
+
+  /** Forget every picture: another Space's files share no names with this one's. */
+  clearPictures(): void {
+    this.#pictures.clear();
+    const read = cached(this.#read);
+    for (const element of this.#last.elements) {
+      const entry = this.#entries.get(element.id);
+      if (entry && element.type === 'image') this.#drawPicture(entry, element, read);
+    }
+    this.#layer?.batchDraw();
+  }
+
+  /** The node drawing a picture element's picture, once it has one. */
+  pictureNode(id: ElementId): Konva.Image | null {
+    return this.#entries.get(id)?.picture ?? null;
+  }
+
+  /** What a picture element shows while its picture is not there. */
+  placeholderNode(id: ElementId): Konva.Group | null {
+    return this.#entries.get(id)?.placeholder ?? null;
+  }
+
+  #drawPicture(entry: Entry, element: SceneElement, read: ReadVariable): void {
+    if (element.type !== 'image') return;
+    // The body is only the box the element covers; the picture or its
+    // placeholder is what shows.
+    entry.body.fill('');
+    entry.body.stroke('');
+    entry.body.strokeWidth(0);
+    const picture = this.#pictures.get(element.file);
+    if (picture) {
+      if (!entry.picture) {
+        entry.picture = new Konva.Image({ image: picture, listening: false });
+        entry.group.add(entry.picture);
+      }
+      entry.picture.image(picture);
+      entry.picture.width(element.w);
+      entry.picture.height(element.h);
+      entry.picture.visible(true);
+      entry.placeholder?.visible(false);
+      return;
+    }
+    entry.picture?.visible(false);
+    if (!entry.placeholder) {
+      entry.placeholder = new Konva.Group({ listening: false });
+      entry.group.add(entry.placeholder);
+    }
+    const group = entry.placeholder;
+    group.destroyChildren();
+    group.visible(true);
+    group.add(
+      new Konva.Rect({
+        width: element.w,
+        height: element.h,
+        cornerRadius: PLACEHOLDER_LOOK.radius,
+        fill: read('--color-surface-sunken').trim(),
+        stroke: read('--color-border-strong').trim(),
+        strokeWidth: PLACEHOLDER_LOOK.border,
+        dash: [...PLACEHOLDER_LOOK.dash],
+      }),
+    );
+    const sizes = { name: number(read, '--text-body'), note: number(read, '--text-meta') };
+    const layout = placeholderLayout(element, element.file, picture === null ? 'missing' : 'loading', sizes);
+    // The words never spill out of the box.
+    group.clip({ x: 0, y: 0, width: element.w, height: element.h });
+    const muted = read('--color-text-muted').trim();
+    if (layout.icon) {
+      group.add(
+        new Konva.Path({
+          x: layout.icon.x,
+          y: layout.icon.y,
+          data: PICTURE_ICON.path,
+          stroke: muted,
+          strokeWidth: PLACEHOLDER_LOOK.iconStroke,
+          lineCap: 'round',
+          lineJoin: 'round',
+        }),
+      );
+    }
+    const family = read('--font-ui').trim();
+    for (const line of layout.lines) {
+      const node = new Konva.Text({
+        text: line.text,
+        y: line.y,
+        fontFamily: family,
+        fontSize: line.size,
+        fill: line.kind === 'name' ? muted : read('--color-text-faint').trim(),
+        wrap: 'none',
+      });
+      node.x(line.x - node.width() / 2);
+      group.add(node);
+    }
   }
 
   /** The text nodes drawing a code block's runs, in order. */
@@ -1200,7 +1316,22 @@ export class CanvasStage {
     } else {
       group.add(body);
     }
-    return { group, body, heads, detached, runs, drawnRuns, drawnPaint: '', label: null, type: element.type, applied: null, tag: null, border: null };
+    return {
+      group,
+      body,
+      heads,
+      detached,
+      runs,
+      drawnRuns,
+      drawnPaint: '',
+      label: null,
+      type: element.type,
+      applied: null,
+      tag: null,
+      border: null,
+      picture: null,
+      placeholder: null,
+    };
   }
 
   #createBody(element: SceneElement): Konva.Shape {
@@ -1351,6 +1482,7 @@ export class CanvasStage {
     this.#drawDetached(entry, element, read);
     this.#drawCode(entry, element, read);
     this.#drawLanguage(entry, element, read);
+    this.#drawPicture(entry, element, read);
   }
 
   /**

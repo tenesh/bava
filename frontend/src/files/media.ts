@@ -7,15 +7,21 @@
  * ever go the other way: a file counts as used when the Document's reader
  * finds it (`pageLinks`), and also when a page's text names it anywhere at
  * all (in a line, a table, a heading, HTML, by reference; encoded, in any
- * case or accent form). And nothing is unused until every page was read.
+ * case or accent form), or its canvas shows it. And nothing is unused until
+ * every page was read.
  */
 import { mediaKind, pageLinks } from '../docs/markdown';
 import { resolveLink } from '../docs/links';
+import { canvasPictureFiles } from '../canvas/page-pictures';
 
 const ATTACHMENTS = '.bava/attachments/';
 
 export type AttachmentFile = { name: string; size: number; modified: string };
-export type PageText = { name: string; path: string; text: string; unreadable?: boolean };
+/**
+ * A page as read for its use of attachments. `pictures`: the files its canvas
+ * shows when that is not in `text`, as for the open page, read from the editor.
+ */
+export type PageText = { name: string; path: string; text: string; unreadable?: boolean; pictures?: string[] };
 export type PageRef = { name: string; path: string };
 
 export type MediaKind = 'image' | 'video' | 'pdf' | 'other';
@@ -82,6 +88,8 @@ export function mediaItems(files: AttachmentFile[], pages: PageText[]): MediaIte
       lastVideo = link.kind === 'media' && name && mediaKind(name) === 'video' ? name : null;
       if (name) use(name, page);
     }
+    // Its canvas's pictures, named by attachment rather than linked.
+    for (const name of [...canvasPictureFiles(page.text), ...(page.pictures ?? [])]) use(name, page);
   }
   // A page that names a file anywhere uses it, in whatever form.
   const texts = pages.map((page) => ({ page, text: folded(page.text) }));

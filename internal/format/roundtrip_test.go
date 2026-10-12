@@ -386,6 +386,60 @@ func TestRoundTripCodeBlocks(t *testing.T) {
 	}
 }
 
+// A picture names its attachment, never a path, and takes the keys every
+// element takes; a key from a later Bava rides along untouched
+// (docs/file-format.md, "Pictures").
+func TestRoundTripPictures(t *testing.T) {
+	source := "# Menu\n\n```bava-canvas\n" + `{
+  "elements": [
+    {
+      "angle": 0.25,
+      "file": "har gow.png",
+      "frame": "f1",
+      "h": 150,
+      "id": "p1",
+      "locked": true,
+      "opacity": 50,
+      "type": "image",
+      "w": 200,
+      "x": 10,
+      "y": 20,
+      "z": 2
+    },
+    {
+      "crop": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "file": "a picture from later.webp",
+      "h": 40,
+      "id": "p2",
+      "type": "image",
+      "w": 40,
+      "x": 0,
+      "y": 200,
+      "z": 3
+    }
+  ],
+  "version": 1
+}
+` + "```\n"
+
+	file, err := format.Read(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	written, err := format.Write(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written != source {
+		t.Errorf("a picture changed on the way through.\nwant:\n%s\ngot:\n%s", source, written)
+	}
+}
+
 // Bends, anchors and a label position are plain JSON the frontend writes; an
 // older reader keeps them verbatim, and this one must too
 // (docs/file-format.md, "Lines, arrows and strokes", "Attachment and

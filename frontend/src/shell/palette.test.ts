@@ -28,6 +28,8 @@ describe('the commands the palette offers', () => {
     expect(byId('canvas.group', nothing)).toBeUndefined();
     expect(byId('view.zoomToFit', nothing)).toBeDefined();
     expect(byId('insert.diagram', commands({ ...everything, showsCanvas: false }))).toBeUndefined();
+    expect(byId('insert.picture', commands({ ...everything, showsCanvas: false }))).toBeUndefined();
+    expect(byId('insert.picture')).toBeDefined();
   });
 
   it('never offers itself', () => {

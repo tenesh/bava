@@ -58,6 +58,7 @@
         },
         { "kind": "separator" },
         { "kind": "command", "id": "insert.diagram", "label": "Diagram from Code", "when": ["hasDocument", "showsCanvas"] },
+        { "kind": "command", "id": "insert.picture", "label": "Picture", "when": ["hasDocument", "showsCanvas"] },
         { "kind": "separator", "platforms": ["windows", "linux"] },
         {
           "kind": "submenu",

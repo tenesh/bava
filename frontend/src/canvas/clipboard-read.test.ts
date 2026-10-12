@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readCanvasClipboard } from './clipboard-read';
+import { carriedPictures, readCanvasClipboard } from './clipboard-read';
 import { exportArea } from './export/area';
 import { toSvg } from './export/svg';
 import type { SceneData, SceneElement } from './scene';
@@ -38,6 +38,8 @@ describe("Bava's shapes on the clipboard", () => {
     const wrapped = (data: unknown) => `<svg><metadata id="bava-canvas">${JSON.stringify(data)}</metadata></svg>`;
     const rect = { id: 'a', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1 };
     expect(readCanvasClipboard(wrapped({ version: 1, elements: [rect] }))).toEqual([rect]);
+    const picture = { id: 'p', type: 'image', file: 'har gow.png', x: 0, y: 0, w: 10, h: 10, z: 1 };
+    expect(readCanvasClipboard(wrapped({ version: 1, elements: [picture] }))).toEqual([picture]);
     expect(readCanvasClipboard(wrapped({ version: 2, elements: [rect] }))).toBeNull();
     expect(readCanvasClipboard(wrapped({ version: 1, elements: [{ ...rect, type: 'hexagram' }] }))).toBeNull();
     expect(readCanvasClipboard(wrapped({ version: 1, elements: [{ ...rect, w: 'wide' }] }))).toBeNull();
@@ -47,5 +49,24 @@ describe("Bava's shapes on the clipboard", () => {
   it("read an apostrophe either way it is written", () => {
     const svg = `<svg><metadata id="bava-canvas">{"version":1,"elements":[{"id":"a","type":"text","text":"Ana&#39;s &apos;bao&apos;","x":0,"y":0,"w":10,"h":10,"z":1}]}</metadata></svg>`;
     expect((readCanvasClipboard(svg)![0] as { text: string }).text).toBe("Ana's 'bao'");
+  });
+});
+
+describe("pictures inside Bava's copied shapes", () => {
+  it('are read back by file, as the bytes the picture was drawn from', () => {
+    const picture = { id: 'p', type: 'image', file: 'har gow & co.png', x: 0, y: 0, w: 10, h: 10, z: 1 } as unknown as SceneElement;
+    const svg = toSvg(exportArea({ elements: [picture] } as SceneData, []), {
+      read,
+      carry: [picture],
+      pictures: { 'har gow & co.png': 'data:image/png;base64,AAAA' },
+    });
+    expect(carriedPictures(svg)).toEqual({ 'har gow & co.png': { type: 'image/png', base64: 'AAAA' } });
+  });
+
+  it('are none for a picture drawn from an address, or missing', () => {
+    const picture = { id: 'p', type: 'image', file: 'a.png', x: 0, y: 0, w: 10, h: 10, z: 1 } as unknown as SceneElement;
+    const area = exportArea({ elements: [picture] } as SceneData, []);
+    expect(carriedPictures(toSvg(area, { read, pictures: { 'a.png': '/bava-file/?path=a.png' } }))).toEqual({});
+    expect(carriedPictures(toSvg(area, { read }))).toEqual({});
   });
 });

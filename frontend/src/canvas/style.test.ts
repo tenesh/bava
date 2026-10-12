@@ -112,6 +112,8 @@ describe('style properties', () => {
     expect(propertyKeysFor('text')).toEqual(expect.arrayContaining(['fontSize', 'align', 'opacity']));
     expect(propertyKeysFor('text')).not.toContain('strokeWidth');
     expect(propertyKeysFor('group')).toEqual(['opacity']);
+    // A picture draws itself: no fill, border or label to style.
+    expect(propertyKeysFor('image')).toEqual(['opacity']);
   });
 
   it('applies a property to every selected element that takes it, in one step', () => {

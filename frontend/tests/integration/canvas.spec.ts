@@ -18,9 +18,13 @@ import {
   ofType,
   onScreen,
   statusMessage,
+  emit,
+  SPACE,
   openCanvas,
   openKinds,
   openDialog,
+  openApp,
+  openLoosePage,
   pick,
   placed,
   pngFacts,
@@ -1462,3 +1466,124 @@ test.describe('the system clipboard on the canvas', () => {
     expect(await doc.textContent()).toBe(before);
   });
 });
+
+// A picture becomes a canvas element four ways, attached to the Space first
+// as the page attaches one, or reusing its attachment from Media.
+test.describe('pictures added to the canvas', () => {
+  type Fakes = { __bava: { fakes: { harness: Record<string, unknown>; SpaceService: { Attachments(root: string): Promise<{ attachments: { name: string }[] }> } } } };
+  const setHarness = (page: Page, values: Record<string, unknown>) =>
+    page.evaluate((v) => Object.assign((window as unknown as Fakes).__bava.fakes.harness, v), values);
+  const attachments = (page: Page) =>
+    page.evaluate(async (root) => (await (window as unknown as Fakes).__bava.fakes.SpaceService.Attachments(root)).attachments.map((a) => a.name), SPACE);
+  const pictures = async (page: Page) => ofType(await saved(page), 'image') as (Awaited<ReturnType<typeof saved>>[number] & { file: string })[];
+
+  test('File ▸ Picture adds the picked picture in the middle of the view, its proportions its own', async ({ page }) => {
+    await startCanvas(page, []);
+    await setHarness(page, { pickedImages: ['/Users/you/Pictures/landscape.png'] });
+    await menu(page, 'insert.picture');
+    await expect.poll(async () => (await pictures(page)).length).toBe(1);
+    const [picture] = await pictures(page);
+    expect(picture.file).toBe('landscape.png');
+    expect(Math.max(picture.w, picture.h)).toBeLessThanOrEqual(480);
+    // Its own shape, read from the file: not the square a picture of unknown size gets.
+    expect(picture.w).not.toBe(picture.h);
+    expect(await attachments(page)).toContain(picture.file);
+  });
+
+  test('a picture pasted with no text on the clipboard is attached and placed', async ({ page }) => {
+    await startCanvas(page, []);
+    await setHarness(page, { clipboard: '', clipboardImage: 'iVBORw0KGgo=' });
+    await menu(page, 'edit.paste');
+    await expect.poll(async () => (await pictures(page)).map((p) => p.file)).toEqual(['Pasted image.png']);
+  });
+
+  test('a file dropped on the canvas lands where it was dropped; a document goes nowhere', async ({ page }) => {
+    await startCanvas(page, []);
+    // The window sends a drop only over an element marked to take one.
+    await expect(page.locator('.canvas-region')).toHaveAttribute('data-file-drop-target');
+    const spot = await onScreen(page, { x: 300, y: 200 });
+    await emit(page, 'files:dropped', { paths: ['/Users/you/Pictures/logo.png', '/Users/you/notes.pdf'], x: spot.x, y: spot.y });
+    await expect.poll(async () => (await pictures(page)).length).toBe(1);
+    const [picture] = await pictures(page);
+    expect(picture.file).toBe('logo.png');
+    expect(picture.x + picture.w / 2).toBeCloseTo(300, 0);
+    expect(picture.y + picture.h / 2).toBeCloseTo(200, 0);
+    await expect(statusMessage(page)).toContainText('Only pictures go on the canvas');
+    expect(await attachments(page)).not.toContain('notes.pdf');
+  });
+
+  test('a picture dragged from Media lands on the canvas, its attachment reused', async ({ page }) => {
+    await startCanvas(page, []);
+    const before = await attachments(page);
+    const spot = await onScreen(page, { x: 400, y: 300 });
+    await canvasHost(page).evaluate((host, at) => {
+      const data = new DataTransfer();
+      data.setData('application/x-bava-attachment', 'demo poster.png');
+      for (const type of ['dragover', 'drop']) {
+        host.dispatchEvent(new DragEvent(type, { dataTransfer: data, clientX: at.x, clientY: at.y, bubbles: true, cancelable: true }));
+      }
+    }, spot);
+    await expect.poll(async () => (await pictures(page)).map((p) => p.file)).toEqual(['demo poster.png']);
+    const [picture] = await pictures(page);
+    expect(picture.x + picture.w / 2).toBeCloseTo(400, 0);
+    expect(await attachments(page)).toEqual(before);
+  });
+
+  test('a page outside a Space asks to open its folder as one first', async ({ page }) => {
+    await openApp(page, 'light');
+    await openLoosePage(page);
+    await menu(page, 'view.canvas');
+    await expect(canvasHost(page)).toBeVisible();
+    await setHarness(page, { pickedImages: ['/Users/you/Pictures/logo.png'] });
+    await menu(page, 'insert.picture');
+    await expect(openDialog(page)).toContainText('Open this folder as a Space?');
+  });
+
+  test('renaming a picture in Media renames it on every canvas showing it', async ({ page }) => {
+    await startCanvas(page, [{ id: 'p1', type: 'image', file: 'logo.png', x: 100, y: 100, w: 120, h: 60, z: 1 }]);
+    const other = 'Engineering/Blocks.md';
+    await page.evaluate(
+      ([root, path]) =>
+        (window as unknown as { __bava: { fakes: { harness: { setScene(r: string, p: string, s: unknown): void } } } }).__bava.fakes.harness.setScene(root, path, {
+          version: 1,
+          elements: [{ id: 'q1', type: 'image', file: 'logo.png', x: 0, y: 0, w: 40, h: 20, z: 1 }],
+        }),
+      [SPACE, other] as const,
+    );
+    await page.getByRole('button', { name: 'Open Media' }).click();
+    const dialog = openDialog(page);
+    await dialog.locator('[data-name="logo.png"]').click();
+    await dialog.getByRole('button', { name: 'Rename' }).click();
+    await dialog.locator('.media-rename').fill('brand');
+    await dialog.locator('.media-rename').press('Enter');
+    await expect(dialog.locator('[data-name="brand.png"]')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    expect((await pictures(page)).map((p) => p.file)).toEqual(['brand.png']);
+    const elsewhere = await page.evaluate(
+      ([root, path]) => (window as unknown as { __bava: { fakes: { harness: { scene(r: string, p: string): { elements: { file: string }[] } } } } }).__bava.fakes.harness.scene(root, path),
+      [SPACE, other] as const,
+    );
+    expect(elsewhere.elements.map((e) => e.file)).toEqual(['brand.png']);
+  });
+
+  test("shapes pasted from another Space bring the pictures this one lacks", async ({ page }) => {
+    await startCanvas(page, []);
+    const element = { id: 'p', type: 'image', file: 'brought along.png', x: 0, y: 0, w: 40, h: 40, z: 1 };
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg"><metadata id="bava-canvas">${JSON.stringify({ version: 1, elements: [element] })}</metadata>` +
+      `<image data-file="brought along.png" x="0" y="0" width="40" height="40" preserveAspectRatio="none" href="data:image/png;base64,iVBORw0KGgo="/></svg>`;
+    await setHarness(page, { clipboard: svg });
+    await menu(page, 'edit.paste');
+    await expect.poll(async () => (await pictures(page)).map((p) => p.file)).toEqual(['brought along.png']);
+    expect(await attachments(page)).toContain('brought along.png');
+  });
+
+  test("the export dialog's preview shows the picture, not a blank", async ({ page }) => {
+    await openCanvas(page, 'light', CANVAS_PAGE, [{ id: 'p1', type: 'image', file: 'landscape.png', x: 100, y: 100, w: 120, h: 80, z: 1 }]);
+    await menu(page, 'file.export');
+    const image = page.locator('.bava-export-preview image');
+    await expect(image).toHaveAttribute('href', /^data:image\/png;base64,/);
+  });
+});
+

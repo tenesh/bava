@@ -11,6 +11,7 @@ import type { ReadVariable } from '../palette';
 import type { ExportArea } from './area';
 import type { Run } from '../code/highlight';
 import { withTheme } from './theme';
+import { loadPicture } from '../pictures';
 
 export type PngOptions = {
   /**
@@ -30,6 +31,10 @@ export type PngOptions = {
   encode?: (canvas: HTMLCanvasElement) => Promise<Blob>;
   /** Called while the drawing happens, for tests that watch the swap. */
   onDraw?: () => void;
+  /** Each picture element's picture, by attachment name, as the SVG takes them (`SvgOptions.pictures`). */
+  pictures?: Record<string, string | null>;
+  /** Loads a picture from its address; injected, so a test needs no image decoding. */
+  loadImage?: (href: string) => Promise<CanvasImageSource>;
 };
 
 function encodeInBrowser(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -50,6 +55,20 @@ function encodeInBrowser(canvas: HTMLCanvasElement): Promise<Blob> {
 export async function toPng(area: ExportArea, options: PngOptions): Promise<Blob> {
   const { box } = area;
   if (box.w <= 0 || box.h <= 0) throw new Error('export: there is nothing to export');
+
+  // Loaded before the drawing, which is synchronous: one that cannot be
+  // loaded is drawn as its placeholder, as on the canvas.
+  const load = options.loadImage ?? loadPicture;
+  const files = [...new Set(area.elements.flatMap((e) => (e.type === 'image' ? [e.file] : [])))];
+  const loaded = new Map(
+    await Promise.all(
+      files.map(async (file) => {
+        const href = options.pictures?.[file];
+        const picture = href ? await load(href).catch(() => null) : null;
+        return [file, picture] as const;
+      }),
+    ),
+  );
 
   const draw = (read: ReadVariable): HTMLCanvasElement => {
     // Offscreen but in the document: Konva reads the container's size at mount.
@@ -78,6 +97,7 @@ export async function toPng(area: ExportArea, options: PngOptions): Promise<Blob
       // The stage is handed its runs, here as on screen: highlighting is
       // asynchronous and a draw is not.
       for (const [id, runs] of Object.entries(options.codeRuns ?? {})) stage.setCodeRuns(id, runs);
+      for (const [file, picture] of loaded) stage.setPicture(file, picture);
       options.onDraw?.();
       const drawn = stage.toCanvas(options.scale);
       return options.background ? withBackground(drawn, read('--color-canvas-bg').trim()) : drawn;

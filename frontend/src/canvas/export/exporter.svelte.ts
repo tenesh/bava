@@ -41,6 +41,7 @@ export type ExportIO = {
       theme: 'light' | 'dark';
       background: boolean;
       codeRuns?: Record<string, Run[][]>;
+      pictures?: Record<string, string | null>;
     },
   ) => Promise<Blob>;
 };
@@ -60,6 +61,10 @@ export type ExporterOptions = {
   codeRuns?: () => Record<string, Run[][]>;
   /** The mono advance the canvas is drawing with. */
   monoAdvance?: () => number;
+  /** The pictures of these elements as data addresses, to travel inside a file or the clipboard. */
+  pictures?: (elements: SceneElement[]) => Promise<Record<string, string | null>>;
+  /** Where the canvas loads each picture from, for the preview on screen. */
+  picturesShown?: () => Record<string, string | null>;
 };
 
 const DEFAULTS: ExportSettings = { onlySelected: false, background: true, dark: false, scale: 2 };
@@ -86,7 +91,10 @@ export function createExporter(options: ExporterOptions) {
   const monoStack = (): string => readRootVariable('--font-mono').trim() || 'Geist Mono';
 
   /** The SVG for the current settings. `css` carries the font when asked. */
-  function svgFor(current: ExportArea, css = '', read?: ReadVariable, carry?: SceneElement[]): string {
+  function svgFor(
+    current: ExportArea,
+    { css = '', read, carry, pictures }: { css?: string; read?: ReadVariable; carry?: SceneElement[]; pictures?: Record<string, string | null> } = {},
+  ): string {
     const draw = (reader: ReadVariable) =>
       toSvg(current, {
         read: reader,
@@ -95,11 +103,15 @@ export function createExporter(options: ExporterOptions) {
         codeRuns: options.codeRuns?.(),
         monoAdvance: options.monoAdvance?.(),
         carry,
+        pictures,
       });
     // The preview and a written file resolve colours the same way: in the
     // theme the settings ask for, whatever the screen is showing.
     return read ? draw(read) : withTheme(theme(), draw);
   }
+
+  /** The pictures an export carries, as data addresses. */
+  const picturesOf = async (current: ExportArea) => (await options.pictures?.(current.elements)) ?? {};
 
   async function writeFile(format: ExportFormat, current: ExportArea): Promise<void> {
     try {
@@ -117,13 +129,14 @@ export function createExporter(options: ExporterOptions) {
     let contents: string;
     if (format === 'svg') {
       const css = await fontCss(current.elements, { family: fontStack(), monoFamily: monoStack() });
-      contents = base64(new TextEncoder().encode(svgFor(current, css)));
+      contents = base64(new TextEncoder().encode(svgFor(current, { css, pictures: await picturesOf(current) })));
     } else {
       const blob = await io.toPng(current, {
         scale: settings.scale,
         theme: theme(),
         background: settings.background,
         codeRuns: options.codeRuns?.(),
+        pictures: await picturesOf(current),
       });
       contents = base64(new Uint8Array(await blob.arrayBuffer()));
     }
@@ -140,17 +153,20 @@ export function createExporter(options: ExporterOptions) {
   async function putOnClipboard(format: ExportFormat, current: ExportArea): Promise<CopyResult> {
     if (format === 'svg') {
       const css = await fontCss(current.elements, { family: fontStack(), monoFamily: monoStack() });
-      return io.copySvg(svgFor(current, css));
+      return io.copySvg(svgFor(current, { css, pictures: await picturesOf(current) }));
     }
     // Not awaited: the clipboard item has to be built from the picture while
     // the gesture that asked for it is still live (`clipboard.ts`).
     return io.copyPng(
-      io.toPng(current, {
-        scale: settings.scale,
-        theme: theme(),
-        background: settings.background,
-        codeRuns: options.codeRuns?.(),
-      }),
+      picturesOf(current).then((pictures) =>
+        io.toPng(current, {
+          scale: settings.scale,
+          theme: theme(),
+          background: settings.background,
+          codeRuns: options.codeRuns?.(),
+          pictures,
+        }),
+      ),
     );
   }
 
@@ -198,7 +214,7 @@ export function createExporter(options: ExporterOptions) {
 
     /** The SVG the dialog shows. No font: the preview is on screen already. */
     preview(): string {
-      return svgFor(area());
+      return svgFor(area(), { pictures: options.picturesShown?.() });
     },
 
     /** PNG or SVG to a file the user picks. */
@@ -219,7 +235,7 @@ export function createExporter(options: ExporterOptions) {
     async carrying(elements: SceneElement[]): Promise<string> {
       const current = exportArea({ elements }, []);
       const css = await fontCss(current.elements, { family: fontStack(), monoFamily: monoStack() });
-      return svgFor(current, css, undefined, elements);
+      return svgFor(current, { css, carry: elements, pictures: await picturesOf(current) });
     },
 
     /** Copy as ▸ PNG or SVG, from the menu, with no dialog unless it fails. */

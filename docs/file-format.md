@@ -384,6 +384,7 @@ Every element has `id`, `type`, `x`, `y`, `w`, `h`, `z`.
 | `code` | `code`, `language`, `measuredWidth`, `measuredHeight` |
 | `frame` | optional `label`; takes `stroke`, `color` |
 | `group` | `children`: element ids |
+| `image` | `file`: a picture in `.bava/attachments/`, by name, never a path |
 
 The nine shapes fill their box and take `label` (plain text, not
 measured), `fill`, `stroke` and `color` (label), each a colour, absent
@@ -458,6 +459,20 @@ Arrowheads: `none`, `arrow`, `bar`, `triangle`, `triangle-outline`, `circle`,
   binding is kept, meaningless. `points` are always written, the fallback when
   a binding cannot resolve.
 
+### Pictures
+
+```json
+{ "id": "p1", "type": "image", "file": "har gow.png", "x": 40, "y": 24, "w": 200, "h": 150, "z": 3 }
+```
+
+- `file` is the attachment's name, as a video's `poster` is: moving the page
+  never breaks it. Renaming the attachment in Bava rewrites it in every
+  page's canvas.
+- The picture fills its box; resizing keeps its proportions unless Shift is
+  held. It takes `opacity`, `angle`, `locked` and `frame`; no fill, border or
+  label.
+- A file that cannot be loaded draws as a dashed box naming it, and is kept.
+
 ### Frames and code
 
 - `frame` lives on the child: one frame at most. Moving a frame moves its
@@ -484,6 +499,10 @@ arrows and frames pointing at the copies. Any other text pasted on the canvas
 becomes one `text` element, wrapped at 400 scene units when wider. A text
 element whose `w` is less than its longest line is drawn wrapped at `w`, and
 stays so as it is edited.
+
+A picture element in the copy is drawn from its file's bytes, as a data
+address on an `<image data-file="<name>">`. Pasted into a Space without that
+file, the bytes are attached under its name (or a free one) first.
 
 ## Spaces
 

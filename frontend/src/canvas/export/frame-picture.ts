@@ -33,7 +33,7 @@ export function frameArea(read: SceneData, frameId: string): ExportArea | null {
   return { elements, box };
 }
 
-export type PictureOptions = Pick<PngOptions, 'theme' | 'read' | 'codeRuns'> & {
+export type PictureOptions = Pick<PngOptions, 'theme' | 'read' | 'codeRuns' | 'pictures'> & {
   /** Draws the area; `toPng` unless a test gives its own. */
   draw?: (area: ExportArea, options: PngOptions) => Promise<Blob>;
 };

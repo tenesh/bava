@@ -46,3 +46,18 @@ export function readCanvasClipboard(text: string): SceneElement[] | null {
   if (version !== CARRIED_VERSION || !Array.isArray(elements) || elements.length === 0) return null;
   return elements.every(isElement) ? elements : null;
 }
+
+/** A picture's bytes as an SVG carries them: its type and its base64. */
+export type CarriedPicture = { type: string; base64: string };
+
+const image = /<image data-file="([^"]*)"[^>]*? href="data:([^";,]+);base64,([^"]*)"/g;
+
+/**
+ * The pictures a copied SVG carries, by file: each drawn from a data address,
+ * so pasting into a Space without the file can attach it.
+ */
+export function carriedPictures(text: string): Record<string, CarriedPicture> {
+  const found: Record<string, CarriedPicture> = {};
+  for (const [, file, type, base64] of text.matchAll(image)) found[unescapeXml(file)] = { type, base64 };
+  return found;
+}

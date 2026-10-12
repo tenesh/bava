@@ -21,12 +21,30 @@ type Op = {
   edits?: { path: string; before: string; after: string }[];
   data?: string;
   replace?: boolean;
+  source?: string;
 };
 
 const PAGE_EXT = '.md';
 const parentOf = (path: string) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '');
 const baseOf = (path: string) => path.slice(path.lastIndexOf('/') + 1);
 const join = (folder: string, name: string) => (folder ? `${folder}/${name}` : name);
+
+/**
+ * A page as its file holds it: the Document, then its canvas block when it
+ * has elements, as Go writes the file and the index reads it.
+ */
+const CANVAS_FENCE = '\n```bava-canvas\n';
+function fileText(page: FakePage): string {
+  if (page.scene.elements.length === 0) return page.source;
+  return `${page.source}${CANVAS_FENCE}${JSON.stringify(page.scene, null, 2)}\n\`\`\`\n`;
+}
+/** A file's text back into the page's two parts. */
+function fromFileText(text: string): Pick<FakePage, 'source' | 'scene'> | null {
+  const at = text.lastIndexOf(CANVAS_FENCE);
+  if (at < 0) return null;
+  const body = text.slice(at + CANVAS_FENCE.length).replace(/\n```\n?$/, '');
+  return { source: text.slice(0, at), scene: JSON.parse(body) };
+}
 
 function refusal(code: string, error: string) {
   return { error, code };
@@ -273,6 +291,24 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         pictures.set(name, op.data ?? '');
         return ok({ name });
       }
+      // A file copied into the attachments, under a free name: from the
+      // user's disk by path, or bytes pasted. The file route serves the
+      // fixtures' media by name, so a path ending in one shows it. As Go
+      // reuses a file with the same bytes, a file of the same name stands in
+      // for the same bytes here (bytes pasted: compared when known).
+      case 'attach':
+      case 'attachData': {
+        let name = op.kind === 'attach' ? baseOf(op.source ?? '') : op.name || 'Pasted image.png';
+        const taken = (each: string) => space.attachments.some((entry) => entry.name === each);
+        const known = pictures.get(name);
+        if (taken(name) && (op.kind === 'attach' || known === undefined || known === op.data)) return ok({ name });
+        const dot = name.lastIndexOf('.');
+        const [base, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ''];
+        for (let n = 2; taken(name); n += 1) name = `${base} ${n}${ext}`;
+        space.attachments.push({ name, size: 4_000, modified: '2026-10-13T09:00:00Z' });
+        if (op.data) pictures.set(name, op.data);
+        return ok({ name });
+      }
       case 'renameAttachment': {
         const file = space.attachments.find((entry) => entry.name === op.attachment);
         if (!file) return ok({ error: `"${op.attachment}" is not an attachment` });
@@ -345,8 +381,11 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         const missed: string[] = [];
         for (const edit of op.edits ?? []) {
           const page = space.pages[edit.path];
-          if (page && page.source === edit.before) page.source = edit.after;
-          else missed.push(edit.path);
+          if (page && fileText(page) === edit.before) {
+            // A canvas in the text is the page's scene again.
+            const parts = page.scene.elements.length > 0 ? fromFileText(edit.after) : null;
+            Object.assign(page, parts ?? { source: edit.after });
+          } else missed.push(edit.path);
         }
         return ok({ missed });
       }
@@ -443,6 +482,10 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     exports,
     /** The system clipboard's text, as the app writes and reads it. */
     clipboard: '',
+    /** A picture on the system clipboard, in base64; '' for none. */
+    clipboardImage: '',
+    /** What the picture picker answers. */
+    pickedImages: [] as string[],
     /** Files on the user's disk an import reads, by absolute path. */
     disk,
     /** What the import file picker answers. */
@@ -583,7 +626,7 @@ export function createFakes(first: FakeSpace = seedSpace()) {
             if (isFolder(space, path)) {
               folders.push(path);
               walk(path);
-            } else pages.push({ name: linkName(path), path, text: withText ? space.pages[path].source : '' });
+            } else pages.push({ name: linkName(path), path, text: withText ? fileText(space.pages[path]) : '' });
           }
         };
         walk('');
@@ -724,10 +767,10 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         return { path: `${PARENT}/${suggestedName}`, error: '' };
       },
       async ChooseMedia(kind: string) {
-        return { paths: kind === 'import' ? [...harness.importFiles] : [], error: '' };
+        return { paths: kind === 'import' ? [...harness.importFiles] : kind === 'image' ? [...harness.pickedImages] : [], error: '' };
       },
       async ClipboardImage() {
-        return '';
+        return harness.clipboardImage;
       },
       async FileDetails(_root: string, path: string) {
         // A file outside the Space is read only once the user chose it.

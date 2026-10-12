@@ -563,6 +563,13 @@ export async function openCanvas(page: Page, theme: Theme, path: string, element
   await openPage(page, path);
   await menu(page, 'view.canvas');
   await expect(canvasHost(page)).toBeVisible();
+  if (elements.some((element) => (element as { type?: string }).type === 'image')) await picturesSettled(page);
+}
+
+/** The canvas's pictures loaded or found missing, and drawn. */
+export async function picturesSettled(page: Page) {
+  await expect(page.locator('.canvas-region')).toHaveAttribute('data-pictures', 'ready');
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
 }
 
 /** The canvas page opened on one of each kind (`kinds`); returns a point on each. */

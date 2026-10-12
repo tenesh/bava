@@ -97,7 +97,7 @@ How far a long task has got: `{ task, done, total }`, `task` naming it
 
 ### `files:dropped` (Go to frontend)
 
-Files dragged onto an element marked `data-file-drop-target` (the Document):
+Files dragged onto an element marked `data-file-drop-target` (the Document, the canvas):
 `{ paths, x, y }`, the point in CSS pixels from the page's top left. The window
 sets `EnableFileDrop`.
 
@@ -235,7 +235,7 @@ without a handler or the reverse. Unknown ids are ignored.
 | `canPasteStyles` | with `hasSelection`, enables Paste Styles |
 | `hasLocked` | enables Unlock All |
 | `hasDocument` | enables Export |
-| `showsCanvas` | with `hasDocument`, enables File ▸ Diagram from Code |
+| `showsCanvas` | with `hasDocument`, enables File ▸ Diagram from Code and File ▸ Picture |
 | `hasSpace` | enables New Folder, Trash, Space Settings and Import |
 | `objectSnap` | ticks Canvas ▸ Snap to Objects |
 

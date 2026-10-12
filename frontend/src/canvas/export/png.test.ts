@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { toPng } from './png';
+import { CanvasStage } from '../stage';
 import { exportArea } from './area';
 import type { SceneData } from '../scene';
 
@@ -85,5 +86,25 @@ describe('exporting in the other theme', () => {
     expect(themeWhileDrawing).toBe('dark');
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
     document.documentElement.removeAttribute('data-theme');
+  });
+});
+
+describe('pictures in a PNG', () => {
+  const withPicture: SceneData = {
+    elements: [
+      { id: 'p', type: 'image', file: 'a.png', x: 0, y: 0, w: 100, h: 50, z: 1 } as never,
+      { id: 'q', type: 'image', file: 'gone.png', x: 0, y: 60, w: 100, h: 50, z: 2 } as never,
+    ],
+  };
+
+  it('are loaded before the drawing, and a picture that cannot be shown drawn missing', async () => {
+    const handed = vi.spyOn(CanvasStage.prototype, 'setPicture');
+    const loaded = document.createElement('canvas');
+    const loadImage = vi.fn(async () => loaded);
+    await toPng(exportArea(withPicture, []), { read, scale: 1, encode: encoder().encode, pictures: { 'a.png': 'data:,a' }, loadImage });
+    expect(loadImage).toHaveBeenCalledWith('data:,a');
+    expect(handed).toHaveBeenCalledWith('a.png', loaded);
+    expect(handed).toHaveBeenCalledWith('gone.png', null);
+    handed.mockRestore();
   });
 });

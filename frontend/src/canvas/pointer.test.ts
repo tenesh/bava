@@ -3995,3 +3995,43 @@ describe('cancelling a press', () => {
     expect(history.current.elements).toHaveLength(0);
   });
 });
+
+// A picture keeps its proportions, the other way round from shapes: Shift frees it.
+describe('resizing a picture', () => {
+  function picture() {
+    const history = createHistory({
+      elements: [{ id: 'p', type: 'image', file: 'har gow.png', x: 0, y: 0, w: 100, h: 50, z: 1 } as never],
+    });
+    const selection = createSelection();
+    const tools = createTools();
+    tools.activate('select');
+    const handler = createPointerHandler({ history, selection, tools, handleSize: () => 4 });
+    selection.click('p');
+    return { history, selection, handler };
+  }
+
+  it('keeps its proportions from a corner', () => {
+    const { handler } = picture();
+    handler.down(at(100, 50));
+    expect(handler.preview(at(140, 60))?.elements[0]).toMatchObject({ w: 140, h: 70 });
+  });
+
+  it('is freed by Shift', () => {
+    const { handler } = picture();
+    handler.down(at(100, 50));
+    expect(handler.preview(at(140, 60), { shift: true })?.elements[0]).toMatchObject({ w: 140, h: 60 });
+  });
+
+  it('keeps them in a selection with a shape, so the picture is never squashed', () => {
+    const { history, selection, handler } = picture();
+    history.mutate((draft) => {
+      draft.elements.push({ id: 'r', type: 'rect', x: 0, y: 60, w: 100, h: 40, z: 2 } as never);
+    });
+    selection.click('r', { additive: true });
+    // The selection is 100 by 100; its corner dragged to 140 by 110.
+    handler.down(at(100, 100));
+    const [p] = handler.preview(at(140, 110))!.elements;
+    expect(p.w / p.h).toBeCloseTo(2);
+  });
+});
+

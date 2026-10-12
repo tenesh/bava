@@ -70,6 +70,10 @@ Start Bava as if it had never run:
 - [ ] Copy shapes and an arrow between them in one Bava window, paste in another: the same shapes, the arrow attached; on each system.
 - [ ] Paste text from a browser and from an email app onto the canvas: one text element, its lines kept, a long paragraph wrapped.
 - [ ] Copy shapes, then paste into a vector drawing app: the picture shows.
+- [ ] Drop a picture from the Finder, Explorer and a Linux file manager onto the canvas: it lands where dropped; a PDF dropped there stays out.
+- [ ] Paste a screenshot onto the canvas; drag a picture from Media onto it; File ▸ Picture.
+- [ ] A canvas picture in a PDF export and in a frame embed; copy shapes with a picture into another Space and it comes along.
+- [ ] Rename a picture in Media: every canvas showing it follows.
 
 ## Media
 

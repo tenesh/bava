@@ -349,3 +349,27 @@ describe('an exported label along its arrow', () => {
     expect(svg).toContain('<polygon points=');
   });
 });
+
+describe('pictures in an SVG', () => {
+  const picture = { id: 'p', type: 'image', file: 'har gow.png', x: 10, y: 20, w: 200, h: 150, z: 1 };
+
+  it('are drawn from the address given, filling their box, and say which file they are', () => {
+    const svg = svgOf([picture], { read, pictures: { 'har gow.png': 'data:image/png;base64,AAAA' } });
+    expect(svg).toContain('<image data-file="har gow.png" x="10" y="20" width="200" height="150" preserveAspectRatio="none" href="data:image/png;base64,AAAA"/>');
+  });
+
+  it('turn and fade as the element says, as every element does', () => {
+    const svg = svgOf([{ ...picture, angle: 90, opacity: 50 }], { read, pictures: { 'har gow.png': 'data:,' } });
+    expect(svg).toContain('transform="rotate(90 110 95)"');
+    expect(svg).toContain('opacity="0.5"');
+  });
+
+  it('draw their placeholder when they cannot be shown, named', () => {
+    for (const pictures of [{ 'har gow.png': null }, {}] as Record<string, string | null>[]) {
+      const svg = svgOf([picture], { read, pictures });
+      expect(svg).not.toContain('<image');
+      expect(svg).toContain('stroke-dasharray="4 4"');
+      expect(svg).toContain('har gow.png is missing');
+    }
+  });
+});

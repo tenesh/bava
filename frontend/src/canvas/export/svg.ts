@@ -24,6 +24,7 @@ import { wrapLines } from '../text-layout';
 import { placeLabel } from '../label-box';
 import { canvasLineWidth } from '../text-measure';
 import { smoothPoints } from '../curves';
+import { BASELINE_SHARE, PICTURE_ICON, PLACEHOLDER_LOOK, placeholderLayout } from '../picture-placeholder';
 
 export type SvgOptions = {
   /** Reads the theme variables the export resolves against. */
@@ -49,6 +50,12 @@ export type SvgOptions = {
    * clipboard's copy, so Bava pastes them back as shapes (`clipboard-read.ts`).
    */
   carry?: SceneElement[];
+  /**
+   * Where each picture element's picture is drawn from, by attachment name: a
+   * data address for a file that travels, the app's own address on screen;
+   * null or absent, it cannot be shown and its placeholder is drawn.
+   */
+  pictures?: Record<string, string | null>;
 };
 
 const round = (value: number): number => Math.round(value * 1000) / 1000;
@@ -304,12 +311,48 @@ function codeLanguage(element: SceneElement, paint: Paint, options: SvgOptions):
   );
 }
 
+/** A picture, from its address; its placeholder when it has none, as the stage draws it. */
+function picture(element: SceneElement & { file: string }, options: SvgOptions): string {
+  const { x, y, w, h } = element;
+  const href = options.pictures?.[element.file];
+  if (href) {
+    return (
+      `<image data-file="${escapeXml(element.file)}" x="${round(x)}" y="${round(y)}" width="${round(w)}" height="${round(h)}"` +
+      ` preserveAspectRatio="none" href="${escapeXml(href)}"/>`
+    );
+  }
+  const read = (name: string) => options.read(name).trim();
+  const sizes = { name: parseFloat(read('--text-body')) || 0, note: parseFloat(read('--text-meta')) || 0 };
+  const layout = placeholderLayout(element, element.file, 'missing', sizes);
+  const id = `clip-${element.id}`;
+  const box =
+    `<rect x="${round(x)}" y="${round(y)}" width="${round(w)}" height="${round(h)}" rx="${PLACEHOLDER_LOOK.radius}"` +
+    ` fill="${read('--color-surface-sunken')}" stroke="${read('--color-border-strong')}" stroke-width="${PLACEHOLDER_LOOK.border}"` +
+    ` stroke-dasharray="${PLACEHOLDER_LOOK.dash.join(' ')}"/>`;
+  const icon = layout.icon
+    ? `<path transform="translate(${round(x + layout.icon.x)} ${round(y + layout.icon.y)})" d="${PICTURE_ICON.path}" fill="none"` +
+      ` stroke="${read('--color-text-muted')}" stroke-width="${PLACEHOLDER_LOOK.iconStroke}" stroke-linecap="round" stroke-linejoin="round"/>`
+    : '';
+  const words = layout.lines
+    .map(
+      (line) =>
+        // SVG places text on its baseline, not its top.
+        `<text x="${round(x + line.x)}" y="${round(y + line.y + line.size * BASELINE_SHARE)}" text-anchor="middle"` +
+        ` font-family="${escapeXml(read('--font-ui'))}" font-size="${round(line.size)}"` +
+        ` fill="${read(line.kind === 'name' ? '--color-text-muted' : '--color-text-faint')}">${escapeXml(line.text)}</text>`,
+    )
+    .join('');
+  // The words never spill out of the box, as on the canvas.
+  const clip = `<clipPath id="${escapeXml(id)}"><rect x="${round(x)}" y="${round(y)}" width="${round(w)}" height="${round(h)}"/></clipPath>`;
+  return `${box}${clip}<g clip-path="url(#${escapeXml(id)})">${icon}${words}</g>`;
+}
+
 /** One element: its body, its label, its opacity and its rotation. */
 function draw(element: SceneElement, options: SvgOptions, labelInset: number): string {
   const paint = paintFor(element, options.read);
   const label = 'label' in element ? (element.label as string | undefined) : undefined;
   const tag = element.type === 'code' ? codeLanguage(element, paint, options) : null;
-  const inner =
+  const inner = element.type === 'image' ? picture(element, options) :
     // A named code block's border is drawn apart, broken for the name.
     body(element, tag ? { ...paint, stroke: '' } : paint, options.read('--color-canvas-bg').trim()) +
     (tag ?? '') +

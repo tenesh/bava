@@ -7,6 +7,7 @@
  */
 import type { Component } from 'svelte';
 import FileImage from '@lucide/svelte/icons/file-image';
+import ImageIcon from '@lucide/svelte/icons/image';
 import FilePlay from '@lucide/svelte/icons/file-play';
 import FileText from '@lucide/svelte/icons/file-text';
 import LayoutGrid from '@lucide/svelte/icons/layout-grid';
@@ -218,6 +219,8 @@ export const LUCIDE_ICONS = {
   replace: Replace,
   // Media: a file by its kind, the grid and list views, adding, the dialog.
   fileImage: FileImage,
+  // A picture, as one goes on the canvas.
+  image: ImageIcon,
   fileVideo: FilePlay,
   fileText: FileText,
   viewGrid: LayoutGrid,

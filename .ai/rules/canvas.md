@@ -32,7 +32,9 @@ text sizes and the single history are in CLAUDE.md.
   the SVG export and the label editor's box; any change that can leave a
   label without room runs `growToLabel` in the same `history.mutate`.
 - **Render skips unchanged elements, except arrows** (detachment depends on
-  others). Outside state gets its own setter (`setCodeRuns`, `setEditing`).
+  others). Outside state gets its own setter (`setCodeRuns`, `setEditing`,
+  `setPicture`): highlighting and pictures load asynchronously, outside the
+  stage (`code/runs.ts`, `pictures.ts`), and arrive there.
 - **Drawing is once per frame (`frameThrottle`); input is not.**
 - **Test what Konva draws** (stroke, fill, points, text), not only scene data.
 - **The dot grid** (`grid.ts`, its own layer) never listens, is never saved,

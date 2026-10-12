@@ -132,3 +132,22 @@ describe('what is known of use', () => {
     expect(usage.items[0].unused).toBe(true);
   });
 });
+
+// A picture on a canvas uses its attachment, as one in the Document does:
+// "Move unused to Trash" must never take it.
+describe('pictures on a canvas', () => {
+  const file = [{ name: 'har gow.png', size: 1, modified: '2026-10-13T00:00:00Z' }];
+  const canvas = (name: string) =>
+    `# Menu\n\n\`\`\`bava-canvas\n${JSON.stringify({ elements: [{ id: 'p', type: 'image', file: name, x: 0, y: 0, w: 1, h: 1, z: 1 }], version: 1 })}\n\`\`\`\n`;
+
+  it("are used by the page whose canvas shows them", () => {
+    const [item] = mediaUsage(file, [{ name: 'Menu', path: 'Menu.md', text: canvas('har gow.png') }]).items;
+    expect(item.usedBy.map((p) => p.path)).toEqual(['Menu.md']);
+    expect(item.unused).toBe(false);
+  });
+
+  it('are used by the open page as its canvas is now, saved or not', () => {
+    const [item] = mediaUsage(file, [{ name: 'Menu', path: 'Menu.md', text: '# Menu\n', pictures: ['har gow.png'] }]).items;
+    expect(item.unused).toBe(false);
+  });
+});

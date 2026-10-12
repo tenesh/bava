@@ -13,7 +13,7 @@
   import { createInsert } from './shell/insert.svelte';
   import ContextMenu from './components/ContextMenu.svelte';
   import { contextMenuFor, contextSelection, EMBED_IN_DOCUMENT, overflowMenu, parseOverflowId, rightClickHit, type MenuNode } from './canvas/context-menu';
-  import { boundsOf, drawnBoundsOf, nudged, topLevel } from './canvas/edit';
+  import { PASTE_OFFSET, boundsOf, drawnBoundsOf, nudged, topLevel } from './canvas/edit';
   import { createScene, isLocked } from './canvas/scene';
   import { carriedWith } from './canvas/containment';
   import { angleOfElement, rotatedBounds } from './canvas/rotate';
@@ -22,6 +22,11 @@
   import { createExporter, exportIO } from './canvas/export/exporter.svelte';
   import { CodeEditor, commitCode, fitToCode } from './canvas/code/editor';
   import { createCodeRuns } from './canvas/code/runs';
+  import { createPictureLoader, loadPicture, pictureAddress, pngData } from './canvas/pictures';
+  import { placedPicture } from './canvas/add-picture';
+  import { picturesData } from './canvas/export/pictures-data';
+  import { canvasPictureFiles, renamedPictures } from './canvas/page-pictures';
+  import { mediaKind } from './docs/markdown';
   import type { Run } from './canvas/code/highlight';
   import type { Paper as BoundPaper } from '../bindings/github.com/tharabyte/bava/internal/pdfprint/models';
   import { measureCode } from './canvas/code/measure';
@@ -43,7 +48,7 @@
   import type { SpacePdfExport } from './components/SpaceExportDialog.svelte';
   import type { ZipFile, ZipScope } from './files/space.svelte';
   import { base64 } from './canvas/export/fonts';
-  import { framePicture } from './canvas/export/frame-picture';
+  import { frameArea, framePicture } from './canvas/export/frame-picture';
   import { embedFrame, frameGroups, redrawPictures, type EmbedIO } from './files/embed-actions';
   import { filteredRows, foldersOf, lockedWith, pagesWith, tagEdits, tagsIn } from './files/tags';
   import { movedText, templateMenu, TEMPLATE_ITEM, type TemplateRef } from './files/templates';
@@ -88,7 +93,7 @@
   import { wheelAction } from './canvas/navigation';
   import { LabelEditor, commitLabel, commitText, editableAt, insertText, labelBox } from './canvas/label-editor';
   import { canvasLineWidth, measureFor } from './canvas/text-measure';
-  import { readCanvasClipboard } from './canvas/clipboard-read';
+  import { carriedPictures, readCanvasClipboard } from './canvas/clipboard-read';
   import { PASTED_TEXT_WIDTH, isWrapped, longestLine, pastedText, textSize } from './canvas/paste-text';
   import { growToLabel, labelHeight } from './canvas/label-box';
   import { wrapLines } from './canvas/text-layout';
@@ -276,6 +281,29 @@
 
   const highlightBlocks = (scene: SceneData) => codeRuns.update(scene);
 
+  /** The pictures picture elements show, loaded once per file of the open Space. */
+  const pictures = createPictureLoader({
+    arrived: (file, picture) => canvas.setPicture(file, picture),
+    loading: (count) => (picturesLoading = count),
+  });
+  /** Pictures still loading, shown on the canvas as `data-pictures`, for what waits on them. */
+  let picturesLoading = $state(0);
+  let picturesRoot: string | null = null;
+
+  /** Load what the scene's picture elements show; a page outside a Space shows them missing. */
+  function loadPictures(scene: SceneData) {
+    const root = space.root;
+    if (root !== picturesRoot) {
+      picturesRoot = root;
+      // Another Space's files, or loads still under way for it, share no names with this one's.
+      pictures.reset();
+      canvas.clearPictures();
+    }
+    const files = scene.elements.flatMap((e) => (e.type === 'image' ? [e.file] : []));
+    if (root) pictures.want(root, files);
+    else for (const file of files) canvas.setPicture(file, null);
+  }
+
   /** Open the editor over a code block, sized and placed as it is drawn. */
   function editCode(element: SceneElement) {
     if (!codeEditor) return;
@@ -390,6 +418,18 @@
     codeRuns: () => codeRuns.all(),
     // The columns an export draws on are the ones the canvas measured.
     monoAdvance: () => codeMetrics().advance,
+    pictures: (elements) => picturesData(space.root, elements),
+    // The pictures the canvas has loaded, as data: the preview fetches nothing.
+    picturesShown: () => {
+      const root = space.root;
+      const files = history.current.elements.flatMap((e) => (e.type === 'image' ? [e.file] : []));
+      return Object.fromEntries(
+        files.map((file) => {
+          const picture = root ? pictures.get(root, file) : null;
+          return [file, picture ? pngData(picture) : null];
+        }),
+      );
+    },
     io: exportIO({
       choosePath: async (suggested) => (await FileService.ChooseFileToSave(suggested)).path || null,
       save: (path, contents) => ExportService.Save(path, contents),
@@ -470,6 +510,19 @@
   // The canvas is on screen only with a document open and a view that shows it.
   // Hidden, it takes no keys: Backspace must not empty a canvas nobody can see.
   const canvasShown = () => doc.isOpen && view.showsCanvas;
+  /** What a Media item carries when dragged: its attachment's name. */
+  const ATTACHMENT_DRAG = 'application/x-bava-attachment';
+  /** Whether a file is a picture, by its type: only pictures go on the canvas. */
+  const isPictureName = (name: string) => mediaKind(name) === 'image';
+
+  /** A point in the window, in the scene when it is over the canvas shown; null elsewhere. */
+  function canvasAt(x: number, y: number): { x: number; y: number } | null {
+    if (!canvasShown() || !canvasHostEl) return null;
+    const rect = canvasHostEl.getBoundingClientRect();
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return null;
+    return viewport.screenToScene({ x: x - rect.left, y: y - rect.top });
+  }
+
   /** The scene point under the pointer while it is over the canvas: where a paste lands. */
   let pointerOnCanvas: { x: number; y: number } | null = null;
   /** Where the right-click menu was opened, in the scene: where its Paste lands. */
@@ -1518,21 +1571,83 @@
    */
   async function addMediaFiles(files: MediaFile[], at?: { x: number; y: number }) {
     if (!doc.path) return;
-    await addMedia(files, {
+    await addMedia(files, { ...attaching(), insert: (names) => docPane?.insertMedia(names, at) });
+    await refreshMedia();
+  }
+
+  /** How a file joins the Space's attachments; a page opened on its own first offers to open its folder as a Space. */
+  function attaching() {
+    return {
       inSpace: () => space.root !== null && openRel !== null,
       offerSpace: async () => {
         const path = doc.path;
         if (!path || !(await confirm(t('media.needsSpace.title'), t('media.needsSpace.body'), t('tree.openAsSpace')))) return false;
         return openSpace(path.replace(/[\\/][^\\/]*$/, ''), true);
       },
-      attach: async (file) => {
+      attach: async (file: MediaFile) => {
         const result = await space.apply('path' in file ? { kind: 'attach', source: file.path } : { kind: 'attachData', data: file.data }, { refresh: false });
         return result.error ? { error: result.error } : { name: result.name ?? '' };
       },
-      insert: (names) => docPane?.insertMedia(names, at),
       notify,
-    });
+    };
+  }
+
+  /**
+   * Adds pictures to the canvas: attached as the page attaches them, then
+   * placed side by side, their row centred on `at`. Anything not a picture
+   * stays out, and the status bar says so.
+   */
+  async function addPicturesToCanvas(files: MediaFile[], at: { x: number; y: number }) {
+    if (!doc.path) return;
+    const pictureFiles = files.filter((file) => !('path' in file) || isPictureName(file.path));
+    if (pictureFiles.length < files.length) notify(t('canvas.onlyPictures'));
+    let names: string[] = [];
+    await addMedia(pictureFiles, { ...attaching(), insert: (attached) => (names = attached) });
+    if (names.length > 0) await placePictures(names, at);
     await refreshMedia();
+  }
+
+  /** A picture's own size, from the Space; 0 by 0 when it cannot be read. */
+  async function pictureSize(name: string): Promise<{ w: number; h: number }> {
+    const root = space.root;
+    if (!root) return { w: 0, h: 0 };
+    try {
+      const image = await loadPicture(pictureAddress(root, name));
+      return { w: image.naturalWidth, h: image.naturalHeight };
+    } catch {
+      return { w: 0, h: 0 };
+    }
+  }
+
+  /** Attachments placed on the canvas, side by side, their row centred on `at`: one undo step. */
+  async function placePictures(names: string[], at: { x: number; y: number }) {
+    const sizes = await Promise.all(names.map(pictureSize));
+    let x = 0;
+    const row = names.map((name, i) => {
+      const placed = placedPicture(name, sizes[i], { x: 0, y: 0 });
+      const moved = { ...placed, x, y: -placed.h / 2 };
+      x += placed.w + PASTE_OFFSET;
+      return moved;
+    });
+    // An attachment seen missing before it arrived is looked for again.
+    names.forEach((name) => pictures.forget(name));
+    canvasCommands.pasteElements(row, at);
+    commit();
+    syncSelection();
+  }
+
+  /** The middle of the canvas on screen, in the scene: where a picked picture lands. */
+  function viewMiddle(): { x: number; y: number } {
+    return viewport.screenToScene({ x: (canvasHostEl?.clientWidth ?? 0) / 2, y: (canvasHostEl?.clientHeight ?? 0) / 2 });
+  }
+
+  /** File ▸ Picture and the + panel: pictures picked from the computer, in the middle of the view. */
+  async function insertPicture() {
+    if (!canvasShown()) return;
+    const chosen = await FileService.ChooseMedia('image');
+    if (chosen.error) notify(chosen.error);
+    const paths = chosen.paths ?? [];
+    if (paths.length > 0) await addPicturesToCanvas(paths.map((path) => ({ path })), viewMiddle());
   }
 
   // Canvas embeds: what each embed on the page watches to redraw, the picker,
@@ -1556,7 +1671,9 @@
       await own.update(scene);
       runs = own.all();
     }
-    return framePicture(scene, frame, { theme: theme.resolved, codeRuns: runs }).catch((error: unknown) => {
+    // Only the pictures the frame shows.
+    const pictures = await picturesData(space.root, frameArea(scene, frame)?.elements ?? []);
+    return framePicture(scene, frame, { theme: theme.resolved, codeRuns: runs, pictures }).catch((error: unknown) => {
       void report(error, 'embed-picture');
       return null;
     });
@@ -1949,7 +2066,9 @@
       const place = e.loose ? (mediaPlace ?? { root: '', here: '' }) : { root: space.root ?? '', here: e.page };
       const [page, canvas] = await Promise.all([
         renderPage(read.markdown, { place, width: widthOf }),
-        pagePicture(read.scene, { theme: theme.resolved, codeRuns: read.runs, monoAdvance: codeMetrics().advance, fonts: canvasFonts() }),
+        picturesData(place.root || null, read.scene.elements).then((pictures) =>
+          pagePicture(read.scene, { theme: theme.resolved, codeRuns: read.runs, monoAdvance: codeMetrics().advance, fonts: canvasFonts(), pictures }),
+        ),
       ]);
       const { offered, initial: include } = includeChoice(canvas !== null, read.open ? view.mode : 'document');
       const pdf: PagePdf = { offered, include, page: { ...page, css: pageCss() }, canvas, root: place.root, scene: read.scene, runs: read.runs };
@@ -2029,7 +2148,9 @@
         const read = await readForPdf(space.absolute(entry.path));
         const [page, canvas] = await Promise.all([
           renderPage(read.markdown, { place: { root, here: entry.path }, width: widthOf }),
-          pagePicture(read.scene, { theme: themed, codeRuns: read.runs, monoAdvance: codeMetrics().advance, fonts: canvasFonts() }),
+          picturesData(root, read.scene.elements).then((pictures) =>
+            pagePicture(read.scene, { theme: themed, codeRuns: read.runs, monoAdvance: codeMetrics().advance, fonts: canvasFonts(), pictures }),
+          ),
         ]);
         drawn[entry.path] = { document: { ...page, css: '' }, canvas };
       } catch (error) {
@@ -2108,7 +2229,11 @@
     try {
       const themed = choice.dark ? 'dark' : 'light';
       const colours = withTheme(themed, (read) => ({ paper: read('--color-surface'), ink: read('--color-text-muted') }));
-      const canvas = choice.include === 'document' ? null : await pagePicture(pdf.scene, { theme: themed, codeRuns: pdf.runs, monoAdvance: codeMetrics().advance, fonts: canvasFonts() });
+      const pictures = choice.include === 'document' ? {} : await picturesData(pdf.root || null, pdf.scene.elements);
+      const canvas =
+        choice.include === 'document'
+          ? null
+          : await pagePicture(pdf.scene, { theme: themed, codeRuns: pdf.runs, monoAdvance: codeMetrics().advance, fonts: canvasFonts(), pictures });
       const problem = await ExportService.PagePDF(pdf.root, {
         // The bound paper is an enum of the same names.
         setup: { ...choice.setup, paper: choice.setup.paper as BoundPaper },
@@ -2151,7 +2276,9 @@
     const files = listed.attachments ?? [];
     let pages = await space.index(true);
     const now = openRel !== null ? (docPane?.currentMarkdown() ?? null) : null;
-    if (pages && now !== null) pages = pages.map((page) => (page.path === openRel ? { ...page, text: now, unreadable: false } : page));
+    // The open page's canvas as it is now, which its Document's text does not hold.
+    const shown = history.current.elements.flatMap((e) => (e.type === 'image' ? [e.file] : []));
+    if (pages && now !== null) pages = pages.map((page) => (page.path === openRel ? { ...page, text: now, unreadable: false, pictures: shown } : page));
     return { files, usage: mediaUsage(files, pages) };
   }
 
@@ -2172,6 +2299,9 @@
     }
     mediaList = read.usage.items;
     mediaUsageKnown = read.usage.known;
+    // Files may have arrived: a picture shown missing is looked for again.
+    pictures.retryMissing();
+    loadPictures(history.current);
   }
 
   $effect(() => {
@@ -2267,6 +2397,34 @@
   }
 
   /**
+   * A renamed attachment followed by every canvas showing it: the open one in
+   * one undo step, the others in their files, written only if unchanged since
+   * they were read.
+   */
+  async function renamePictures(from: string, to: string) {
+    const shows = (e: SceneElement) => e.type === 'image' && e.file === from;
+    if (history.current.elements.some(shows)) {
+      history.mutate((draft) => {
+        for (const element of draft.elements) if (shows(element)) (element as { file: string }).file = to;
+      });
+      commit();
+    }
+    const pages = await space.index(true);
+    if (!pages) return;
+    const others = pages.filter((page) => page.path !== openRel && canvasPictureFiles(page.text).includes(from));
+    const edits = others.flatMap((page) => {
+      const after = renamedPictures(page.text, from, to);
+      return after === null ? [] : [{ path: page.path, before: page.text, after }];
+    });
+    // A canvas naming it in a way that could not be rewritten is missed, and said so.
+    const unwritten = others.filter((page) => !edits.some((e) => e.path === page.path)).map((page) => page.path);
+    const written = edits.length > 0 ? await space.apply({ kind: 'relink', edits }, { refresh: false }) : { missed: [], error: '' };
+    const missed = written.error ? edits.map((e) => e.path) : (written.missed ?? []);
+    const message = linksMissedMessage([...missed, ...unwritten]);
+    if (message) notify(message);
+  }
+
+  /**
    * Renames an attachment, and every page's images and videos follow it.
    * Answers with Go's refusal, for the caller to show where it was asked; a
    * call that fails outright answers the same way rather than rejecting.
@@ -2276,7 +2434,9 @@
       const result = await space.apply({ kind: 'renameAttachment', attachment: name, name: next }, { refresh: false });
       if (result.error) return result.error;
       const folder = '.bava/attachments/';
-      await relinkAfter([{ from: folder + name, to: folder + (result.name ?? next) }], openRel);
+      const renamed = result.name ?? next;
+      await relinkAfter([{ from: folder + name, to: folder + renamed }], openRel);
+      await renamePictures(name, renamed);
       await refreshMedia();
       return null;
     } catch (error) {
@@ -2775,6 +2935,30 @@
   }
 
   /**
+   * Pasted shapes whose pictures this Space lacks: each attached from the
+   * bytes the copied SVG carries, the elements renamed to the attachments.
+   * Outside a Space, or with nothing carried, they are pasted as they are and
+   * show missing.
+   */
+  async function withPicturesHere(shapes: SceneElement[], text: string): Promise<SceneElement[]> {
+    const root = space.root;
+    const files = new Set(shapes.flatMap((e) => (e.type === 'image' ? [e.file] : [])));
+    if (!root || files.size === 0) return shapes;
+    const carried = carriedPictures(text);
+    const renamed: Record<string, string> = {};
+    for (const file of files) {
+      // Sent whenever carried, even under a name this Space has: a file with
+      // the same bytes is reused, other bytes take a free name.
+      if (!carried[file]) continue;
+      const result = await space.apply({ kind: 'attachData', data: carried[file].base64, name: file }, { refresh: false });
+      if (result.error) notify(result.error);
+      else renamed[file] = result.name ?? file;
+    }
+    if (Object.keys(renamed).length > 0) void refreshMedia();
+    return shapes.map((e) => (e.type === 'image' && e.file in renamed ? { ...e, file: renamed[e.file] } : e));
+  }
+
+  /**
    * Paste on the canvas reads the system clipboard: shapes Bava copied, from
    * any window or page, or text from anywhere as one text element.
    */
@@ -2787,13 +2971,19 @@
     const text = await systemClipboard.text().catch(() => '');
     const shapes = readCanvasClipboard(text);
     if (shapes) {
+      const here = await withPicturesHere(shapes, text);
       // In the page they were copied or cut from, their spot in view: beside it, as a copy.
-      canvasCommands.pasteElements(shapes, copiedHere(shapes) ? undefined : spot);
+      canvasCommands.pasteElements(here, copiedHere(shapes) ? undefined : spot);
     } else if (text.trim()) {
       const paint = paintFor({ type: 'text' } as SceneElement, readRootVariable);
       const widthOf = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
       canvasCommands.pasteElements([pastedText(text, spot, paint.font, widthOf, PASTED_TEXT_WIDTH)], spot);
-    } else return;
+    } else {
+      // No text: a picture, when the clipboard holds one.
+      const image = await FileService.ClipboardImage().catch(() => '');
+      if (image) await addPicturesToCanvas([{ data: image }], spot);
+      return;
+    }
     commit();
     syncSelection();
   }
@@ -2843,6 +3033,7 @@
     },
     'file.export': () => exporter.open({ onlySelected: false }),
     'insert.diagram': openDiagramDialog,
+    'insert.picture': () => void insertPicture(),
 
     'edit.undo': () =>
       routeEdit({
@@ -3347,6 +3538,20 @@
       canvas.setHoverHandle(null);
     };
     diagramHost.addEventListener('pointerleave', onLeave);
+    // A picture dragged from Media lands where it is dropped, its attachment reused.
+    const isAttachment = (event: DragEvent) => Boolean(event.dataTransfer?.types.includes(ATTACHMENT_DRAG));
+    const onDragOver = (event: DragEvent) => {
+      if (isAttachment(event)) event.preventDefault();
+    };
+    const onDrop = (event: DragEvent) => {
+      if (!isAttachment(event)) return;
+      event.preventDefault();
+      const name = event.dataTransfer!.getData(ATTACHMENT_DRAG);
+      if (isPictureName(name)) void placePictures([name], canvasAt(event.clientX, event.clientY) ?? viewMiddle());
+      else notify(t('canvas.onlyPictures'));
+    };
+    diagramHost.addEventListener('dragover', onDragOver);
+    diagramHost.addEventListener('drop', onDrop);
     diagramHost.addEventListener('pointerup', onUp);
     diagramHost.addEventListener('pointercancel', onCutOff);
     diagramHost.addEventListener('lostpointercapture', onCutOff);
@@ -3500,7 +3705,11 @@
     });
     const offDrop = Events.On('files:dropped', (event) => {
       const drop = event.data as { paths: string[]; x: number; y: number };
-      void addMediaFiles(drop.paths.map((path) => ({ path })), { x: drop.x, y: drop.y });
+      const files = drop.paths.map((path) => ({ path }));
+      // On the canvas, pictures go on the canvas where they land; elsewhere, to the page.
+      const onCanvas = canvasAt(drop.x, drop.y);
+      if (onCanvas) void addPicturesToCanvas(files, onCanvas);
+      else void addMediaFiles(files, { x: drop.x, y: drop.y });
     });
     // Told once: the previous session ended unexpectedly, or the webview was
     // reloaded after its process died.
@@ -3521,6 +3730,8 @@
       diagramHost.removeEventListener('pointerdown', onDown);
       diagramHost.removeEventListener('pointermove', onMove);
       diagramHost.removeEventListener('pointerleave', onLeave);
+      diagramHost.removeEventListener('dragover', onDragOver);
+      diagramHost.removeEventListener('drop', onDrop);
       diagramHost.removeEventListener('pointerup', onUp);
       diagramHost.removeEventListener('pointercancel', onCutOff);
       diagramHost.removeEventListener('lostpointercapture', onCutOff);
@@ -3613,6 +3824,7 @@
   $effect(() => {
     canvas.render(published);
     void highlightBlocks(published);
+    untrack(() => loadPictures(published));
   });
 </script>
 
@@ -3897,7 +4109,7 @@
   {/snippet}
 
   {#snippet canvas()}
-    <div class="canvas-region">
+    <div class="canvas-region" data-file-drop-target data-pictures={picturesLoading > 0 ? 'loading' : 'ready'}>
       <div class="fill" bind:this={canvasHost}></div>
       {#if canvasFinding}
         <div class="canvas-find">
@@ -3972,6 +4184,7 @@
             onOutcome={(outcome) => {
               if (outcome.type === 'choose') tools.activate(outcome.tool);
               if (outcome.type === 'command' && outcome.id === 'diagram') openDiagramDialog();
+              if (outcome.type === 'command' && outcome.id === 'picture') void insertPicture();
               closeInsertPanel();
             }}
           />

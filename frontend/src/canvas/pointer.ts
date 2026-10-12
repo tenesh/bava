@@ -1560,7 +1560,10 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         if (moved.x) local.x += offset.x;
         if (moved.y) local.y += offset.y;
       }
-      const next = placeResized(bounds, resizeBox(bounds, handle, local.x, local.y, { keepAspect: shift }), angle);
+      // Shift keeps a shape's proportions; a picture keeps its own, and Shift
+      // frees it. A selection holding one keeps them, so it is never squashed.
+      const holdsPicture = [...originals.values()].some((e) => e.type === 'image');
+      const next = placeResized(bounds, resizeBox(bounds, handle, local.x, local.y, { keepAspect: shift !== holdsPicture }), angle);
       guides = angle === 0 && snapping() && started.snap?.corners ? guidesFor(started.snap.corners, next) : [];
       return (scene) => {
         for (let i = 0; i < scene.elements.length; i += 1) {

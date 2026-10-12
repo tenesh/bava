@@ -8,12 +8,17 @@
  * the app window away from the app.
  *
  * A reference inside the document (`#shape-1`) is what the diagram is made of
- * and stays. What goes is anything with a scheme, and anything
- * protocol-relative: the only references left point at the document itself.
+ * and stays, as does a PNG carried as data. What goes is anything else with a
+ * scheme, and anything protocol-relative: the only references left point at
+ * the document itself.
  */
 
-/** `href`, `xlink:href` or `src` whose value is not a fragment. */
-const REMOTE_REF = /\s(?:xlink:)?(?:href|src)\s*=\s*(?:"[^"#][^"]*"|'[^'#][^']*')/gi;
+/**
+ * `href`, `xlink:href` or `src` whose value is not a fragment, nor a PNG
+ * carried as base64 data: a canvas picture in an export's preview, whose
+ * bytes are in the document already.
+ */
+const REMOTE_REF = /\s(?:xlink:)?(?:href|src)\s*=\s*(?:"(?!data:image\/png;base64,[A-Za-z0-9+/=]*")[^"#][^"]*"|'(?!data:image\/png;base64,[A-Za-z0-9+/=]*')[^'#][^']*')/gi;
 
 /** An anchor wrapping part of the drawing; its contents are kept. */
 const LINK_TAGS = /<a\b[^>]*>|<\/a>/gi;

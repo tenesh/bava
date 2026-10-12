@@ -287,6 +287,20 @@ func TestInsertDiagramNeedsADocument(t *testing.T) {
 	}
 }
 
+// A picture goes on the canvas, so it needs one shown, as a diagram does.
+func TestInsertPictureNeedsTheCanvas(t *testing.T) {
+	built, _ := build(t, "darwin")
+
+	built.Apply(menu.State{HasDocument: true})
+	if built.Item("insert.picture").Enabled() {
+		t.Error("Picture is enabled with the canvas hidden")
+	}
+	built.Apply(menu.State{HasDocument: true, ShowsCanvas: true})
+	if !built.Item("insert.picture").Enabled() {
+		t.Error("Picture is disabled with a document open and the canvas shown")
+	}
+}
+
 // Zoom to Fit and Zoom to Selection follow Actual Size, their shortcuts left
 // to the canvas: Shift+1 is "!" in a text field.
 func TestZoomToFitFollowsActualSize(t *testing.T) {

@@ -133,8 +133,15 @@ export type CodeElement = Base & StyleProps & {
   measuredHeight: number;
 };
 
+/**
+ * A picture: an attachment of the Space, named by `file` in
+ * `.bava/attachments/` (never a path, so moving the page never breaks it).
+ */
+export type ImageElement = Base & StyleProps & { type: 'image'; file: string };
+
 export type SceneElement =
   | ShapeElement
+  | ImageElement
   | LineElement
   | ArrowElement
   | FrameElement
@@ -164,6 +171,7 @@ const EVERY_TYPE: Record<SceneElement['type'], true> = {
   stroke: true,
   text: true,
   code: true,
+  image: true,
 };
 
 /** Every element type a scene can hold, at run time. */

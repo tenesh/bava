@@ -6,7 +6,7 @@ describe('insert panel state', () => {
     const insert = createInsert();
     expect(insert.category).toBeNull();
     // Categories, then the tools that are not shapes, then what is not a tool.
-    expect(insert.entries.map((e) => e.id)).toEqual(['shape', 'code', 'diagram']);
+    expect(insert.entries.map((e) => e.id)).toEqual(['shape', 'code', 'diagram', 'picture']);
     expect(insert.entries[0].kind).toBe('category');
     expect(insert.highlighted).toBe(0);
   });
@@ -67,6 +67,16 @@ describe('insert panel state', () => {
     insert.reset();
     expect(insert.category).toBeNull();
     expect(insert.query).toBe('');
+  });
+});
+
+// A picture is picked from the files on the computer.
+describe('inserting a picture', () => {
+  it('is found by name and chosen as a command', () => {
+    const insert = createInsert();
+    insert.setQuery('picture');
+    expect(insert.entries.map((entry) => entry.id)).toEqual(['picture']);
+    expect(insert.choose(0)).toEqual({ type: 'command', id: 'picture' });
   });
 });
 

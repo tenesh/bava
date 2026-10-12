@@ -202,6 +202,18 @@ export function kinds(): { elements: El[]; click: Record<string, { x: number; y:
   };
 }
 
+/**
+ * Pictures from the Space's attachments: one placed, one turned and
+ * see-through, one whose file is not there, drawn as its placeholder.
+ */
+export function pictures(): El[] {
+  return [
+    el({ id: 'pic-placed', type: 'image', file: 'landscape.png', x: 20, y: 40, w: 240, h: 160 }),
+    el({ id: 'pic-turned', type: 'image', file: 'logo.png', x: 340, y: 50, w: 120, h: 120, angle: 15, opacity: 50 }),
+    el({ id: 'pic-missing', type: 'image', file: 'gone.png', x: 20, y: 260, w: 260, h: 150 }),
+  ];
+}
+
 /** Three boxes in a row, the last a little out of line, to drag into it. */
 export function row(): El[] {
   return [
@@ -225,7 +237,7 @@ export const box = (id: string, x: number, y: number, extra: Record<string, unkn
 });
 
 /** Every scene by name, for the walks to go through. */
-export const SCENES = { shapes, labels, colours, styles, arrows, heads, containers, turned, diagram, many } as const;
+export const SCENES = { shapes, labels, colours, styles, arrows, heads, containers, turned, diagram, many, pictures } as const;
 
 // ---- every element in every state ------------------------------------------------
 
@@ -257,6 +269,7 @@ export const ELEMENT_KINDS = {
   'code-plain': 'code',
   frame: 'frame',
   group: 'group',
+  image: 'image',
 } as const;
 
 export type Kind = keyof typeof ELEMENT_KINDS;
@@ -266,7 +279,7 @@ export const FAMILIES = {
   shapes: ['rect', 'ellipse', 'diamond', 'cylinder', 'hexagon', 'parallelogram', 'document', 'person', 'cloud'],
   lines: ['line-open', 'line-bent', 'line-round', 'line-closed'],
   arrows: ['arrow-straight', 'arrow-arc', 'arrow-elbow'],
-  others: ['stroke', 'text', 'code', 'code-plain', 'frame', 'group'],
+  others: ['stroke', 'text', 'code', 'code-plain', 'frame', 'group', 'image'],
 } as const satisfies Record<string, readonly Kind[]>;
 
 export type Family = keyof typeof FAMILIES;
@@ -300,11 +313,13 @@ export const LEFT_OUT: Record<ElementState, Record<string, string>> = {
     line: 'a line carries no label',
     stroke: 'a stroke carries no label',
     group: 'a group draws no label of its own',
+    image: 'a picture carries no label',
   },
   editing: {
     line: 'a double-click on a line edits its points, pictured as point editing',
     stroke: 'a stroke has no text to edit',
     group: 'a double-click on a group types into the shape under the pointer, pictured as that shape',
+    image: 'a picture has no text to edit',
   },
   detached: Object.fromEntries(
     [...new Set(Object.values(ELEMENT_KINDS))].filter((type) => type !== 'arrow').map((type) => [type, NOT_AN_ARROW]),
@@ -428,6 +443,10 @@ function kindAt(kind: Kind, b: Point, v: Variant): { elements: El[]; click: Poin
       const two = put({ id: `${kind}-two`, type: 'diamond', x: b.x + 65, y: b.y + 10, w: 60, h: 60 });
       const group = put({ id: kind, type: 'group', x: b.x - 5, y: b.y + 10, w: 130, h: 60, children: [one.id, two.id] });
       return { elements: [one, two, group], click: p(25, 40), handle: p(125, 70), cursor: 'nwse-resize', edit: p(25, 40) };
+    }
+    case 'image': {
+      const e = put({ id: kind, type: 'image', file: 'landscape.png', x: b.x, y: b.y, w: 120, h: 80 });
+      return { elements: [e], click: p(60, 40), edit: p(60, 40), ...resize };
     }
     default:
       return shape(kind);
