@@ -138,8 +138,10 @@ type OpResult struct {
 // SpaceIndex is every page in a Space, in the tree's order.
 type SpaceIndex struct {
 	Pages []IndexPage `json:"pages"`
-	Error string      `json:"error"`
-	Code  string      `json:"code"`
+	// Folders is every folder by path, sorted, an empty one too.
+	Folders []string `json:"folders"`
+	Error   string   `json:"error"`
+	Code    string   `json:"code"`
 }
 
 // SpaceSearch is what a search found, and whether there were more than it
@@ -303,7 +305,11 @@ func (s *SpaceService) Index(root string, withText bool) SpaceIndex {
 	if err != nil {
 		return SpaceIndex{Error: err.Error(), Code: space.Code(err)}
 	}
-	index := SpaceIndex{Pages: []IndexPage{}}
+	folders, err := sp.Folders()
+	if err != nil {
+		return SpaceIndex{Error: err.Error(), Code: space.Code(err)}
+	}
+	index := SpaceIndex{Pages: []IndexPage{}, Folders: folders}
 	for _, page := range pages {
 		entry := IndexPage{Name: page.Name, Path: page.Path}
 		if withText {

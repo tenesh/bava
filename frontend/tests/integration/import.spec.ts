@@ -5,12 +5,13 @@ import { PARENT, SPACE, menu, menus, openApp, openSpace, rightClick, sidePane, s
 // folder's right-click. The stand-in's disk holds a "Q4 notes" folder: two
 // pages, a picture, and a hidden .git that stays behind.
 
-type Harness = { faults: object; importFiles: string[] };
+type Harness = { faults: object; importFiles: string[]; importFolder: string };
 const harness = (page: Page, change: Partial<Harness> & { faults?: object }) =>
   page.evaluate((c) => {
     const h = (window as unknown as { __bava: { fakes: { harness: Harness } } }).__bava.fakes.harness;
     if (c.faults) Object.assign(h.faults, c.faults);
     if (c.importFiles) h.importFiles = c.importFiles;
+    if (c.importFolder) h.importFolder = c.importFolder;
   }, change);
 const textOf = (page: Page, path: string) =>
   page.evaluate(
@@ -123,6 +124,33 @@ test.describe('import', () => {
     await expect(page.getByRole('dialog')).toHaveCount(1);
     await expect(statusMessage(page)).toContainText('Imported into Acme Product.');
     await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
+  test('names a Space cannot hold stay behind, listed', async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    await harness(page, { importFolder: `${PARENT}/Old notes` });
+    await menu(page, 'file.importFolder');
+    const behind = dialog(page).getByRole('region', { name: 'Left behind' });
+    await expect(behind).toContainText('Plan: Q4.md');
+    await expect(behind).toContainText('Q3?');
+    await expect(dialog(page)).toContainText('1 page');
+    await dialog(page).getByRole('button', { name: 'Import' }).click();
+    await expect(statusMessage(page)).toContainText('Imported into Acme Product.');
+    await expect.poll(() => textOf(page, 'Old notes/Ideas.md')).toContain('# Ideas');
+  });
+
+  test('an empty folder can be imported into', async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    await menu(page, 'file.newFolder');
+    await page.getByRole('textbox', { name: 'Name' }).fill('Inbox');
+    await page.keyboard.press('Enter');
+    await expect(sidePane(page).locator('[data-path="Inbox"]')).toBeVisible();
+    await menu(page, 'file.importFolder');
+    await expect(dialog(page).locator('.bava-select-trigger')).toBeEnabled();
+    await dialog(page).locator('.bava-select-trigger').click();
+    await expect(page.locator('.bava-select-item[data-value="Inbox"]')).toBeVisible();
   });
 
   test('Import is not offered with no Space open', async ({ page }) => {

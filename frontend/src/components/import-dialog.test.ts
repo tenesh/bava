@@ -12,6 +12,7 @@ const plan: ImportPlan = {
     { kind: 'page', origin: 0, from: 'Q4 notes/Goals.md', entry: '', to: 'Marketing/Q4 notes 2/Goals.md', size: 10 },
   ],
   renames: [{ from: 'Q4 notes', to: 'Q4 notes 2' }],
+  skipped: [],
   pages: 1,
   files: 0,
   templates: 0,
@@ -54,6 +55,20 @@ describe('ImportDialog', () => {
   it('says nothing of renames when nothing was renamed', async () => {
     const { text } = await setup({ plan: { plan: { ...plan, renames: [] }, error: '' } });
     expect(text()).not.toContain('Renamed to keep both');
+  });
+
+  it('lists what stays behind for its name, by name', async () => {
+    const { text } = await setup({ plan: { plan: { ...plan, skipped: ['Q4 notes/Plan: Q4.md', 'Q4 notes/Old?'] }, error: '' } });
+    expect(text()).toContain('Left behind');
+    expect(text()).toContain("A Space can't hold these names. Rename them where they are, then import again.");
+    expect(text()).toContain('Plan: Q4.md');
+    expect(text()).toContain('Old?');
+    expect(text()).not.toContain('Q4 notes/Plan');
+  });
+
+  it('says nothing of what stays behind when nothing does', async () => {
+    const { text } = await setup();
+    expect(text()).not.toContain('Left behind');
   });
 
   it('imports when asked', async () => {

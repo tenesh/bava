@@ -253,6 +253,11 @@ export interface SaveResult {
  */
 export interface SpaceIndex {
     "pages": IndexPage[] | null;
+
+    /**
+     * Folders is every folder by path, sorted, an empty one too.
+     */
+    "folders": string[] | null;
     "error": string;
     "code": string;
 }

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/tharabyte/bava/internal/app"
@@ -473,5 +474,19 @@ func TestAZipIsPlannedAndWrittenThroughTheSpace(t *testing.T) {
 	}
 	if bad := s.ExportZip(context.Background(), filepath.Join(root, "missing"), "", space.ZipScope{Kind: space.ZipSpace}, out); bad.Error == "" {
 		t.Error("ExportZip on no Space succeeded")
+	}
+}
+
+func TestSpaceIndexListsEveryFolder(t *testing.T) {
+	root := t.TempDir()
+	s := spaceService(nil)
+	s.Open(root)
+	testutil.WriteTree(t, root, map[string]string{"Marketing/Plan.md": "# Plan\n"})
+	if err := os.Mkdir(filepath.Join(root, "Empty"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	index := s.Index(root, false)
+	if index.Error != "" || strings.Join(index.Folders, "|") != "Empty|Marketing" {
+		t.Errorf("Index folders = %v", index.Folders)
 	}
 }

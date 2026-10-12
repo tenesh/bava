@@ -96,6 +96,12 @@ export interface ImportPlan {
     "origins": ImportOrigin[] | null;
     "entries": ImportEntry[] | null;
     "renames": ImportRename[] | null;
+
+    /**
+     * Skipped is what stays behind because a Space cannot hold its name, by
+     * its path in its pick; a folder left behind is listed once.
+     */
+    "skipped": string[] | null;
     "pages": number;
     "files": number;
     "templates": number;

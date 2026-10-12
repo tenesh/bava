@@ -729,6 +729,8 @@ export const messages = {
   'import.cancelled': 'Import cancelled. Nothing was added.',
   'import.chooseFolder': 'Choose a folder to import',
   'import.noSpace': 'Import into a Space: open one first.',
+  'import.leftBehind': 'Left behind',
+  'import.leftBehindNote': "A Space can't hold these names. Rename them where they are, then import again.",
   'export.zip.writing': 'Writing {done} of {total}',
   'export.zip.cancelled': 'Export cancelled. No zip was written.',
   'export.pdf.printingPages': 'Printing {n} pages',

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sort"
 	"strings"
 
 	"github.com/tharabyte/bava/internal/store"
@@ -30,6 +31,30 @@ func (s Space) Pages() ([]Entry, error) {
 		return nil
 	}
 	return out, walk("")
+}
+
+// Folders lists every folder in the Space by path, sorted, an empty one too:
+// what an import or an export can be pointed at. A folder that cannot be
+// read is listed, though what is inside it is not.
+func (s Space) Folders() ([]string, error) {
+	out := []string{}
+	var walk func(folder string) error
+	walk = func(folder string) error {
+		entries, err := s.List(folder)
+		if err != nil {
+			return err
+		}
+		for _, e := range entries {
+			if e.Kind == KindFolder {
+				out = append(out, e.Path)
+				_ = walk(e.Path)
+			}
+		}
+		return nil
+	}
+	err := walk("")
+	sort.Strings(out)
+	return out, err
 }
 
 // pageTitle is a page's file name without .md.

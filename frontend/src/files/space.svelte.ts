@@ -54,6 +54,8 @@ export type ImportPlan = {
   origins: { path: string; root: string }[];
   entries: ImportEntry[];
   renames: { from: string; to: string }[];
+  /** What stays behind because a Space cannot hold its name, by its path in its pick. */
+  skipped: string[];
   pages: number;
   files: number;
   templates: number;
@@ -95,7 +97,7 @@ export type SpaceIO = {
     error: string;
     code?: string;
   }>;
-  index(root: string, withText: boolean): Promise<{ pages: IndexPage[] | null; error: string }>;
+  index(root: string, withText: boolean): Promise<{ pages: IndexPage[] | null; folders?: string[] | null; error: string }>;
   search(root: string, query: string, open: SearchOpenPage): Promise<{ hits: SearchHit[] | null; more: boolean; error: string }>;
   zipPlan(root: string, scope: ZipScope): Promise<{ files: ZipFile[] | null; error: string; code?: string }>;
   /** Writes the zip as the run named `run`: `cancel(run)` stops it, leaving nothing at `out`. */
@@ -161,6 +163,7 @@ function importPlanOf(plan: GoImportPlan): ImportPlan {
     origins: plan.origins ?? [],
     entries: plan.entries ?? [],
     renames: plan.renames ?? [],
+    skipped: plan.skipped ?? [],
     pages: plan.pages,
     files: plan.files,
     templates: plan.templates,
@@ -500,6 +503,13 @@ export function createSpace(
       const result = await io.index(root, withText).catch(() => null);
       if (!result || result.error) return null;
       return result.pages ?? [];
+    },
+
+    /** Every folder of the Space by path, sorted, an empty one too: what an import or an export can be pointed at. */
+    async allFolders(): Promise<string[]> {
+      if (!root) return [];
+      const result = await io.index(root, false).catch(() => null);
+      return !result || result.error ? [] : (result.folders ?? []);
     },
 
     /**

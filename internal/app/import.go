@@ -92,7 +92,7 @@ func (s *SpaceService) importable(root string, sources []string) (space.Space, e
 }
 
 func emptyPlan() space.ImportPlan {
-	return space.ImportPlan{Origins: []space.ImportOrigin{}, Entries: []space.ImportEntry{}, Renames: []space.ImportRename{}}
+	return space.ImportPlan{Origins: []space.ImportOrigin{}, Entries: []space.ImportEntry{}, Renames: []space.ImportRename{}, Skipped: []string{}}
 }
 
 func emptyResult() space.ImportResult {

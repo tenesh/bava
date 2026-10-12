@@ -90,6 +90,7 @@ Start Bava as if it had never run:
 - [ ] Import a Space's zip into another Space: pages, pictures and templates arrive; the Space's own settings are untouched.
 - [ ] A large import counts "Importing N of M", the window stays usable, and Cancel leaves the Space as it was.
 - [ ] Escape while importing, writing a zip or printing stops it; the dialog stays until it has stopped, then the status bar says it was cancelled.
+- [ ] Import a zip made on a Linux machine holding "Plan: Q4.md" and both "A.md" and "a.md": the first is listed as left behind, the others come in as "A" and "a 2".
 - [ ] Inside each store's sandbox: import a folder from outside the Space, and a page whose pictures sit outside the picked folder: those pictures stay missing with their links kept.
 - [ ] Keyboard pass: the Import dialog, Into, Import and Cancel.
 

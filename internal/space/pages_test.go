@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/tharabyte/bava/internal/space"
@@ -90,5 +91,21 @@ func TestWriteIfUnchangedWritesOnlyWhatWasRead(t *testing.T) {
 		if err := s.WriteIfUnchanged(path, "", "x"); err == nil {
 			t.Errorf("%s: written", path)
 		}
+	}
+}
+
+// Every folder is listed, an empty one too: it can be imported or exported into.
+func TestFoldersListsEveryFolderEmptyOnesToo(t *testing.T) {
+	s := newSpace(t, "Marketing/Launch plan.md", "Marketing/Press/Kit.md", "Roadmap.md")
+	if _, err := s.CreateFolder("", "Imported"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Folders()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"Imported", "Marketing", "Marketing/Press"}
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Errorf("Folders = %v, want %v", got, want)
 	}
 }

@@ -58,14 +58,17 @@ type ImportOrigin struct {
 // ImportPlan is what an import will bring and where, before anything is
 // written.
 type ImportPlan struct {
-	Into      string         `json:"into"`
-	Origins   []ImportOrigin `json:"origins"`
-	Entries   []ImportEntry  `json:"entries"`
-	Renames   []ImportRename `json:"renames"`
-	Pages     int            `json:"pages"`
-	Files     int            `json:"files"`
-	Templates int            `json:"templates"`
-	Bytes     int64          `json:"bytes"`
+	Into    string         `json:"into"`
+	Origins []ImportOrigin `json:"origins"`
+	Entries []ImportEntry  `json:"entries"`
+	Renames []ImportRename `json:"renames"`
+	// Skipped is what stays behind because a Space cannot hold its name, by
+	// its path in its pick; a folder left behind is listed once.
+	Skipped   []string `json:"skipped"`
+	Pages     int      `json:"pages"`
+	Files     int      `json:"files"`
+	Templates int      `json:"templates"`
+	Bytes     int64    `json:"bytes"`
 }
 
 // ImportPlan works out what importing sources into the folder into brings,
@@ -84,7 +87,7 @@ func (s Space) ImportPlan(sources []string, into string) (ImportPlan, error) {
 	if dir != "" && s.kindOf(dir) != KindFolder {
 		return ImportPlan{}, refuse(ErrNotFolder, "%q is not a folder", into)
 	}
-	p := &planner{s: s, plan: ImportPlan{Into: dir, Origins: []ImportOrigin{}, Entries: []ImportEntry{}, Renames: []ImportRename{}}, given: map[string]bool{}}
+	p := &planner{s: s, plan: ImportPlan{Into: dir, Origins: []ImportOrigin{}, Entries: []ImportEntry{}, Renames: []ImportRename{}, Skipped: []string{}}, given: map[string]bool{}}
 	for i, source := range sources {
 		if !filepath.IsAbs(source) {
 			return ImportPlan{}, refuse(ErrNotImport, "%q is not an absolute path", source)
@@ -221,6 +224,7 @@ func (p *planner) walk(origin int, dir, from, to string) error {
 			continue
 		}
 		if !holdable(name) {
+			p.skip(from + "/" + name)
 			continue
 		}
 		full := filepath.Join(dir, name)
@@ -349,7 +353,11 @@ func (p *planner) zip(origin int, source string) error {
 			p.zipBava(origin, it.name, parts, it.size)
 			continue
 		}
-		if hidden(parts) || !validParts(parts) {
+		if hidden(parts) {
+			continue
+		}
+		if bad := unholdable(parts); bad >= 0 {
+			p.skip(strings.Join(parts[:bad+1], "/"))
 			continue
 		}
 		isPage := strings.EqualFold(path.Ext(it.name), PageExt)
@@ -392,7 +400,11 @@ func (p *planner) zip(origin int, source string) error {
 // zipBava brings an entry of a Bava zip's .bava folder: an attachment or a
 // template, never its settings or Trash.
 func (p *planner) zipBava(origin int, name string, parts []string, size int64) {
-	if hidden(parts[1:]) || !validParts(parts[1:]) {
+	if hidden(parts[1:]) {
+		return
+	}
+	if bad := unholdable(parts[1:]); bad >= 0 {
+		p.skip(strings.Join(parts[:bad+2], "/"))
 		return
 	}
 	switch {
@@ -420,13 +432,21 @@ func realDir(p string) bool {
 	return err == nil && info.IsDir()
 }
 
-func validParts(parts []string) bool {
-	for _, part := range parts {
+// unholdable is the index of the first part a Space cannot hold, or -1.
+func unholdable(parts []string) int {
+	for i, part := range parts {
 		if !holdable(part) {
-			return false
+			return i
 		}
 	}
-	return true
+	return -1
+}
+
+// skip lists what stays behind for its name, once.
+func (p *planner) skip(from string) {
+	if !slices.Contains(p.plan.Skipped, from) {
+		p.plan.Skipped = append(p.plan.Skipped, from)
+	}
 }
 
 // holdable reports a name the Space holds as it is: valid, and not one it

@@ -347,7 +347,7 @@ describe("deleting a Space's data", () => {
 });
 
 describe('importing into a Space', () => {
-  const plan = { into: 'Marketing', origins: [], entries: [], renames: [{ from: 'Q4 notes', to: 'Q4 notes 2' }], pages: 8, files: 4, templates: 0, bytes: 2100 };
+  const plan = { into: 'Marketing', origins: [], entries: [], renames: [{ from: 'Q4 notes', to: 'Q4 notes 2' }], skipped: [], pages: 8, files: 4, templates: 0, bytes: 2100 };
 
   it('plans an import into a folder', async () => {
     const io = fakeIO(tree());
@@ -357,6 +357,14 @@ describe('importing into a Space', () => {
     const got = await space.importPlan(['/d/Q4 notes'], 'Marketing');
     expect(io.importPlan).toHaveBeenCalledWith('/w/Acme', ['/d/Q4 notes'], 'Marketing');
     expect(got).toEqual({ plan, error: '' });
+  });
+
+  it('gives an empty list for what stays behind when Go sends none', async () => {
+    const io = fakeIO(tree());
+    io.importPlan = vi.fn(async () => ({ plan: { ...plan, skipped: null }, error: '', code: '' }));
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    expect((await space.importPlan(['/d/Q4 notes'], 'Marketing')).plan?.skipped).toEqual([]);
   });
 
   it('words a refusal to import', async () => {
@@ -400,6 +408,24 @@ describe('importing into a Space', () => {
     const space = createSpace(io, { storage: memoryStorage() });
     await space.open('/w/Acme');
     expect(await space.startImport(['/d/Q4 notes'], 'Marketing').done).toEqual({ result: null, error: 'Error: the bridge went away', cancelled: false });
+  });
+});
+
+describe("a Space's folders", () => {
+  it('lists every folder, an empty one too', async () => {
+    const io = fakeIO(tree());
+    io.index = vi.fn(async () => ({ pages: [], folders: ['Imported', 'Marketing'], error: '' }));
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    expect(await space.allFolders()).toEqual(['Imported', 'Marketing']);
+  });
+
+  it('lists none when the index cannot be read', async () => {
+    const io = fakeIO(tree());
+    io.index = vi.fn(async () => ({ pages: [], folders: null, error: 'gone' }));
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    expect(await space.allFolders()).toEqual([]);
   });
 });
 

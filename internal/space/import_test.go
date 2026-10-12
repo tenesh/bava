@@ -184,6 +184,29 @@ func TestALinkedBavaFolderStaysBehind(t *testing.T) {
 	equal(t, landing(plan), []string{"folder Notes", "page Notes/Page.md", "folder Other", "page Other/Page.md"})
 }
 
+// What stays behind for its name is listed, once per name: a folder left
+// behind is one entry, never each thing inside it. Hidden files and links
+// are not: they stay behind by choice.
+func TestAPlanListsWhatItLeavesBehindForItsName(t *testing.T) {
+	s := newSpace(t)
+	src := outside(t, map[string]string{
+		"Notes/Page.md": "# Page\n", "Notes/ Draft.md": "x", "Notes/ Old/A.md": "a", "Notes/ Old/B.md": "b",
+		"Notes/.git/config": "x",
+	})
+	plan, err := s.ImportPlan([]string{filepath.Join(src, "Notes")}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// On disk, names Windows can make too.
+	equal(t, plan.Skipped, []string{"Notes/ Draft.md", "Notes/ Old"})
+	z := zipOf(t, map[string]string{"Page.md": "x", "Q4?/A.md": "a", "Q4?/B.md": "b", "Sub/NUL.md": "n", ".bava/attachments/AUX.png": "p", ".hidden.md": "h"})
+	plan, err = s.ImportPlan([]string{z}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	equal(t, plan.Skipped, []string{".bava/attachments/AUX.png", "Q4?", "Sub/NUL.md"})
+}
+
 func TestEveryOtherFileComesInAsAnAttachment(t *testing.T) {
 	s := newSpace(t)
 	src := outside(t, map[string]string{"Notes/Page.md": "# Page\n", "Notes/chart.png": "png", "Notes/Data/budget.xlsx": "xlsx"})

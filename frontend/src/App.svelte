@@ -1705,12 +1705,6 @@
   let importing = $state.raw<Importing | null>(null);
   let runningImport: RunningImport | null = null;
 
-  /** The Space's folders, by path, sorted: what an export or import offers. */
-  async function spaceFolders(): Promise<string[]> {
-    const pages = (await space.index(false)) ?? [];
-    return [...new Set(pages.flatMap((p) => p.path.split('/').slice(0, -1).map((_, i, parts) => parts.slice(0, i + 1).join('/'))))].sort();
-  }
-
   /** File ▸ Import, or a folder's Import: pick what comes in, then show what it brings into `into`. */
   async function openImport(pick: 'files' | 'folder', into = '') {
     if (!space.root || runBusy()) return;
@@ -1726,7 +1720,7 @@
     }
     if (sources.length === 0) return;
     const source = sources.length === 1 ? sources[0].replace(/^.*[\\/]/, '') : t('import.fromFiles').replace('{n}', String(sources.length));
-    importing = { sources, source, into, folders: await spaceFolders(), plan: null, progress: null };
+    importing = { sources, source, into, folders: await space.allFolders(), plan: null, progress: null };
     await planImport();
   }
 
@@ -1800,7 +1794,7 @@
   async function openSpaceExport(folder = '') {
     if (!space.root || runBusy()) return;
     if (doc.dirty && !(await savedBeforeExport())) return;
-    zipExport = { kind: 'space', page: '', target: folder, folders: await spaceFolders(), plan: null, preview: null };
+    zipExport = { kind: 'space', page: '', target: folder, folders: await space.allFolders(), plan: null, preview: null };
     await Promise.all([planZip(), prepareSpacePreview()]);
   }
 

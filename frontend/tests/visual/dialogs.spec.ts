@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
+  PARENT,
   THEMES,
   canvasPane,
   shotPane,
@@ -152,6 +153,19 @@ for (const theme of THEMES) {
       await expect(dialog.getByRole('button', { name: 'Import' })).toBeEnabled();
       await restPointer(page);
       await shotDialog(page, shot('dialogs', 'import', 'renamed', theme), dialog);
+    });
+
+    // A folder holding names a Space cannot hold: they are listed as left behind.
+    test('import, some left behind', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await page.evaluate((folder) => Object.assign((window as unknown as { __bava: { fakes: { harness: object } } }).__bava.fakes.harness, { importFolder: folder }), `${PARENT}/Old notes`);
+      await menu(page, 'file.importFolder');
+      const dialog = page.getByRole('dialog', { name: 'Import' });
+      await expect(dialog).toContainText('Left behind');
+      await expect(dialog.getByRole('button', { name: 'Import' })).toBeEnabled();
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'import', 'left-behind', theme), dialog);
     });
 
     // Held at its first item, so the count reads the same every run.

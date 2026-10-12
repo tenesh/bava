@@ -91,12 +91,13 @@ type FakeImportPlan = {
   origins: { path: string; root: string }[];
   entries: FakeImportEntry[];
   renames: { from: string; to: string }[];
+  skipped: string[];
   pages: number;
   files: number;
   templates: number;
   bytes: number;
 };
-const emptyImport = (): FakeImportPlan => ({ into: '', origins: [], entries: [], renames: [], pages: 0, files: 0, templates: 0, bytes: 0 });
+const emptyImport = (): FakeImportPlan => ({ into: '', origins: [], entries: [], renames: [], skipped: [], pages: 0, files: 0, templates: 0, bytes: 0 });
 
 /** A step of a long task, as Go sends it to the window. */
 function sendProgress(task: string, done: number, total: number) {
@@ -379,6 +380,10 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     [`${PARENT}/Q4 notes/chart.png`]: 'png',
     [`${PARENT}/Q4 notes/Press/Media kit.md`]: '# Media kit\n\nSee [the goals](../Goals.md).\n',
     [`${PARENT}/Q4 notes/.git/config`]: '[core]\n',
+    // A folder with names a Space cannot hold: they stay behind, listed.
+    [`${PARENT}/Old notes/Ideas.md`]: '# Ideas\n',
+    [`${PARENT}/Old notes/Plan: Q4.md`]: '# Plan\n',
+    [`${PARENT}/Old notes/Q3?/Recap.md`]: '# Recap\n',
   };
 
   /** What importing `sources` into `into` brings, numbered as Go numbers it, or Go's refusal. */
@@ -410,6 +415,13 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       for (const path of inside) {
         const parts = path.slice(source.length + 1).split('/');
         if (parts.some((part) => part.startsWith('.'))) continue;
+        // A name a Space cannot hold stays behind, as Go leaves it: listed once.
+        const bad = parts.findIndex((part) => /[:*?"<>|\\]|\.$|^\s|\s$/.test(part));
+        if (bad >= 0) {
+          const skipped = `${name}/${parts.slice(0, bad + 1).join('/')}`;
+          if (!plan.skipped.includes(skipped)) plan.skipped.push(skipped);
+          continue;
+        }
         for (let i = 1; i < parts.length; i += 1) {
           const rel = parts.slice(0, i).join('/');
           if (folders.has(rel)) continue;
@@ -559,18 +571,21 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       },
       async Index(root: string, withText: boolean) {
         const space = spaceOf(root);
-        if (!space) return { pages: null, ...refusal('notSpace', 'not a Space') };
+        if (!space) return { pages: null, folders: null, ...refusal('notSpace', 'not a Space') };
         // Every page in the tree's order, with its text when asked.
         const pages: { name: string; path: string; text: string }[] = [];
+        const folders: string[] = [];
         const walk = (folder: string) => {
           for (const name of space.folders[folder] ?? []) {
             const path = join(folder, name);
-            if (isFolder(space, path)) walk(path);
-            else pages.push({ name: linkName(path), path, text: withText ? space.pages[path].source : '' });
+            if (isFolder(space, path)) {
+              folders.push(path);
+              walk(path);
+            } else pages.push({ name: linkName(path), path, text: withText ? space.pages[path].source : '' });
           }
         };
         walk('');
-        return { pages, error: '', code: '' };
+        return { pages, folders: folders.sort(), error: '', code: '' };
       },
       async Search(root: string, query: string, open: FakeOpenPage) {
         const space = spaceOf(root);

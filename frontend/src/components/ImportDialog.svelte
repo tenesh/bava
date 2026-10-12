@@ -99,6 +99,15 @@
           {/each}
         </section>
       {/if}
+      {#if plan?.plan && plan.plan.skipped.length > 0}
+        <section class="behind" aria-label={t('import.leftBehind')}>
+          <span class="label">{t('import.leftBehind')}</span>
+          <p class="hint">{t('import.leftBehindNote')}</p>
+          {#each plan.plan.skipped as skipped (skipped)}
+            <div class="left-behind">{skipped.replace(/^.*\//, '')}</div>
+          {/each}
+        </section>
+      {/if}
     </div>
   </div>
 </Dialog>
@@ -134,7 +143,8 @@
     color: var(--color-text-muted);
   }
 
-  .renamed {
+  .renamed,
+  .behind {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
@@ -146,6 +156,14 @@
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-text-muted);
+  }
+
+  .left-behind {
+    overflow: hidden;
+    font-size: var(--text-body);
+    color: var(--color-text-secondary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .rename {
