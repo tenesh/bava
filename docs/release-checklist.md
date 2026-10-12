@@ -62,7 +62,7 @@ Start Bava as if it had never run:
 - [ ] Mid-drag, raise a system alert, switch apps, or let a gesture take over (a trackpad's swipe, a touchscreen's palm): the drag ends where it was, on each system.
 - [ ] View ▸ Zoom to Fit (⇧1) and Zoom to Selection (⇧2) fill the canvas with the drawing and with the selection.
 - [ ] A code block of several lines stays visible while typing and fits after Escape.
-- [ ] Diagram from Code: the preview keeps up while typing; switching engine visibly changes it; dragging a container brings its contents; a shape recolours.
+- [ ] Canvas ▸ Diagram ▸ D2 Diagram: the preview keeps up while typing; switching engine visibly changes it; dragging a container brings its contents; a shape recolours.
 - [ ] Arrow heads and labels match between the canvas and an export.
 - [ ] By eye: line stubs, side dots, rounded corners, the anchor disc, cursors, a code block's bottom edge.
 - [ ] Submenus: the highlight in light theme, and moving between them by mouse.
@@ -71,7 +71,7 @@ Start Bava as if it had never run:
 - [ ] Paste text from a browser and from an email app onto the canvas: one text element, its lines kept, a long paragraph wrapped.
 - [ ] Copy shapes, then paste into a vector drawing app: the picture shows.
 - [ ] Drop a picture from the Finder, Explorer and a Linux file manager onto the canvas: it lands where dropped; a PDF dropped there stays out.
-- [ ] Paste a screenshot onto the canvas; drag a picture from Media onto it; File ▸ Picture.
+- [ ] Paste a screenshot onto the canvas; drag a picture from Media onto it; Canvas ▸ Picture.
 - [ ] A canvas picture in a PDF export and in a frame embed; copy shapes with a picture into another Space and it comes along.
 - [ ] Rename a picture in Media: every canvas showing it follows.
 

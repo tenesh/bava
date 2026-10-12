@@ -79,3 +79,42 @@ fit their shape. 15.4b: the command palette. 15.4c: paste from other apps.
 
 12. **A picture keeps its proportions when resized** (2026-10-13); Shift frees
     it, the opposite of shapes. Resizing freely like shapes was not chosen.
+
+13. **A table's or class's rows are typed as lines** (2026-10-13): a
+    double-click opens the whole body as text, one row a line, and leaving
+    draws it. Editing cell by cell, or both ways, was not chosen.
+
+14. **The file keeps the lines as typed** (2026-10-13): the element stores
+    its name and its rows as one text, exactly as written; the columns are
+    worked out each time it is drawn. Splitting rows into separate values in
+    the file (normalising what was typed) was not chosen.
+
+15. **An arrow attaches to a table's row** (2026-10-13): dropped on a row, it
+    attaches beside that row and follows it when rows above are added or
+    removed; a D2 diagram's links between columns arrive this way.
+    Attaching only to the table as a whole was not chosen.
+
+16. **A class's methods are told by their brackets** (2026-10-13): a line
+    with ( ) is a method, any other a field; fields are drawn above a
+    divider and methods below, whatever order they were typed in. A leading
+    +, -, # or ~ is public, private, protected or package. A divider the
+    user types was not chosen.
+
+17. **Tables and classes are added from a Diagram group, or arrive from a D2
+    diagram** (2026-10-13): the + panel's new "Diagram" category holds D2
+    diagram, SQL table and UML class. A table or class is placed by a click
+    or a drag, as a shape is, and opens for typing at once. D2's `sql_table`
+    and `class` convert into them. No rail button or key of their own.
+    Adding them only through the D2 diagram, a "Table and class" category
+    of their own, and tiles in the Shape category were not chosen.
+
+18. **Diagram from Code is renamed D2 diagram, and what adds to the canvas
+    is grouped in the Canvas menu** (2026-10-13). "D2 diagram" everywhere: the
+    menu, the + panel, the page's / menu, the dialog, the code's names, file
+    names and living docs (names stored on disk, past plans, specs and
+    decision rows unchanged). File ▸ Diagram from Code and File ▸ Picture
+    move to the top of the Canvas menu: a Diagram submenu (D2 Diagram, SQL
+    Table, UML Class) and Picture, all in the command palette. Naming the
+    language the user writes is not a comparison, as the dialog's "Write D2"
+    already did. Removing the feature, hiding it, leaving the items in File,
+    and taking them off the menu were each considered and not chosen.

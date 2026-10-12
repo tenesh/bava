@@ -867,9 +867,9 @@ test.describe('defaults, text and dialogs', () => {
     await expect(editPoints).toHaveCount(0);
   });
 
-  test('Diagram from Code starts at the engine used last, and the status bar names it', async ({ page }) => {
+  test('D2 diagram starts at the engine used last, and the status bar names it', async ({ page }) => {
     await startCanvas(page);
-    await menu(page, 'insert.diagram');
+    await menu(page, 'insert.d2Diagram');
     const dialog = openDialog(page);
     await dialog.getByText('Dagre', { exact: true }).click();
     await dialog.locator('.cm-content').click();
@@ -879,7 +879,7 @@ test.describe('defaults, text and dialogs', () => {
     await expect(insert).toBeEnabled();
     await insert.click();
     await expect(dialog).toHaveCount(0);
-    await menu(page, 'insert.diagram');
+    await menu(page, 'insert.d2Diagram');
     await expect(dialog.getByRole('radio', { name: 'Dagre' })).toBeChecked();
     await dialog.getByRole('button', { name: 'Cancel' }).click();
     await expect(page.locator('footer')).toContainText('dagre');
@@ -1116,9 +1116,9 @@ test.describe('editing details', () => {
     expect(free.y).toBe(503);
   });
 
-  test('a diagram from code is undone with one press', async ({ page }) => {
+  test('a D2 diagram is undone with one press', async ({ page }) => {
     await startCanvas(page);
-    await menu(page, 'insert.diagram');
+    await menu(page, 'insert.d2Diagram');
     const dialog = openDialog(page);
     await dialog.locator('.cm-content').click();
     await page.keyboard.press('ControlOrMeta+a');
@@ -1210,17 +1210,17 @@ test.describe('menus on the canvas', () => {
   });
 });
 
-// The engine's own controls, and its layout, in Diagram from Code.
-test.describe('Diagram from Code', () => {
+// The engine's own controls, and its layout, in D2 diagram.
+test.describe('D2 diagram', () => {
   for (const engine of ['Dagre', 'ELK']) {
     test(`with ${engine}, offers a direction and lays the code out`, async ({ page }) => {
       await openKinds(page, 'light');
-      await menu(page, 'insert.diagram');
+      await menu(page, 'insert.d2Diagram');
       await expect(openDialog(page).locator('.cm-content')).toBeFocused();
       await openDialog(page).getByText(engine, { exact: true }).click();
       await expect(openDialog(page).getByRole('radio', { name: engine })).toBeChecked();
       await expect(openDialog(page).getByRole('radiogroup', { name: 'Direction' })).toBeVisible();
-      await expect(openDialog(page).locator('.bava-diagram-preview svg')).toBeVisible();
+      await expect(openDialog(page).locator('.bava-d2-diagram-preview svg')).toBeVisible();
     });
   }
 });

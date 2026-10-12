@@ -71,7 +71,7 @@ describe('SourcePane edit commands', () => {
 });
 
 // Edit commands arrive from the native menu and go to the editor with focus.
-// Two source panes can be on screen (the document's and the Diagram from Code
+// Two source panes can be on screen (the document's and the D2 diagram
 // dialog's): Paste in the dialog went into the document's pane, unseen.
 describe('the pane an element is in', () => {
   it('is the pane whose editor contains it, not another', () => {

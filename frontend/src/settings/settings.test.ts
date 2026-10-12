@@ -114,7 +114,7 @@ describe('settings', () => {
   });
 });
 
-// The Diagram from Code dialog opens with the engine used last:
+// The D2 diagram dialog opens with the engine used last:
 // inserting saves it as the default, and an engine the app does not know
 // reads as TALA rather than reaching the renderer.
 describe('the layout engine', () => {

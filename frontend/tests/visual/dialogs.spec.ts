@@ -424,10 +424,10 @@ for (const theme of THEMES) {
       await shotDialog(page, shot('dialogs', 'export', 'canvas', theme));
     });
 
-    test('Diagram from Code', async ({ page }) => {
+    test('D2 diagram', async ({ page }) => {
       await openApp(page, theme);
       await openPage(page, 'Engineering/Architecture.md');
-      await menu(page, 'insert.diagram');
+      await menu(page, 'insert.d2Diagram');
       await expect(openDialog(page)).toBeVisible();
       // The dialog opens with the code in focus: pictured once it is there.
       await expect(openDialog(page).locator('.cm-content')).toBeFocused();
@@ -449,7 +449,7 @@ for (const theme of THEMES) {
       for (const shade of shades) {
         if (shade.alpha > 0.5) expect(theme === 'dark' ? shade.lum < 0.35 : shade.lum > 0.65).toBe(true);
       }
-      await shotDialog(page, shot('dialogs', 'diagram', 'empty', theme));
+      await shotDialog(page, shot('dialogs', 'd2-diagram', 'empty', theme));
     });
   });
 
@@ -480,10 +480,10 @@ for (const theme of THEMES) {
       await shotDialog(page, shot('dialogs', 'new-space', 'name-taken', theme));
     });
 
-    test('Diagram from Code with code D2 cannot read', async ({ page }) => {
+    test('D2 diagram with code D2 cannot read', async ({ page }) => {
       await openApp(page, theme);
       await openPage(page, 'Engineering/Architecture.md');
-      await menu(page, 'insert.diagram');
+      await menu(page, 'insert.d2Diagram');
       const code = openDialog(page).locator('.cm-content');
       await expect(code).toBeFocused();
       await page.keyboard.press('ControlOrMeta+a');
@@ -491,7 +491,7 @@ for (const theme of THEMES) {
       await expect(openDialog(page).locator('.errors li')).toHaveText(['maps must be terminated with }'].map((text) => new RegExp(text)));
       await expect(openDialog(page).getByRole('button', { name: 'Insert' })).toBeDisabled();
       await restPointer(page);
-      await shotDialog(page, shot('dialogs', 'diagram', 'error', theme));
+      await shotDialog(page, shot('dialogs', 'd2-diagram', 'error', theme));
     });
 
     test('Export with no background', async ({ page }) => {

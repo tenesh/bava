@@ -103,7 +103,7 @@ NumberInput (in `NumberField`), Toast, ToggleGroup. Build when a screen needs.
 | `ContextMenu` | Menu at a point, nested (Menu); `within` inside a dialog; look in `styles/menus.scss` |
 | `DatePicker` | Calendar under a date chip, gives `YYYY-MM-DD` (DatePicker) |
 | `Dialog` | Ruled header, body, footer; named `size`s, `flush`, `headless`, `variant="alert"`; `dismissible={false}` and `onEscape` while work under way must end first (Dialog) |
-| `DiagramDialog` | D2 source beside live preview, diagnostics, engine picker, Insert |
+| `D2DiagramDialog` | D2 source beside live preview, diagnostics, engine picker, Insert |
 | `EmojiPicker` | Search and grouped emoji |
 | `EmptyState` | Empty panes; `mark`, `hints`, `size` (`pane` for a whole pane with nothing open) |
 | `EquationField` | TeX field over an equation, live render |
@@ -176,6 +176,6 @@ NumberInput (in `NumberField`), Toast, ToggleGroup. Build when a screen needs.
   placements. Wordmark: lowercase `bava`, Geist Medium; in prose, `Bava`.
 
 ## The D2 preview's theme
-The Diagram from Code preview is Go-rendered SVG and ignores CSS; the frontend
+The D2 diagram's preview is Go-rendered SVG and ignores CSS; the frontend
 sends no `opts.theme`. If it is themed: in `internal/render/theme.go`, D2's
 `N1`-`N7` colour text and canvas while `B` and `A` colour shapes; map every slot.

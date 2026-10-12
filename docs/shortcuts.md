@@ -69,7 +69,7 @@ only platform that right-aligns text after a tab).
 | Canvas | Snap to Objects | `⌥S` | `Alt+S` |
 
 Undo, Redo, Cut, Copy, Paste, Select All and Delete go to whatever has focus
-(Diagram from Code's editor, a code block, the page, a text field, the
+(the D2 diagram's editor, a code block, the page, a text field, the
 canvas), and nowhere while a dialog without an editor has focus or the canvas
 is hidden. Editors drop their own bindings for keys the menu owns.
 
@@ -94,7 +94,7 @@ check (`RoleAccelerators` in `internal/app/menu/spec.go`).
 ## Canvas keys
 
 Not in the menu. Active while the canvas has focus, not in a text field or
-Diagram from Code's editor.
+the D2 diagram's editor.
 
 | Key | Action |
 |---|---|

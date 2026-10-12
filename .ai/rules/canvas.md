@@ -5,7 +5,7 @@ text sizes and the single history are in CLAUDE.md.
 
 ## Scene and history
 - **No reactive state holds geometry.** Elements carry `x, y, w, h, z`; once
-  Diagram from Code converts a layout, nothing moves them.
+  D2 diagram converts a layout, nothing moves them.
 - **Every change goes through `history.mutate`.** A no-op records no step.
   `reroute` runs in the same recipe, so attached arrows follow every edit.
 - **A drag previews without touching history**: `pointer.preview(point)` uses

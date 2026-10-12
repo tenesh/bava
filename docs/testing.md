@@ -50,7 +50,7 @@ build contains the driver.
 |---|---|
 | `create` | New Space, two pages, a Document with link, maths, code, image, file, online video, table, tag; saved as a template; a shape drawn; saved and read back |
 | `reopen` | Reopens it, checks Media, renames a page, searches, exports a zip and PDFs and reads them back |
-| `canvas` | Shapes and an attached arrow, move, undo, redo, Diagram from Code, an embed from `/`; reads back shapes, bindings, labels, embed |
+| `canvas` | Shapes and an attached arrow, move, undo, redo, D2 diagram, an embed from `/`; reads back shapes, bindings, labels, embed |
 | `export-proof` | System printing to PDF: A4 portrait, Letter landscape, A3 no margins, and a page over 2 MB |
 | `import` | Imports the zip `reopen` wrote into a new folder of that Space: pages, their picture address rewritten, a link kept, a template numbered to keep both |
 

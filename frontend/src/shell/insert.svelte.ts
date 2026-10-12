@@ -16,27 +16,24 @@ export const GRID_COLUMNS = 5;
 export type InsertItem = { kind: 'item'; id: ToolId; labelKey: MessageKey; icon: IconId };
 /**
  * An insert that is not a tool: it opens something rather than arming the
- * pointer. A diagram is written as code and arrives whole; a picture is
+ * pointer. A D2 diagram is written as code and arrives whole; a picture is
  * picked from the computer.
  */
-export type InsertCommand = { kind: 'command'; id: 'diagram' | 'picture'; labelKey: MessageKey; icon: IconId };
+export type InsertCommand = { kind: 'command'; id: 'd2Diagram' | 'picture'; labelKey: MessageKey; icon: IconId };
 export type InsertCategory = {
   kind: 'category';
   id: string;
   labelKey: MessageKey;
   descriptionKey: MessageKey;
   icon: IconId;
-  items: InsertItem[];
+  items: (InsertItem | InsertCommand)[];
 };
 export type InsertEntry = InsertItem | InsertCategory | InsertCommand;
 
 const shape = (id: ToolId & IconId, labelKey: MessageKey): InsertItem => ({ kind: 'item', id, labelKey, icon: id });
 
 /** Entries that are not a category and not a tool. */
-export const COMMANDS: InsertCommand[] = [
-  { kind: 'command', id: 'diagram', labelKey: 'insert.diagram', icon: 'code' },
-  { kind: 'command', id: 'picture', labelKey: 'insert.picture', icon: 'image' },
-];
+export const COMMANDS: InsertCommand[] = [{ kind: 'command', id: 'picture', labelKey: 'insert.picture', icon: 'image' }];
 
 /** Tools that are not shapes, offered on their own rather than in a category. */
 export const TOOL_ENTRIES: InsertItem[] = [
@@ -61,6 +58,14 @@ export const CATEGORIES: InsertCategory[] = [
       shape('person', 'tool.person'),
       shape('cloud', 'tool.cloud'),
     ],
+  },
+  {
+    kind: 'category',
+    id: 'diagram',
+    labelKey: 'insert.diagram',
+    descriptionKey: 'insert.diagramDescription',
+    icon: 'diagram',
+    items: [{ kind: 'command', id: 'd2Diagram', labelKey: 'insert.d2Diagram', icon: 'code' }],
   },
 ];
 

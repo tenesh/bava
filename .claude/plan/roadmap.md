@@ -70,7 +70,7 @@ never fetched without the user asking. Proprietary cloud icon sets are
 never bundled. Exit: a test that conversion never yields a remote icon.
 
 ### 10: Source editor polish
-A D2 language mode and keymap for the Diagram from Code editor. Exit:
+A D2 language mode and keymap for the D2 diagram editor. Exit:
 tokeniser tests.
 
 ### 11: AI foundation

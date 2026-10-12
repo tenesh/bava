@@ -26,7 +26,7 @@ writer -> queue -> postgres
 ````
 
 1. **Prose**: ordinary Markdown. A fenced `d2` block in it is prose, kept as
-   written; Diagram from Code inserts ordinary shapes and keeps no D2.
+   written; a D2 diagram inserts ordinary shapes and keeps no D2.
 2. **The canvas block**: one fenced `bava-canvas` block of pretty-printed
    JSON, last in the file after one blank line, written only when the canvas
    has elements.

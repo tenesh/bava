@@ -34,7 +34,7 @@ export class SourcePane {
   /**
    * The pane whose editor contains `element`, or null. Edit commands arrive
    * from the native menu and must reach the editor with focus: more than one
-   * pane can be on screen (the document's, and the Diagram from Code
+   * pane can be on screen (the document's, and the D2 diagram
    * dialog's), and sending them all to one pasted into an editor nobody was
    * looking at.
    */

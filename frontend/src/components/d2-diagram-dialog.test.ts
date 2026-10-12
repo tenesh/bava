@@ -2,13 +2,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { flushSync } from 'svelte';
 import { render, unmount } from '../test/render';
-import DiagramDialog from './DiagramDialog.svelte';
+import D2DiagramDialog from './D2DiagramDialog.svelte';
 
 async function setup(props: Record<string, unknown> = {}) {
   const onSource = vi.fn();
   const onInsert = vi.fn();
   const onOpenChange = vi.fn();
-  const { app } = render(DiagramDialog, {
+  const { app } = render(D2DiagramDialog, {
     open: true,
     source: 'a -> b',
     preview: '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>',
@@ -20,17 +20,17 @@ async function setup(props: Record<string, unknown> = {}) {
     onOpenChange,
     ...props,
   } as never);
-  await vi.waitFor(() => expect(document.querySelector('.bava-diagram-preview')).not.toBeNull());
+  await vi.waitFor(() => expect(document.querySelector('.bava-d2-diagram-preview')).not.toBeNull());
   const button = (name: string) =>
     [...document.querySelectorAll('button')].find((b) => (b.textContent ?? '').trim() === name);
   return { app, button, onSource, onInsert, onOpenChange };
 }
 
-describe('DiagramDialog', () => {
+describe('D2DiagramDialog', () => {
   it('shows the preview it is handed', async () => {
     const preview = '<svg xmlns="http://www.w3.org/2000/svg"><rect id="handed-in" width="4"></rect></svg>';
     await setup({ preview });
-    expect(document.querySelector('.bava-diagram-preview')!.innerHTML).toBe(preview);
+    expect(document.querySelector('.bava-d2-diagram-preview')!.innerHTML).toBe(preview);
   });
 
   it('mounts an editor for the source, and takes it away again', async () => {
@@ -74,7 +74,7 @@ describe('DiagramDialog', () => {
 
   it('says which engine laid the preview out, and how many shapes it holds', async () => {
     await setup({ engine: 'tala', shapes: 3 });
-    expect(document.querySelector('.bava-diagram-status')?.textContent).toBe('Laid out by TALA · 3 shapes');
+    expect(document.querySelector('.bava-d2-diagram-status')?.textContent).toBe('Laid out by TALA · 3 shapes');
   });
 
   // The engine choice sits in the footer, beside the buttons it decides.
@@ -100,7 +100,7 @@ describe('closing and reopening', () => {
     // Mounted twice rather than with reactive props: the component is fed by
     // its caller, and what matters here is that a close takes the editor away.
     const open = (source: string) =>
-      render(DiagramDialog, {
+      render(D2DiagramDialog, {
         open: true,
         source,
         preview: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
@@ -124,10 +124,10 @@ describe('closing and reopening', () => {
 
 // The dialog has no width of its own by default, so its two panes shrank to
 // their content and the code area was a sliver. It asks for the wide size.
-describe('the Diagram from Code dialog size', () => {
+describe('the D2 diagram dialog size', () => {
   it('uses the diagram dialog\'s own size', async () => {
     await setup();
-    expect(document.querySelector('.bava-dialog-content')!.getAttribute('data-size')).toBe('diagram');
+    expect(document.querySelector('.bava-dialog-content')!.getAttribute('data-size')).toBe('d2Diagram');
   });
 });
 

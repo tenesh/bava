@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { createInsert, GRID_COLUMNS } from './insert.svelte';
+import { t } from '../i18n/t';
 
 describe('insert panel state', () => {
   it('starts at all categories with the first highlighted', () => {
     const insert = createInsert();
     expect(insert.category).toBeNull();
     // Categories, then the tools that are not shapes, then what is not a tool.
-    expect(insert.entries.map((e) => e.id)).toEqual(['shape', 'code', 'diagram', 'picture']);
+    expect(insert.entries.map((e) => e.id)).toEqual(['shape', 'diagram', 'code', 'picture']);
     expect(insert.entries[0].kind).toBe('category');
     expect(insert.highlighted).toBe(0);
   });
@@ -80,23 +81,28 @@ describe('inserting a picture', () => {
   });
 });
 
-// Not every insert is a tool: a diagram is written as code and arrives whole.
-describe('inserting a diagram from code', () => {
-  it('is offered beside the categories', () => {
+// Not every insert is a tool: a D2 diagram is written as code and arrives whole.
+describe('inserting a D2 diagram', () => {
+  it('is offered in the Diagram category, named as such', () => {
     const insert = createInsert();
-    const ids = insert.entries.map((entry) => entry.id);
-    expect(ids).toContain('diagram');
+    insert.choose(insert.entries.findIndex((e) => e.id === 'diagram'));
+    expect(insert.category && t(insert.category.labelKey)).toBe('Diagram');
+    const entry = insert.entries.find((e) => e.id === 'd2Diagram');
+    expect(entry && t(entry.labelKey)).toBe('D2 diagram');
+    expect(insert.choose(insert.entries.indexOf(entry!))).toEqual({ type: 'command', id: 'd2Diagram' });
   });
 
-  it('is found by searching for it', () => {
+  it('is found by searching for it, by its name or its language', () => {
     const insert = createInsert();
-    insert.setQuery('diagram');
-    expect(insert.entries.map((entry) => entry.id)).toEqual(['diagram']);
+    for (const query of ['diagram', 'd2']) {
+      insert.setQuery(query);
+      expect(insert.entries.map((entry) => entry.id)).toEqual(['d2Diagram']);
+    }
   });
 
   it('asks for the dialog rather than a tool', () => {
     const insert = createInsert();
-    insert.setQuery('diagram');
-    expect(insert.choose(0)).toEqual({ type: 'command', id: 'diagram' });
+    insert.setQuery('d2');
+    expect(insert.choose(0)).toEqual({ type: 'command', id: 'd2Diagram' });
   });
 });

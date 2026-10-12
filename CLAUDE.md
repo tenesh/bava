@@ -53,7 +53,7 @@ Look versioned APIs up (Context7, gopls MCP, `docs/`); never recall them.
 
 - **Go owns** D2 layout, file I/O, Spaces, the web-card fetch, AI calls. The
   **frontend owns** the scene, tools, selection, drawing, export, text editing.
-- Diagram from Code: `Render(source, opts) → {svg, errors, nodeMap, layout}`;
+- D2 diagram: `Render(source, opts) → {svg, errors, nodeMap, layout}`;
   `layout` becomes shapes and arrows, the D2 is not kept.
 - **The canvas lives outside Svelte reactivity**: a TypeScript class owning a
   Konva stage, mounted once. Never one Svelte component per element.

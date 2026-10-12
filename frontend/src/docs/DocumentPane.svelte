@@ -101,8 +101,8 @@
     onNotify: (message: string) => void;
     /** How canvas embeds are drawn, watched and opened; read once, when the page mounts. */
     embeds?: Pick<EmbedContext, 'draw' | 'watchCanvas' | 'holds' | 'open'>;
-    /** `/` Embed frame or Diagram from Code, with the caret's place on screen. */
-    onCanvas?: (what: 'embed' | 'diagram', at: { left: number; top: number; bottom: number }) => void;
+    /** `/` Embed frame or D2 diagram, with the caret's place on screen. */
+    onCanvas?: (what: 'embed' | 'd2Diagram', at: { left: number; top: number; bottom: number }) => void;
   };
 
   let { crumbs, spaceWidth, appWidth, onEdit, onCounts, onDuplicatePage, onTrashPage, onSaveTemplate, onExportPage = () => {}, isTemplate = false, onCopyText, here, mediaPlace, readIndex, onFollow, onOpenPage, onChooseMedia, onOpenFile, fileDetails, fetchCard, onPasteImage, onReplaceMedia, onRenameAttachment, onRevealFile, onAttachPoster, onNotify, embeds, onCanvas }: Props = $props();

@@ -84,8 +84,8 @@ export type DocEditorOptions = {
   onEmoji?: (info: EmojiInfo | null) => void;
   /** The `/` menu's Emoji: the app opens the picker at the caret. */
   onEmojiPicker?: (at: { left: number; top: number; bottom: number }) => void;
-  /** `/` Embed frame or Diagram from Code: the app asks for a frame, or opens the dialog, and puts the result at the caret. */
-  onCanvas?: (what: 'embed' | 'diagram', at: { left: number; top: number; bottom: number }) => void;
+  /** `/` Embed frame or D2 diagram: the app asks for a frame, or opens the dialog, and puts the result at the caret. */
+  onCanvas?: (what: 'embed' | 'd2Diagram', at: { left: number; top: number; bottom: number }) => void;
   /** A right-click in a table: the app opens the table menu there. */
   onTableMenu?: (at: { x: number; y: number }) => void;
   /** An equation at `pos` to edit: the app opens its field there. */

@@ -23,7 +23,7 @@ export type Sheet = keyof typeof SHEETS;
 export const IN_SCREENS: Record<string, string> = {
   AboutDialog: 'dialogs',
   ConfirmDialog: 'dialogs',
-  DiagramDialog: 'dialogs',
+  D2DiagramDialog: 'dialogs',
   Dialog: 'dialogs',
   ErrorDialog: 'dialogs',
   ExportDialog: 'dialogs',

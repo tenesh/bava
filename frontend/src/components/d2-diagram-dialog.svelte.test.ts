@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { flushSync } from 'svelte';
 import { render } from '../test/render';
-import DiagramDialog from './DiagramDialog.svelte';
+import D2DiagramDialog from './D2DiagramDialog.svelte';
 import type { Diagnostic } from '../../bindings/github.com/tharabyte/bava/internal/render/models';
 
 const broken: Diagnostic[] = [{ message: 'expected a name', line: 1, from: 0, to: 1 }];
@@ -23,14 +23,14 @@ async function setup(errors: Diagnostic[]) {
     onInsert: vi.fn(),
     onOpenChange: vi.fn(),
   });
-  render(DiagramDialog, props);
+  render(D2DiagramDialog, props);
   await vi.waitFor(() => expect(document.querySelector('.cm-editor')).not.toBeNull());
   return props;
 }
 
 const marked = () => document.querySelector('.cm-editor .cm-lintRange-error');
 
-describe('DiagramDialog diagnostics in the editor', () => {
+describe('D2DiagramDialog diagnostics in the editor', () => {
   it('marks an error the dialog opens with in the editor, not only in the list', async () => {
     await setup(broken);
     await vi.waitFor(() => expect(marked()).not.toBeNull());

@@ -5,12 +5,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { flushSync } from 'svelte';
 import { render } from '../test/render';
-import DiagramDialog from './DiagramDialog.svelte';
+import D2DiagramDialog from './D2DiagramDialog.svelte';
 
-describe('DiagramDialog', () => {
+describe('D2DiagramDialog', () => {
   it('takes the editor away on close, and builds a new one on the next open', async () => {
     const state = $state({ open: true, source: 'first -> one' });
-    render(DiagramDialog, {
+    render(D2DiagramDialog, {
       get open() {
         return state.open;
       },

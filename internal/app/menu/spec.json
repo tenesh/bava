@@ -56,9 +56,6 @@
             { "kind": "command", "id": "file.importFolder", "label": "Folder", "when": ["hasSpace"] }
           ]
         },
-        { "kind": "separator" },
-        { "kind": "command", "id": "insert.diagram", "label": "Diagram from Code", "when": ["hasDocument", "showsCanvas"] },
-        { "kind": "command", "id": "insert.picture", "label": "Picture", "when": ["hasDocument", "showsCanvas"] },
         { "kind": "separator", "platforms": ["windows", "linux"] },
         {
           "kind": "submenu",
@@ -127,6 +124,16 @@
       "id": "canvas",
       "label": "Canvas",
       "items": [
+        {
+          "kind": "submenu",
+          "id": "canvas.diagram",
+          "label": "Diagram",
+          "items": [
+            { "kind": "command", "id": "insert.d2Diagram", "label": "D2 Diagram", "when": ["hasDocument", "showsCanvas"] }
+          ]
+        },
+        { "kind": "command", "id": "insert.picture", "label": "Picture", "when": ["hasDocument", "showsCanvas"] },
+        { "kind": "separator" },
         {
           "kind": "submenu",
           "id": "canvas.tools",

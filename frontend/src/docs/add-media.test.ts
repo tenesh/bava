@@ -6,6 +6,7 @@ import { DocEditor } from './editor';
 import { openEditor } from './test-editor';
 import { addMedia, type AddMediaDeps } from './add-media';
 import { SLASH_ITEMS } from './slash';
+import { t } from '../i18n/t';
 import { atTextEnd } from './test-caret';
 
 // jsdom lays nothing out: a range has no boxes to scroll a selection into view by.
@@ -86,17 +87,18 @@ describe('the / menu', () => {
     expect(SLASH_ITEMS.find((item) => item.id === 'image')?.group).toBe('advanced');
   });
 
-  it('offers Embed frame and Diagram from Code, which ask the app, at the caret', () => {
+  it('offers Embed frame and D2 diagram, which ask the app, at the caret', () => {
     const onCanvas = vi.fn();
     const opened = openEditor('Text\n', { onCanvas });
     editor = opened.editor;
     const view = editor.view!;
-    for (const [id, what] of [['embedFrame', 'embed'], ['diagram', 'diagram']]) {
+    for (const [id, what] of [['embedFrame', 'embed'], ['d2Diagram', 'd2Diagram']]) {
       view.dispatch(view.state.tr.setSelection(atTextEnd(view.state.doc)).insertText(' /'));
       editor.chooseSlash(id);
       expect(onCanvas).toHaveBeenLastCalledWith(what, expect.objectContaining({ left: expect.any(Number), bottom: expect.any(Number) }));
     }
     expect(editor.markdown()).toBe('Text\n');
+    expect(t(SLASH_ITEMS.find((item) => item.id === 'd2Diagram')!.label)).toBe('D2 diagram');
   });
 });
 

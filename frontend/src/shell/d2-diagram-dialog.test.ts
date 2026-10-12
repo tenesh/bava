@@ -1,16 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDiagramDialog } from './diagram-dialog.svelte';
+import { createD2DiagramDialog } from './d2-diagram-dialog.svelte';
 
-// The Diagram from Code dialog's layout state: what the preview is rendered
+// The D2 diagram dialog's layout state: what the preview is rendered
 // with is what Insert uses, and the engine used becomes the default.
 function setup(defaultEngine: 'tala' | 'dagre' | 'elk' = 'tala') {
   const request = vi.fn();
   const saveDefault = vi.fn().mockResolvedValue(undefined);
-  const dialog = createDiagramDialog({ request, defaultEngine: () => defaultEngine, saveDefault });
+  const dialog = createD2DiagramDialog({ request, defaultEngine: () => defaultEngine, saveDefault });
   return { dialog, request, saveDefault };
 }
 
-describe('the Diagram from Code dialog', () => {
+describe('the D2 diagram dialog', () => {
   it('opens at the default engine, facing down, and renders the starter', () => {
     const { dialog, request } = setup('elk');
     dialog.open('a -> b');

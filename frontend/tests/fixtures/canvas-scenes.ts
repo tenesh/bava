@@ -142,7 +142,7 @@ export function turned(): El[] {
   ];
 }
 
-/** The shapes Diagram from Code makes of `api -> db; api -> cache`: boxes and bound arrows. */
+/** The shapes D2 diagram makes of `api -> db; api -> cache`: boxes and bound arrows. */
 export function diagram(): El[] {
   return [
     el({ id: 'd-api', type: 'rect', x: 240, y: 40, w: 140, h: 66, label: 'api' }),

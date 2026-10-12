@@ -12,7 +12,7 @@
    */
   import Dialog from './Dialog.svelte';
   import LayoutEnginePicker from './LayoutEnginePicker.svelte';
-  import { diagramStatus } from './diagram-status';
+  import { d2DiagramStatus } from './d2-diagram-status';
   import type { Direction, LayoutEngine } from '../settings/layout-engine';
   import { SourcePane } from '../editor/source-pane';
   import type { KeyBinding } from '@codemirror/view';
@@ -72,7 +72,7 @@
   // a diagram that does not compile, one still being rendered, and one that
   // compiled to no shapes (a file of comments still renders an empty SVG).
   const canInsert = $derived(errors.length === 0 && !pending && typed.trim().length > 0 && shapes > 0);
-  const status = $derived(diagramStatus(engine, shapes));
+  const status = $derived(d2DiagramStatus(engine, shapes));
 
   // The dialog's content is portalled, so its host does not exist at mount:
   // the editor is created when the element appears and destroyed with it.
@@ -106,11 +106,11 @@
 
 {#snippet footer()}
   <div class="footer">
-    <LayoutEnginePicker {engine} {direction} directionHint={t('diagram.directionHint')} {onEngine} {onDirection} />
+    <LayoutEnginePicker {engine} {direction} directionHint={t('d2Diagram.directionHint')} {onEngine} {onDirection} />
     <span class="buttons">
-      <button type="button" class="bava-button" onclick={() => onOpenChange(false)}>{t('diagram.cancel')}</button>
+      <button type="button" class="bava-button" onclick={() => onOpenChange(false)}>{t('d2Diagram.cancel')}</button>
       <button type="button" class="bava-button primary" disabled={!canInsert} onclick={() => onInsert()}>
-        {t('diagram.insert')}
+        {t('d2Diagram.insert')}
       </button>
     </span>
   </div>
@@ -121,22 +121,22 @@
 <Dialog
   bind:open
   unmountWhenClosed
-  size="diagram"
+  size="d2Diagram"
   flush
-  title={t('diagram.title')}
-  subtitle={t('diagram.hint')}
+  title={t('d2Diagram.title')}
+  subtitle={t('d2Diagram.hint')}
   {footer}
   onOpenChange={(next) => onOpenChange(next)}
 >
-  <div class="bava-diagram">
+  <div class="bava-d2-diagram">
     <div class="panes">
       <div class="editor" bind:this={host}></div>
       <div class="preview-frame">
         <!-- The SVG the caller rendered, through the one render path, with any
              reference that would reach outside the app taken out first. -->
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-        <div class="bava-diagram-preview">{@html withoutRemoteRefs(preview)}</div>
-        {#if status}<span class="bava-diagram-status">{status}</span>{/if}
+        <div class="bava-d2-diagram-preview">{@html withoutRemoteRefs(preview)}</div>
+        {#if status}<span class="bava-d2-diagram-status">{status}</span>{/if}
       </div>
     </div>
 
@@ -151,7 +151,7 @@
 </Dialog>
 
 <style>
-  .bava-diagram {
+  .bava-d2-diagram {
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -196,18 +196,18 @@
     background-size: var(--size-canvas-grid) var(--size-canvas-grid);
   }
 
-  .bava-diagram-preview {
+  .bava-d2-diagram-preview {
     display: flex;
     max-width: 100%;
     max-height: 100%;
   }
 
-  .bava-diagram-preview :global(svg) {
+  .bava-d2-diagram-preview :global(svg) {
     max-width: 100%;
     max-height: 100%;
   }
 
-  .bava-diagram-status {
+  .bava-d2-diagram-status {
     position: absolute;
     bottom: var(--space-3);
     left: var(--space-3);
@@ -218,7 +218,7 @@
 
   .errors {
     flex: none;
-    max-height: var(--size-diagram-errors);
+    max-height: var(--size-d2-diagram-errors);
     margin: 0;
     padding: var(--space-2) var(--space-5);
     overflow: auto;

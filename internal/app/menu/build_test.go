@@ -271,19 +271,19 @@ func TestInsertDiagramNeedsADocument(t *testing.T) {
 	built, _ := build(t, "darwin")
 
 	built.Apply(menu.State{})
-	if built.Item("insert.diagram").Enabled() {
-		t.Error("Diagram from Code is enabled with no document open")
+	if built.Item("insert.d2Diagram").Enabled() {
+		t.Error("D2 Diagram is enabled with no document open")
 	}
 	// A document open but the canvas hidden: there is nowhere to put it, and
 	// an item that is enabled and does nothing is worse than a disabled one.
 	built.Apply(menu.State{HasDocument: true})
-	if built.Item("insert.diagram").Enabled() {
-		t.Error("Diagram from Code is enabled with the canvas hidden")
+	if built.Item("insert.d2Diagram").Enabled() {
+		t.Error("D2 Diagram is enabled with the canvas hidden")
 	}
 
 	built.Apply(menu.State{HasDocument: true, ShowsCanvas: true})
-	if !built.Item("insert.diagram").Enabled() {
-		t.Error("Diagram from Code is disabled with a document open and the canvas shown")
+	if !built.Item("insert.d2Diagram").Enabled() {
+		t.Error("D2 Diagram is disabled with a document open and the canvas shown")
 	}
 }
 
@@ -353,6 +353,43 @@ func TestItemsAreEnabledAsTheSpecSays(t *testing.T) {
 			if built.Item(item.ID).Enabled() {
 				t.Errorf("%s is enabled without %s", item.ID, key)
 			}
+		}
+	}
+}
+
+// What adds to the canvas is grouped at the top of the Canvas menu: the
+// Diagram submenu, then Picture; File holds neither.
+func TestCanvasMenuStartsWithWhatAddsToTheCanvas(t *testing.T) {
+	spec, err := menu.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	menus := map[string]menu.Menu{}
+	for _, m := range spec.Menus {
+		menus[m.ID] = m
+	}
+	items := menus["canvas"].Items
+	if len(items) < 3 || items[0].Kind != "submenu" || items[0].ID != "canvas.diagram" || items[0].Label != "Diagram" {
+		t.Fatalf("Canvas menu starts %+v, want the Diagram submenu", items[:min(len(items), 3)])
+	}
+	if got := items[0].Items; len(got) == 0 || got[0].ID != "insert.d2Diagram" || got[0].Label != "D2 Diagram" {
+		t.Errorf("Diagram submenu = %+v, want D2 Diagram first", got)
+	}
+	if items[1].ID != "insert.picture" || items[2].Kind != "separator" {
+		t.Errorf("after Diagram: %+v, %+v; want Picture, then a separator", items[1], items[2])
+	}
+	var inFile func([]menu.Item) []string
+	inFile = func(list []menu.Item) []string {
+		var ids []string
+		for _, item := range list {
+			ids = append(ids, item.ID)
+			ids = append(ids, inFile(item.Items)...)
+		}
+		return ids
+	}
+	for _, id := range inFile(menus["file"].Items) {
+		if id == "insert.d2Diagram" || id == "insert.picture" {
+			t.Errorf("File still holds %s", id)
 		}
 	}
 }

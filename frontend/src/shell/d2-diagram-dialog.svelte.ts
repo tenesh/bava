@@ -1,5 +1,5 @@
 /**
- * The Diagram from Code dialog's layout state: the engine and direction its
+ * The D2 diagram dialog's layout state: the engine and direction its
  * preview is rendered with, which is what Insert then uses.
  *
  * The engine opens at the configured default and, once a diagram is inserted
@@ -8,7 +8,7 @@
  */
 import type { Direction, LayoutEngine } from '../settings/layout-engine';
 
-export type DiagramDialogOptions = {
+export type D2DiagramDialogOptions = {
   /** Queue a render of the dialog's source through its render client. */
   request: (source: string, layout: { engine: LayoutEngine; direction: string }) => void;
   defaultEngine: () => LayoutEngine;
@@ -16,7 +16,7 @@ export type DiagramDialogOptions = {
   saveDefault: (engine: LayoutEngine) => Promise<void>;
 };
 
-export function createDiagramDialog(options: DiagramDialogOptions) {
+export function createD2DiagramDialog(options: D2DiagramDialogOptions) {
   let engine = $state.raw<LayoutEngine>('tala');
   let direction = $state.raw<Direction>('down');
   let source = '';

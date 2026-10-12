@@ -27,7 +27,7 @@ describe('the commands the palette offers', () => {
     expect(byId('view.zoomToSelection', nothing)).toBeUndefined();
     expect(byId('canvas.group', nothing)).toBeUndefined();
     expect(byId('view.zoomToFit', nothing)).toBeDefined();
-    expect(byId('insert.diagram', commands({ ...everything, showsCanvas: false }))).toBeUndefined();
+    expect(byId('insert.d2Diagram', commands({ ...everything, showsCanvas: false }))).toBeUndefined();
     expect(byId('insert.picture', commands({ ...everything, showsCanvas: false }))).toBeUndefined();
     expect(byId('insert.picture')).toBeDefined();
   });

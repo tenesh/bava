@@ -261,9 +261,9 @@
 
   // The diagram dialog: its size, never larger than the window allows, and
   // the error list beneath its panes.
-  --size-diagram-dialog-width: min(1160px, 90vw);
-  --size-diagram-dialog-height: min(700px, 90vh);
-  --size-diagram-errors: 96px;
+  --size-d2-diagram-dialog-width: min(1160px, 90vw);
+  --size-d2-diagram-dialog-height: min(700px, 90vh);
+  --size-d2-diagram-errors: 96px;
 
   // The export dialog: its width, the preview's height, the settings column
   // beside it, and the checkerboard square behind a transparent picture.
@@ -286,7 +286,7 @@
 
   // A dialog scrolls rather than outgrowing the window.
   --size-dialog-body-max: 60vh;
-  // A dialog whose panes share its width (Diagram from Code): room to write
+  // A dialog whose panes share its width (D2 diagram): room to write
   // in, never wider than the window allows.
   --size-dialog-wide: min(1100px, 90vw);
   // Trash, Space settings and Settings share a medium width;

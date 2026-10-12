@@ -85,7 +85,7 @@ export function createSettings(io: SettingsIO = overIPC) {
       const w = values.pageWidth;
       return w === 'narrow' || w === 'full' ? w : 'wide';
     },
-    /** The engine the Diagram from Code dialog opens with; one it does not know reads as TALA. */
+    /** The engine the D2 diagram dialog opens with; one it does not know reads as TALA. */
     get layoutEngine(): LayoutEngine {
       return isLayoutEngine(values.layoutEngine) ? values.layoutEngine : 'tala';
     },

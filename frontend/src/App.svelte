@@ -65,8 +65,8 @@
   import { SourcePane } from './editor/source-pane';
   import DocumentPane from './docs/DocumentPane.svelte';
   import { createRenderClient } from './ipc/render.svelte';
-  import DiagramDialog from './components/DiagramDialog.svelte';
-  import { createDiagramDialog } from './shell/diagram-dialog.svelte';
+  import D2DiagramDialog from './components/D2DiagramDialog.svelte';
+  import { createD2DiagramDialog } from './shell/d2-diagram-dialog.svelte';
   import { toElements } from './canvas/import/convert';
   import { inNewFrame } from './canvas/import/in-frame';
   import { createTheme } from './styles/theme.svelte';
@@ -187,7 +187,7 @@
     return labelHeight(element.type, element.w, element.h, label, inset, paint.font, canvasLineWidth(`${paint.font.size}px ${paint.font.family}`));
   }
 
-  /** A shape from Diagram from Code grown to its label about its centre, where the layout placed it. */
+  /** A shape from D2 diagram grown to its label about its centre, where the layout placed it. */
   function fitArriving(element: SceneElement) {
     const before = element.h;
     if (growToLabel(element, shapeLabelHeight)) element.y -= (element.h - before) / 2;
@@ -343,45 +343,45 @@
     canvas.setEditing(element.id);
   }
 
-  // Diagram from code: its own render client, so previewing a diagram being
+  // D2 diagram: its own render client, so previewing a diagram being
   // written never disturbs the document's own render, and the debounce and
   // staleness rules come with it.
-  const diagramClient = createRenderClient();
-  let diagramOpen = $state.raw(false);
+  const d2DiagramClient = createRenderClient();
+  let d2DiagramOpen = $state.raw(false);
   // What the dialog's preview is laid out with, and so what Insert uses.
-  const diagramDialog = createDiagramDialog({
-    request: (source, layout) => diagramClient.request(source, layout),
+  const d2DiagramDialog = createD2DiagramDialog({
+    request: (source, layout) => d2DiagramClient.request(source, layout),
     defaultEngine: () => settingsState.layoutEngine,
     saveDefault: async (engine) => reportSettingsError(await settingsState.setLayoutEngine(engine)),
   });
 
-  // Opened from the page (`/` Diagram from code): Insert puts the diagram in
+  // Opened from the page (`/` D2 diagram): Insert puts the diagram in
   // a frame of its own and embeds that frame at the caret.
-  let diagramForPage = false;
+  let d2DiagramForPage = false;
 
-  function openDiagramDialog() {
+  function openD2DiagramDialog() {
     if (!canvasShown()) return;
-    diagramForPage = false;
-    diagramOpen = true;
-    diagramDialog.open(DIAGRAM_STARTER);
+    d2DiagramForPage = false;
+    d2DiagramOpen = true;
+    d2DiagramDialog.open(DIAGRAM_STARTER);
   }
 
-  /** `/` Diagram from code, once the page is in a Space. */
-  async function openDiagramForPage() {
+  /** `/` D2 diagram, once the page is in a Space. */
+  async function openD2DiagramForPage() {
     if (!embedIO.inSpace() && !(await embedIO.offerSpace())) return;
-    diagramForPage = true;
-    diagramOpen = true;
-    diagramDialog.open(DIAGRAM_STARTER);
+    d2DiagramForPage = true;
+    d2DiagramOpen = true;
+    d2DiagramDialog.open(DIAGRAM_STARTER);
   }
 
   /** What the dialog opens with: enough to show that something happens. */
   const DIAGRAM_STARTER = 'a -> b';
 
-  function insertDiagram() {
-    const layout = diagramClient.state.layout;
+  function insertD2Diagram() {
+    const layout = d2DiagramClient.state.layout;
     if (layout.shapes.length === 0 && layout.connections.length === 0) return;
-    if (diagramForPage) {
-      insertDiagramInPage();
+    if (d2DiagramForPage) {
+      insertD2DiagramInPage();
       return;
     }
     // Centred on what the user is looking at, at the diagram's own size.
@@ -391,17 +391,17 @@
     });
     canvasCommands.insertDiagram(toElements(layout, { at: centre, fit: fitArriving }));
     // The engine used becomes the default, so the next dialog opens with it.
-    void diagramDialog.inserted();
-    diagramOpen = false;
+    void d2DiagramDialog.inserted();
+    d2DiagramOpen = false;
     commit();
     syncSelection();
   }
   /** The diagram in a new frame below the canvas's content, embedded at the page's caret. */
-  function insertDiagramInPage() {
-    canvasCommands.insertDiagram(inNewFrame(history.current, toElements(diagramClient.state.layout, { at: { x: 0, y: 0 }, fit: fitArriving }), t('frames.diagram')));
-    void diagramDialog.inserted();
-    diagramOpen = false;
-    diagramForPage = false;
+  function insertD2DiagramInPage() {
+    canvasCommands.insertDiagram(inNewFrame(history.current, toElements(d2DiagramClient.state.layout, { at: { x: 0, y: 0 }, fit: fitArriving }), t('frames.diagram')));
+    void d2DiagramDialog.inserted();
+    d2DiagramOpen = false;
+    d2DiagramForPage = false;
     commit();
     // The new frame: the one inserted that no other frame holds.
     const frame = history.current.elements.find((element) => element.type === 'frame' && element.frame === undefined && selection.has(element.id));
@@ -1641,7 +1641,7 @@
     return viewport.screenToScene({ x: (canvasHostEl?.clientWidth ?? 0) / 2, y: (canvasHostEl?.clientHeight ?? 0) / 2 });
   }
 
-  /** File ▸ Picture and the + panel: pictures picked from the computer, in the middle of the view. */
+  /** Canvas ▸ Picture and the + panel: pictures picked from the computer, in the middle of the view. */
   async function insertPicture() {
     if (!canvasShown()) return;
     const chosen = await FileService.ChooseMedia('image');
@@ -2815,7 +2815,7 @@
    * nowhere when the canvas is hidden or a dialog has focus.
    */
   /**
-   * The source editor with focus (the Diagram from Code dialog's). An edit
+   * The source editor with focus (the D2 diagram dialog's). An edit
    * command acts on the one the user is typing in, never on one they cannot see.
    */
   function focusedSource(): SourcePane | null {
@@ -3032,7 +3032,7 @@
       settingsOpen = true;
     },
     'file.export': () => exporter.open({ onlySelected: false }),
-    'insert.diagram': openDiagramDialog,
+    'insert.d2Diagram': openD2DiagramDialog,
     'insert.picture': () => void insertPicture(),
 
     'edit.undo': () =>
@@ -4103,7 +4103,7 @@
       embeds={embedContext}
       onCanvas={(what, at) => {
         if (what === 'embed') void pickFrame(at);
-        else void openDiagramForPage();
+        else void openD2DiagramForPage();
       }}
     />
   {/snippet}
@@ -4183,7 +4183,7 @@
             {insert}
             onOutcome={(outcome) => {
               if (outcome.type === 'choose') tools.activate(outcome.tool);
-              if (outcome.type === 'command' && outcome.id === 'diagram') openDiagramDialog();
+              if (outcome.type === 'command' && outcome.id === 'd2Diagram') openD2DiagramDialog();
               if (outcome.type === 'command' && outcome.id === 'picture') void insertPicture();
               closeInsertPanel();
             }}
@@ -4203,22 +4203,22 @@
   Always mounted, so closing never reads props from state already cleared:
   that threw at a running window.
 -->
-<DiagramDialog
-  open={diagramOpen}
+<D2DiagramDialog
+  open={d2DiagramOpen}
   source={DIAGRAM_STARTER}
-  preview={diagramClient.state.svg}
-  errors={diagramClient.state.errors}
-  pending={diagramClient.state.pending}
-  shapes={diagramClient.state.layout.shapes.length}
-  engine={diagramDialog.engine}
-  direction={diagramDialog.direction}
-  onEngine={(next) => diagramDialog.setEngine(next)}
-  onDirection={(next) => diagramDialog.setDirection(next)}
+  preview={d2DiagramClient.state.svg}
+  errors={d2DiagramClient.state.errors}
+  pending={d2DiagramClient.state.pending}
+  shapes={d2DiagramClient.state.layout.shapes.length}
+  engine={d2DiagramDialog.engine}
+  direction={d2DiagramDialog.direction}
+  onEngine={(next) => d2DiagramDialog.setEngine(next)}
+  onDirection={(next) => d2DiagramDialog.setDirection(next)}
   isReserved={reservedByMenu(menuSpec as MenuSpec, platform)}
-  onSource={(next) => diagramDialog.setSource(next)}
-  onInsert={insertDiagram}
+  onSource={(next) => d2DiagramDialog.setSource(next)}
+  onInsert={insertD2Diagram}
   onOpenChange={(next) => {
-    diagramOpen = next;
+    d2DiagramOpen = next;
   }}
 />
 

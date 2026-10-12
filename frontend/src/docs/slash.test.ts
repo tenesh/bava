@@ -31,7 +31,7 @@ describe('the / menu\'s items', () => {
       'advanced:file',
       'advanced:weblink',
       'advanced:embedFrame',
-      'advanced:diagram',
+      'advanced:d2Diagram',
       'inline:inlineEquation',
       'inline:footnote',
       'inline:emoji',
@@ -167,5 +167,13 @@ describe('the menus that follow typing, on a press outside the page', () => {
     // Typing on does not bring it back until a new / is typed.
     type('x');
     expect(onSlash).toHaveBeenLastCalledWith(null);
+  });
+});
+
+// The end-to-end walk types "/d2" to reach the D2 diagram from the page.
+describe('the D2 diagram in the / menu', () => {
+  it('is the one item "d2" finds, and "diagram" finds it too', () => {
+    expect(filterItems('d2').map((item) => item.id)).toEqual(['d2Diagram']);
+    expect(filterItems('diagram').map((item) => item.id)).toContain('d2Diagram');
   });
 });

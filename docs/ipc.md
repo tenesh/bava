@@ -26,7 +26,7 @@ the task really ended.
 func (s *RenderService) Render(source string, opts render.Options) (render.Result, error)
 ```
 
-Serves Diagram from Code only: a preview SVG and the `layout` the frontend
+Serves D2 diagram only: a preview SVG and the `layout` the frontend
 converts into shapes and arrows (`frontend/src/canvas/import/convert.ts`). The
 D2 source is not kept, and the canvas never round-trips through Go.
 
@@ -235,7 +235,7 @@ without a handler or the reverse. Unknown ids are ignored.
 | `canPasteStyles` | with `hasSelection`, enables Paste Styles |
 | `hasLocked` | enables Unlock All |
 | `hasDocument` | enables Export |
-| `showsCanvas` | with `hasDocument`, enables File ▸ Diagram from Code and File ▸ Picture |
+| `showsCanvas` | with `hasDocument`, enables Canvas ▸ Diagram ▸ D2 Diagram and Canvas ▸ Picture |
 | `hasSpace` | enables New Folder, Trash, Space Settings and Import |
 | `objectSnap` | ticks Canvas ▸ Snap to Objects |
 

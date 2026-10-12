@@ -424,12 +424,12 @@ describe('the mockup tokens', () => {
     expect(css).toMatch(new RegExp(`${name}:\\s*${px}px`));
   });
 
-  it('sizes Settings, Export and Diagram from code within the window', () => {
+  it('sizes Settings, Export and D2 diagram within the window', () => {
     expect(css).toMatch(/--size-settings-width:\s*min\(780px, 90vw\)/);
     expect(css).toMatch(/--size-settings-height:\s*min\(560px, 90vh\)/);
     expect(css).toMatch(/--size-dialog-export:\s*min\(720px, 90vw\)/);
-    expect(css).toMatch(/--size-diagram-dialog-width:\s*min\(1160px, 90vw\)/);
-    expect(css).toMatch(/--size-diagram-dialog-height:\s*min\(700px, 90vh\)/);
+    expect(css).toMatch(/--size-d2-diagram-dialog-width:\s*min\(1160px, 90vw\)/);
+    expect(css).toMatch(/--size-d2-diagram-dialog-height:\s*min\(700px, 90vh\)/);
   });
 
   it('caps the shortcuts list at the window', () => {

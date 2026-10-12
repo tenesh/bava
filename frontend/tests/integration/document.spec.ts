@@ -719,14 +719,14 @@ test.describe('canvas embeds', () => {
     await expect(page.getByRole('menuitem', { name: 'Embed in Document' })).toBeVisible();
   });
 
-  test('/ Diagram from code puts the diagram in a new frame on the canvas, embedded at the caret', async ({ page }) => {
+  test('/ D2 diagram puts the diagram in a new frame on the canvas, embedded at the caret', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await openWithFrame(page);
     await menu(page, 'view.both');
     await newLineAtEnd(page);
     await page.keyboard.type('/diagram');
-    await page.getByRole('option', { name: 'Diagram from code' }).click();
+    await page.getByRole('option', { name: 'D2 diagram' }).click();
     const dialog = openDialog(page);
     await dialog.locator('.cm-content').click();
     await page.keyboard.press('ControlOrMeta+a');
