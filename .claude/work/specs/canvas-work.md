@@ -34,3 +34,20 @@ fit their shape. 15.4b: the command palette. 15.4c: paste from other apps.
    there; the shape grows to hold the pieces. Widening the box toward the
    points until the longest word fits, and letting a label run over the
    slanted edges as before, were drawn and not chosen.
+
+## 15.4b: the command palette
+
+5. **The palette holds commands only** (2026-10-12, drawn as the mockup's
+   "8.1 What the palette holds"): every menu command by name, with its menu
+   path and its keys; Enter runs it; commands that cannot run now are left
+   out. Pages stay with Search (⇧⌘F). Commands with pages, and one palette
+   for commands, pages and words inside pages, were drawn and not chosen.
+
+6. **⇧⌘P opens the palette** (2026-10-12; Ctrl+Shift+P on Windows and
+   Linux). ⇧⌘K (beside ⌘K, Link) and ⌘P (Print elsewhere) were not chosen.
+
+7. **Opened, the palette lists recent commands, then all by menu**
+   (2026-10-12): the last few run from it at the top, then every command
+   grouped by menu in menu order. The recent ones are kept in memory for the
+   session, never saved. Listing all with nothing recent, and listing
+   nothing until typed, were not chosen.

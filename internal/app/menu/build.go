@@ -39,12 +39,34 @@ type State struct {
 	Recents  []string `json:"recents"`
 }
 
+// Has reports the state an item's When names, by its json name, and
+// whether that name is one State has.
+func (s State) Has(key string) (bool, bool) {
+	switch key {
+	case "hasSelection":
+		return s.HasSelection, true
+	case "canPasteStyles":
+		return s.CanPasteStyles, true
+	case "hasLocked":
+		return s.HasLocked, true
+	case "hasDocument":
+		return s.HasDocument, true
+	case "showsCanvas":
+		return s.ShowsCanvas, true
+	case "hasSpace":
+		return s.HasSpace, true
+	}
+	return false, false
+}
+
 // Built is a constructed menu bar and handles to the items state changes.
 type Built struct {
 	Menu *application.Menu
 
-	mu       sync.Mutex
-	items    map[string]*application.MenuItem
+	mu    sync.Mutex
+	items map[string]*application.MenuItem
+	// when holds what each item needs to run, from the spec.
+	when     map[string][]string
 	recents  *application.Menu
 	emit     func(Command)
 	addRole  func(*application.Menu, application.Role)
@@ -92,6 +114,7 @@ func Build(spec Spec, emit func(Command), options ...Options) *Built {
 	built := &Built{
 		Menu:     application.NewMenu(),
 		items:    map[string]*application.MenuItem{},
+		when:     map[string][]string{},
 		emit:     emit,
 		addRole:  addRole,
 		platform: platform,
@@ -155,6 +178,9 @@ func (b *Built) addItems(parent *application.Menu, items []Item) {
 			id := item.ID
 			menuItem.OnClick(func(*application.Context) { b.emit(Command{ID: id}) })
 			b.items[id] = menuItem
+			if len(item.When) > 0 {
+				b.when[id] = item.When
+			}
 		}
 	}
 }
@@ -201,9 +227,6 @@ func (b *Built) Apply(state State) bool {
 	check("view.files", state.ShowsFiles)
 	check("view.ai", state.ShowsAI)
 	check("canvas.snapToObjects", state.ObjectSnap)
-	for _, id := range []string{"file.newFolder", "space.trash", "file.spaceSettings", "file.importFiles", "file.importFolder"} {
-		enable(id, state.HasSpace)
-	}
 	for _, theme := range []string{"light", "dark", "system"} {
 		check("view.theme."+theme, state.Theme == theme)
 	}
@@ -212,25 +235,15 @@ func (b *Built) Apply(state State) bool {
 			check(id, id == "tool."+state.Tool)
 		}
 	}
-	for _, id := range []string{
-		"canvas.group", "canvas.ungroup",
-		"canvas.bringToFront", "canvas.bringForward", "canvas.sendBackward", "canvas.sendToBack",
-		"canvas.flipHorizontal", "canvas.flipVertical", "canvas.duplicate",
-		"canvas.alignLeft", "canvas.alignCenter", "canvas.alignRight",
-		"canvas.alignTop", "canvas.alignMiddle", "canvas.alignBottom",
-		"canvas.distributeHorizontal", "canvas.distributeVertical",
-		"canvas.copyStyles",
-		"canvas.copyPng", "canvas.copySvg", "canvas.exportSelection",
-		"view.zoomToSelection",
-	} {
-		enable(id, state.HasSelection)
+	// Each item that says when it can run is enabled from it (spec.json).
+	for id, item := range b.when {
+		on := true
+		for _, key := range item {
+			has, _ := state.Has(key)
+			on = on && has
+		}
+		enable(id, on)
 	}
-	enable("file.export", state.HasDocument)
-	// A diagram needs a canvas to land on, not merely a document open.
-	enable("insert.diagram", state.HasDocument && state.ShowsCanvas)
-	enable("canvas.pasteStyles", state.HasSelection && state.CanPasteStyles)
-	enable("canvas.lock", state.HasSelection)
-	enable("canvas.unlockAll", state.HasLocked)
 
 	if b.recents == nil || (b.shown != nil && slices.Equal(b.shown, state.Recents)) {
 		return false

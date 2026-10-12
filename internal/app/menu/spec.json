@@ -22,7 +22,7 @@
       "label": "File",
       "items": [
         { "kind": "command", "id": "file.new", "label": "New Page", "accelerator": "CmdOrCtrl+N" },
-        { "kind": "command", "id": "file.newFolder", "label": "New Folder" },
+        { "kind": "command", "id": "file.newFolder", "label": "New Folder", "when": ["hasSpace"] },
         { "kind": "separator" },
         { "kind": "command", "id": "file.openSpace", "label": "Open Space", "accelerator": "CmdOrCtrl+O" },
         { "kind": "command", "id": "file.open", "label": "Open File", "accelerator": "Shift+CmdOrCtrl+O" },
@@ -31,8 +31,8 @@
         { "kind": "command", "id": "file.search", "label": "Search", "accelerator": "Shift+CmdOrCtrl+F" },
         { "kind": "separator" },
         { "kind": "command", "id": "space.templates", "label": "Templates" },
-        { "kind": "command", "id": "space.trash", "label": "Trash" },
-        { "kind": "command", "id": "file.spaceSettings", "label": "Space Settings" },
+        { "kind": "command", "id": "space.trash", "label": "Trash", "when": ["hasSpace"] },
+        { "kind": "command", "id": "file.spaceSettings", "label": "Space Settings", "when": ["hasSpace"] },
         { "kind": "separator" },
         { "kind": "command", "id": "file.save", "label": "Save", "accelerator": "CmdOrCtrl+S" },
         { "kind": "command", "id": "file.saveAs", "label": "Save As", "accelerator": "Shift+CmdOrCtrl+S" },
@@ -43,7 +43,7 @@
           "label": "Export",
           "items": [
             { "kind": "command", "id": "file.exportPage", "label": "Page" },
-            { "kind": "command", "id": "file.export", "label": "Canvas" },
+            { "kind": "command", "id": "file.export", "label": "Canvas", "when": ["hasDocument"] },
             { "kind": "command", "id": "file.exportSpace", "label": "Space" }
           ]
         },
@@ -52,12 +52,12 @@
           "id": "file.importMenu",
           "label": "Import",
           "items": [
-            { "kind": "command", "id": "file.importFiles", "label": "Files" },
-            { "kind": "command", "id": "file.importFolder", "label": "Folder" }
+            { "kind": "command", "id": "file.importFiles", "label": "Files", "when": ["hasSpace"] },
+            { "kind": "command", "id": "file.importFolder", "label": "Folder", "when": ["hasSpace"] }
           ]
         },
         { "kind": "separator" },
-        { "kind": "command", "id": "insert.diagram", "label": "Diagram from Code" },
+        { "kind": "command", "id": "insert.diagram", "label": "Diagram from Code", "when": ["hasDocument", "showsCanvas"] },
         { "kind": "separator", "platforms": ["windows", "linux"] },
         {
           "kind": "submenu",
@@ -93,6 +93,8 @@
       "id": "view",
       "label": "View",
       "items": [
+        { "kind": "command", "id": "view.commandPalette", "label": "Command Palette", "accelerator": "Shift+CmdOrCtrl+P" },
+        { "kind": "separator" },
         { "kind": "radio", "id": "view.document", "group": "view.mode", "label": "Document", "accelerator": "CmdOrCtrl+1" },
         { "kind": "radio", "id": "view.both", "group": "view.mode", "label": "Both", "accelerator": "CmdOrCtrl+2" },
         { "kind": "radio", "id": "view.canvas", "group": "view.mode", "label": "Canvas", "accelerator": "CmdOrCtrl+3" },
@@ -104,7 +106,7 @@
         { "kind": "command", "id": "view.zoomOut", "label": "Zoom Out", "shortcut": "CmdOrCtrl+-", "nativeOn": ["darwin"] },
         { "kind": "command", "id": "view.actualSize", "label": "Actual Size", "accelerator": "CmdOrCtrl+0" },
         { "kind": "command", "id": "view.zoomToFit", "label": "Zoom to Fit", "shortcut": "Shift+1", "scope": "canvas" },
-        { "kind": "command", "id": "view.zoomToSelection", "label": "Zoom to Selection", "shortcut": "Shift+2", "scope": "canvas" },
+        { "kind": "command", "id": "view.zoomToSelection", "label": "Zoom to Selection", "shortcut": "Shift+2", "scope": "canvas", "when": ["hasSelection"] },
         { "kind": "separator" },
         {
           "kind": "submenu",
@@ -150,18 +152,18 @@
           ]
         },
         { "kind": "separator" },
-        { "kind": "command", "id": "canvas.group", "label": "Group", "accelerator": "CmdOrCtrl+G" },
-        { "kind": "command", "id": "canvas.ungroup", "label": "Ungroup", "accelerator": "Shift+CmdOrCtrl+G" },
+        { "kind": "command", "id": "canvas.group", "label": "Group", "accelerator": "CmdOrCtrl+G", "when": ["hasSelection"] },
+        { "kind": "command", "id": "canvas.ungroup", "label": "Ungroup", "accelerator": "Shift+CmdOrCtrl+G", "when": ["hasSelection"] },
         { "kind": "separator" },
         {
           "kind": "submenu",
           "id": "canvas.arrange",
           "label": "Arrange",
           "items": [
-            { "kind": "command", "id": "canvas.bringToFront", "label": "Bring to Front" },
-            { "kind": "command", "id": "canvas.bringForward", "label": "Bring Forward", "shortcut": "CmdOrCtrl+]", "scope": "canvas" },
-            { "kind": "command", "id": "canvas.sendBackward", "label": "Send Backward", "shortcut": "CmdOrCtrl+[", "scope": "canvas" },
-            { "kind": "command", "id": "canvas.sendToBack", "label": "Send to Back" }
+            { "kind": "command", "id": "canvas.bringToFront", "label": "Bring to Front", "when": ["hasSelection"] },
+            { "kind": "command", "id": "canvas.bringForward", "label": "Bring Forward", "shortcut": "CmdOrCtrl+]", "scope": "canvas", "when": ["hasSelection"] },
+            { "kind": "command", "id": "canvas.sendBackward", "label": "Send Backward", "shortcut": "CmdOrCtrl+[", "scope": "canvas", "when": ["hasSelection"] },
+            { "kind": "command", "id": "canvas.sendToBack", "label": "Send to Back", "when": ["hasSelection"] }
           ]
         },
         {
@@ -169,16 +171,16 @@
           "id": "canvas.align",
           "label": "Align",
           "items": [
-            { "kind": "command", "id": "canvas.alignLeft", "label": "Align Left" },
-            { "kind": "command", "id": "canvas.alignCenter", "label": "Centre Horizontally" },
-            { "kind": "command", "id": "canvas.alignRight", "label": "Align Right" },
+            { "kind": "command", "id": "canvas.alignLeft", "label": "Align Left", "when": ["hasSelection"] },
+            { "kind": "command", "id": "canvas.alignCenter", "label": "Centre Horizontally", "when": ["hasSelection"] },
+            { "kind": "command", "id": "canvas.alignRight", "label": "Align Right", "when": ["hasSelection"] },
             { "kind": "separator" },
-            { "kind": "command", "id": "canvas.alignTop", "label": "Align Top" },
-            { "kind": "command", "id": "canvas.alignMiddle", "label": "Centre Vertically" },
-            { "kind": "command", "id": "canvas.alignBottom", "label": "Align Bottom" },
+            { "kind": "command", "id": "canvas.alignTop", "label": "Align Top", "when": ["hasSelection"] },
+            { "kind": "command", "id": "canvas.alignMiddle", "label": "Centre Vertically", "when": ["hasSelection"] },
+            { "kind": "command", "id": "canvas.alignBottom", "label": "Align Bottom", "when": ["hasSelection"] },
             { "kind": "separator" },
-            { "kind": "command", "id": "canvas.distributeHorizontal", "label": "Distribute Horizontally" },
-            { "kind": "command", "id": "canvas.distributeVertical", "label": "Distribute Vertically" }
+            { "kind": "command", "id": "canvas.distributeHorizontal", "label": "Distribute Horizontally", "when": ["hasSelection"] },
+            { "kind": "command", "id": "canvas.distributeVertical", "label": "Distribute Vertically", "when": ["hasSelection"] }
           ]
         },
         {
@@ -186,16 +188,16 @@
           "id": "canvas.flip",
           "label": "Flip",
           "items": [
-            { "kind": "command", "id": "canvas.flipHorizontal", "label": "Flip Horizontal", "shortcut": "Shift+H", "scope": "canvas" },
-            { "kind": "command", "id": "canvas.flipVertical", "label": "Flip Vertical", "shortcut": "Shift+V", "scope": "canvas" }
+            { "kind": "command", "id": "canvas.flipHorizontal", "label": "Flip Horizontal", "shortcut": "Shift+H", "scope": "canvas", "when": ["hasSelection"] },
+            { "kind": "command", "id": "canvas.flipVertical", "label": "Flip Vertical", "shortcut": "Shift+V", "scope": "canvas", "when": ["hasSelection"] }
           ]
         },
         { "kind": "separator" },
-        { "kind": "command", "id": "canvas.duplicate", "label": "Duplicate", "shortcut": "CmdOrCtrl+D", "scope": "canvas" },
+        { "kind": "command", "id": "canvas.duplicate", "label": "Duplicate", "shortcut": "CmdOrCtrl+D", "scope": "canvas", "when": ["hasSelection"] },
         { "kind": "command", "id": "canvas.editPoints", "label": "Edit Points", "shortcut": "CmdOrCtrl+Enter", "scope": "canvas" },
         { "kind": "separator" },
-        { "kind": "command", "id": "canvas.lock", "label": "Lock", "shortcut": "Shift+CmdOrCtrl+L", "scope": "canvas" },
-        { "kind": "command", "id": "canvas.unlockAll", "label": "Unlock All" },
+        { "kind": "command", "id": "canvas.lock", "label": "Lock", "shortcut": "Shift+CmdOrCtrl+L", "scope": "canvas", "when": ["hasSelection"] },
+        { "kind": "command", "id": "canvas.unlockAll", "label": "Unlock All", "when": ["hasLocked"] },
         { "kind": "separator" },
         { "kind": "checkbox", "id": "canvas.snapToObjects", "label": "Snap to Objects", "shortcut": "OptionOrAlt+S", "scope": "canvas" },
         { "kind": "separator" },
@@ -204,14 +206,14 @@
           "id": "canvas.copyAs",
           "label": "Copy as",
           "items": [
-            { "kind": "command", "id": "canvas.copyPng", "label": "PNG" },
-            { "kind": "command", "id": "canvas.copySvg", "label": "SVG" }
+            { "kind": "command", "id": "canvas.copyPng", "label": "PNG", "when": ["hasSelection"] },
+            { "kind": "command", "id": "canvas.copySvg", "label": "SVG", "when": ["hasSelection"] }
           ]
         },
-        { "kind": "command", "id": "canvas.exportSelection", "label": "Export Selection" },
+        { "kind": "command", "id": "canvas.exportSelection", "label": "Export Selection", "when": ["hasSelection"] },
         { "kind": "separator" },
-        { "kind": "command", "id": "canvas.copyStyles", "label": "Copy Styles" },
-        { "kind": "command", "id": "canvas.pasteStyles", "label": "Paste Styles" }
+        { "kind": "command", "id": "canvas.copyStyles", "label": "Copy Styles", "when": ["hasSelection"] },
+        { "kind": "command", "id": "canvas.pasteStyles", "label": "Paste Styles", "when": ["hasSelection", "canPasteStyles"] }
       ]
     },
     {

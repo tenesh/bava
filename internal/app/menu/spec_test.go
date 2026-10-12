@@ -296,6 +296,8 @@ func TestOnlyTheKeptShortcutsAreBound(t *testing.T) {
 		"file.search": true,
 		// The user chose ⇧1 and ⇧2.
 		"view.zoomToFit": true, "view.zoomToSelection": true,
+		// The user chose ⇧⌘P for the command palette.
+		"view.commandPalette": true,
 	}
 	bound := map[string]bool{}
 	for _, item := range load(t).AllItems() {
@@ -343,4 +345,22 @@ func TestFileExportIsASubmenuOfWhatIsExported(t *testing.T) {
 		}
 	}
 	t.Error("the File menu has no Export submenu")
+}
+
+// When an item can run is written once, in the spec: Go's menu and the
+// page's command palette both read it. Every condition is a state the page
+// reports.
+func TestEveryWhenIsAStateThePageReports(t *testing.T) {
+	seen := 0
+	for _, item := range load(t).AllItems() {
+		for _, key := range item.When {
+			seen++
+			if _, ok := (menu.State{}).Has(key); !ok {
+				t.Errorf("%s needs %q, which is not a menu state", item.ID, key)
+			}
+		}
+	}
+	if seen == 0 {
+		t.Error("no item says when it can run")
+	}
 }

@@ -37,6 +37,7 @@ export const IN_SCREENS: Record<string, string> = {
   TrashDialog: 'dialogs',
   TagsDialog: 'dialogs',
   SearchPalette: 'dialogs',
+  CommandPalette: 'dialogs',
   PageExportDialog: 'dialogs',
   PdfPreview: 'dialogs',
   PdfOptions: 'dialogs',

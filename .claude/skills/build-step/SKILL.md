@@ -133,8 +133,8 @@ attributed in `NOTICE` for good). R2 done (the stores' sandboxes: the same walks
 the installed MSIX and Flatpak, run 38143080459). 15.3 done (import;
 its walk passes on all three systems and inside each store's package, run
 38197233990). 15.4a done (zoom to fit, labels that fit, drags the system
-ends; run 38250684449). Next 15.4b (palette), 15.4c (paste), 15.4d (shapes),
-Milestone 16, Milestone 17. Help ▸ Report Issue
+ends; run 38250684449). 15.4b (the command palette) built, awaiting CI.
+Next 15.4c (paste), 15.4d (shapes), Milestone 16, Milestone 17. Help ▸ Report Issue
 is hidden until release (`REPORT_ISSUE_ENABLED` in
 `frontend/src/shell/report-issue.ts`); the DMG icon and background stay
 Wails-branded until release.
@@ -152,8 +152,8 @@ The real app only on CI: `-tags e2e` walks `tests/e2e/` (`create`, `reopen`,
 store's package. Never `wails3 dev` locally.
 
 **Gates:** all green on the host (go vet, go test 15 packages, 2 golden
-fixtures, check, lint, `npm test` 3,003 passed); `npm run browser` 558 passed,
-314 references in `testdata/visual/`; CI end-to-end green, inside each
+fixtures, check, lint, `npm test` 3,026 passed); `npm run browser` 567 passed,
+318 references in `testdata/visual/`; CI end-to-end green, inside each
 store's package too. `npm run build`'s minifier rejects some CSS the browser
 tests accept (WebKit-only selectors).
 

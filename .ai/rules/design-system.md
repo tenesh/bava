@@ -139,6 +139,7 @@ NumberInput (in `NumberField`), Toast, ToggleGroup. Build when a screen needs.
 | `Progress` | `value: null` is indeterminate (Progress) |
 | `SaveTemplateDialog` | Name and group for a template |
 | `SearchPalette` | Search across a Space; state in `files/search.svelte.ts` |
+| `CommandPalette` | Every menu command by name (⇧⌘P); groups from `shell/palette.ts` |
 | `SectionTabs` | Vertical sections (Tabs) |
 | `Segments` | Few exclusive choices (SegmentGroup); never `role="radio"` buttons |
 | `Select` | Dropdown choice (Select) |

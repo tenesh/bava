@@ -12,6 +12,7 @@ import FileText from '@lucide/svelte/icons/file-text';
 import LayoutGrid from '@lucide/svelte/icons/layout-grid';
 import ListIcon from '@lucide/svelte/icons/list';
 import Upload from '@lucide/svelte/icons/upload';
+import CommandIcon from '@lucide/svelte/icons/command';
 import Download from '@lucide/svelte/icons/download';
 import Maximize2 from '@lucide/svelte/icons/maximize-2';
 import Bold from '@lucide/svelte/icons/bold';
@@ -133,6 +134,7 @@ export const LUCIDE_ICONS = {
   insert: Plus,
   close: X,
   search: Search,
+  command: CommandIcon,
   chevron: ChevronRight,
   more: Ellipsis,
   ai: Sparkles,

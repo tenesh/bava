@@ -146,6 +146,8 @@
   import { createSearch } from './files/search.svelte';
   import type { SearchHit } from './files/space.svelte';
   import SearchPalette from './components/SearchPalette.svelte';
+  import CommandPalette from './components/CommandPalette.svelte';
+  import { createRecent, paletteCommands, paletteGroups } from './shell/palette';
   import type { MessageKey } from './i18n/messages';
 
   const theme = createTheme();
@@ -618,6 +620,8 @@
   });
 
   async function openSearch() {
+    // Search takes over from the command palette, the keys given back first.
+    if (paletteOpen) closePalette();
     if (!space.root) {
       // A page on its own: search needs its folder opened as a Space first.
       const path = doc.path;
@@ -634,6 +638,45 @@
     spaceSearch.reset();
     searchReturn?.focus();
     searchReturn = null;
+  }
+
+  // The command palette (⇧⌘P): every menu command that can run now, by name.
+  let paletteOpen = $state(false);
+  let paletteQuery = $state('');
+  let paletteHighlighted = $state(0);
+  // Recent commands, kept for the session only.
+  const recentCommands = createRecent();
+  let recentIds = $state<string[]>([]);
+  let paletteReturn: HTMLElement | null = null;
+
+  function openPalette() {
+    // Not over Search or an open dialog: the palette would sit outside its
+    // keys, and give them back to the wrong place.
+    if (paletteOpen || searchOpen || document.querySelector('[data-scope="dialog"][data-part="content"][data-state="open"]')) return;
+    paletteReturn = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    paletteQuery = '';
+    paletteHighlighted = 0;
+    paletteOpen = true;
+  }
+
+  /** The palette closed: the keys go back where they were. */
+  function closePalette() {
+    paletteOpen = false;
+    paletteReturn?.focus();
+    paletteReturn = null;
+  }
+
+  /**
+   * Run a command from the palette where focus was before it opened, as its
+   * menu item would: once the palette is gone from the page and focus is
+   * back, so an Edit command never acts on the palette's own field.
+   */
+  async function runFromPalette(id: string) {
+    recentCommands.add(id);
+    recentIds = recentCommands.ids;
+    closePalette();
+    await tick();
+    void dispatcher.dispatch({ id });
   }
 
   async function openHit(hit: SearchHit) {
@@ -2693,6 +2736,7 @@
       if (space.root) spaceSettingsOpen = true;
     },
     'file.search': () => void openSearch(),
+    'view.commandPalette': openPalette,
     'file.exportPage': () => void openPageExport(),
     'file.exportSpace': () => void openSpaceExport(),
     'file.importFiles': () => void openImport('files'),
@@ -3426,19 +3470,32 @@
 
   // The native menu shows checks and enabled items from this state. Go never
   // guesses at it; the frontend reports every change.
+  // What the menu enables items from (`when` in its spec); the command
+  // palette leaves out what it says cannot run.
+  const menuState = $derived({
+    hasSelection,
+    canPasteStyles,
+    hasLocked: published.elements.some(isLocked),
+    hasDocument: doc.path !== null || published.elements.length > 0,
+    showsCanvas: view.showsCanvas,
+    hasSpace: space.root !== null,
+  });
+  // The palette's rows, from the same state.
+  const paletteList = $derived(
+    paletteOpen ? paletteGroups(paletteCommands(menuSpec as MenuSpec, platform, menuState), paletteQuery, recentIds, t('palette.recent')) : [],
+  );
+  const paletteRows = $derived(paletteList.reduce((sum, group) => sum + group.commands.length, 0));
+  // Within the rows, however the list changed while it was open.
+  const paletteRow = $derived(Math.max(0, Math.min(paletteHighlighted, paletteRows - 1)));
+
   $effect(() => {
     const state = {
+      ...menuState,
       viewMode: view.mode,
       showsFiles: view.showsFiles,
       showsAI: view.showsAI,
       theme: theme.choice,
       tool: tools.active,
-      hasSelection,
-      canPasteStyles,
-      hasLocked: published.elements.some(isLocked),
-      hasDocument: doc.path !== null || published.elements.length > 0,
-      showsCanvas: view.showsCanvas,
-      hasSpace: space.root !== null,
       objectSnap: settingsState.objectSnap,
       recents: recents.paths,
     };
@@ -4150,6 +4207,21 @@
     onMove={(by) => spaceSearch.move(by)}
     onChoose={(hit) => void openHit(hit)}
     onClose={closeSearch}
+  />
+{/if}
+
+{#if paletteOpen}
+  <CommandPalette
+    query={paletteQuery}
+    groups={paletteList}
+    highlighted={paletteRow}
+    onQuery={(query) => {
+      paletteQuery = query;
+      paletteHighlighted = 0;
+    }}
+    onMove={(by) => (paletteHighlighted = Math.max(0, Math.min(paletteRows - 1, paletteRow + by)))}
+    onRun={(id) => void runFromPalette(id)}
+    onClose={closePalette}
   />
 {/if}
 

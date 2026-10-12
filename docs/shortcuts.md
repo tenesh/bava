@@ -38,6 +38,7 @@ only platform that right-aligns text after a tab).
 | Edit | Select All | `⌘A` | `Ctrl+A` |
 | Edit | Find | `⌘F` | `Ctrl+F` |
 | Edit | Find and Replace | `⌥⌘F` | `Ctrl+Alt+F` |
+| View | Command Palette | `⇧⌘P` | `Ctrl+Shift+P` |
 | View | Document | `⌘1` | `Ctrl+1` |
 | View | Both | `⌘2` | `Ctrl+2` |
 | View | Canvas | `⌘3` | `Ctrl+3` |

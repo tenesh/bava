@@ -94,6 +94,8 @@
   // and how tall its results may grow.
   --size-search-palette: min(600px, 90vw);
   --size-search-palette-top: 72px;
+  // The command palette: narrower than Search, as a command is one line.
+  --size-command-palette: min(520px, 90vw);
   --size-search-results: min(420px, 60vh);
   // The tag list under the Files header, and the box that marks a tag chosen in it.
   --size-tag-filter: 260px;

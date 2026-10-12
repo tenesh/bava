@@ -314,3 +314,31 @@ func TestZoomToFitFollowsActualSize(t *testing.T) {
 		t.Error("Zoom to Fit is bound natively, taking ! from text fields")
 	}
 }
+
+// Every item that says when it can run is enabled exactly then, read from
+// the spec: the menu keeps no list of its own to drift from it.
+func TestItemsAreEnabledAsTheSpecSays(t *testing.T) {
+	spec, err := menu.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	built, _ := build(t, "darwin")
+	all := menu.State{HasSelection: true, HasSpace: true, HasDocument: true, ShowsCanvas: true, CanPasteStyles: true, HasLocked: true}
+	for _, item := range spec.ForPlatform("darwin").AllItems() {
+		if len(item.When) == 0 || built.Item(item.ID) == nil {
+			continue
+		}
+		built.Apply(all)
+		if !built.Item(item.ID).Enabled() {
+			t.Errorf("%s is disabled with everything it needs", item.ID)
+		}
+		for _, key := range item.When {
+			without := all
+			without.Set(key, false)
+			built.Apply(without)
+			if built.Item(item.ID).Enabled() {
+				t.Errorf("%s is enabled without %s", item.ID, key)
+			}
+		}
+	}
+}

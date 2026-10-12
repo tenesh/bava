@@ -45,6 +45,26 @@ for (const theme of THEMES) {
       await shotDialog(page, shot('dialogs', 'search', 'none', theme), palette);
     });
 
+    // The command palette (⇧⌘P): opened, after a command run from it so
+    // Recent shows, and with words typed.
+    test('command palette', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      const palette = page.getByRole('dialog', { name: 'Command Palette' });
+      const field = palette.getByRole('searchbox', { name: 'Command Palette' });
+      await menu(page, 'view.commandPalette');
+      await field.fill('zoom fit');
+      await page.keyboard.press('Enter');
+      await expect(palette).toHaveCount(0);
+      await menu(page, 'view.commandPalette');
+      await expect(palette.locator('.group-title').first()).toHaveText('Recent');
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'palette', 'opened', theme), palette);
+      await field.fill('zoom');
+      await expect(palette.getByRole('option').first()).toContainText('Zoom In');
+      await shotDialog(page, shot('dialogs', 'palette', 'typed', theme), palette);
+    });
+
     // Export a page as a PDF, its first sheet previewed, and as a Markdown
     // zip; the whole Space as a zip.
     test('export a page as a PDF', async ({ page }) => {

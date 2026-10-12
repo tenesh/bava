@@ -49,7 +49,12 @@ type Item struct {
 	// Scope "canvas" limits Shortcut to when the canvas has the keyboard: the
 	// frontend ignores it while a text field or the source editor has focus,
 	// and the source editor keeps the key.
-	Scope     string   `json:"scope,omitempty"`
+	Scope string `json:"scope,omitempty"`
+	// When lists the menu states the item needs to run, all of them
+	// (State's json names: "hasSelection", "hasSpace"); none means always.
+	// The menu enables the item from it, and the page's command palette
+	// leaves out what cannot run.
+	When      []string `json:"when,omitempty"`
 	Role      string   `json:"role,omitempty"`
 	Group     string   `json:"group,omitempty"`
 	Platforms []string `json:"platforms,omitempty"`

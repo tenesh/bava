@@ -189,6 +189,12 @@ export const messages = {
   'search.closeKey': 'Esc',
   'search.needsSpace.body': "Search looks through a Space's pages. Open the folder holding this page as a Space to search it.",
   'search.folder': 'Folder',
+  // The command palette (View ▸ Command Palette, ⇧⌘P).
+  'palette.label': 'Command Palette',
+  'palette.placeholder': 'Type a command',
+  'palette.commands': 'Commands',
+  'palette.recent': 'Recent',
+  'palette.none': 'No command matches',
   'find.label': 'Find in page',
   'find.canvasLabel': 'Find on canvas',
   'find.placeholder': 'Find',

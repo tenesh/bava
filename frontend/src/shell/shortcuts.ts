@@ -10,7 +10,7 @@
  */
 export type Platform = 'darwin' | 'windows' | 'linux';
 
-type SpecItem = {
+export type SpecItem = {
   kind: string;
   label?: string;
   id?: string;
@@ -22,6 +22,8 @@ type SpecItem = {
   /** "canvas": the shortcut acts only when the canvas has the keyboard. */
   scope?: string;
   hint?: string;
+  /** The menu states the item needs to run, all of them (`spec.go`, `Item.When`). */
+  when?: string[];
   /** A native role's name, for `kind: "role"`. */
   role?: string;
   platforms?: string[];

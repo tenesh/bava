@@ -101,6 +101,7 @@ Start Bava as if it had never run:
 
 - [ ] ⇧⌘F and File ▸ Search open the palette.
 - [ ] Keyboard pass: the palette, the page's find bar and the Canvas's (⌘F).
+- [ ] ⇧⌘P (Ctrl+Shift+P) opens the command palette on each system, in the page, on the canvas and in the code editor; Undo run from it undoes where you were typing; a command that cannot run now is not offered.
 - [ ] Searching a large Space is quick and shows at most 50 rows.
 
 ## Menus and keys

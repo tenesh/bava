@@ -205,7 +205,11 @@ open file, its stamp or history.
 ## MenuService
 
 The native menu is declared in `internal/app/menu/spec.json` and built in Go
-(`app.InstallMenu`, called after `application.New`, not bound).
+(`app.InstallMenu`, called after `application.New`, not bound). An item's
+`when` names the menu states it needs to run, all of them (`hasSelection`,
+`hasSpace`, `hasDocument`, `showsCanvas`, `canPasteStyles`, `hasLocked`): Go
+enables it from the state the page sends with `SetState`, and the command
+palette leaves out what cannot run, from the same state.
 
 ### `menu:command` (Go to frontend)
 
@@ -227,13 +231,15 @@ without a handler or the reverse. Unknown ids are ignored.
 | `showsFiles`, `showsAI` | pane checkboxes |
 | `theme` | Appearance radio |
 | `tool` | Tools radio |
-| `hasSelection` | enables Group, Ungroup, Arrange, Flip, Duplicate, Align, Distribute, Copy Styles, Copy as, Export Selection and Lock |
+| `hasSelection` | enables Group, Ungroup, Arrange, Flip, Duplicate, Align, Distribute, Copy Styles, Copy as, Export Selection, Lock and Zoom to Selection |
 | `canPasteStyles` | with `hasSelection`, enables Paste Styles |
 | `hasLocked` | enables Unlock All |
 | `hasDocument` | enables Export |
 | `showsCanvas` | with `hasDocument`, enables File ▸ Diagram from Code |
-| `hasSpace` | enables New Folder, Trash and Space Settings |
+| `hasSpace` | enables New Folder, Trash, Space Settings and Import |
 | `objectSnap` | ticks Canvas ▸ Snap to Objects |
+
+Which items each state enables is the `when` of each item in `spec.json`; this table follows it.
 | `recents` | rebuilds Open Recent; empty shows a disabled placeholder |
 
 Checks and enablement are set on the items directly; the menu is rebuilt
