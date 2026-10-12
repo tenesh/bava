@@ -1,10 +1,15 @@
 package e2e
 
 import (
+	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/pdfcpu/pdfcpu/pkg/api"
+	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
 
 	"github.com/tharabyte/bava/internal/testutil"
 )
@@ -39,5 +44,60 @@ func TestAPDFFileIsCheckedForItsSheets(t *testing.T) {
 	}
 	if msg := s.CheckPDF("p.pdf", "pages=3"); !strings.Contains(msg, "pages") {
 		t.Errorf("an unknown check: %q", msg)
+	}
+}
+
+// "clear": no sheet laid over the pages (page numbers, a fill) hides them
+// under white, as a webview's print can paint a sheet.
+func TestAPDFFileIsCheckedForPagesHiddenUnderWhite(t *testing.T) {
+	dir := t.TempDir()
+	page := testutil.DrawnPDF([]string{"q /Cs1 cs 0 0 0 sc 72 760 300 12 re f Q"}, 210, 297)
+	white := testutil.DrawnPDF([]string{"q 0 0 595.28 841.89 re W n /Cs1 cs 1 1 1 sc 0 0 595.28 841.89 re f Q"}, 210, 297)
+	wm, err := api.PDFMultiWatermarkForReadSeeker(context.Background(), bytes.NewReader(white), 1, 1, "scale:1 abs, rot:0", true, false, types.POINTS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var covered bytes.Buffer
+	if err := api.AddWatermarks(context.Background(), bytes.NewReader(page), &covered, nil, wm, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "covered.pdf"), covered.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "page.pdf"), page, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s := NewService(Options{Scratch: dir})
+	if msg := s.CheckPDF("page.pdf", "clear"); msg != "" {
+		t.Errorf("a page with nothing over it failed: %s", msg)
+	}
+	if msg := s.CheckPDF("covered.pdf", "clear"); !strings.Contains(msg, "white") {
+		t.Errorf("a page under a white sheet passed: %q", msg)
+	}
+}
+
+// "numbered": each page carries its own number, 1 upwards, in order.
+func TestAPDFFileIsCheckedForItsPageNumbers(t *testing.T) {
+	dir := t.TempDir()
+	blank := testutil.BlankPDF(3, 210, 297)
+	wm, err := api.TextWatermark(context.Background(), "%p", "fontname:Helvetica, points:9, position:bc, scalefactor:1 abs, rotation:0", true, false, types.POINTS, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var numbered bytes.Buffer
+	if err := api.AddWatermarks(context.Background(), bytes.NewReader(blank), &numbered, nil, wm, nil); err != nil {
+		t.Fatal(err)
+	}
+	for name, data := range map[string][]byte{"numbered.pdf": numbered.Bytes(), "bare.pdf": blank} {
+		if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s := NewService(Options{Scratch: dir})
+	if msg := s.CheckPDF("numbered.pdf", "numbered"); msg != "" {
+		t.Errorf("a numbered PDF failed: %s", msg)
+	}
+	if msg := s.CheckPDF("bare.pdf", "numbered"); !strings.Contains(msg, "number") {
+		t.Errorf("a PDF with no numbers passed: %q", msg)
 	}
 }

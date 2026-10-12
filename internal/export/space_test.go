@@ -108,18 +108,20 @@ func TestBookmarksNestPagesUnderTheirFolders(t *testing.T) {
 func TestASpacesSheetsAreNumberedFromTheContents(t *testing.T) {
 	req := spaceRequest()
 	req.Numbers = true
-	log, _, err := exportSpace(t, req, "")
+	_, out, err := exportSpace(t, req, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var numbers []string
-	for _, p := range log {
-		if strings.Contains(p.html, `class="sheet"`) && !strings.Contains(p.html, "<ol>") {
-			numbers = append(numbers, regexp.MustCompile(`<span class="n">(\d+)</span>`).FindAllString(p.html, -1)...)
-		}
+	pdf, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if len(numbers) != 8 || !strings.Contains(numbers[0], ">1<") || !strings.Contains(numbers[7], ">8<") {
-		t.Errorf("numbers = %q; want 1 to 8", numbers)
+	numbers, err := PageNumbers(context.Background(), pdf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprint(numbers) != "[1 2 3 4 5 6 7 8]" {
+		t.Errorf("each page's number = %v; want 1 to 8", numbers)
 	}
 }
 

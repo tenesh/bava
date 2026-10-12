@@ -264,6 +264,7 @@ Dated rows, newest last: each closes a question that could have gone another way
 | 2026-10-11 | PDF printing proven on macOS, Windows and Linux | CI run 38089701163; Windows uses a hidden window's WebView2 and `Page.printToPDF`. |
 | 2026-10-11 | A zip carries everything but the Trash | It reopens as the same Space. |
 | 2026-10-11 | Page numbers read as the number alone | "3", bottom centre, in Bava's font. |
+| 2026-10-12 | Page numbers are stamped into the PDF, in Helvetica | The webview printed them white over each page on macOS, and misplaced them; the one exception to Geist everywhere, chosen over adding a TrueType Geist. |
 | 2026-10-11 | A page fits the paper's width, with no scale to choose | The page's width fills the paper between margins. |
 | 2026-10-11 | A page's PDF before a folder's or the Space's | It proves printing real pages first; pdfcpu (Apache-2.0) joins and numbers after. |
 | 2026-10-11 | A folder or the Space exports one combined PDF, contents first | Contents and bookmarks by folder; a page that cannot print stops the export. |

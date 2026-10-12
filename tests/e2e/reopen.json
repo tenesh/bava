@@ -66,7 +66,7 @@
     { "do": "shot", "name": "export-pdf" },
     { "do": "click", "target": "[role='dialog'] .bava-button.primary" },
     { "do": "gone", "target": "[role='dialog']" },
-    { "do": "pdffile", "target": "First page.pdf", "text": "min=2 first=210x297", "timeoutMs": 90000 },
+    { "do": "pdffile", "target": "First page.pdf", "text": "min=2 first=210x297 clear numbered", "timeoutMs": 90000 },
     { "do": "menu", "target": "file.exportSpace" },
     { "do": "wait", "target": "[role='dialog']", "text": "Export Space" },
     { "do": "wait", "target": "[role='dialog'] .bava-pdf-preview iframe", "timeoutMs": 20000 },
@@ -75,6 +75,6 @@
     { "do": "click", "target": "[role='dialog'] .bava-toggle" },
     { "do": "click", "target": "[role='dialog'] .bava-button.primary" },
     { "do": "gone", "target": "[role='dialog']", "timeoutMs": 60000 },
-    { "do": "pdffile", "target": "Smoke.pdf", "text": "min=4 first=210x297", "timeoutMs": 120000 }
+    { "do": "pdffile", "target": "Smoke.pdf", "text": "min=4 first=210x297 clear numbered", "timeoutMs": 120000 }
   ]
 }

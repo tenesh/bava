@@ -78,7 +78,7 @@ Start Bava as if it had never run:
 ## Export
 
 - [ ] Save dialogs suggest `<page>.pdf` and a sensible zip name.
-- [ ] A page's PDF looks like the screen: fonts, pictures, equations, code, tables, callouts; dark fills to the edge; page numbers; the Canvas on its own sheet.
+- [ ] A page's PDF looks like the screen: fonts, pictures, equations, code, tables, callouts; dark fills to the edge; page numbers at the bottom centre of every page, the page itself showing under them; the Canvas on its own sheet.
 - [ ] A Space's PDF: the contents' numbers match the sheets, bookmarks nest folders over pages, dark contents, page numbers.
 - [ ] A large Space's PDF counts "Drawing N of M", Cancel stops it, and the window stays usable.
 - [ ] Unzip a Space zip and open it as a Space: pages, pictures, templates and settings are all there.

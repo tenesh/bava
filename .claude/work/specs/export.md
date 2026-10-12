@@ -77,7 +77,13 @@ included) and over pages with only the images they use.
 ### 8. Page numbers read as the number alone (2026-10-11)
 
 When turned on, each PDF page carries its number, "3", at the bottom
-centre in Bava's font. Chosen over "3 of 12" and "Page 3 of 12".
+centre. Chosen over "3 of 12" and "Page 3 of 12".
+
+**Changed 2026-10-12:** the numbers are stamped into the finished PDF in
+its built-in Helvetica, no longer printed through the webview in Bava's
+font. On macOS the webview filled the numbers sheet white, hiding each page,
+and laid its numbers out on too few sheets; stamping is the same on every
+system. The user chose Helvetica over adding a TrueType Geist to the repo.
 
 ### 9. A page fits the paper's width, with no scale to choose (2026-10-11)
 

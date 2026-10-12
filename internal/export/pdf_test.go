@@ -134,21 +134,21 @@ func TestPageNumbersRunAcrossTheParts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var numbers []string
 	for _, p := range log {
-		if strings.Contains(p.html, `class="sheet"`) {
-			numbers = append(numbers, strings.Join(regexp.MustCompile(`<span class="n">(\d+)</span>`).FindAllString(p.html, -1), ""))
-			if p.setup.Margins != (pdfprint.Margins{}) || p.setup.Background {
-				t.Errorf("numbers printed with margins or a background: %+v", p.setup)
-			}
-			if !strings.Contains(p.html, "data:font/woff2") {
-				t.Error("the numbers are not in Bava's font")
-			}
+		if strings.Contains(p.html, `class="n"`) {
+			t.Error("the numbers were printed through the webview, not stamped")
 		}
 	}
-	want := []string{`<span class="n">1</span><span class="n">2</span>`, `<span class="n">3</span>`}
-	if fmt.Sprint(numbers) != fmt.Sprint(want) {
-		t.Errorf("numbers = %q; want %q", numbers, want)
+	pdf, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	numbers, err := PageNumbers(context.Background(), pdf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprint(numbers) != "[1 2 3]" {
+		t.Errorf("each page's number = %v; want [1 2 3]", numbers)
 	}
 	if got := sizes(t, out); len(got) != 3 {
 		t.Errorf("numbering changed the pages: %v", got)

@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
@@ -64,11 +63,14 @@ type look struct {
 	numbers bool
 }
 
+// hexColour is a colour as the PDF stamps it: #rrggbb.
+var hexColour = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
 // check refuses a look that cannot be drawn: numbers with no colour, or a
 // colour that is not one.
 func (l look) check() error {
-	if l.numbers && l.ink == "" {
-		return errors.New("page numbers need a colour")
+	if l.numbers && !hexColour.MatchString(l.ink) {
+		return errors.New("page numbers need a colour, as #rrggbb")
 	}
 	for _, c := range []string{l.paper, l.ink} {
 		if c != "" && !colour.MatchString(c) {
@@ -174,7 +176,6 @@ func sheets(ctx context.Context, file string, conf *model.Configuration) (int, e
 func assemble(ctx context.Context, parts []part, l look, dir string, print Printer, src Sources, conf *model.Configuration) ([]byte, []int, error) {
 	var readers []io.ReadSeeker
 	counts := make([]int, len(parts))
-	next := 1
 	for i, p := range parts {
 		pdf, err := os.ReadFile(p.file)
 		if err != nil {
@@ -187,29 +188,51 @@ func assemble(ctx context.Context, parts []part, l look, dir string, print Print
 		counts[i] = n
 		if l.dark && l.paper != "" {
 			fill := filepath.Join(dir, fmt.Sprintf("fill-%d.pdf", i))
-			if pdf, err = layer(ctx, pdf, fill, fillPage(l.paper), edgeToEdge(p.setup, true), print, false, conf); err != nil {
+			if pdf, err = underlay(ctx, pdf, fill, fillPage(l.paper), edgeToEdge(p.setup, true), print, conf); err != nil {
 				return nil, nil, fmt.Errorf("export PDF: fill the margins: %w", err)
 			}
 		}
-		if l.numbers {
-			numbers := filepath.Join(dir, fmt.Sprintf("numbers-%d.pdf", i))
-			html := numbersPage(next, n, p.setup, l.ink, src)
-			if pdf, err = layer(ctx, pdf, numbers, html, edgeToEdge(p.setup, false), print, true, conf); err != nil {
-				return nil, nil, fmt.Errorf("export PDF: number the pages: %w", err)
-			}
-		}
-		next += n
 		readers = append(readers, bytes.NewReader(pdf))
 	}
+	var joined []byte
 	if len(readers) == 1 {
-		pdf, err := io.ReadAll(readers[0])
-		return pdf, counts, err
+		b, err := io.ReadAll(readers[0])
+		if err != nil {
+			return nil, nil, err
+		}
+		joined = b
+	} else {
+		var buf bytes.Buffer
+		if err := api.MergeRaw(ctx, readers, &buf, false, conf); err != nil {
+			return nil, nil, fmt.Errorf("export PDF: join the parts: %w", err)
+		}
+		joined = buf.Bytes()
 	}
-	var joined bytes.Buffer
-	if err := api.MergeRaw(ctx, readers, &joined, false, conf); err != nil {
-		return nil, nil, fmt.Errorf("export PDF: join the parts: %w", err)
+	if l.numbers {
+		numbered, err := stampNumbers(ctx, joined, parts[0].setup, l.ink, conf)
+		if err != nil {
+			return nil, nil, fmt.Errorf("export PDF: number the pages: %w", err)
+		}
+		joined = numbered
 	}
-	return joined.Bytes(), counts, nil
+	return joined, counts, nil
+}
+
+// stampNumbers writes each page's number, counted through the whole PDF, at
+// its bottom centre in the ink given: stamped by the PDF itself, so it is
+// where it should be whatever a webview's printing does with a page.
+func stampNumbers(ctx context.Context, pdf []byte, s pdfprint.PageSetup, ink string, conf *model.Configuration) ([]byte, error) {
+	bottom := max(s.Margins.Bottom/2-numberHalfMM, numberLeastMM) * 72 / 25.4
+	desc := fmt.Sprintf("fontname:%s, points:%d, position:bc, offset:0 %s, fillcolor:%s, scalefactor:1 abs, rotation:0", numberFont, numberPoints, num(bottom), ink)
+	wm, err := api.TextWatermark(ctx, "%p", desc, true, false, types.POINTS, conf)
+	if err != nil {
+		return nil, err
+	}
+	var out bytes.Buffer
+	if err := api.AddWatermarks(ctx, bytes.NewReader(pdf), &out, nil, wm, conf); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
 }
 
 // edgeToEdge is a part's sheet with no margins, its background printed or
@@ -220,10 +243,9 @@ func edgeToEdge(s pdfprint.PageSetup, background bool) pdfprint.PageSetup {
 	return s
 }
 
-// layer prints html at setup and lays its sheets over (onTop) or under
-// each sheet of pdf, the first over the first; a single sheet goes on
-// every one.
-func layer(ctx context.Context, pdf []byte, file, html string, setup pdfprint.PageSetup, print Printer, onTop bool, conf *model.Configuration) ([]byte, error) {
+// underlay prints html at setup and lays its sheets under each sheet of
+// pdf, the first under the first; a single sheet goes under every one.
+func underlay(ctx context.Context, pdf []byte, file, html string, setup pdfprint.PageSetup, print Printer, conf *model.Configuration) ([]byte, error) {
 	if err := print(html, setup, file); err != nil {
 		return nil, err
 	}
@@ -231,7 +253,7 @@ func layer(ctx context.Context, pdf []byte, file, html string, setup pdfprint.Pa
 	if err != nil {
 		return nil, err
 	}
-	wm, err := api.PDFMultiWatermarkForReadSeeker(ctx, bytes.NewReader(over), 1, 1, "scale:1 abs, rot:0", onTop, false, types.POINTS)
+	wm, err := api.PDFMultiWatermarkForReadSeeker(ctx, bytes.NewReader(over), 1, 1, "scale:1 abs, rot:0", false, false, types.POINTS)
 	if err != nil {
 		return nil, err
 	}
@@ -277,33 +299,13 @@ const (
 	// spillPx keeps a fitted Canvas a pixel short of its sheet, so rounding
 	// never spills it onto a second one.
 	spillPx = 1
-	// sheetShortMM keeps each numbers sheet half a millimetre short of the
-	// paper, for the same reason.
-	sheetShortMM = 0.5
 	// numberHalfMM is half a number's height: it is centred in the bottom
 	// margin by its middle.
 	numberHalfMM = 1.5
 	// numberLeastMM is how far above the edge a number sits with no margin.
 	numberLeastMM = 4
-	// numberSize is the numbers' size, as a footer's.
-	numberSize = "9pt"
+	// numberPoints is the numbers' size, as a footer's.
+	numberPoints = 9
+	// numberFont is one the PDF itself holds, so stamping needs no file.
+	numberFont = "Helvetica"
 )
-
-// numbersPage is a sheet for each page from first, n of them, each with
-// its number at the bottom centre in Bava's font and the ink given, on
-// nothing.
-func numbersPage(first, n int, s pdfprint.PageSetup, ink string, src Sources) string {
-	_, h, _ := s.Size()
-	bottom := max(s.Margins.Bottom/2-numberHalfMM, numberLeastMM)
-	var sheets strings.Builder
-	for i := range n {
-		fmt.Fprintf(&sheets, `<div class="sheet"><span class="n">%d</span></div>`, first+i)
-	}
-	css := inlineCSS(`@font-face { font-family: "Bava Numbers"; src: url("/fonts/Geist-Variable.woff2") format("woff2"); }`, src)
-	return `<!doctype html><html><head><meta charset="utf-8">` + policy + `<style>` + css +
-		` html, body { margin: 0; background: transparent; }` +
-		fmt.Sprintf(` .sheet { position: relative; height: %smm; overflow: hidden; break-after: page; }`, num(h-sheetShortMM)) +
-		` .sheet:last-child { break-after: auto; }` +
-		fmt.Sprintf(` .n { position: absolute; left: 0; right: 0; bottom: %smm; text-align: center; font: %s "Bava Numbers", sans-serif; color: %s; }`, num(bottom), numberSize, ink) +
-		`</style></head><body>` + sheets.String() + `</body></html>`
-}
