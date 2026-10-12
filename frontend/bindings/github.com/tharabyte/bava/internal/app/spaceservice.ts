@@ -39,6 +39,15 @@ export function Attachments(root: string): $CancellablePromise<$models.Attachmen
 }
 
 /**
+ * Cancel stops the run the page named: an Import, an ExportZip or a
+ * SpacePDF. The call it stops answers CodeCancelled once nothing it began is
+ * left behind.
+ */
+export function Cancel(run: string): $CancellablePromise<void> {
+    return $Call.ByID(109288080, run);
+}
+
+/**
  * ChooseFolder shows the native folder picker, which can also make a new
  * folder, titled as the frontend words it. An empty path means the user
  * cancelled.
@@ -67,11 +76,13 @@ export function CreatePageFrom(root: string, folder: string, name: string, sourc
 }
 
 /**
- * ExportZip writes the Markdown zip of scope to out, a path the user chose.
- * The Space is only read.
+ * ExportZip writes the Markdown zip of scope to out, a path the user chose,
+ * telling the page how far it has got. The Space is only read. Cancelling
+ * the call (its context) leaves nothing at out: the Code is then
+ * CodeCancelled.
  */
-export function ExportZip(root: string, scope: space$0.ZipScope, out: string): $CancellablePromise<$models.Problem> {
-    return $Call.ByID(310729359, root, scope, out);
+export function ExportZip(root: string, run: string, scope: space$0.ZipScope, out: string): $CancellablePromise<$models.Problem> {
+    return $Call.ByID(310729359, root, run, scope, out);
 }
 
 /**
@@ -82,6 +93,24 @@ export function ExportZip(root: string, scope: space$0.ZipScope, out: string): $
  */
 export function FetchCard(root: string, address: string): $CancellablePromise<$models.CardDetails> {
     return $Call.ByID(2780217780, root, address);
+}
+
+/**
+ * Import brings sources into the folder into, planned afresh, telling the
+ * page how far it has got. Cancel(run) stops it and removes what it made:
+ * the result's Code is then CodeCancelled.
+ */
+export function Import(root: string, run: string, sources: string[] | null, into: string): $CancellablePromise<$models.ImportResult> {
+    return $Call.ByID(3264950783, root, run, sources, into);
+}
+
+/**
+ * ImportPlan lists what importing sources (pages, folders or zips the user
+ * picked) into the folder into would bring, as space.Space.ImportPlan does.
+ * Only what the user picked is read.
+ */
+export function ImportPlan(root: string, sources: string[] | null, into: string): $CancellablePromise<$models.ImportPlanResult> {
+    return $Call.ByID(1240960184, root, sources, into);
 }
 
 /**

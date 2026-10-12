@@ -14,9 +14,11 @@
 import { SpaceService } from "../../bindings/github.com/tharabyte/bava/internal/app";
 import type { Operation } from "../../bindings/github.com/tharabyte/bava/internal/app/models";
 import { t } from "../i18n/t";
+import { newRun } from "../ipc/runs";
 import { spaceMessage } from "./space-helpers";
 import type { TemplateRef } from "./templates";
 import type { Scene } from "../../bindings/github.com/tharabyte/bava/internal/format/models";
+import type { ImportPlan as GoImportPlan, ImportResult as GoImported } from "../../bindings/github.com/tharabyte/bava/internal/space/models";
 
 export type EntryKind = "page" | "folder";
 export type SpaceEntry = { name: string; path: string; kind: EntryKind };
@@ -44,6 +46,25 @@ export type SearchHit = { kind: 'page' | 'folder'; path: string; name: string; f
 export type ZipScope = { kind: 'space' | 'folder' | 'page'; path: string; attachments: string[] };
 /** One file of a zip, at its path there. */
 export type ZipFile = { path: string; size: number };
+/** One thing an import brings: where it comes from in its pick, and where it lands. */
+export type ImportEntry = { kind: string; origin: number; from: string; entry: string; to: string; size: number };
+/** What an import brings and where, as `SpaceService.ImportPlan` answers it, its lists always there. */
+export type ImportPlan = {
+  into: string;
+  origins: { path: string; root: string }[];
+  entries: ImportEntry[];
+  renames: { from: string; to: string }[];
+  pages: number;
+  files: number;
+  templates: number;
+  bytes: number;
+};
+/** What an import brought: the pages it wrote and the attachment each file became. */
+export type Imported = { plan: ImportPlan; pages: { path: string; origin: number; from: string }[]; attached: Record<string, string> };
+/** An import under way: what it brought when done, and a way to stop it. */
+export type RunningImport = { done: Promise<{ result: Imported | null; error: string; cancelled: boolean }>; cancel(): void };
+/** A zip being written: whether it was, and a way to stop it. */
+export type RunningZip = { done: Promise<{ error: string; cancelled: boolean }>; cancel(): void };
 
 /** The open page as the window holds it, searched in place of its file. */
 export type SearchOpenPage = { path: string; source: string; scene: Scene } | null;
@@ -77,7 +98,13 @@ export type SpaceIO = {
   index(root: string, withText: boolean): Promise<{ pages: IndexPage[] | null; error: string }>;
   search(root: string, query: string, open: SearchOpenPage): Promise<{ hits: SearchHit[] | null; more: boolean; error: string }>;
   zipPlan(root: string, scope: ZipScope): Promise<{ files: ZipFile[] | null; error: string; code?: string }>;
-  exportZip(root: string, scope: ZipScope, out: string): Promise<{ error: string; code?: string }>;
+  /** Writes the zip as the run named `run`: `cancel(run)` stops it, leaving nothing at `out`. */
+  exportZip(root: string, run: string, scope: ZipScope, out: string): Promise<{ error: string; code?: string }>;
+  importPlan(root: string, sources: string[], into: string): Promise<{ plan: GoImportPlan; error: string; code?: string }>;
+  /** Imports as the run named `run`: `cancel(run)` stops it, and Go removes what it made. */
+  import(root: string, run: string, sources: string[], into: string): Promise<{ result: GoImported; error: string; code?: string }>;
+  /** Stops the run named `run`; its call then answers `cancelled`, once nothing it began is left. */
+  cancel(run: string): Promise<void>;
   trash(
     root: string,
   ): Promise<{
@@ -127,6 +154,26 @@ export type SpaceStorage = {
 /** One row of the Files tree: an entry and how deep it sits. */
 export type TreeRow = { entry: SpaceEntry; depth: number };
 
+/** Go's plan with its lists always there: Go sends an empty list as null. */
+function importPlanOf(plan: GoImportPlan): ImportPlan {
+  return {
+    into: plan.into,
+    origins: plan.origins ?? [],
+    entries: plan.entries ?? [],
+    renames: plan.renames ?? [],
+    pages: plan.pages,
+    files: plan.files,
+    templates: plan.templates,
+    bytes: plan.bytes,
+  };
+}
+
+function importedOf(result: GoImported): Imported {
+  const attached: Record<string, string> = {};
+  for (const [key, name] of Object.entries(result.attached ?? {})) if (name) attached[key] = name;
+  return { plan: importPlanOf(result.plan), pages: result.pages ?? [], attached };
+}
+
 const overIPC: SpaceIO = {
   open: (dir) => SpaceService.Open(dir),
   list: (root, folder) =>
@@ -151,7 +198,10 @@ const overIPC: SpaceIO = {
   search: (root, query, open) =>
     SpaceService.Search(root, query, open) as unknown as ReturnType<SpaceIO["search"]>,
   zipPlan: (root, scope) => SpaceService.ZipPlan(root, scope) as unknown as ReturnType<SpaceIO["zipPlan"]>,
-  exportZip: (root, scope, out) => SpaceService.ExportZip(root, scope, out),
+  exportZip: (root, run, scope, out) => SpaceService.ExportZip(root, run, scope, out),
+  importPlan: (root, sources, into) => SpaceService.ImportPlan(root, sources, into),
+  import: (root, run, sources, into) => SpaceService.Import(root, run, sources, into),
+  cancel: (run) => SpaceService.Cancel(run),
   trash: (root) =>
     SpaceService.Trash(root) as unknown as ReturnType<SpaceIO["trash"]>,
   chooseFolder: (title, near = '') => SpaceService.ChooseFolder(title, near),
@@ -471,11 +521,41 @@ export function createSpace(
       return { files: result.files ?? [], error: result.error ? spaceMessage(result as { error: string; code?: string }) : "" };
     },
 
-    /** Writes the Markdown zip of `scope` to `out`; '' when written, else why not. */
-    async exportZip(scope: ZipScope, out: string): Promise<string> {
-      if (!root) return t("export.noSpace");
-      const result = await io.exportZip(root, scope, out).catch((error: unknown) => ({ error: String(error) }));
-      return result.error ? spaceMessage(result as { error: string; code?: string }) : "";
+    /** What importing `sources` (pages, folders or zips on disk) into the folder `into` would bring. */
+    async importPlan(sources: string[], into: string): Promise<{ plan: ImportPlan | null; error: string }> {
+      if (!root) return { plan: null, error: t("import.noSpace") };
+      const result = await io.importPlan(root, sources, into).catch((error: unknown) => ({ plan: null, error: String(error), code: "" }));
+      return result.error || !result.plan ? { plan: null, error: spaceMessage(result) } : { plan: importPlanOf(result.plan), error: "" };
+    },
+
+    /** Starts importing `sources` into `into`; `cancel` stops it and removes what it made. */
+    startImport(sources: string[], into: string): RunningImport {
+      if (!root) return { done: Promise.resolve({ result: null, error: t("import.noSpace"), cancelled: false }), cancel: () => {} };
+      const run = newRun();
+      const done = io.import(root, run, sources, into).then(
+        (result) =>
+          result.code === "cancelled"
+            ? { result: null, error: "", cancelled: true }
+            : result.error
+              ? { result: null, error: spaceMessage(result), cancelled: false }
+              : { result: importedOf(result.result), error: "", cancelled: false },
+        (error: unknown) => ({ result: null, error: String(error), cancelled: false }),
+      );
+      return { done, cancel: () => void io.cancel(run) };
+    },
+
+    /** Starts writing the Markdown zip of `scope` to `out`; `cancel` stops it, leaving nothing there. */
+    startExportZip(scope: ZipScope, out: string): RunningZip {
+      if (!root) return { done: Promise.resolve({ error: t("export.noSpace"), cancelled: false }), cancel: () => {} };
+      const run = newRun();
+      const done = io.exportZip(root, run, scope, out).then(
+        (result) =>
+          result.code === "cancelled"
+            ? { error: "", cancelled: true }
+            : { error: result.error ? spaceMessage(result) : "", cancelled: false },
+        (error: unknown) => ({ error: String(error), cancelled: false }),
+      );
+      return { done, cancel: () => void io.cancel(run) };
     },
 
     /** A folder moved or was renamed: keep it, and what is open inside it, open. */

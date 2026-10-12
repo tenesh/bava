@@ -462,7 +462,7 @@ func TestAZipIsPlannedAndWrittenThroughTheSpace(t *testing.T) {
 		t.Fatalf("ZipPlan = %+v; want a.md", plan)
 	}
 	out := filepath.Join(t.TempDir(), "a.zip")
-	if p := s.ExportZip(root, space.ZipScope{Kind: space.ZipPage, Path: "a.md"}, out); p.Error != "" {
+	if p := s.ExportZip(context.Background(), root, "", space.ZipScope{Kind: space.ZipPage, Path: "a.md"}, out); p.Error != "" {
 		t.Fatalf("ExportZip = %+v", p)
 	}
 	if _, err := os.Stat(out); err != nil {
@@ -471,7 +471,7 @@ func TestAZipIsPlannedAndWrittenThroughTheSpace(t *testing.T) {
 	if bad := s.ZipPlan(root, space.ZipScope{Kind: space.ZipFolder, Path: "../x"}); bad.Error == "" || bad.Code == "" || bad.Files == nil {
 		t.Errorf("ZipPlan outside = %+v; want a refusal with a code and an empty list", bad)
 	}
-	if bad := s.ExportZip(filepath.Join(root, "missing"), space.ZipScope{Kind: space.ZipSpace}, out); bad.Error == "" {
+	if bad := s.ExportZip(context.Background(), filepath.Join(root, "missing"), "", space.ZipScope{Kind: space.ZipSpace}, out); bad.Error == "" {
 		t.Error("ExportZip on no Space succeeded")
 	}
 }

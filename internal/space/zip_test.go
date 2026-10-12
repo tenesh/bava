@@ -2,6 +2,7 @@ package space_test
 
 import (
 	"archive/zip"
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -138,7 +139,7 @@ func TestTheZipWrittenHoldsThePlanByteForByte(t *testing.T) {
 	s := zipSpace(t)
 	scope := space.ZipScope{Kind: space.ZipFolder, Path: "Marketing", Attachments: []string{"logo.png"}}
 	out := filepath.Join(t.TempDir(), "Marketing.zip")
-	if err := s.WriteZip(scope, out); err != nil {
+	if err := s.WriteZip(context.Background(), scope, out, nil); err != nil {
 		t.Fatal(err)
 	}
 	r, err := zip.OpenReader(out)
@@ -169,7 +170,7 @@ func TestTheZipWrittenHoldsThePlanByteForByte(t *testing.T) {
 func TestAFailedZipLeavesNoFile(t *testing.T) {
 	s := zipSpace(t)
 	out := filepath.Join(t.TempDir(), "missing folder", "x.zip")
-	if err := s.WriteZip(space.ZipScope{Kind: space.ZipSpace}, out); err == nil {
+	if err := s.WriteZip(context.Background(), space.ZipScope{Kind: space.ZipSpace}, out, nil); err == nil {
 		t.Fatal("a zip into a folder that is not there was written")
 	}
 	if _, err := os.Stat(out); !errors.Is(err, os.ErrNotExist) {
@@ -185,7 +186,7 @@ func TestAZipThatFailsMidWayLeavesNoTemporaryFile(t *testing.T) {
 	if err := os.Mkdir(out, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.WriteZip(space.ZipScope{Kind: space.ZipSpace}, out); err == nil {
+	if err := s.WriteZip(context.Background(), space.ZipScope{Kind: space.ZipSpace}, out, nil); err == nil {
 		t.Fatal("a zip over a folder was written")
 	}
 	entries, _ := os.ReadDir(dir)
@@ -197,7 +198,7 @@ func TestAZipThatFailsMidWayLeavesNoTemporaryFile(t *testing.T) {
 func TestAZipsPlaceMustBeAFullPath(t *testing.T) {
 	s := zipSpace(t)
 	for _, out := range []string{"", "relative.zip"} {
-		err := s.WriteZip(space.ZipScope{Kind: space.ZipSpace}, out)
+		err := s.WriteZip(context.Background(), space.ZipScope{Kind: space.ZipSpace}, out, nil)
 		if err == nil || space.Code(err) == "" {
 			t.Errorf("WriteZip(%q) = %v; want a refusal with a code", out, err)
 		}
@@ -212,7 +213,7 @@ func TestAZipKeepsEachFilesTime(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := filepath.Join(t.TempDir(), "r.zip")
-	if err := s.WriteZip(space.ZipScope{Kind: space.ZipPage, Path: "Roadmap.md"}, out); err != nil {
+	if err := s.WriteZip(context.Background(), space.ZipScope{Kind: space.ZipPage, Path: "Roadmap.md"}, out, nil); err != nil {
 		t.Fatal(err)
 	}
 	r, err := zip.OpenReader(out)
@@ -222,5 +223,47 @@ func TestAZipKeepsEachFilesTime(t *testing.T) {
 	defer r.Close()
 	if got := r.File[0].Modified.UTC(); !got.Equal(when) {
 		t.Errorf("modified = %v; want %v", got, when)
+	}
+}
+
+func TestAZipCountsEveryFileAsItIsWritten(t *testing.T) {
+	s := zipSpace(t)
+	scope := space.ZipScope{Kind: space.ZipSpace}
+	plan, err := s.ZipPlan(scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var last, calls int
+	out := filepath.Join(t.TempDir(), "Space.zip")
+	err = s.WriteZip(context.Background(), scope, out, func(done, total int) {
+		calls++
+		last = done
+		if total != len(plan) {
+			t.Errorf("total = %d, want %d", total, len(plan))
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != len(plan) || last != len(plan) {
+		t.Errorf("progress said %d steps ending at %d; want %d", calls, last, len(plan))
+	}
+}
+
+func TestACancelledZipLeavesNothingBehind(t *testing.T) {
+	s := zipSpace(t)
+	dir := t.TempDir()
+	out := filepath.Join(dir, "Space.zip")
+	ctx, cancel := context.WithCancel(context.Background())
+	err := s.WriteZip(ctx, space.ZipScope{Kind: space.ZipSpace}, out, func(done, total int) {
+		if done == 1 {
+			cancel()
+		}
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want cancelled", err)
+	}
+	if left, _ := os.ReadDir(dir); len(left) != 0 {
+		t.Errorf("left behind: %v", left)
 	}
 }

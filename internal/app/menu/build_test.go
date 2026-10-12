@@ -111,7 +111,7 @@ func TestSnapToObjectsReflectsState(t *testing.T) {
 // What needs a Space is enabled only with one open.
 func TestSpaceItemsFollowHasSpace(t *testing.T) {
 	built, _ := build(t, "darwin")
-	ids := []string{"file.newFolder", "space.trash", "file.spaceSettings"}
+	ids := []string{"file.newFolder", "space.trash", "file.spaceSettings", "file.importFiles", "file.importFolder"}
 	built.Apply(menu.State{})
 	for _, id := range ids {
 		if item := built.Item(id); item == nil || item.Enabled() {

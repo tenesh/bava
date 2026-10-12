@@ -2,6 +2,7 @@ package space
 
 import (
 	"archive/zip"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -157,8 +158,10 @@ func dedupe(files []ZipFile) []ZipFile {
 // WriteZip writes the zip of scope to out, a full path: through the
 // store's atomic save, so a failure never leaves half a zip there. Each file
 // is read through the Space's root, so one swapped for a link after it was
-// planned is not followed out of the Space.
-func (s Space) WriteZip(scope ZipScope, out string) error {
+// planned is not followed out of the Space. progress, when not nil, is told
+// after each file; a cancelled ctx stops it, leaving nothing at out, and is
+// returned as its error.
+func (s Space) WriteZip(ctx context.Context, scope ZipScope, out string, progress func(done, total int)) error {
 	if out == "" || !filepath.IsAbs(out) {
 		return refuse(ErrOutside, "the zip's place must be a full path, not %q", out)
 	}
@@ -174,10 +177,19 @@ func (s Space) WriteZip(scope ZipScope, out string) error {
 	read, write := io.Pipe()
 	go func() {
 		w := zip.NewWriter(write)
-		for _, f := range plan {
+		for i, f := range plan {
+			// A cancel ends the write with its error: the temporary file
+			// goes, and nothing is left at out.
+			if err := ctx.Err(); err != nil {
+				write.CloseWithError(err)
+				return
+			}
 			if err := addToZip(w, root, f.Path); err != nil {
 				write.CloseWithError(err)
 				return
+			}
+			if progress != nil {
+				progress(i+1, len(plan))
 			}
 		}
 		write.CloseWithError(w.Close())

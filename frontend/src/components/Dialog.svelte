@@ -55,6 +55,13 @@
      * buttons, with no header or footer rule.
      */
     variant?: 'sectioned' | 'alert';
+    /**
+     * Escape and a click outside close it. Off while it shows work that
+     * must end first: Escape then only reports itself, through `onEscape`.
+     */
+    dismissible?: boolean;
+    /** Escape was pressed, whether or not it closes the dialog. */
+    onEscape?: () => void;
     onOpenChange?: (open: boolean) => void;
     children: Snippet;
   };
@@ -73,6 +80,8 @@
     headless = false,
     align = 'start',
     leading,
+    dismissible = true,
+    onEscape,
     onOpenChange,
     children,
   }: Props = $props();
@@ -87,6 +96,9 @@
   bind:open
   lazyMount={unmountWhenClosed}
   unmountOnExit={unmountWhenClosed}
+  closeOnEscape={dismissible}
+  closeOnInteractOutside={dismissible}
+  onEscapeKeyDown={() => onEscape?.()}
   onOpenChange={(details) => onOpenChange?.(details.open)}
   initialFocusEl={() => initialFocus()}
 >

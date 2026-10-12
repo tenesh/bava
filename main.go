@@ -72,6 +72,8 @@ func main() {
 	// The folders the user opened this session: the page is shown images and
 	// videos from these alone.
 	folders := app.NewOpenedFolders()
+	// The import, zip or PDF under way that the page can stop.
+	runs := app.NewRuns()
 	// What the user allowed Bava to reach, kept for a store's sandbox.
 	grants := openGrants()
 	menus := app.NewMenuService()
@@ -97,6 +99,12 @@ func main() {
 			ChooseFolder: answers.chooseFolder,
 			Folders:      folders,
 			Access:       grants,
+			Progress: func(p app.Progress) {
+				if a := current.Load(); a != nil {
+					a.Event.Emit(app.ProgressEvent, p)
+				}
+			},
+			Runs: runs,
 		})),
 		application.NewService(app.NewExportService(app.ExportServiceOptions{
 			Folders: folders,
@@ -105,6 +113,7 @@ func main() {
 				return pdfprint.Print(html, setup, out, application.InvokeSync)
 			},
 			Failed: answers.pdfFailed,
+			Runs:   runs,
 		})),
 		application.NewService(menus),
 		application.NewService(logService),

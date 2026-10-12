@@ -102,7 +102,7 @@ NumberInput (in `NumberField`), Toast, ToggleGroup. Build when a screen needs.
 | `ConfirmDialog` | Fixed answers; dismiss is cancel; `tone: 'danger'`, optional `check` |
 | `ContextMenu` | Menu at a point, nested (Menu); `within` inside a dialog; look in `styles/menus.scss` |
 | `DatePicker` | Calendar under a date chip, gives `YYYY-MM-DD` (DatePicker) |
-| `Dialog` | Ruled header, body, footer; named `size`s, `flush`, `headless`, `variant="alert"` (Dialog) |
+| `Dialog` | Ruled header, body, footer; named `size`s, `flush`, `headless`, `variant="alert"`; `dismissible={false}` and `onEscape` while work under way must end first (Dialog) |
 | `DiagramDialog` | D2 source beside live preview, diagnostics, engine picker, Insert |
 | `EmojiPicker` | Search and grouped emoji |
 | `EmptyState` | Empty panes; `mark`, `hints`, `size` (`pane` for a whole pane with nothing open) |
@@ -112,6 +112,7 @@ NumberInput (in `NumberField`), Toast, ToggleGroup. Build when a screen needs.
 | `FindBar` | Find and replace; `look="floating"` for the canvas |
 | `FormatBubble` | Toolbar over selected text; keeps the selection |
 | `FramePicker` | `/` Embed frame list |
+| `ImportDialog` | Import: what comes in as it lands, Into, renames, progress and Cancel |
 | `Icon` | SVG path wrapper, tokenised size |
 | `InsertPanel` | Insert search, categories, tiles |
 | `Keycaps` | A shortcut as mono key boxes |

@@ -1,0 +1,30 @@
+{
+  "name": "import",
+  "folders": ["${SCRATCH}/Smoke"],
+  "files": [["${SCRATCH}/Smoke.zip"]],
+  "steps": [
+    { "do": "wait", "target": "header", "timeoutMs": 30000 },
+    { "do": "menu", "target": "file.openSpace" },
+    { "do": "wait", "target": "[data-path='First page.md']" },
+    { "do": "menu", "target": "file.newFolder" },
+    { "do": "wait", "target": "input.rename" },
+    { "do": "type", "text": "Imported" },
+    { "do": "key", "text": "Enter" },
+    { "do": "wait", "target": "[data-path='Imported']" },
+    { "do": "menu", "target": "file.importFiles" },
+    { "do": "wait", "target": "[role='dialog']", "text": "From Smoke.zip" },
+    { "do": "wait", "target": "[role='dialog']", "text": "Renamed to keep both" },
+    { "do": "click", "target": "[role='dialog'] [data-name='Into'] .bava-select-trigger" },
+    { "do": "click", "target": ".bava-select-item[data-value='Imported']" },
+    { "do": "wait", "target": "[role='dialog'] .bava-select-trigger", "text": "Imported" },
+    { "do": "wait", "target": "[role='dialog'] .bava-button.primary", "text": "Import" },
+    { "do": "shot", "name": "import" },
+    { "do": "click", "target": "[role='dialog'] .bava-button.primary" },
+    { "do": "gone", "target": "[role='dialog']", "timeoutMs": 60000 },
+    { "do": "wait", "target": "footer", "text": "Imported into Imported." },
+    { "do": "file", "target": "Smoke/Imported/First page.md", "text": "../.bava/attachments/logo.png" },
+    { "do": "file", "target": "Smoke/Imported/First page.md", "text": "See [Goal](Goal.md)" },
+    { "do": "file", "target": "Smoke/Imported/Goal.md", "text": "Goal" },
+    { "do": "file", "target": "Smoke/.bava/templates/First page 2.md", "text": "tags: [smoke-run]" }
+  ]
+}

@@ -38,10 +38,16 @@ type ExportServiceOptions struct {
 	// end-to-end build sets it, to show the run why. Nil learns nothing:
 	// the words name the user's files, so the app never logs them.
 	Failed func(error)
+	// Runs are the long tasks the page can stop, shared with the
+	// SpaceService, whose Cancel stops them; nil keeps the service's own.
+	Runs *Runs
 }
 
 // NewExportService constructs the service registered with the application.
 func NewExportService(options ExportServiceOptions) *ExportService {
+	if options.Runs == nil {
+		options.Runs = NewRuns()
+	}
 	return &ExportService{options: options}
 }
 
@@ -127,8 +133,12 @@ type SpacePDFResult struct {
 
 // SpacePDF prints a folder or the Space at root to one PDF at out: the
 // contents, then each page as the request draws it. Codes are as PagePDF's,
-// and "page" when a page could not be printed (Page names it).
-func (s *ExportService) SpacePDF(root string, req export.SpaceRequest, out string) SpacePDFResult {
+// "page" when a page could not be printed (Page names it), and
+// CodeCancelled when SpaceService.Cancel(run) stopped it: it stops between
+// pages and writes nothing.
+func (s *ExportService) SpacePDF(ctx context.Context, root, run string, req export.SpaceRequest, out string) SpacePDFResult {
+	ctx, done := s.options.Runs.start(ctx, run)
+	defer done()
 	if !s.options.Folders.Allowed(root) {
 		return SpacePDFResult{Error: "export: that folder is not open", Code: "notOpened"}
 	}
@@ -139,11 +149,14 @@ func (s *ExportService) SpacePDF(root string, req export.SpaceRequest, out strin
 		return SpacePDFResult{Error: fmt.Sprintf("export: %v", err), Code: "setup"}
 	}
 	src := export.Sources{Fonts: s.options.Fonts, Picture: s.picture}
-	err := export.SpacePDF(context.Background(), req, src, s.options.Print, out)
+	err := export.SpacePDF(ctx, req, src, s.options.Print, out)
 	var failed *export.PageError
 	switch {
 	case err == nil:
 		return SpacePDFResult{}
+	case errors.Is(err, context.Canceled):
+		// Before a failed page: a cancel can surface while a page is read.
+		return SpacePDFResult{Error: err.Error(), Code: CodeCancelled}
 	case errors.As(err, &failed):
 		return SpacePDFResult{Error: fmt.Sprintf("export: %v", err), Code: "page", Page: failed.Path}
 	case errors.Is(err, export.ErrNothing):

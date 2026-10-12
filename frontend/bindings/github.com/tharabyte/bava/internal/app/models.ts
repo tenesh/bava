@@ -57,6 +57,24 @@ export interface FileDetailsResult {
 }
 
 /**
+ * ImportPlanResult is what an import would bring, before anything is written.
+ */
+export interface ImportPlanResult {
+    "plan": space$0.ImportPlan;
+    "error": string;
+    "code": string;
+}
+
+/**
+ * ImportResult is what an import brought.
+ */
+export interface ImportResult {
+    "result": space$0.ImportResult;
+    "error": string;
+    "code": string;
+}
+
+/**
  * IndexPage is a page: its path, its name without .md, and its text when
  * asked for.
  */

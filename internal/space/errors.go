@@ -23,12 +23,16 @@ var (
 	ErrChanged       = errors.New("changed")
 	ErrNotAttachment = errors.New("notAttachment")
 	ErrNotPage       = errors.New("notPage")
+	// ErrNotImport: what was picked to import is none of a page, a folder
+	// or a zip that opens.
+	ErrNotImport = errors.New("notImport")
 )
 
 // Codes lists every refusal, for mapping an error to its code.
 var Codes = []error{
 	ErrExists, ErrNameEmpty, ErrNameSlash, ErrNameDot, ErrNameReserved, ErrIntoItself,
 	ErrNotFolder, ErrOnlyPage, ErrOutside, ErrThroughLink, ErrNotSpace, ErrChanged, ErrNotAttachment, ErrNotPage,
+	ErrNotImport,
 }
 
 // Code is the refusal's code (the sentinel's text), or "" for any other

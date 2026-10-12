@@ -20,9 +20,11 @@
     /** Shown before the chosen option: "Sort:". */
     prefix?: string;
     onValueChange: (value: T) => void;
+    /** Present but not to be changed now: while what it chooses for is still being worked out. */
+    disabled?: boolean;
   };
 
-  let { label, value, options, prefix, onValueChange }: Props = $props();
+  let { label, value, options, prefix, onValueChange, disabled = false }: Props = $props();
 
   const collection = $derived(createListCollection({ items: options }));
   const chosen = $derived(options.find((option) => option.value === value)?.label ?? '');
@@ -40,6 +42,7 @@
   unmountOnExit
   {collection}
   value={[value]}
+  {disabled}
   positioning={{ placement: 'bottom-start', sameWidth: false }}
   onValueChange={(details) => {
     const next = details.value[0];
@@ -88,13 +91,18 @@
     cursor: pointer;
   }
 
-  :global(.bava-select-trigger:hover) {
+  :global(.bava-select-trigger:hover:not(:disabled)) {
     background: var(--color-control-hover);
   }
 
-  :global(.bava-select-trigger:active),
+  :global(.bava-select-trigger:active:not(:disabled)),
   :global(.bava-select-trigger[data-state='open']) {
     background: var(--color-control-active);
+  }
+
+  /* As a disabled button looks. */
+  :global(.bava-select-trigger:disabled) {
+    opacity: var(--opacity-disabled);
   }
 
   :global(.bava-select-trigger:focus-visible) {

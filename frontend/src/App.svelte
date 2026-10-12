@@ -30,6 +30,9 @@
   import ExportDialog from './components/ExportDialog.svelte';
   import PageExportDialog from './components/PageExportDialog.svelte';
   import SpaceExportDialog from './components/SpaceExportDialog.svelte';
+  import ImportDialog from './components/ImportDialog.svelte';
+  import { importedText } from './files/import-links';
+  import type { Imported, ImportPlan, RunningImport, RunningZip } from './files/space.svelte';
   import { attachmentsFor, zipName } from './files/export-zip';
   import { defaultPaper, includeChoice, pdfName, spaceEntries, type Include } from './files/export-pdf';
   import { pageCss, renderPage } from './docs/print-page';
@@ -112,6 +115,7 @@
   import AboutDialog from './components/AboutDialog.svelte';
   import ErrorDialog from './components/ErrorDialog.svelte';
   import { installErrorHandlers, report } from './ipc/log';
+  import { newRun } from './ipc/runs';
   import { bodyKeyFor, createErrorPolicy, type GoError, type GoNotice } from './shell/errors.svelte';
   import FilesSection from './settings/FilesSection.svelte';
   import AdvancedSection from './settings/AdvancedSection.svelte';
@@ -1356,6 +1360,10 @@
         if (target && kind === 'folder') void openSpaceExport(target);
         else if (target) void openPageExport(target);
         break;
+      case 'tree.importFiles':
+      case 'tree.importFolder':
+        if (target && kind === 'folder') void openImport(id === 'tree.importFiles' ? 'files' : 'folder', target);
+        break;
     }
   }
 
@@ -1608,6 +1616,10 @@
     preview?: SpacePreview | null;
     /** How far its pages are drawn, once Export PDF is pressed. */
     drawing?: { done: number; total: number } | null;
+    /** How far its zip is written, once Export zip is pressed. */
+    writing?: { done: number; total: number } | null;
+    /** The pages being printed into its PDF, once drawn. */
+    printing?: number | null;
   };
   type SpacePreview = { page: { html: string; css: string; widthPx: number } | null; canvas: null };
   let zipExport = $state<ZipExport | null>(null);
@@ -1645,8 +1657,14 @@
     return a.kind === b.kind && a.page === b.page && a.target === b.target && a.loose === b.loose;
   }
 
+  /** An import, a zip or a PDF is under way: another waits until it is done. */
+  function runBusy(): boolean {
+    return Boolean(importing?.progress || zipExport?.writing || zipExport?.drawing) || zipExport?.printing != null;
+  }
+
   /** Export a page: as a PDF or a Markdown zip; one on its own, as a PDF. */
   async function openPageExport(path: string | null = openRel) {
+    if (runBusy()) return;
     if (!space.root) {
       const file = doc.path;
       if (!file) return;
@@ -1671,13 +1689,118 @@
     return false;
   }
 
+  // ---- import ------------------------------------------------------------------
+  // Pages, a folder or a Bava zip from disk into a folder of the Space: Go
+  // plans and copies; the imported pages' addresses are then rewritten here,
+  // with the page's own link reader, as moves are.
+  type Importing = {
+    sources: string[];
+    /** What was picked, as the dialog's subtitle names it. */
+    source: string;
+    into: string;
+    folders: string[];
+    plan: { plan: ImportPlan | null; error: string } | null;
+    progress: { done: number; total: number } | null;
+  };
+  let importing = $state.raw<Importing | null>(null);
+  let runningImport: RunningImport | null = null;
+
+  /** The Space's folders, by path, sorted: what an export or import offers. */
+  async function spaceFolders(): Promise<string[]> {
+    const pages = (await space.index(false)) ?? [];
+    return [...new Set(pages.flatMap((p) => p.path.split('/').slice(0, -1).map((_, i, parts) => parts.slice(0, i + 1).join('/'))))].sort();
+  }
+
+  /** File ▸ Import, or a folder's Import: pick what comes in, then show what it brings into `into`. */
+  async function openImport(pick: 'files' | 'folder', into = '') {
+    if (!space.root || runBusy()) return;
+    let sources: string[] = [];
+    if (pick === 'files') {
+      const chosen = await FileService.ChooseMedia('import');
+      if (chosen.error) notify(chosen.error);
+      sources = chosen.paths ?? [];
+    } else {
+      const chosen = await space.chooseFolder(t('import.chooseFolder'));
+      if (chosen.error) notify(chosen.error);
+      if (chosen.path) sources = [chosen.path];
+    }
+    if (sources.length === 0) return;
+    const source = sources.length === 1 ? sources[0].replace(/^.*[\\/]/, '') : t('import.fromFiles').replace('{n}', String(sources.length));
+    importing = { sources, source, into, folders: await spaceFolders(), plan: null, progress: null };
+    await planImport();
+  }
+
+  async function planImport() {
+    const asked = importing;
+    if (!asked) return;
+    const plan = await space.importPlan(asked.sources, asked.into);
+    // A plan for a folder chosen before is dropped.
+    if (importing === asked) importing = { ...asked, plan };
+  }
+
+  async function chooseImportInto(folder: string) {
+    if (!importing || importing.progress) return;
+    importing = { ...importing, into: folder, plan: null };
+    await planImport();
+  }
+
+  async function runImport() {
+    const asked = importing;
+    if (!asked?.plan?.plan || asked.progress) return;
+    importing = { ...asked, progress: { done: 0, total: asked.plan.plan.entries.length } };
+    const running = space.startImport(asked.sources, asked.into);
+    runningImport = running;
+    const outcome = await running.done;
+    runningImport = null;
+    if (outcome.cancelled) {
+      importing = null;
+      notify(t('import.cancelled'));
+      return;
+    }
+    if (!outcome.result) {
+      if (importing) importing = { ...importing, progress: null, plan: { plan: null, error: outcome.error } };
+      return;
+    }
+    await addressImported(outcome.result);
+    importing = null;
+    await space.refresh();
+    await Promise.all([refreshTemplates(), refreshMedia()]);
+    void refreshTags();
+    notify(t('import.done').replace('{place}', asked.into || space.name));
+  }
+
+  /** Rewrites the imported pages' addresses where they must change, as one write per page. */
+  async function addressImported(result: Imported) {
+    try {
+      const pages = (await space.index(true)) ?? [];
+      const texts = new Map(pages.map((p) => [p.path, p.text]));
+      const brought = { origins: result.plan.origins, pages: result.pages, attached: result.attached };
+      const attach = async (path: string) => {
+        const attached = await space.apply({ kind: 'attach', source: path }, { refresh: false });
+        return attached.error ? null : (attached.name ?? null);
+      };
+      const edits: { path: string; before: string; after: string }[] = [];
+      for (const page of result.pages) {
+        const before = texts.get(page.path);
+        if (before === undefined) continue;
+        const after = await importedText(page, before, brought, attach);
+        if (after !== null) edits.push({ path: page.path, before, after });
+      }
+      if (edits.length === 0) return;
+      const written = await space.apply({ kind: 'relink', edits }, { refresh: false });
+      const message = linksMissedMessage(written.error ? edits.map((e) => e.path) : (written.missed ?? []));
+      if (message) notify(message);
+    } catch (error) {
+      void report(error, 'import');
+      notify(t('links.missedSpace'));
+    }
+  }
+
   /** Export the Space, or one of its folders. */
   async function openSpaceExport(folder = '') {
-    if (!space.root) return;
+    if (!space.root || runBusy()) return;
     if (doc.dirty && !(await savedBeforeExport())) return;
-    const pages = (await space.index(false)) ?? [];
-    const folders = [...new Set(pages.flatMap((p) => p.path.split('/').slice(0, -1).map((_, i, parts) => parts.slice(0, i + 1).join('/'))))].sort();
-    zipExport = { kind: 'space', page: '', target: folder, folders, plan: null, preview: null };
+    zipExport = { kind: 'space', page: '', target: folder, folders: await spaceFolders(), plan: null, preview: null };
     await Promise.all([planZip(), prepareSpacePreview()]);
   }
 
@@ -1689,15 +1812,29 @@
   }
 
   /** The save dialog, then the zip written where it was asked. */
+  /** The zip being written, while Export Space shows how far it has got. */
+  let runningZip: RunningZip | null = null;
+
+  /** The save dialog, then the zip written where it was asked, counting, until done or cancelled. */
   async function writeZip() {
     const e = zipExport;
     if (!e?.scope || !space.root) return;
     const name = e.kind === 'page' ? zipName('page', e.page, '') : zipName(e.target ? 'folder' : 'space', e.target, space.name);
     const chosen = (await FileService.ChooseFileToSave(name)).path;
     if (!chosen) return;
-    const error = await space.exportZip(e.scope, chosen);
-    if (error) {
-      notify(error);
+    if (zipExport && sameExport(zipExport, e)) zipExport = { ...zipExport, writing: { done: 0, total: e.plan?.files.length ?? 0 } };
+    const running = space.startExportZip(e.scope, chosen);
+    runningZip = running;
+    const outcome = await running.done;
+    runningZip = null;
+    if (outcome.cancelled) {
+      zipExport = null;
+      notify(t('export.zip.cancelled'));
+      return;
+    }
+    if (outcome.error) {
+      if (zipExport) zipExport = { ...zipExport, writing: null };
+      notify(outcome.error);
       return;
     }
     zipExport = null;
@@ -1822,12 +1959,15 @@
     }
     if (!still()) return;
     const name = chosen.replace(/^.*[\\/]/, '');
-    zipExport = null;
-    notify(t('export.pdf.printing').replace('{name}', name));
+    // The dialog stays, saying it prints, until the PDF is written or cancelled.
+    zipExport = { ...zipExport!, drawing: null, printing: pages.length };
     const colours = withTheme(themed, (read) => ({ paper: read('--color-surface'), text: read('--color-text-primary'), ink: read('--color-text-muted') }));
     try {
-      const result = await ExportService.SpacePDF(
+      const run = newRun();
+      runningPdf = { cancel: () => void SpaceService.Cancel(run) };
+      const call = ExportService.SpacePDF(
         root,
+        run,
         {
           setup: { ...choice.setup, paper: choice.setup.paper as BoundPaper },
           title,
@@ -1841,6 +1981,12 @@
         },
         chosen,
       );
+      const result = await call.finally(() => (runningPdf = null));
+      zipExport = null;
+      if (result.code === 'cancelled') {
+        notify(t('export.pdf.cancelled'));
+        return;
+      }
       if (result.code === 'page') {
         void report(new Error(result.error), 'export-pdf');
         const why = result.error.split(`${result.page}: `).slice(1).join(`${result.page}: `) || result.error;
@@ -1853,10 +1999,14 @@
       }
       notify(t('export.done').replace('{name}', name));
     } catch (error) {
+      zipExport = null;
       void report(error, 'export-pdf');
       notify(t('export.pdf.failed'));
     }
   }
+
+  /** A Space's PDF being printed, while Export Space says so. */
+  let runningPdf: { cancel(): void } | null = null;
 
   /** The canvas's fonts, as its export carries them. */
   function canvasFonts() {
@@ -2518,6 +2668,8 @@
     'file.search': () => void openSearch(),
     'file.exportPage': () => void openPageExport(),
     'file.exportSpace': () => void openSpaceExport(),
+    'file.importFiles': () => void openImport('files'),
+    'file.importFolder': () => void openImport('folder'),
     'file.openRecent': async (path) => {
       if (path) await openPath(path);
     },
@@ -3135,6 +3287,12 @@
     // Go recovered from a panic.
     const offAppError = Events.On('app:error', (event) => errors.unexpected(event.data as GoError));
     // Files dragged from the desktop onto the Document, added where they land.
+    // How far an import has got, while its dialog shows it.
+    const offProgress = Events.On('progress', (event) => {
+      const step = event.data as { task: string; done: number; total: number };
+      if (step.task === 'import' && importing?.progress) importing = { ...importing, progress: { done: step.done, total: step.total } };
+      if (step.task === 'zip' && zipExport?.writing) zipExport = { ...zipExport, writing: { done: step.done, total: step.total } };
+    });
     const offDrop = Events.On('files:dropped', (event) => {
       const drop = event.data as { paths: string[]; x: number; y: number };
       void addMediaFiles(drop.paths.map((path) => ({ path })), { x: drop.x, y: drop.y });
@@ -3148,6 +3306,7 @@
     return () => {
       removeErrorHandlers();
       offAppError();
+      offProgress();
       offDrop();
       offMenu();
       window.removeEventListener('keydown', onShortcut, true);
@@ -3652,10 +3811,31 @@
     paper={defaultPaper(navigator.language)}
     pdf={zipExport.preview ?? null}
     drawing={zipExport.drawing ?? null}
+    writing={zipExport.writing ?? null}
+    printing={zipExport.printing ?? null}
+    onCancel={() => {
+      runningZip?.cancel();
+      runningPdf?.cancel();
+    }}
     onTarget={(folder) => void chooseZipTarget(folder)}
     onExport={() => void writeZip()}
     onExportPdf={(choice) => void writeSpacePdf(choice)}
     onClose={() => (zipExport = null)}
+  />
+{/if}
+
+{#if importing}
+  <ImportDialog
+    open={true}
+    source={importing.source}
+    folders={importing.folders}
+    into={importing.into}
+    plan={importing.plan}
+    progress={importing.progress}
+    onInto={(folder) => void chooseImportInto(folder)}
+    onImport={() => void runImport()}
+    onCancel={() => runningImport?.cancel()}
+    onClose={() => (importing = null)}
   />
 {/if}
 

@@ -47,6 +47,15 @@
             { "kind": "command", "id": "file.exportSpace", "label": "Space" }
           ]
         },
+        {
+          "kind": "submenu",
+          "id": "file.importMenu",
+          "label": "Import",
+          "items": [
+            { "kind": "command", "id": "file.importFiles", "label": "Files" },
+            { "kind": "command", "id": "file.importFolder", "label": "Folder" }
+          ]
+        },
         { "kind": "separator" },
         { "kind": "command", "id": "insert.diagram", "label": "Diagram from Code" },
         { "kind": "separator", "platforms": ["windows", "linux"] },

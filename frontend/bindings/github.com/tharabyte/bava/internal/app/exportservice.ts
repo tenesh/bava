@@ -50,8 +50,10 @@ export function Save(path: string, contentsBase64: string): $CancellablePromise<
 /**
  * SpacePDF prints a folder or the Space at root to one PDF at out: the
  * contents, then each page as the request draws it. Codes are as PagePDF's,
- * and "page" when a page could not be printed (Page names it).
+ * "page" when a page could not be printed (Page names it), and
+ * CodeCancelled when SpaceService.Cancel(run) stopped it: it stops between
+ * pages and writes nothing.
  */
-export function SpacePDF(root: string, req: export$0.SpaceRequest, out: string): $CancellablePromise<$models.SpacePDFResult> {
-    return $Call.ByID(3302529736, root, req, out);
+export function SpacePDF(root: string, run: string, req: export$0.SpaceRequest, out: string): $CancellablePromise<$models.SpacePDFResult> {
+    return $Call.ByID(3302529736, root, run, req, out);
 }

@@ -80,6 +80,18 @@ Start Bava as if it had never run:
 - [ ] A large Space's PDF counts "Drawing N of M", Cancel stops it, and the window stays usable.
 - [ ] Unzip a Space zip and open it as a Space: pages, pictures, templates and settings are all there.
 - [ ] Keyboard pass: Export page, Export Space and their PDF settings, and File ▸ Export.
+- [ ] A large Space's zip counts "Writing N of M", and Cancel leaves no file; a Space's PDF says "Printing N pages", and Cancel leaves no file.
+
+## Import
+
+- [ ] File ▸ Import ▸ Folder and ▸ Files open the system's own dialogs (Files offers pages and zips only), and a folder's right-click Import does too.
+- [ ] Import a folder of notes with pictures from elsewhere on disk: it lands whole, its pictures show, and its links between pages still work.
+- [ ] Import the same folder again: it comes in numbered, and nothing is overwritten.
+- [ ] Import a Space's zip into another Space: pages, pictures and templates arrive; the Space's own settings are untouched.
+- [ ] A large import counts "Importing N of M", the window stays usable, and Cancel leaves the Space as it was.
+- [ ] Escape while importing, writing a zip or printing stops it; the dialog stays until it has stopped, then the status bar says it was cancelled.
+- [ ] Inside each store's sandbox: import a folder from outside the Space, and a page whose pictures sit outside the picked folder: those pictures stay missing with their links kept.
+- [ ] Keyboard pass: the Import dialog, Into, Import and Cancel.
 
 ## Search
 

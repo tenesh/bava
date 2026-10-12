@@ -55,6 +55,39 @@ describe('SpaceExportDialog', () => {
   });
 });
 
+describe('SpaceExportDialog writing a zip', () => {
+  it('counts the files as they are written, and Cancel stops it', async () => {
+    const onCancel = vi.fn();
+    const onClose = vi.fn();
+    render(SpaceExportDialog, { open: true, spaceName: 'Acme Product', folders: [], target: '', plan, onTarget: vi.fn(), onExport: vi.fn(), writing: { done: 34, total: 210 }, onCancel, onClose });
+    await vi.waitFor(() => expect(dialog()).not.toBeNull());
+    expect(dialog().textContent).toContain('Writing 34 of 210');
+    expect(button('Export zip')!.disabled).toBe(true);
+    button('Cancel')!.click();
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('changes nothing of what it writes while it writes', async () => {
+    render(SpaceExportDialog, { open: true, spaceName: 'Acme Product', folders: ['Marketing'], target: '', plan, formats: ['zip', 'pdf'], onTarget: vi.fn(), onExport: vi.fn(), writing: { done: 34, total: 210 }, onCancel: vi.fn(), onClose: vi.fn() });
+    await vi.waitFor(() => expect(dialog()).not.toBeNull());
+    await vi.waitFor(() => expect(dialog().querySelector<HTMLButtonElement>('.bava-select-trigger')!.disabled).toBe(true));
+    await vi.waitFor(() => expect(dialog().querySelector('.bava-segment[data-value="pdf"]')!.hasAttribute('data-disabled')).toBe(true));
+  });
+
+  it('stays open on Escape while printing, and cancels', async () => {
+    const onCancel = vi.fn();
+    const onClose = vi.fn();
+    render(SpaceExportDialog, { open: true, spaceName: 'Acme Product', folders: [], target: '', plan, onTarget: vi.fn(), onExport: vi.fn(), printing: 12, onCancel, onClose });
+    await vi.waitFor(() => expect(dialog()).not.toBeNull());
+    dialog().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    await vi.waitFor(() => expect(onCancel).toHaveBeenCalledOnce());
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(dialog().getAttribute('data-state')).toBe('open');
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
 // The caller keeps the export's state: Cancel tells it, so the next export
 // opens a fresh dialog.
 describe('closing an export dialog', () => {

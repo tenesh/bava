@@ -95,3 +95,10 @@ clipboard reads text only.
 `internal/pdfprint` reads unexported `WebviewWindow.impl` and its `chromium`
 to call `Page.printToPDF`. At every Wails bump, CI's `export-proof` walk is the
 check.
+
+## A cancelled call never hears from Go
+
+A bound call's own `cancel()` rejects its promise at once (a `CancelError`)
+and drops whatever Go returns, while Go may still be undoing. A long task the
+user can stop takes a `run` name instead, and `SpaceService.Cancel(run)`
+stops it (`internal/app/runs.go`): the call then answers how it really ended.

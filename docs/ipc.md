@@ -11,6 +11,15 @@ permission, malformed block, bad D2) comes back in the result's `error`. A
 returned Go `error` means the request itself was malformed. Cancelling a
 dialog returns an empty path, not an error.
 
+**Long tasks are stopped by name.** `Import`, `ExportZip` and `SpacePDF`
+take a `run`, a random name the frontend gives the task, so it stays unique
+when the page reloads while Go runs on;
+`SpaceService.Cancel(run)` stops it. The call itself still answers, once
+nothing it began is left behind, with `code` `cancelled`; one that finished
+first answers as done. The runtime's own cancel is never used: it rejects
+the promise at once and drops Go's answer, so the page could not learn how
+the task really ended.
+
 ## RenderService
 
 ```go
@@ -68,7 +77,7 @@ Reads and writes files; parsing is `internal/format`'s.
 | `ChooseFileToSave(suggestedName)` | `DialogResult`: as above |
 | `Settings()` | `config.Settings`, defaults when unreadable. `arrowBinding` and `midpointSnap` default on (absent reads as on), `objectSnap` off |
 | `SaveSettings(settings)` | error string, empty on success |
-| `ChooseMedia(kind)` | `PathsResult`: images (`image`), videos (`video`) or any files (`file`) from the native dialog, several at once; none when cancelled |
+| `ChooseMedia(kind)` | `PathsResult`: images (`image`), videos (`video`), any files (`file`), or pages and zips to import (`import`) from the native dialog, several at once; none when cancelled. Every pick is kept for a store's sandbox |
 | `FileDetails(root, path)` | `FileDetailsResult`: whether a file in an opened folder exists, its size and date modified (for a file card). A file outside (`../…` or a full path) reads only once the user chose it; until then `outside` is true and nothing is read |
 | `OpenFile(root, path)` | error string, empty on success: opens the file in its own app; a program, script or folder is revealed in its folder instead, so a click never runs code. A file outside the opened folder, not chosen yet, is asked for once through the system's dialog at its place; cancelling opens nothing |
 | `ClipboardImage()` | the clipboard image as base64 PNG, empty when none (the webview pastes text only) |
@@ -79,6 +88,12 @@ Reads and writes files; parsing is `internal/format`'s.
 - **`stamp`** is size plus modification time. The time, in nanoseconds,
   crosses as a decimal string (`modifiedUnixNano: "1790444150393195667"`):
   as a JSON number JavaScript would round it.
+
+### `progress` (Go to frontend)
+
+How far a long task has got: `{ task, done, total }`, `task` naming it
+(`import`, `zip`). Sent after each item, so the last says `done` equals
+`total`. Several tasks never run at once from one window.
 
 ### `files:dropped` (Go to frontend)
 
@@ -123,7 +138,10 @@ A Space on disk (`docs/file-format.md`, "Spaces"), changed through one
 | `Index(root, withText)` | `SpaceIndex`: every page (path, name without `.md`, and with `withText` its text, or `unreadable` set, meaning its links are unknown) in tree order; never hidden entries or `.bava`. The frontend reads links from the text |
 | `Search(root, query, open)` | `SpaceSearch`: `hits` and `more` (over 50 found). Each hit: `kind`, `path`, `name`, `folder`, `count`, `best` (`where`: `name`, `document` or `canvas`; `text`, about 80 characters around the match; `word`; `occurrence`, earlier matches of the word in the Document; `element`, the canvas element id). Every query word must start a word (case ignored) in the name, Document or Canvas. Names first, then count, then tree order. Pages and folders only. `open` (`path`, `source`, `scene`) is searched instead of its file. Writes nothing |
 | `ZipPlan(root, scope)` | `ZipPlanResult`: `files` (`path` in the zip, `size`), sorted by path. `scope`: `kind` (`space`, `folder`, `page`), `path`, `attachments` (names the pages use). A Space's zip is every file with `.bava` minus its Trash; a folder's or page's keeps its place with only the named attachments. Hidden files and links never followed |
-| `ExportZip(root, scope, out)` | `Problem`: writes that zip to `out` via a temporary file renamed into place |
+| `ExportZip(root, run, scope, out)` | `Problem`: writes that zip to `out` via a temporary file renamed into place, sending `progress` (`task: "zip"`). `Cancel(run)` leaves nothing at `out`, `code` `cancelled` |
+| `ImportPlan(root, sources, into)` | `ImportPlanResult`: `plan` (`into`; `origins`, each pick's `path` and the `root` its entries' `from` start in, `""` for a zip; `entries`, each `kind` (`page`, `folder`, `file`, `template`), `origin`, `from`, `entry` (its path in a zip), `to` (a path in the Space, a file's name for the attachments, a template's path under the templates folder) and `size`; `renames` (`from`, `to`) for what is numbered to keep both; `pages`, `files`, `templates`, `bytes`). `sources`: pages, folders or zips the user picked, refused (`outside`) if not; anything else is `notImport`. A folder comes in whole, pages land in `into`, a zip keeps its folders; hidden files, links (a linked `.bava` or its folders too) and names a Space cannot hold as they are (one it would trim) stay behind, while a page or folder picked by such a name lands under the name the Space holds; a zip's file at its top goes to the attachments; a Space's or Bava zip's attachments and templates come, never its settings or Trash. Writes nothing |
+| `Import(root, run, sources, into)` | `ImportResult`: `result` (`plan` as carried out, `pages` written with their `path`, `origin` and `from`, `attached` mapping `"<origin>:<from>"` to the attachment each file became). Planned afresh, so a name taken since is numbered, never overwritten. Pages byte for byte; identical bytes reuse an attachment. Sends `progress` (`task: "import"`). `Cancel(run)` removes what it made, folders it made included, and the result's `code` is `cancelled` |
+| `Cancel(run)` | nothing: stops the `Import`, `ExportZip` or `SpacePDF` named `run`, now or as it starts; that call answers `cancelled` |
 | `Trash(root)` | `TrashList`: items (origin, kind, when, size) and total size |
 | `ChooseFolder(title, near)` | `DialogResult`: native folder picker (can make a folder), opening at `near` or the nearest folder above it still there; empty when cancelled |
 | `Reachable(paths)` | `[]bool`: whether Bava may reach each path now (inside a store's sandbox, only what the user allowed) |
@@ -136,7 +154,7 @@ A Space on disk (`docs/file-format.md`, "Spaces"), changed through one
 | `createPage`, `createFolder`, `rename`, `duplicate`, `trash`, `restore`, `deleteForever`, `emptyTrash`, `renameSpace`, `setPageWidth` | as named |
 | `move` | `folder`, `index` (-1 for the end) |
 | `relink` | `edits`: each page's `path`, `before`, `after`; a page is written only if it still reads as `before`; `missed` lists the rest |
-| `attach`, `attachData` | `source` (any file) copied into `.bava/attachments`, or `data` (base64) saved as `name` or `Pasted image <date> <time>.png` |
+| `attach`, `attachData` | `source` (any file, by its whole path; a relative one is refused) copied into `.bava/attachments`, or `data` (base64) saved as `name` or `Pasted image <date> <time>.png` |
 | `renameAttachment`, `trashAttachment` | `attachment` renamed to `name` (extension kept), or to the Trash (back with `restore`) |
 | `savePicture` | a canvas embed's picture, `data` in base64: saved under `name`, numbered when taken, never sharing a file with the same bytes; with `replace`, written to `name` itself (made if gone, untouched if identical). Returns the name used |
 | `deleteSpaceData` | deletes `.bava` for good (Trash included); pages in the Space's folders kept; a `.bava` that is a link is `throughLink` |
@@ -166,7 +184,7 @@ open file, its stamp or history.
 |---|---|
 | `Save(path, contentsBase64)` | error string, empty on success. Base64 because the JSON bridge would send bytes as a number array. Written through `store.Save` (temp file renamed into place); a missing folder is an error |
 | `PagePDF(root, request, out)` | `Problem`: prints a page to a PDF at `out`. Codes: `notOpened` (folder not opened this session), `unavailable` (no printing here), `setup` (paper or margins unprintable), `nothing` (neither Document nor Canvas), `failed` (`error` says how) |
-| `SpacePDF(root, request, out)` | `SpacePDFResult` (`error`, `code`, `page`): a folder or the Space as one PDF, contents first. `PagePDF`'s codes, plus `page` when a page failed (`page` names it; nothing written) |
+| `SpacePDF(root, run, request, out)` | `SpacePDFResult` (`error`, `code`, `page`): a folder or the Space as one PDF, contents first. `PagePDF`'s codes, plus `page` when a page failed (`page` names it; nothing written). `SpaceService.Cancel(run)` stops it between pages and writes nothing, `code` `cancelled` |
 
 - **Page request:** `setup` (`internal/pdfprint` page setup); `document` (the
   page's HTML, styles, `widthPx`, 0 for full width); `canvas` (SVG, `width`,

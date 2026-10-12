@@ -293,7 +293,7 @@ jobs:
           }
           # Each run must leave a PASS: the exit code alone is not trusted, and a
           # run that crashed before reporting leaves no result at all.
-          for scenario in create reopen canvas export-proof; do
+          for scenario in create reopen canvas export-proof import; do
             run "$scenario" || true
             result="$out/$scenario-result.txt"
             if [[ ! -f "$result" ]]; then echo "::error::$scenario left no result"; exit 1; fi
@@ -349,7 +349,7 @@ jobs:
           container="$HOME/Library/Containers/com.tharabyte.bava/Data"
           # Every walk runs, so one failing does not hide what the others show.
           failed=0
-          for scenario in create reopen canvas export-proof; do
+          for scenario in create reopen canvas export-proof import; do
             BAVA_E2E_SANDBOX=1 BAVA_E2E_SCENARIO="$scenario" bin/bava.app/Contents/MacOS/bava || true
             result="$container/smoke-out/$scenario-result.txt"
             if [[ ! -f "$result" ]]; then echo "::error::$scenario left no result in the sandbox"; failed=1; continue; fi
@@ -433,7 +433,7 @@ jobs:
           $package = Get-AppxPackage com.tharabyte.bava
           $out = "$env:USERPROFILE\smoke-out"
           $failed = 0
-          foreach ($scenario in 'create', 'reopen', 'canvas', 'export-proof') {
+          foreach ($scenario in 'create', 'reopen', 'canvas', 'export-proof', 'import') {
             # A package starts without the shell's environment: the walk is
             # named in a file in the home. Not Set-Content, which left none.
             $runFile = Join-Path $env:USERPROFILE '.bava-e2e'
@@ -521,7 +521,7 @@ jobs:
           data="$HOME/.var/app/com.tharabyte.bava.Devel"
           # Every walk runs, so one failing does not hide what the others show.
           failed=0
-          for scenario in create reopen canvas export-proof; do
+          for scenario in create reopen canvas export-proof import; do
             # WebKitGTK without a GPU: software drawing, or the window is blank.
             dbus-run-session -- xvfb-run -a -s "-screen 0 1440x900x24" \
               flatpak run \

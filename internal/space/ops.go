@@ -177,7 +177,7 @@ func (s Space) Duplicate(p string) (string, error) {
 		return "", fmt.Errorf("duplicate: %w", err)
 	}
 	dir, name := parent(rel), path.Base(rel)
-	copyName := s.numbered(dir, strings.TrimSuffix(name, filepath.Ext(name)), filepath.Ext(name))
+	copyName := FreeName(name, onDisk(s.abs(dir)))
 	target := join(dir, copyName)
 	if err := os.WriteFile(s.abs(target), content, 0o644); err != nil {
 		return "", fmt.Errorf("duplicate: %w", err)
@@ -230,16 +230,6 @@ func (s Space) kindOf(rel string) string {
 		return KindFolder
 	}
 	return KindPage
-}
-
-// numbered finds "base 2ext", "base 3ext", … free in a folder.
-func (s Space) numbered(dir, base, ext string) string {
-	for n := 2; ; n++ {
-		name := fmt.Sprintf("%s %d%s", base, n, ext)
-		if _, err := os.Lstat(s.abs(join(dir, name))); errors.Is(err, os.ErrNotExist) {
-			return name
-		}
-	}
 }
 
 // pageName gives a typed name its .md, unless it has one.

@@ -21,6 +21,8 @@ export type {
     CardDetails,
     DialogResult,
     FileDetailsResult,
+    ImportPlanResult,
+    ImportResult,
     IndexPage,
     LogEntry,
     Notice,

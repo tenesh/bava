@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"context"
 	"encoding/base64"
 	"net/url"
 	"os"
@@ -163,7 +164,7 @@ func TestASpacesPDFIsWritten(t *testing.T) {
 	service, root, _ := pdfExport(t)
 	out := filepath.Join(t.TempDir(), "Acme.pdf")
 	req := export.SpaceRequest{Setup: a4, Title: "Acme", Entries: []export.SpaceEntry{{Entry: export.Entry{Title: "Roadmap"}, Path: "Roadmap.md", Document: &export.Page{HTML: "<p>x</p>"}}}}
-	if r := service.SpacePDF(root, req, out); r != (app.SpacePDFResult{}) {
+	if r := service.SpacePDF(context.Background(), root, "", req, out); r != (app.SpacePDFResult{}) {
 		t.Fatal(r)
 	}
 	if _, err := os.Stat(out); err != nil {
@@ -186,11 +187,34 @@ func TestASpacesPDFNamesThePageThatFailed(t *testing.T) {
 		{Entry: export.Entry{Title: "Roadmap"}, Path: "Roadmap.md", Document: &export.Page{HTML: "<p>x</p>"}},
 		{Entry: export.Entry{Title: "Plan"}, Path: "Plan.md", Document: &export.Page{HTML: "<p>jam</p>"}},
 	}}
-	r := service.SpacePDF(root, req, filepath.Join(t.TempDir(), "x.pdf"))
+	r := service.SpacePDF(context.Background(), root, "", req, filepath.Join(t.TempDir(), "x.pdf"))
 	if r.Code != "page" || r.Page != "Plan.md" || r.Error == "" {
 		t.Errorf("result = %+v; want the page named", r)
 	}
-	if r := service.SpacePDF(t.TempDir(), req, filepath.Join(t.TempDir(), "x.pdf")); r.Code != "notOpened" {
+	if r := service.SpacePDF(context.Background(), t.TempDir(), "", req, filepath.Join(t.TempDir(), "x.pdf")); r.Code != "notOpened" {
 		t.Errorf("a folder not opened: %+v", r)
+	}
+}
+
+// Cancelled while it prints, it says so: neither a failed page nor a failure.
+func TestACancelledSpacesPDFSaysSo(t *testing.T) {
+	root := t.TempDir()
+	folders := app.NewOpenedFolders()
+	folders.Allow(root)
+	runs := app.NewRuns()
+	service := app.NewExportService(app.ExportServiceOptions{Folders: folders, Runs: runs, Print: func(_ string, _ pdfprint.PageSetup, out string) error {
+		runs.Stop("run-1")
+		return os.WriteFile(out, testutil.BlankPDF(1, 210, 297), 0o644)
+	}})
+	req := export.SpaceRequest{Setup: a4, Title: "Acme", Entries: []export.SpaceEntry{
+		{Entry: export.Entry{Title: "Roadmap"}, Path: "Roadmap.md", Document: &export.Page{HTML: "<p>x</p>"}},
+		{Entry: export.Entry{Title: "Plan"}, Path: "Plan.md", Document: &export.Page{HTML: "<p>y</p>"}},
+	}}
+	out := filepath.Join(t.TempDir(), "x.pdf")
+	if r := service.SpacePDF(context.Background(), root, "run-1", req, out); r.Code != "cancelled" {
+		t.Errorf("result = %+v; want cancelled", r)
+	}
+	if _, err := os.Stat(out); err == nil {
+		t.Error("a cancelled PDF was written")
 	}
 }

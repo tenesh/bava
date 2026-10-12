@@ -50,6 +50,35 @@ test.describe('export as a Markdown zip', () => {
     expect(zip.files.every((f) => f.startsWith('Marketing/') || f.startsWith('.bava/attachments/'))).toBe(true);
   });
 
+  test("a Space's PDF says it prints, and Cancel writes none", async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    await fault(page, { slowPrint: 1500 });
+    await menu(page, 'file.exportSpace');
+    await expect(spaceDialog(page).getByRole('button', { name: 'Export PDF' })).toBeEnabled();
+    await spaceDialog(page).getByRole('button', { name: 'Export PDF' }).click();
+    await expect(spaceDialog(page)).toContainText('Printing');
+    await spaceDialog(page).getByRole('button', { name: 'Cancel' }).click();
+    await expect(spaceDialog(page)).toHaveCount(0);
+    await expect(statusMessage(page)).toContainText('Export cancelled. No PDF was written.');
+    expect(await spacePdfs(page)).toEqual([]);
+  });
+
+  test('a zip being written counts its files, and Cancel writes none', async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    await fault(page, { slowZip: 300 });
+    await menu(page, 'file.exportSpace');
+    await spaceDialog(page).locator('[data-part="item"]', { hasText: 'Markdown zip' }).click();
+    await spaceDialog(page).getByRole('button', { name: 'Export zip' }).click();
+    await expect(spaceDialog(page)).toContainText('Writing');
+    await expect(spaceDialog(page).getByRole('button', { name: 'Export zip' })).toBeDisabled();
+    await spaceDialog(page).getByRole('button', { name: 'Cancel' }).click();
+    await expect(spaceDialog(page)).toHaveCount(0);
+    await expect(statusMessage(page)).toContainText('Export cancelled. No zip was written.');
+    expect(await zips(page)).toEqual([]);
+  });
+
   test("a page's right-click and its page menu open the page's export", async ({ page }) => {
     await openApp(page, 'light');
     await openPage(page, 'Roadmap.md');
@@ -183,6 +212,22 @@ test.describe('export a folder or the Space as one PDF', () => {
     await menus(page).getByRole('menuitem', { name: 'Export' }).click();
     await spaceDialog(page).getByRole('button', { name: 'Export PDF' }).click();
     await expect(statusMessage(page)).toHaveText('Launch plan could not be printed, so no PDF was made: print the Document: the printer jammed');
+  });
+
+  test('an import waits until the pages are drawn and printed', async ({ page }) => {
+    await openApp(page, 'light');
+    await openSpace(page);
+    await menu(page, 'file.exportSpace');
+    const dialog = spaceDialog(page);
+    await expect(dialog.frameLocator('iframe').locator('.bava-print')).toBeVisible();
+    await fault(page, { slowOpen: 300 });
+    await dialog.getByRole('button', { name: 'Export PDF' }).click();
+    await expect(dialog).toContainText('Drawing');
+    await menu(page, 'file.importFolder');
+    // The picker answers at once in the stand-in: an Import dialog would be up by now.
+    await page.waitForTimeout(500);
+    await expect(page.getByRole('dialog', { name: 'Import' })).toHaveCount(0);
+    await expect(dialog).toContainText('Drawing');
   });
 
   test('Cancel while the pages are drawn stops it, and nothing is printed', async ({ page }) => {

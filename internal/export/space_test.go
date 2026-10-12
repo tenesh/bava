@@ -137,6 +137,30 @@ func TestAPageThatFailsStopsTheExport(t *testing.T) {
 	}
 }
 
+// Cancelled while its first page prints: it stops before the next and
+// writes nothing.
+func TestACancelledSpacesPDFStopsBetweenPagesAndWritesNothing(t *testing.T) {
+	var log []printed
+	print := fakePrinter(&log, "")
+	ctx, cancel := context.WithCancel(context.Background())
+	calls := 0
+	out := filepath.Join(t.TempDir(), "Acme Product.pdf")
+	err := SpacePDF(ctx, spaceRequest(), sources(), func(html string, setup pdfprint.PageSetup, file string) error {
+		calls++
+		cancel()
+		return print(html, setup, file)
+	}, out)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want cancelled", err)
+	}
+	if calls != 1 {
+		t.Errorf("printed %d times after the cancel; want it to stop after the first", calls)
+	}
+	if _, err := os.Stat(out); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("%s was written", out)
+	}
+}
+
 func TestASpacesPDFNeedsAPage(t *testing.T) {
 	req := spaceRequest()
 	req.Entries = []SpaceEntry{{Entry: Entry{Title: "Empty", Folder: true}, Path: "Empty"}}

@@ -46,6 +46,91 @@ export interface Hit {
 }
 
 /**
+ * ImportEntry is one thing an import brings in.
+ */
+export interface ImportEntry {
+    "kind": string;
+
+    /**
+     * Origin is the index of what was picked that it comes from.
+     */
+    "origin": number;
+
+    /**
+     * From is its path within that pick, with "/": what its own links are
+     * relative to ("Q4 notes/Research/Survey.md", ".bava/attachments/logo.png").
+     */
+    "from": string;
+
+    /**
+     * Entry is its path inside the zip it comes from, or "" for a file on disk.
+     */
+    "entry": string;
+
+    /**
+     * To is where it lands: a path in the Space for a page or folder; the
+     * name a file asks for in the attachments (identical bytes reuse a file
+     * already there, and a different file with that name is numbered when it
+     * lands); a template's path in the templates folder ("Team/Retro.md").
+     */
+    "to": string;
+    "size": number;
+}
+
+/**
+ * ImportOrigin is one thing picked: the file or folder on disk, and the
+ * folder its entries' From paths start in ("" for a zip, whose paths start
+ * inside it).
+ */
+export interface ImportOrigin {
+    "path": string;
+    "root": string;
+}
+
+/**
+ * ImportPlan is what an import will bring and where, before anything is
+ * written.
+ */
+export interface ImportPlan {
+    "into": string;
+    "origins": ImportOrigin[] | null;
+    "entries": ImportEntry[] | null;
+    "renames": ImportRename[] | null;
+    "pages": number;
+    "files": number;
+    "templates": number;
+    "bytes": number;
+}
+
+/**
+ * ImportRename is a name that came in numbered to keep both.
+ */
+export interface ImportRename {
+    "from": string;
+    "to": string;
+}
+
+/**
+ * ImportResult is what an import brought: the plan as carried out, the pages
+ * it wrote, and the attachment each file became, keyed "<origin>:<from>".
+ */
+export interface ImportResult {
+    "plan": ImportPlan;
+    "pages": ImportedPage[] | null;
+    "attached": { [_ in string]?: string } | null;
+}
+
+/**
+ * ImportedPage is a page an import wrote: where it is now, and where it came
+ * from (its pick and its path there), for following its links.
+ */
+export interface ImportedPage {
+    "path": string;
+    "origin": number;
+    "from": string;
+}
+
+/**
  * Match is where a result is best shown.
  */
 export interface Match {

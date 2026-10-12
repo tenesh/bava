@@ -80,6 +80,10 @@ func SpacePDF(ctx context.Context, req SpaceRequest, src Sources, print Printer,
 		if e.Folder || (e.Document == nil && e.Canvas == nil) {
 			continue
 		}
+		// A cancel stops between pages: one being printed finishes first.
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		var doc *Page
 		if e.Document != nil {
 			page := *e.Document

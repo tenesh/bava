@@ -47,6 +47,13 @@ const tree = () => ({
   Marketing: [{ name: 'Launch plan.md', path: 'Marketing/Launch plan.md', kind: 'page' as const }],
 });
 
+/** Go's run: it answers cancelled once stopped by the name it was given. */
+function stoppable(io: ReturnType<typeof fakeIO>, answer: object) {
+  const stops = new Map<string, () => void>();
+  io.cancel = vi.fn(async (run: string) => stops.get(run)?.());
+  return (run: string) => new Promise<never>((resolve) => stops.set(run, () => resolve(answer as never)));
+}
+
 describe('a Space', () => {
   it('opens a folder and lists its top level', async () => {
     const space = createSpace(fakeIO(tree()), { storage: memoryStorage() });
@@ -336,5 +343,84 @@ describe("deleting a Space's data", () => {
     expect(io.apply).toHaveBeenCalledWith('/w/Old', { kind: 'deleteSpaceData' });
     io.apply.mockResolvedValueOnce({ path: '', id: '', root: '', error: '' });
     expect(await space.deleteData('/w/Old')).toBeNull();
+  });
+});
+
+describe('importing into a Space', () => {
+  const plan = { into: 'Marketing', origins: [], entries: [], renames: [{ from: 'Q4 notes', to: 'Q4 notes 2' }], pages: 8, files: 4, templates: 0, bytes: 2100 };
+
+  it('plans an import into a folder', async () => {
+    const io = fakeIO(tree());
+    io.importPlan = vi.fn(async () => ({ plan, error: '', code: '' }));
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    const got = await space.importPlan(['/d/Q4 notes'], 'Marketing');
+    expect(io.importPlan).toHaveBeenCalledWith('/w/Acme', ['/d/Q4 notes'], 'Marketing');
+    expect(got).toEqual({ plan, error: '' });
+  });
+
+  it('words a refusal to import', async () => {
+    const io = fakeIO(tree());
+    io.importPlan = vi.fn(async () => ({ plan, error: 'x is not a page', code: 'notImport' }));
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    expect((await space.importPlan(['/d/x.txt'], '')).error).toBe('That is not a page, a folder or a zip Bava can open.');
+  });
+
+  it('cancels an import under way, and says it was cancelled', async () => {
+    const io = fakeIO(tree());
+    const run = stoppable(io, { result: { plan, pages: [], attached: {} }, error: 'context canceled', code: 'cancelled' });
+    io.import = vi.fn((_root: string, name: string) => run(name));
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    const running = space.startImport(['/d/Q4 notes'], 'Marketing');
+    running.cancel();
+    expect(io.cancel).toHaveBeenCalledWith(vi.mocked(io.import).mock.calls[0][1]);
+    expect(await running.done).toEqual({ result: null, error: '', cancelled: true });
+  });
+
+  it('gives what an import brought', async () => {
+    const io = fakeIO(tree());
+    const result = { plan, pages: [{ path: 'Marketing/Q4 notes 2/Goals.md', origin: 0, from: 'Q4 notes/Goals.md' }], attached: {} };
+    io.import = vi.fn(() => Promise.resolve({ result, error: '', code: '' }));
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    expect(await space.startImport(['/d/Q4 notes'], 'Marketing').done).toEqual({ result, error: '', cancelled: false });
+  });
+
+  it('says an import needs a Space', async () => {
+    const space = createSpace(fakeIO(tree()), { storage: memoryStorage() });
+    expect((await space.importPlan(['/d/Q4 notes'], '')).error).toBe('Import into a Space: open one first.');
+    expect((await space.startImport(['/d/Q4 notes'], '').done).error).toBe('Import into a Space: open one first.');
+  });
+
+  it('says an import failed when it was not cancelled', async () => {
+    const io = fakeIO(tree());
+    io.import = vi.fn(() => Promise.reject(new Error('the bridge went away')));
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    expect(await space.startImport(['/d/Q4 notes'], 'Marketing').done).toEqual({ result: null, error: 'Error: the bridge went away', cancelled: false });
+  });
+});
+
+describe('writing a Markdown zip', () => {
+  it('cancels a zip being written, and says it was cancelled', async () => {
+    const io = fakeIO(tree());
+    const run = stoppable(io, { error: 'context canceled', code: 'cancelled' });
+    io.exportZip = vi.fn((_root: string, name: string) => run(name));
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    const running = space.startExportZip({ kind: 'space', path: '', attachments: [] }, '/d/Acme.zip');
+    running.cancel();
+    expect(io.cancel).toHaveBeenCalledWith(vi.mocked(io.exportZip).mock.calls[0][1]);
+    expect(await running.done).toEqual({ error: '', cancelled: true });
+  });
+
+  it('words why a zip could not be written', async () => {
+    const io = fakeIO(tree());
+    io.exportZip = vi.fn(() => Promise.resolve({ error: 'x', code: 'notFolder' }));
+    const space = createSpace(io, { storage: memoryStorage() });
+    await space.open('/w/Acme');
+    expect(await space.startExportZip({ kind: 'folder', path: 'x', attachments: [] }, '/d/x.zip').done).toEqual({ error: 'That is not a folder.', cancelled: false });
   });
 });

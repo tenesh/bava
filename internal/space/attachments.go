@@ -24,10 +24,13 @@ func PastedImageName(at time.Time) string {
 	return "Pasted image " + at.Format("2006-01-02 15.04.05") + ".png"
 }
 
-// Attach copies a file from anywhere into the attachments and returns the
+// Attach copies a file, by its whole path, into the attachments and returns the
 // name it is kept under: its own, or numbered when a different file has that
 // name; an identical file already there is used instead of a second copy.
 func (s Space) Attach(source string) (string, error) {
+	if !filepath.IsAbs(source) {
+		return "", fmt.Errorf("attach %s: not a whole path", filepath.Base(source))
+	}
 	info, err := os.Stat(source)
 	if err != nil || !info.Mode().IsRegular() {
 		return "", fmt.Errorf("attach %s: not a file", filepath.Base(source))
@@ -70,10 +73,7 @@ func (s Space) attach(name string, size int64, open func() (io.ReadCloser, error
 	} else if same != "" {
 		return same, nil
 	}
-	if _, err := os.Lstat(filepath.Join(dir, name)); err == nil {
-		ext := filepath.Ext(name)
-		name = s.freeAttachmentName(strings.TrimSuffix(name, ext), ext)
-	}
+	name = FreeName(name, onDisk(dir))
 	r, err := open()
 	if err != nil {
 		return "", fmt.Errorf("attach %s: %w", name, err)
@@ -109,9 +109,8 @@ func (s Space) SavePicture(name string, data []byte, replace bool) (string, erro
 		if old, err := os.ReadFile(path); err == nil && bytes.Equal(old, data) {
 			return name, nil
 		}
-	} else if _, err := os.Lstat(path); err == nil {
-		ext := filepath.Ext(name)
-		name = s.freeAttachmentName(strings.TrimSuffix(name, ext), ext)
+	} else {
+		name = FreeName(name, onDisk(dir))
 		path = filepath.Join(dir, name)
 	}
 	if err := store.SaveFrom(path, bytes.NewReader(data)); err != nil {
@@ -151,16 +150,6 @@ func hashOf(open func() (io.ReadCloser, error)) ([]byte, error) {
 		return nil, err
 	}
 	return h.Sum(nil), nil
-}
-
-// freeAttachmentName is "base 2.ext", "base 3.ext" and on: the first not taken.
-func (s Space) freeAttachmentName(base, ext string) string {
-	for n := 2; ; n++ {
-		name := fmt.Sprintf("%s %d%s", base, n, ext)
-		if _, err := os.Lstat(filepath.Join(s.attachmentsDir(), name)); errors.Is(err, os.ErrNotExist) {
-			return name
-		}
-	}
 }
 
 // RenameAttachment renames a file in the attachments, keeping its extension

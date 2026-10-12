@@ -232,11 +232,13 @@ var mediaFilters = map[string]struct{ name, pattern string }{
 	"video": {"Videos", "*.mp4;*.webm;*.mov"},
 	// Any file, shown in the page as a card.
 	"file": {"Files", ""},
+	// Pages or a Bava zip, to import.
+	"import": {"Pages and zips", "*.md;*.zip"},
 }
 
-// ChooseMedia shows the native open dialog for images, videos or any file
-// ("image", "video" or "file"), several at once. Cancelling returns no paths
-// and no error.
+// ChooseMedia shows the native open dialog for images, videos, any file,
+// or pages and zips to import ("image", "video", "file", "import"), several
+// at once. Cancelling returns no paths and no error.
 func (s *FileService) ChooseMedia(kind string) PathsResult {
 	filter, ok := mediaFilters[kind]
 	if !ok {

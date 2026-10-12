@@ -32,6 +32,11 @@ describe('Select', () => {
     expect(trigger().hasAttribute('aria-label')).toBe(false);
   });
 
+  it('can be disabled, its trigger then pressing nothing', () => {
+    setup({ disabled: true });
+    expect(trigger().disabled).toBe(true);
+  });
+
   it('shows a choice made by its caller', () => {
     setup({ value: 'size', prefix: undefined });
     expect(trigger().textContent?.trim()).toBe('Size');

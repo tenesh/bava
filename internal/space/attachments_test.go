@@ -101,6 +101,20 @@ func TestAttachRefusesANameThatIsNotOne(t *testing.T) {
 	}
 }
 
+// A source is a whole path: a relative one would be read from wherever the
+// app happens to run.
+func TestAttachRefusesARelativeSource(t *testing.T) {
+	s := newSpace(t)
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "x.png"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+	if _, err := s.Attach("x.png"); err == nil {
+		t.Error("a relative source was attached")
+	}
+}
+
 func TestRenameAttachmentKeepsItsExtensionAndRefusesATakenName(t *testing.T) {
 	s := newSpace(t)
 	if _, err := s.AttachData("logo.png", []byte("one")); err != nil {

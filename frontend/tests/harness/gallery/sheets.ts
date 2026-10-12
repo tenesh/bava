@@ -41,6 +41,7 @@ export const IN_SCREENS: Record<string, string> = {
   PdfPreview: 'dialogs',
   PdfOptions: 'dialogs',
   SpaceExportDialog: 'dialogs',
+  ImportDialog: 'dialogs',
   ZipContents: 'dialogs',
   SaveTemplateDialog: 'dialogs',
   TemplatesDialog: 'dialogs',

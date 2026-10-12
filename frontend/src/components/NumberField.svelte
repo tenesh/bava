@@ -36,6 +36,11 @@
     min-width: 0;
   }
 
+  /* As a disabled button looks. */
+  :global(.bava-number-field[data-disabled]) {
+    opacity: var(--opacity-disabled);
+  }
+
   :global(.bava-number-input.bava-field) {
     width: 100%;
     font-family: var(--font-data);

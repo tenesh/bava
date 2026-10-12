@@ -3,6 +3,7 @@ package e2e_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/tharabyte/bava/internal/e2e"
@@ -22,9 +23,14 @@ func TestTheCommittedScenariosParse(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// A file a picker is answered with is in the repository.
+			// A file a picker is answered with is in the repository, or in
+			// the scratch folder, made there by an earlier walk (the import
+			// walk picks the zip the reopen walk wrote).
 			for _, answer := range sc.Files {
 				for _, picked := range answer {
+					if strings.HasPrefix(picked, "/tmp/scratch/") {
+						continue
+					}
 					if _, err := os.Stat(picked); err != nil {
 						t.Error(err)
 					}

@@ -20,6 +20,8 @@ export const COMMAND_IDS = [
   'file.search',
   'file.exportPage',
   'file.exportSpace',
+  'file.importFiles',
+  'file.importFolder',
   'file.save',
   'file.saveAs',
   'file.export',

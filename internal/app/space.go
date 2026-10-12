@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/url"
 	"path/filepath"
@@ -41,11 +42,27 @@ type SpaceServiceOptions struct {
 	// Access keeps what the user picks, for a store's sandbox; nil keeps
 	// nothing and counts whatever exists as reachable.
 	Access *access.Store
+	// Progress hears how far a long task has got; nil hears nothing. The
+	// app sends each step to the page as a ProgressEvent.
+	Progress func(Progress)
+	// Runs are the long tasks the page can stop, shared with the
+	// ExportService; nil keeps the service's own.
+	Runs *Runs
 }
 
 // NewSpaceService constructs the service registered with the application.
 func NewSpaceService(options SpaceServiceOptions) *SpaceService {
+	if options.Runs == nil {
+		options.Runs = NewRuns()
+	}
 	return &SpaceService{options: options}
+}
+
+// Cancel stops the run the page named: an Import, an ExportZip or a
+// SpacePDF. The call it stops answers CodeCancelled once nothing it began is
+// left behind.
+func (s *SpaceService) Cancel(run string) {
+	s.options.Runs.Stop(run)
 }
 
 // SpaceInfo is an opened Space.
@@ -340,14 +357,26 @@ func (s *SpaceService) ZipPlan(root string, scope space.ZipScope) ZipPlanResult 
 	return ZipPlanResult{Files: files}
 }
 
-// ExportZip writes the Markdown zip of scope to out, a path the user chose.
-// The Space is only read.
-func (s *SpaceService) ExportZip(root string, scope space.ZipScope, out string) Problem {
+// ExportZip writes the Markdown zip of scope to out, a path the user chose,
+// telling the page how far it has got. The Space is only read. Cancelling
+// the call (its context) leaves nothing at out: the Code is then
+// CodeCancelled.
+func (s *SpaceService) ExportZip(ctx context.Context, root, run string, scope space.ZipScope, out string) Problem {
+	ctx, done := s.options.Runs.start(ctx, run)
+	defer done()
 	sp, err := space.Load(root)
 	if err != nil {
 		return Problem{Error: err.Error(), Code: space.Code(err)}
 	}
-	if err := sp.WriteZip(scope, out); err != nil {
+	err = sp.WriteZip(ctx, scope, out, func(done, total int) {
+		if s.options.Progress != nil {
+			s.options.Progress(Progress{Task: "zip", Done: done, Total: total})
+		}
+	})
+	if errors.Is(err, context.Canceled) {
+		return Problem{Error: err.Error(), Code: CodeCancelled}
+	}
+	if err != nil {
 		return Problem{Error: err.Error(), Code: space.Code(err)}
 	}
 	return Problem{}

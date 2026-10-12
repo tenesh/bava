@@ -130,8 +130,9 @@ What is true now and affects the gates. Update it when a milestone closes.
 
 **Position:** R1 done (repository `tharabyte/bava`; adapted canvas code
 attributed in `NOTICE` for good). R2 done (the stores' sandboxes: the same walks pass inside the Mac sandbox,
-the installed MSIX and Flatpak, run 38143080459). Next 15.3
-(import), 15.4 (canvas work), Milestone 16, Milestone 17. Help ▸ Report Issue
+the installed MSIX and Flatpak, run 38143080459). 15.3 (import) built,
+its `import` walk awaiting CI. Next 15.4 (canvas work), Milestone 16,
+Milestone 17. Help ▸ Report Issue
 is hidden until release (`REPORT_ISSUE_ENABLED` in
 `frontend/src/shell/report-issue.ts`); the DMG icon and background stay
 Wails-branded until release.
@@ -145,13 +146,13 @@ to `3.0.0-beta.28`; Node 24 (`.nvmrc`); Ark UI `5.24.2`, Konva `10.5`, Vitest
 **How tests run:** Go, vitest, check, lint and build on the host. Browser
 tests only in Docker (`tests/scripts/browser.sh`; OrbStack must be running).
 The real app only on CI: `-tags e2e` walks `tests/e2e/` (`create`, `reopen`,
-`canvas`, `export-proof`) on all three platforms, and again inside each
+`canvas`, `export-proof`, `import`) on all three platforms, and again inside each
 store's package. Never `wails3 dev` locally.
 
 **Gates:** all green on the host (go vet, go test 15 packages, 2 golden
-fixtures, check, lint, `npm test` 2,880 passed); `npm run browser` 522 passed,
-300 references in `testdata/visual/`; CI end-to-end green, inside each
-store's package too. `npm run build`'s minifier rejects some CSS the browser
+fixtures, check, lint, `npm test` 2,932 passed); `npm run browser` 541 passed,
+308 references in `testdata/visual/`; CI end-to-end green, inside each
+store's package too, before 15.3. `npm run build`'s minifier rejects some CSS the browser
 tests accept (WebKit-only selectors).
 
 **Owed at a running window:** `docs/release-checklist.md`, the one list of
@@ -169,6 +170,8 @@ there, in the same change; a plan's As built points to it.
 - Headless WebKit can keep painting a menu's first state; assert rows from the page.
 - WebKitGTK and WebView2 draw differently (`.ai/rules/canvas.md`, `.ai/rules/wails.md`).
 - `go build .` drops a `bava` binary in the repo root; build into `bin/`.
+- A Wails call's own `cancel()` drops Go's answer: stop a long task by name (`.ai/rules/wails.md`).
+- A test's `KeyboardEvent` needs `cancelable: true`, or `preventDefault` does nothing and a dialog closes.
 - `no-literals.test.ts` reads `#faded` as a hex colour, comments included.
 - Svelte snippet names share scope with script variables.
 - `d2lib.Compile` stack traces usually mean a missing `d2log.With` logger.

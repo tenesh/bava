@@ -77,7 +77,32 @@ export type Faults = {
   slowOpen: number;
   /** A page, by its path in the Space, the system's printing fails on. */
   unprintable: string | null;
+  /** How long each item of an import takes, in milliseconds: time to cancel it. */
+  slowImport: number;
+  /** How long each file of a zip takes to write, in milliseconds. */
+  slowZip: number;
+  /** How long a Space's PDF takes to print, in milliseconds. */
+  slowPrint: number;
 };
+
+type FakeImportEntry = { kind: string; origin: number; from: string; entry: string; to: string; size: number };
+type FakeImportPlan = {
+  into: string;
+  origins: { path: string; root: string }[];
+  entries: FakeImportEntry[];
+  renames: { from: string; to: string }[];
+  pages: number;
+  files: number;
+  templates: number;
+  bytes: number;
+};
+const emptyImport = (): FakeImportPlan => ({ into: '', origins: [], entries: [], renames: [], pages: 0, files: 0, templates: 0, bytes: 0 });
+
+/** A step of a long task, as Go sends it to the window. */
+function sendProgress(task: string, done: number, total: number) {
+  const wails = (globalThis as { _wails?: { dispatchWailsEvent(event: { name: string; data: unknown }): void } })._wails;
+  wails?.dispatchWailsEvent({ name: 'progress', data: { task, done, total } });
+}
 
 /** The one D2 complaint the stand-in knows: a map opened and never closed, as D2 words it. */
 function d2Errors(source: string) {
@@ -90,7 +115,7 @@ function d2Errors(source: string) {
 
 export function createFakes(first: FakeSpace = seedSpace()) {
   const spaces = new Map<string, FakeSpace>([[first.root, first]]);
-  const faults: Faults = { changedOnDisk: false, saveFails: false, settingsSaveFails: false, undrawable: null, unreadable: null, slowOpen: 0, unprintable: null };
+  const faults: Faults = { changedOnDisk: false, saveFails: false, settingsSaveFails: false, undrawable: null, unreadable: null, slowOpen: 0, unprintable: null, slowImport: 0, slowZip: 0, slowPrint: 0 };
   let settings = {
     debounceMs: 250,
     layoutEngine: 'tala',
@@ -334,6 +359,8 @@ export function createFakes(first: FakeSpace = seedSpace()) {
   const exports: { path: string; contentsBase64: string }[] = [];
   // The Markdown zips written: where, and what each held.
   const zips: { out: string; scope: FakeZipScope; files: string[] }[] = [];
+  /** The runs under way, by name: Cancel stops one, as Go does. */
+  const stops = new Map<string, () => void>();
   // The PDFs asked for: of which folder, where, and what was sent to print.
   const pdfs: { root: string; out: string; request: { document: unknown; canvas: unknown; setup: unknown; dark: boolean; numbers: boolean } }[] = [];
   // A page on its own, in no Space, and what Open File's picker answers.
@@ -343,8 +370,71 @@ export function createFakes(first: FakeSpace = seedSpace()) {
   };
   // The Space and folder PDFs asked for.
   const spacePdfs: { root: string; out: string; request: { title: string; entries: { title: string; path: string; folder: boolean; document: unknown; canvas: unknown }[] } }[] = [];
+  /**
+   * Files on the user's disk, outside any Space, by absolute path: what an
+   * import reads. A folder of notes, a page beside it, and its picture.
+   */
+  const disk: Record<string, string> = {
+    [`${PARENT}/Q4 notes/Goals.md`]: '# Goals\n\n![chart](chart.png)\n',
+    [`${PARENT}/Q4 notes/chart.png`]: 'png',
+    [`${PARENT}/Q4 notes/Press/Media kit.md`]: '# Media kit\n\nSee [the goals](../Goals.md).\n',
+    [`${PARENT}/Q4 notes/.git/config`]: '[core]\n',
+  };
+
+  /** What importing `sources` into `into` brings, numbered as Go numbers it, or Go's refusal. */
+  function planImport(space: FakeSpace, sources: string[], into: string): FakeImportPlan | { error: string; code: string } {
+    if (into && !isFolder(space, into)) return refusal('notFolder', `"${into}" is not a folder`);
+    const plan: FakeImportPlan = { ...emptyImport(), into };
+    const given = new Set<string>();
+    const land = (name: string, folder: boolean) => {
+      const ext = folder || !name.endsWith(PAGE_EXT) ? '' : PAGE_EXT;
+      const base = name.slice(0, name.length - ext.length);
+      let got = name;
+      for (let n = 2; exists(space, join(into, got)) || given.has(got); n += 1) got = `${base} ${n}${ext}`;
+      given.add(got);
+      if (got !== name) plan.renames.push({ from: base, to: got.slice(0, got.length - ext.length) });
+      return got;
+    };
+    for (const [origin, source] of sources.entries()) {
+      const name = baseOf(source);
+      plan.origins.push({ path: source, root: parentOf(source) });
+      if (source.endsWith(PAGE_EXT) && source in disk) {
+        plan.entries.push({ kind: 'page', origin, from: name, entry: '', to: join(into, land(name, false)), size: disk[source].length });
+        continue;
+      }
+      const inside = Object.keys(disk).filter((path) => path.startsWith(`${source}/`)).sort();
+      if (inside.length === 0) return refusal('notImport', `${name} is not a page, a folder or a zip`);
+      const top = join(into, land(name, true));
+      plan.entries.push({ kind: 'folder', origin, from: name, entry: '', to: top, size: 0 });
+      const folders = new Set<string>();
+      for (const path of inside) {
+        const parts = path.slice(source.length + 1).split('/');
+        if (parts.some((part) => part.startsWith('.'))) continue;
+        for (let i = 1; i < parts.length; i += 1) {
+          const rel = parts.slice(0, i).join('/');
+          if (folders.has(rel)) continue;
+          folders.add(rel);
+          plan.entries.push({ kind: 'folder', origin, from: `${name}/${rel}`, entry: '', to: `${top}/${rel}`, size: 0 });
+        }
+        const rel = parts.join('/');
+        const kind = rel.endsWith(PAGE_EXT) ? 'page' : 'file';
+        plan.entries.push({ kind, origin, from: `${name}/${rel}`, entry: '', to: kind === 'page' ? `${top}/${rel}` : parts[parts.length - 1], size: disk[path].length });
+      }
+    }
+    plan.pages = plan.entries.filter((e) => e.kind === 'page').length;
+    plan.files = plan.entries.filter((e) => e.kind === 'file').length;
+    plan.bytes = plan.entries.reduce((sum, e) => sum + e.size, 0);
+    return plan;
+  }
+
   const harness = {
     exports,
+    /** Files on the user's disk an import reads, by absolute path. */
+    disk,
+    /** What the import file picker answers. */
+    importFiles: [] as string[],
+    /** What the folder picker answers when asked for a folder to import; '' answers as for any folder. */
+    importFolder: `${PARENT}/Q4 notes`,
     zips,
     pdfs,
     spacePdfs,
@@ -493,20 +583,84 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         const plan = fakeZipPlan(space, scope);
         return Array.isArray(plan) ? { files: plan, error: '', code: '' } : { files: [], ...refusal(plan.code, plan.error) };
       },
-      async ExportZip(root: string, scope: FakeZipScope, out: string) {
+      async ImportPlan(root: string, sources: string[], into: string) {
         const space = spaceOf(root);
-        if (!space) return refusal('notSpace', 'not a Space');
-        const plan = fakeZipPlan(space, scope);
-        if (!Array.isArray(plan)) return refusal(plan.code, plan.error);
-        zips.push({ out, scope, files: plan.map((f) => f.path) });
-        return { error: '', code: '' };
+        if (!space) return { plan: emptyImport(), ...refusal('notSpace', 'not a Space') };
+        const plan = planImport(space, sources, into);
+        return 'code' in plan ? { plan: emptyImport(), ...plan } : { plan, error: '', code: '' };
+      },
+      Import(root: string, name: string, sources: string[], into: string) {
+        let cancelled = false;
+        stops.set(name, () => void (cancelled = true));
+        const run = (async () => {
+          const space = spaceOf(root);
+          if (!space) return { result: { plan: emptyImport(), pages: [], attached: {} }, ...refusal('notSpace', 'not a Space') };
+          const plan = planImport(space, sources, into);
+          if ('code' in plan) return { result: { plan: emptyImport(), pages: [], attached: {} }, ...plan };
+          const made: string[] = [];
+          const pages: { path: string; origin: number; from: string }[] = [];
+          const attached: Record<string, string> = {};
+          for (const [i, e] of plan.entries.entries()) {
+            if (faults.slowImport) await new Promise((resolve) => setTimeout(resolve, faults.slowImport));
+            if (cancelled) {
+              // Undone, as Go undoes it: what this import made goes again.
+              for (const path of made.reverse()) {
+                remove(space, path);
+                delete space.pages[path];
+                delete space.folders[path];
+              }
+              return { result: { plan: emptyImport(), pages: [], attached: {} }, error: 'context canceled', code: 'cancelled' };
+            }
+            const source = `${plan.origins[e.origin].root}/${e.from}`;
+            if (e.kind === 'folder') {
+              insert(space, parentOf(e.to), baseOf(e.to));
+              space.folders[e.to] = [];
+              made.push(e.to);
+            } else if (e.kind === 'page') {
+              insert(space, parentOf(e.to), baseOf(e.to));
+              space.pages[e.to] = { source: disk[source] ?? '', scene: { version: 1, elements: [] } };
+              made.push(e.to);
+              pages.push({ path: e.to, origin: e.origin, from: e.from });
+            } else if (e.kind === 'file') {
+              if (!space.attachments.some((file) => file.name === e.to)) space.attachments.push({ name: e.to, size: e.size, modified: '2026-10-12T09:00:00Z' });
+              attached[`${e.origin}:${e.from}`] = e.to;
+            }
+            sendProgress('import', i + 1, plan.entries.length);
+          }
+          return { result: { plan, pages, attached }, error: '', code: '' };
+        })();
+        return run.finally(() => stops.delete(name));
+      },
+      ExportZip(root: string, name: string, scope: FakeZipScope, out: string) {
+        let cancelled = false;
+        stops.set(name, () => void (cancelled = true));
+        const run = (async () => {
+          const space = spaceOf(root);
+          if (!space) return refusal('notSpace', 'not a Space');
+          const plan = fakeZipPlan(space, scope);
+          if (!Array.isArray(plan)) return refusal(plan.code, plan.error);
+          for (const [i] of plan.entries()) {
+            if (faults.slowZip) await new Promise((resolve) => setTimeout(resolve, faults.slowZip));
+            // Nothing is written when cancelled, as Go leaves nothing at out.
+            if (cancelled) return { error: 'context canceled', code: 'cancelled' };
+            sendProgress('zip', i + 1, plan.length);
+          }
+          zips.push({ out, scope, files: plan.map((f) => f.path) });
+          return { error: '', code: '' };
+        })();
+        return run.finally(() => stops.delete(name));
+      },
+      async Cancel(name: string) {
+        stops.get(name)?.();
       },
       async Trash(root: string) {
         const space = spaceOf(root);
         if (!space) return { items: null, size: 0, ...refusal('notSpace', 'not a Space') };
         return { items: space.trash, size: space.trash.reduce((sum, item) => sum + item.size, 0), error: '', code: '' };
       },
-      async ChooseFolder(_title: string, near = '') {
+      async ChooseFolder(title: string, near = '') {
+        // A folder to import is one on the user's disk, outside the Space.
+        if (title === 'Choose a folder to import') return { path: harness.importFolder, error: '' };
         // The user accepts the folder suggested, else picks the seeded Space.
         harness.chosenNear.push(near);
         const path = near || SPACE_ROOT;
@@ -552,8 +706,8 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       async ChooseFileToSave(suggestedName: string) {
         return { path: `${PARENT}/${suggestedName}`, error: '' };
       },
-      async ChooseMedia(_kind: string) {
-        return { paths: [], error: '' };
+      async ChooseMedia(kind: string) {
+        return { paths: kind === 'import' ? [...harness.importFiles] : [], error: '' };
       },
       async ClipboardImage() {
         return '';
@@ -615,12 +769,20 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         pdfs.push({ root, out, request });
         return { error: '', code: '' };
       },
-      async SpacePDF(root: string, request: (typeof spacePdfs)[number]['request'], out: string) {
-        if (!request.entries.some((e) => !e.folder)) return { error: 'a PDF needs a page', code: 'nothing', page: '' };
-        const jammed = request.entries.find((e) => e.path === faults.unprintable);
-        if (jammed) return { error: `export: ${jammed.path}: print the Document: the printer jammed`, code: 'page', page: jammed.path };
-        spacePdfs.push({ root, out, request });
-        return { error: '', code: '', page: '' };
+      SpacePDF(root: string, name: string, request: (typeof spacePdfs)[number]['request'], out: string) {
+        let cancelled = false;
+        stops.set(name, () => void (cancelled = true));
+        const run = (async () => {
+          if (!request.entries.some((e) => !e.folder)) return { error: 'a PDF needs a page', code: 'nothing', page: '' };
+          const jammed = request.entries.find((e) => e.path === faults.unprintable);
+          if (jammed) return { error: `export: ${jammed.path}: print the Document: the printer jammed`, code: 'page', page: jammed.path };
+          if (faults.slowPrint) await new Promise((resolve) => setTimeout(resolve, faults.slowPrint));
+          // Cancelled while printing: nothing is written, as Go writes nothing.
+          if (cancelled) return { error: 'context canceled', code: 'cancelled', page: '' };
+          spacePdfs.push({ root, out, request });
+          return { error: '', code: '', page: '' };
+        })();
+        return run.finally(() => stops.delete(name));
       },
     },
     MenuService: {

@@ -51,9 +51,9 @@ export function ChooseFileToSave(suggestedName: string): $CancellablePromise<$mo
 }
 
 /**
- * ChooseMedia shows the native open dialog for images, videos or any file
- * ("image", "video" or "file"), several at once. Cancelling returns no paths
- * and no error.
+ * ChooseMedia shows the native open dialog for images, videos, any file,
+ * or pages and zips to import ("image", "video", "file", "import"), several
+ * at once. Cancelling returns no paths and no error.
  */
 export function ChooseMedia(kind: string): $CancellablePromise<$models.PathsResult> {
     return $Call.ByID(1287745027, kind);

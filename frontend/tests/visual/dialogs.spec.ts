@@ -112,6 +112,61 @@ for (const theme of THEMES) {
       await shotDialog(page, shot('dialogs', 'export-space', 'zip', theme), dialog);
     });
 
+    // Held at its first file, so the count reads the same every run.
+    test('writing the Space as a zip', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await page.evaluate(() => Object.assign((window as unknown as { __bava: { fakes: { harness: { faults: object } } } }).__bava.fakes.harness.faults, { slowZip: 600000 }));
+      await menu(page, 'file.exportSpace');
+      const dialog = page.getByRole('dialog', { name: 'Export Space' });
+      await dialog.locator('[data-part="item"]', { hasText: 'Markdown zip' }).click();
+      await dialog.getByRole('button', { name: 'Export zip' }).click();
+      await expect(dialog).toContainText('Writing 0 of');
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'export-space', 'writing', theme), dialog);
+    });
+
+    test('printing the Space', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await page.evaluate(() => Object.assign((window as unknown as { __bava: { fakes: { harness: { faults: object } } } }).__bava.fakes.harness.faults, { slowPrint: 600000 }));
+      await menu(page, 'file.exportSpace');
+      const dialog = page.getByRole('dialog', { name: 'Export Space' });
+      await expect(dialog.frameLocator('iframe').locator('.bava-print')).toBeVisible();
+      await dialog.getByRole('button', { name: 'Export PDF' }).click();
+      await expect(dialog).toContainText('Printing');
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'export-space', 'printing', theme), dialog);
+    });
+
+    // Importing a folder a second time: it comes in numbered to keep both.
+    test('import a folder', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await menu(page, 'file.importFolder');
+      const dialog = page.getByRole('dialog', { name: 'Import' });
+      await dialog.getByRole('button', { name: 'Import' }).click();
+      await expect(dialog).toHaveCount(0);
+      await menu(page, 'file.importFolder');
+      await expect(dialog).toContainText('Renamed to keep both');
+      await expect(dialog.getByRole('button', { name: 'Import' })).toBeEnabled();
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'import', 'renamed', theme), dialog);
+    });
+
+    // Held at its first item, so the count reads the same every run.
+    test('importing', async ({ page }) => {
+      await openApp(page, theme);
+      await openSpace(page);
+      await page.evaluate(() => Object.assign((window as unknown as { __bava: { fakes: { harness: { faults: object } } } }).__bava.fakes.harness.faults, { slowImport: 600000 }));
+      await menu(page, 'file.importFolder');
+      const dialog = page.getByRole('dialog', { name: 'Import' });
+      await dialog.getByRole('button', { name: 'Import' }).click();
+      await expect(dialog).toContainText('Importing 0 of');
+      await restPointer(page);
+      await shotDialog(page, shot('dialogs', 'import', 'importing', theme), dialog);
+    });
+
     // Find on the Canvas: every match outlined, the current one chosen.
     test('find on the Canvas', async ({ page }) => {
       await openApp(page, theme);

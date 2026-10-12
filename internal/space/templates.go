@@ -145,7 +145,7 @@ func (s Space) DuplicateTemplate(p string) (string, error) {
 		return "", fmt.Errorf("duplicate template: %w", err)
 	}
 	dir := parent(templatePath(group, file))
-	copyName := s.numbered(dir, strings.TrimSuffix(file, filepath.Ext(file)), filepath.Ext(file))
+	copyName := FreeName(file, onDisk(s.abs(dir)))
 	target := join(dir, copyName)
 	if err := os.WriteFile(s.abs(target), content, 0o644); err != nil {
 		return "", fmt.Errorf("duplicate template: %w", err)

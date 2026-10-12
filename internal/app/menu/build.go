@@ -201,7 +201,7 @@ func (b *Built) Apply(state State) bool {
 	check("view.files", state.ShowsFiles)
 	check("view.ai", state.ShowsAI)
 	check("canvas.snapToObjects", state.ObjectSnap)
-	for _, id := range []string{"file.newFolder", "space.trash", "file.spaceSettings"} {
+	for _, id := range []string{"file.newFolder", "space.trash", "file.spaceSettings", "file.importFiles", "file.importFolder"} {
 		enable(id, state.HasSpace)
 	}
 	for _, theme := range []string{"light", "dark", "system"} {

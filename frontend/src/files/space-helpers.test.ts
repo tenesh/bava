@@ -49,6 +49,20 @@ describe('the Files tree\'s menu', () => {
     expect(ids(treeMenu('page', (k) => k))).toEqual(['tree.newPage', 'tree.newFolder', 'tree.rename', 'tree.duplicate', 'tree.saveTemplate', 'tree.export', 'tree.reveal', 'tree.trash']);
   });
 
+  it('imports into a folder, files or a folder, after Export', () => {
+    const items = treeMenu('folder', (k) => k);
+    const at = items.findIndex((i) => i.kind !== 'separator' && i.id === 'tree.importMenu');
+    const before = items[at - 1];
+    expect(before.kind !== 'separator' && before.id).toBe('tree.export');
+    const menu = items[at];
+    expect(menu.kind === 'submenu' && menu.items.map((i) => (i.kind === 'item' ? i.id : ''))).toEqual(['tree.importFiles', 'tree.importFolder']);
+  });
+
+  it('imports nowhere but into a folder', () => {
+    const top = (items: ReturnType<typeof treeMenu>) => items.flatMap((i) => (i.kind === 'separator' ? [] : [i.id]));
+    expect(top(treeMenu('page', (k) => k))).not.toContain('tree.importMenu');
+  });
+
   it('cannot duplicate a folder', () => {
     expect(ids(treeMenu('folder', (k) => k))).not.toContain('tree.duplicate');
   });

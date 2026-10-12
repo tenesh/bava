@@ -52,6 +52,7 @@ build contains the driver.
 | `reopen` | Reopens it, checks Media, renames a page, searches, exports a zip and PDFs and reads them back |
 | `canvas` | Shapes and an attached arrow, move, undo, redo, Diagram from Code, an embed from `/`; reads back shapes, bindings, labels, embed |
 | `export-proof` | System printing to PDF: A4 portrait, Letter landscape, A3 no margins, and a page over 2 MB |
+| `import` | Imports the zip `reopen` wrote into a new folder of that Space: pages, their picture address rewritten, a link kept, a template numbered to keep both |
 
 | Step | Takes |
 |---|---|

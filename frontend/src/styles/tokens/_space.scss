@@ -252,6 +252,8 @@
   // The padding of the mark's tile at splash size.
   --size-mark-tile-splash-padding: 14px;
   --size-progress-thickness: 2px;
+  // A progress bar beside its count in a dialog's foot ("Importing 5 of 12").
+  --size-progress-inline: 96px;
 
   // The diagram dialog: its size, never larger than the window allows, and
   // the error list beneath its panes.

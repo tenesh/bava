@@ -152,13 +152,9 @@ func (s Space) Restore(id string) (string, error) {
 	if err := os.MkdirAll(s.abs(dir), 0o755); err != nil {
 		return "", fmt.Errorf("restore: %w", err)
 	}
-	back := name
-	if _, err := os.Lstat(s.abs(rel)); err == nil {
-		ext := ""
-		if stored.Kind == KindPage {
-			ext = filepath.Ext(name)
-		}
-		back = s.numbered(dir, strings.TrimSuffix(name, ext), ext)
+	back := FreeFolderName(name, onDisk(s.abs(dir)))
+	if stored.Kind == KindPage {
+		back = FreeName(name, onDisk(s.abs(dir)))
 	}
 	target := join(dir, back)
 	if err := os.Rename(filepath.Join(slot, name), s.abs(target)); err != nil {
@@ -253,11 +249,7 @@ func (s Space) restoreAttachment(slot string, stored itemFile) (string, error) {
 	if err := os.MkdirAll(s.attachmentsDir(), 0o755); err != nil {
 		return "", fmt.Errorf("restore: %w", err)
 	}
-	back := name
-	if _, err := os.Lstat(filepath.Join(s.attachmentsDir(), name)); err == nil {
-		ext := filepath.Ext(name)
-		back = freeName(s.attachmentsDir(), strings.TrimSuffix(name, ext), ext)
-	}
+	back := FreeName(name, onDisk(s.attachmentsDir()))
 	if err := os.Rename(filepath.Join(slot, name), filepath.Join(s.attachmentsDir(), back)); err != nil {
 		return "", fmt.Errorf("restore: %w", err)
 	}
@@ -265,14 +257,4 @@ func (s Space) restoreAttachment(slot string, stored itemFile) (string, error) {
 		return "", fmt.Errorf("restore: %w", err)
 	}
 	return attachmentsRel + "/" + back, nil
-}
-
-// freeName finds "base 2ext", "base 3ext", … free in a folder on disk.
-func freeName(dir, base, ext string) string {
-	for n := 2; ; n++ {
-		name := fmt.Sprintf("%s %d%s", base, n, ext)
-		if _, err := os.Lstat(filepath.Join(dir, name)); errors.Is(err, os.ErrNotExist) {
-			return name
-		}
-	}
 }

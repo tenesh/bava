@@ -70,6 +70,11 @@
     background: var(--color-control-active);
   }
 
+  /* As a disabled button looks. */
+  :global(.bava-segments[data-disabled]) {
+    opacity: var(--opacity-disabled);
+  }
+
   :global(.bava-segment[data-state='checked']) {
     background: var(--color-segment-chosen);
     color: var(--color-text-primary);

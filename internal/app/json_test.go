@@ -6,6 +6,7 @@ import (
 	"github.com/tharabyte/bava/internal/app"
 	"github.com/tharabyte/bava/internal/export"
 	"github.com/tharabyte/bava/internal/pdfprint"
+	"github.com/tharabyte/bava/internal/space"
 	"github.com/tharabyte/bava/internal/testutil"
 )
 
@@ -41,6 +42,15 @@ func TestServiceTypesKeepTheirJSONKeys(t *testing.T) {
 		{"TemplateList", app.TemplateList{}, []string{"code", "error", "templates"}},
 		{"SpaceSearch", app.SpaceSearch{}, []string{"code", "error", "hits", "more"}},
 		{"ZipPlanResult", app.ZipPlanResult{}, []string{"code", "error", "files"}},
+		{"ImportPlanResult", app.ImportPlanResult{}, []string{"code", "error", "plan"}},
+		{"ImportResult", app.ImportResult{}, []string{"code", "error", "result"}},
+		{"Progress", app.Progress{}, []string{"done", "task", "total"}},
+		{"space.ImportPlan", space.ImportPlan{}, []string{"bytes", "entries", "files", "into", "origins", "pages", "renames", "templates"}},
+		{"space.ImportEntry", space.ImportEntry{}, []string{"entry", "from", "kind", "origin", "size", "to"}},
+		{"space.ImportOrigin", space.ImportOrigin{}, []string{"path", "root"}},
+		{"space.ImportRename", space.ImportRename{}, []string{"from", "to"}},
+		{"space.ImportResult", space.ImportResult{}, []string{"attached", "pages", "plan"}},
+		{"space.ImportedPage", space.ImportedPage{}, []string{"from", "origin", "path"}},
 		{"export.Request", export.Request{}, []string{"canvas", "dark", "document", "ink", "numbers", "paper", "setup"}},
 		{"export.Page", export.Page{}, []string{"css", "html", "widthPx"}},
 		{"export.Canvas", export.Canvas{}, []string{"height", "svg", "width"}},
