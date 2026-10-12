@@ -152,7 +152,7 @@ The real app only on CI: `-tags e2e` walks `tests/e2e/` (`create`, `reopen`,
 store's package. Never `wails3 dev` locally.
 
 **Gates:** all green on the host (go vet, go test 15 packages, 2 golden
-fixtures, check, lint, `npm test` 3,026 passed); `npm run browser` 567 passed,
+fixtures, check, lint, `npm test` 3,040 passed); `npm run browser` 576 passed,
 318 references in `testdata/visual/`; CI end-to-end green, inside each
 store's package too. `npm run build`'s minifier rejects some CSS the browser
 tests accept (WebKit-only selectors).

@@ -93,6 +93,7 @@ export const messages = {
   'slash.webLink': 'Web link',
   'slash.embedFrame': 'Embed frame',
   'canvas.embedInDocument': 'Embed in Document',
+  'canvas.shapesPasteOnCanvas': 'Shapes paste on the canvas',
   'frames.label': 'Frames',
   'frames.search': 'Search frames',
   'frames.thisPage': 'This page',

@@ -67,6 +67,9 @@ Start Bava as if it had never run:
 - [ ] By eye: line stubs, side dots, rounded corners, the anchor disc, cursors, a code block's bottom edge.
 - [ ] Submenus: the highlight in light theme, and moving between them by mouse.
 - [ ] While dragging a shape, an `x · y` readout shows below it and clears on release.
+- [ ] Copy shapes and an arrow between them in one Bava window, paste in another: the same shapes, the arrow attached; on each system.
+- [ ] Paste text from a browser and from an email app onto the canvas: one text element, its lines kept, a long paragraph wrapped.
+- [ ] Copy shapes, then paste into a vector drawing app: the picture shows.
 
 ## Media
 

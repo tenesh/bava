@@ -12,7 +12,7 @@
  * is told to offer the export dialog instead, so the action still ends with
  * the user holding the image.
  */
-import { Clipboard } from '@wailsio/runtime';
+import { systemClipboard } from '../../ipc/clipboard';
 
 export type CopyResult = {
   copied: boolean;
@@ -41,7 +41,7 @@ const message = (error: unknown): string => (error instanceof Error ? error.mess
 
 /** Put SVG text on the clipboard. */
 export async function copySvg(svg: string, options: { setText?: (text: string) => Promise<unknown> } = {}): Promise<CopyResult> {
-  const setText = options.setText ?? ((text: string) => Clipboard.SetText(text));
+  const setText = options.setText ?? ((text: string) => systemClipboard.setText(text));
   try {
     await setText(svg);
     return { copied: true };

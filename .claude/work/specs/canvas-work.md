@@ -51,3 +51,31 @@ fit their shape. 15.4b: the command palette. 15.4c: paste from other apps.
    grouped by menu in menu order. The recent ones are kept in memory for the
    session, never saved. Listing all with nothing recent, and listing
    nothing until typed, were not chosen.
+
+## 15.4c: paste from other apps
+
+8. **Copied shapes go on the system clipboard as an SVG picture** (2026-10-13),
+   with Bava's own data inside it, so Bava pastes them back as the same
+   shapes in any window or page; other apps get the picture (vector drawing
+   apps) or its markup (text editors). The `bava-canvas` block as text, and
+   the words alone, were not chosen. The clipboard carries text only, so the
+   SVG travels as text.
+
+9. **Text pasted from another app becomes one text element** (2026-10-13),
+   its line breaks kept, wrapped at a set width so a long paragraph is not
+   one endless line; one undo step. One element per paragraph, and a shape
+   per line, were not chosen.
+
+10. **A picture pasted on the canvas becomes a picture element** (2026-10-13):
+    a new kind of canvas element, its file saved in the Space's attachments,
+    movable and resizable, drawn in exports and embeds. Saying where pictures
+    can go instead (the page) was not chosen. Planned as its own part after
+    the text and shapes paste.
+
+11. **Pictures also come by drop, Insert ▸ Picture and Media** (2026-10-13):
+    image files dropped on the canvas land where dropped; Insert ▸ Picture
+    (and the canvas's + menu) opens the file picker; a picture dragged from
+    the Space's Media reuses its attachment.
+
+12. **A picture keeps its proportions when resized** (2026-10-13); Shift frees
+    it, the opposite of shapes. Resizing freely like shapes was not chosen.

@@ -86,7 +86,7 @@ export function createExporter(options: ExporterOptions) {
   const monoStack = (): string => readRootVariable('--font-mono').trim() || 'Geist Mono';
 
   /** The SVG for the current settings. `css` carries the font when asked. */
-  function svgFor(current: ExportArea, css = '', read?: ReadVariable): string {
+  function svgFor(current: ExportArea, css = '', read?: ReadVariable, carry?: SceneElement[]): string {
     const draw = (reader: ReadVariable) =>
       toSvg(current, {
         read: reader,
@@ -94,6 +94,7 @@ export function createExporter(options: ExporterOptions) {
         css,
         codeRuns: options.codeRuns?.(),
         monoAdvance: options.monoAdvance?.(),
+        carry,
       });
     // The preview and a written file resolve colours the same way: in the
     // theme the settings ask for, whatever the screen is showing.
@@ -208,6 +209,17 @@ export function createExporter(options: ExporterOptions) {
     /** The dialog's Copy button: the picture as a PNG. */
     copy(): Promise<void> {
       return copyOrOffer('png');
+    },
+
+    /**
+     * Copy and Cut on the canvas: the elements drawn as Copy as SVG draws
+     * them, carrying the elements themselves so Bava pastes them back as
+     * shapes. Thrown errors are the caller's.
+     */
+    async carrying(elements: SceneElement[]): Promise<string> {
+      const current = exportArea({ elements }, []);
+      const css = await fontCss(current.elements, { family: fontStack(), monoFamily: monoStack() });
+      return svgFor(current, css, undefined, elements);
     },
 
     /** Copy as ▸ PNG or SVG, from the menu, with no dialog unless it fails. */

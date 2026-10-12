@@ -88,6 +88,8 @@
   import { wheelAction } from './canvas/navigation';
   import { LabelEditor, commitLabel, commitText, editableAt, insertText, labelBox } from './canvas/label-editor';
   import { canvasLineWidth, measureFor } from './canvas/text-measure';
+  import { readCanvasClipboard } from './canvas/clipboard-read';
+  import { PASTED_TEXT_WIDTH, isWrapped, longestLine, pastedText, textSize } from './canvas/paste-text';
   import { growToLabel, labelHeight } from './canvas/label-box';
   import { wrapLines } from './canvas/text-layout';
   import { applyStyle, currentStyle, CODE_FONT_SIZE, setProperty, shownProperty, type PropertyKey } from './canvas/style';
@@ -137,7 +139,8 @@
     type MenuSpec,
   } from './shell/shortcuts';
   import menuSpec from '../../internal/app/menu/spec.json';
-  import { Browser, Clipboard, Events } from '@wailsio/runtime';
+  import { Browser, Events } from '@wailsio/runtime';
+  import { systemClipboard } from './ipc/clipboard';
   import { followAction, followBeside, joinFile, outsideTarget, resolveLink, type Move } from './docs/links';
   import { relinkEdits } from './docs/page-links';
   import { addMedia, type MediaFile } from './docs/add-media';
@@ -419,7 +422,6 @@
       units,
       canGroup: units >= 2,
       canUngroup: selected.some((e) => e.type === 'group'),
-      canPaste: canvasCommands.canPaste,
       canPasteStyles: canvasCommands.canPasteStyles,
       hasLocked: canvasCommands.hasLocked,
       // One frame alone: it can be embedded in the page.
@@ -433,8 +435,17 @@
    * closes it at once.
    */
   function openContextMenu(anchor: { x: number; y: number }, overflow: ToolbarControl[] = []) {
-    const items = [...contextMenuFor(selectionInfo()), ...overflowMenu(overflow)];
-    setTimeout(() => (contextMenu = { items, anchor }));
+    const host = canvasHostEl?.getBoundingClientRect();
+    contextSpot = host ? viewport.screenToScene({ x: anchor.x - host.left, y: anchor.y - host.top }) : null;
+    // Paste is offered when the system clipboard holds something to paste,
+    // copied in any window or app.
+    void systemClipboard
+      .text()
+      .catch(() => '')
+      .then((text) => {
+        const items = [...contextMenuFor({ ...selectionInfo(), canPaste: text.trim() !== '' }), ...overflowMenu(overflow)];
+        setTimeout(() => (contextMenu = { items, anchor }));
+      });
   }
 
   // The insert panel beside the rail.
@@ -459,6 +470,16 @@
   // The canvas is on screen only with a document open and a view that shows it.
   // Hidden, it takes no keys: Backspace must not empty a canvas nobody can see.
   const canvasShown = () => doc.isOpen && view.showsCanvas;
+  /** The scene point under the pointer while it is over the canvas: where a paste lands. */
+  let pointerOnCanvas: { x: number; y: number } | null = null;
+  /** Where the right-click menu was opened, in the scene: where its Paste lands. */
+  let contextSpot: { x: number; y: number } | null = null;
+  /** Counts scenes loaded, so a copy knows whether it is pasted in the page it came from. */
+  let sceneLoads = 0;
+  /** The last canvas copy in this window: what it held, as text, and in which scene. */
+  let lastCopy: { elements: string; scene: number } | null = null;
+  /** The clipboard write of the last Copy or Cut, which a Paste right after waits for. */
+  let copying: Promise<void> = Promise.resolve();
 
   // The splash covers the window until settings and fonts have loaded.
   const settingsLoad = settingsState.load();
@@ -484,7 +505,7 @@
   };
 
   async function copyText(text: string, confirmation: string) {
-    await Clipboard.SetText(text);
+    await systemClipboard.setText(text);
     notify(confirmation);
   }
 
@@ -811,6 +832,7 @@
   // Loading a document is not an edit: history starts over, so undo after
   // New or Open cannot bring the previous document's shapes back.
   function loadScene(elements: unknown[]) {
+    sceneLoads += 1;
     history.reset({ elements: elements as never });
     selection.clear();
     syncSelection();
@@ -2502,11 +2524,17 @@
     if (!labelEditor) return;
     const isText = element.type === 'text';
     const isArrow = element.type === 'arrow';
-    const measure = measurerFor(element);
     const paint = paintFor(element, readRootVariable);
     // The box the stage draws the text in, so the field wraps and sits as the
     // text will be drawn.
     const lineWidth = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
+    // Text kept narrower than its lines (pasted, or made so) stays wrapped at
+    // its width as it is edited, growing taller.
+    const natural = isText ? longestLine((element as { text: string }).text, lineWidth) : 0;
+    const wraps = isText && isWrapped(element.w, natural);
+    const measure = wraps
+      ? (value: string) => textSize(value, { w: element.w, natural }, paint.font, lineWidth)
+      : measurerFor(element);
     // An arrow's label is typed where it is drawn: on its spot, at its wrap
     // width, turned with it.
     const field = isArrow ? arrowLabelField(element, paint, lineWidth) : null;
@@ -2523,6 +2551,7 @@
       opacity: paint.opacity,
       zoom: viewport.zoom,
       measure: isText ? onScreen(measure) : undefined,
+      wraps,
       // A label's wrapped height on screen, for its vertical alignment; an
       // arrow's field is the label's own box, wrapped as the stage wraps it.
       textHeight: isText
@@ -2656,33 +2685,37 @@
   const clipboardHandlers = {
     copy: () =>
       routeEdit({
-        source: () => Clipboard.SetText(focusedSource()?.selectedText() ?? '').then(() => {}),
-        document: () => Clipboard.SetText(docPane?.selectedText() ?? "").then(() => {}),
-        code: () => Clipboard.SetText(codeEditor?.selectedText() ?? '').then(() => {}),
-        field: () => Clipboard.SetText(fieldSelection(document.activeElement)).then(() => {}),
-        canvas: () => void canvasCommands.copy(),
+        source: () => systemClipboard.setText(focusedSource()?.selectedText() ?? ''),
+        document: () => systemClipboard.setText(docPane?.selectedText() ?? ""),
+        code: () => systemClipboard.setText(codeEditor?.selectedText() ?? ''),
+        field: () => systemClipboard.setText(fieldSelection(document.activeElement)),
+        canvas: async () => {
+          if (canvasCommands.copy()) await copyShapes();
+        },
       }),
     cut: () =>
       routeEdit({
         source: async () => {
           const editor = focusedSource();
-          await Clipboard.SetText(editor?.selectedText() ?? '');
+          await systemClipboard.setText(editor?.selectedText() ?? '');
           editor?.replaceSelection('');
         },
         document: async () => {
-          await Clipboard.SetText(docPane?.selectedText() ?? "");
+          await systemClipboard.setText(docPane?.selectedText() ?? "");
           docPane?.deleteSelection();
         },
         code: async () => {
-          await Clipboard.SetText(codeEditor?.selectedText() ?? '');
+          await systemClipboard.setText(codeEditor?.selectedText() ?? '');
           codeEditor?.replaceSelection('');
         },
         field: async () => {
-          await Clipboard.SetText(fieldSelection(document.activeElement));
+          await systemClipboard.setText(fieldSelection(document.activeElement));
           document.execCommand('delete');
         },
-        canvas: () => {
-          if (canvasCommands.cut()) commit();
+        canvas: async () => {
+          if (!canvasCommands.cut()) return;
+          commit();
+          await copyShapes();
         },
       }),
     paste: () =>
@@ -2690,21 +2723,80 @@
         source: async () => {
           // Chosen before the await: focus can move while the clipboard is read.
           const editor = focusedSource();
-          const text = await Clipboard.Text();
+          const text = await systemClipboard.text();
           editor?.replaceSelection(text);
         },
         document: async () => {
-          const text = await Clipboard.Text();
-          if (text) docPane?.paste(text);
+          const text = await systemClipboard.text();
+          // Shapes copied on a canvas have no form in the page.
+          if (readCanvasClipboard(text)) notify(t('canvas.shapesPasteOnCanvas'));
+          else if (text) docPane?.paste(text);
           else await pasteImage();
         },
-        code: async () => codeEditor?.replaceSelection(await Clipboard.Text()),
-        field: async () => void document.execCommand('insertText', false, await Clipboard.Text()),
-        canvas: () => {
-          if (canvasCommands.paste()) commit();
-        },
+        code: async () => codeEditor?.replaceSelection(await systemClipboard.text()),
+        field: async () => void document.execCommand('insertText', false, await systemClipboard.text()),
+        canvas: () => pasteOnCanvas(),
       }),
   };
+
+  /**
+   * Copy and Cut on the canvas also put the copied elements on the system
+   * clipboard: a picture for other apps, holding the elements for Bava.
+   */
+  function copyShapes(): Promise<void> {
+    const elements = canvasCommands.copied;
+    lastCopy = { elements: JSON.stringify(elements), scene: sceneLoads };
+    copying = exporter
+      .carrying(elements)
+      .then((svg) => systemClipboard.setText(svg))
+      .catch((error) => notify(error instanceof Error ? error.message : String(error)));
+    return copying;
+  }
+
+  /** Where something pasted lands: under the pointer when it is over the canvas, else the view's middle. */
+  function pasteSpot(): { x: number; y: number } {
+    return (
+      contextSpot ??
+      pointerOnCanvas ??
+      viewport.screenToScene({ x: (canvasHostEl?.clientWidth ?? 0) / 2, y: (canvasHostEl?.clientHeight ?? 0) / 2 })
+    );
+  }
+
+  /**
+   * Whether these are what was last copied or cut in this scene, their spot
+   * in view: a copy and paste in one place.
+   */
+  function copiedHere(elements: SceneElement[]): boolean {
+    if (lastCopy?.scene !== sceneLoads || lastCopy.elements !== JSON.stringify(elements)) return false;
+    const box = drawnBoundsOf(elements);
+    const a = viewport.screenToScene({ x: 0, y: 0 });
+    const b = viewport.screenToScene({ x: canvasHostEl?.clientWidth ?? 0, y: canvasHostEl?.clientHeight ?? 0 });
+    return box.x < b.x && box.x + box.w > a.x && box.y < b.y && box.y + box.h > a.y;
+  }
+
+  /**
+   * Paste on the canvas reads the system clipboard: shapes Bava copied, from
+   * any window or page, or text from anywhere as one text element.
+   */
+  async function pasteOnCanvas() {
+    // Chosen before the awaits: the pointer can move while the clipboard is read.
+    const spot = pasteSpot();
+    contextSpot = null;
+    await copying;
+    // A clipboard that cannot be read has nothing to paste.
+    const text = await systemClipboard.text().catch(() => '');
+    const shapes = readCanvasClipboard(text);
+    if (shapes) {
+      // In the page they were copied or cut from, their spot in view: beside it, as a copy.
+      canvasCommands.pasteElements(shapes, copiedHere(shapes) ? undefined : spot);
+    } else if (text.trim()) {
+      const paint = paintFor({ type: 'text' } as SceneElement, readRootVariable);
+      const widthOf = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
+      canvasCommands.pasteElements([pastedText(text, spot, paint.font, widthOf, PASTED_TEXT_WIDTH)], spot);
+    } else return;
+    commit();
+    syncSelection();
+  }
 
   // Deprecated, but it is the only way to ask the browser to act on a plain
   // text field as if the key had been pressed.
@@ -3085,6 +3177,9 @@
       const point = scenePoint(event);
       lastDragPoint = point;
       lastPointer = point;
+      pointerOnCanvas = point;
+      // Back on the canvas, the pointer is where a paste lands, not the right-click.
+      contextSpot = null;
       lastMods = { alt: event.altKey, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey };
       pointer.move(point, { alt: event.altKey, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey });
       drawHover(point, event.altKey, event.shiftKey);
@@ -3247,6 +3342,7 @@
     // Leaving the canvas, nothing on it is hovered any more: without this the
     // disc drawn by the last move inside (on a handle) stays until the next.
     const onLeave = () => {
+      pointerOnCanvas = null;
       drawHover.cancel();
       canvas.setHoverHandle(null);
     };
@@ -3765,7 +3861,7 @@
       onExportPage={() => void openPageExport()}
       onSaveTemplate={() => void saveAsTemplate(openRel)}
       isTemplate={editingTemplate !== null}
-      onCopyText={(text) => void Clipboard.SetText(text)}
+      onCopyText={(text) => void systemClipboard.setText(text)}
       here={space.root ? openRel : null}
       mediaPlace={shownPlace}
       readIndex={(withText) => space.index(withText)}

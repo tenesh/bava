@@ -441,6 +441,8 @@ export function createFakes(first: FakeSpace = seedSpace()) {
 
   const harness = {
     exports,
+    /** The system clipboard's text, as the app writes and reads it. */
+    clipboard: '',
     /** Files on the user's disk an import reads, by absolute path. */
     disk,
     /** What the import file picker answers. */

@@ -44,6 +44,11 @@ export type SvgOptions = {
    * measurement taken in a different environment drifts and the runs overlap.
    */
   monoAdvance?: number;
+  /**
+   * Elements carried inside the picture, as the file stores them: the
+   * clipboard's copy, so Bava pastes them back as shapes (`clipboard-read.ts`).
+   */
+  carry?: SceneElement[];
 };
 
 const round = (value: number): number => Math.round(value * 1000) / 1000;
@@ -326,6 +331,17 @@ function draw(element: SceneElement, options: SvgOptions, labelInset: number): s
   return `<g ${attrs.join(' ')}>${inner}</g>`;
 }
 
+/** The elements a picture carries, as metadata: nothing when there are none. */
+function carried(elements: SceneElement[] | undefined): string {
+  if (!elements || elements.length === 0) return '';
+  return `<metadata id="${CARRIED_ID}">${escapeXml(JSON.stringify({ version: CARRIED_VERSION, elements }))}</metadata>`;
+}
+
+/** The id of the metadata a copied picture carries its elements in. */
+export const CARRIED_ID = 'bava-canvas';
+/** The form of the elements carried: a reader refuses any other. */
+export const CARRIED_VERSION = 1;
+
 /**
  * The area as a standalone SVG document. Nothing is fetched when it is opened:
  * the colours are resolved values and the font, when there is text, travels
@@ -343,6 +359,6 @@ export function toSvg(area: ExportArea, options: SvgOptions): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${round(box.w)}" height="${round(box.h)}"` +
     ` viewBox="${round(box.x)} ${round(box.y)} ${round(box.w)} ${round(box.h)}">` +
-    `${style}${background}${drawn}</svg>`
+    `${carried(options.carry)}${style}${background}${drawn}</svg>`
   );
 }

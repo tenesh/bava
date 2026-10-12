@@ -129,6 +129,8 @@ export type EditorRequest = {
    * user types. Omitted for a label, which keeps its shape's box.
    */
   measure?: (value: string) => { width: number; height: number };
+  /** Free text kept narrower than its lines, wrapped at its width as the stage draws it. */
+  wraps?: boolean;
   /**
    * How the text is drawn (`paintFor(element).font`), so the field looks like
    * it. Omitted, the stylesheet's defaults apply.
@@ -201,9 +203,10 @@ export class LabelEditor {
       });
     }
     if (request.opacity !== undefined) field.style.opacity = String(request.opacity);
-    // Free text grows to its lines; a label wraps inside its box, as drawn,
-    // a word too wide for a line broken across lines.
-    field.style.whiteSpace = request.measure ? 'pre' : 'pre-wrap';
+    // Free text grows to its lines, or wraps at its width when kept narrower;
+    // a label wraps inside its box, as drawn, a word too wide for a line
+    // broken across lines.
+    field.style.whiteSpace = request.measure && !request.wraps ? 'pre' : 'pre-wrap';
     if (!request.measure) field.style.overflowWrap = 'anywhere';
     // Position and size are the element's, in screen units, set inline because
     // they change with every element; the minimum size is a token in the

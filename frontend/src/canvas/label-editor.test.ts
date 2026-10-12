@@ -162,6 +162,20 @@ describe('LabelEditor sizing', () => {
     editor.destroy();
   });
 
+  it('wraps free text narrower than its lines, and keeps one line per line otherwise', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const open = (wraps?: boolean) => {
+      const editor = tracked(new LabelEditor(host));
+      editor.open({ value: 'a b', rect: { x: 0, y: 0, width: 10, height: 18 }, measure: () => ({ width: 10, height: 36 }), wraps, onCommit: vi.fn() });
+      const whiteSpace = host.querySelector('textarea')!.style.whiteSpace;
+      editor.destroy();
+      return whiteSpace;
+    };
+    expect(open(true)).toBe('pre-wrap');
+    expect(open()).toBe('pre');
+  });
+
   it('keeps a shape label at its box when no measure is given', () => {
     const host = document.createElement('div');
     document.body.append(host);

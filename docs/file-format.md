@@ -468,6 +468,23 @@ Arrowheads: `none`, `arrow`, `bar`, `triangle`, `triangle-outline`, `circle`,
   re-wraps. A known `language` is named on the top edge; an unknown one is
   kept, drawn plain and unnamed.
 
+### On the clipboard
+
+Copy and Cut on the canvas put an SVG on the system clipboard: the copied
+elements drawn as Copy as SVG draws them, with the elements themselves, as
+the file stores them (contents of a copied group or frame included), right
+after the opening `<svg>` tag:
+
+```xml
+<metadata id="bava-canvas">{"version":1,"elements":[...]}</metadata>
+```
+
+The JSON is escaped for XML. Paste reads it back as elements with fresh ids,
+arrows and frames pointing at the copies. Any other text pasted on the canvas
+becomes one `text` element, wrapped at 400 scene units when wider. A text
+element whose `w` is less than its longest line is drawn wrapped at `w`, and
+stays so as it is edited.
+
 ## Spaces
 
 A folder opened as the home of its pages: folders, `.md` pages (ordinary Bava

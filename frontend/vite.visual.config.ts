@@ -55,6 +55,10 @@ export default defineConfig({
         find: /^.*\/bindings\/github\.com\/tharabyte\/bava\/internal\/app$/,
         replacement: fileURLToPath(new URL('./tests/harness/bindings-app.ts', import.meta.url)),
       },
+      {
+        find: /^(?:.*\/)?ipc\/clipboard$/,
+        replacement: fileURLToPath(new URL('./tests/harness/fake-clipboard.ts', import.meta.url)),
+      },
     ],
   },
   server: {

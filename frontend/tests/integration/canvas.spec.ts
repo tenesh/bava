@@ -5,6 +5,8 @@ import {
   angleOf,
   byId,
   canvasHost,
+  openPage,
+  savedScene,
   clickScene,
   dragScene,
   ends,
@@ -15,6 +17,7 @@ import {
   menus,
   ofType,
   onScreen,
+  statusMessage,
   openCanvas,
   openKinds,
   openDialog,
@@ -1316,5 +1319,146 @@ test.describe('a label that fits its shape', () => {
     const shape = byId(await saved(page), 'b1');
     expect(shape.y).toBe(100);
     expect(shape.h).toBeGreaterThan(40);
+  });
+});
+
+// Copy puts the shapes on the system clipboard as a picture carrying them;
+// Paste reads them back, in any page, or text from anywhere as one element.
+test.describe('the system clipboard on the canvas', () => {
+  const clipboard = (page: Page) => page.evaluate(() => (window as unknown as { __bava: { fakes: { harness: { clipboard: string } } } }).__bava.fakes.harness.clipboard);
+  const setClipboard = (page: Page, text: string) =>
+    page.evaluate((t) => {
+      (window as unknown as { __bava: { fakes: { harness: { clipboard: string } } } }).__bava.fakes.harness.clipboard = t;
+    }, text);
+  const attached = [
+    box('b1', 100, 100),
+    box('b2', 400, 100),
+    { id: 'a1', type: 'arrow', x: 220, y: 140, w: 180, h: 0, z: 3, points: [0, 0, 180, 0], arrowType: 'straight', startBinding: 'b1', endBinding: 'b2' },
+  ];
+
+  test('Copy puts the shapes on the clipboard as a picture that carries them', async ({ page }) => {
+    await startCanvas(page, attached);
+    await menu(page, 'edit.selectAll');
+    await menu(page, 'edit.copy');
+    await expect.poll(() => clipboard(page)).toContain('<metadata id="bava-canvas">');
+    expect(await clipboard(page)).toContain('<svg');
+  });
+
+  test('shapes copied elsewhere paste as new shapes, the arrow attached to the new ones', async ({ page }) => {
+    await startCanvas(page, attached);
+    await menu(page, 'edit.selectAll');
+    await menu(page, 'edit.copy');
+    await expect.poll(() => clipboard(page)).toContain('bava-canvas');
+    await openPage(page, 'Engineering/Blocks.md');
+    await menu(page, 'view.canvas');
+    await expect(canvasHost(page)).toBeVisible();
+    const spot = await onScreen(page, { x: 600, y: 400 });
+    await page.mouse.move(spot.x, spot.y);
+    await menu(page, 'edit.paste');
+    const elements = (await savedScene(page, 'Engineering/Blocks.md'))!.elements as Awaited<ReturnType<typeof saved>>;
+    expect(elements).toHaveLength(3);
+    // Their middle under the pointer, not where they were in the other page.
+    const left = Math.min(...elements.map((e) => e.x));
+    const right = Math.max(...elements.map((e) => e.x + e.w));
+    expect((left + right) / 2).toBeCloseTo(600, 0);
+    const arrow = ofType(elements, 'arrow')[0];
+    const ids = ofType(elements, 'rect').map((e) => e.id);
+    expect(ids).not.toContain('b1');
+    expect(ids).toContain(arrow.startBinding);
+    expect(ids).toContain(arrow.endBinding);
+  });
+
+  test('shapes copied and pasted in the same page land as before, offset', async ({ page }) => {
+    await startCanvas(page, [box('b1', 100, 100)]);
+    await clickScene(page, { x: 160, y: 140 });
+    await menu(page, 'edit.copy');
+    await expect.poll(() => clipboard(page)).toContain('bava-canvas');
+    await menu(page, 'edit.paste');
+    const rects = ofType(await saved(page), 'rect').sort((p, q) => p.x - q.x);
+    expect(rects).toHaveLength(2);
+    expect(rects[1].x - rects[0].x).toBeGreaterThan(0);
+    expect(rects[1].x - rects[0].x).toBeLessThan(40);
+  });
+
+  test('text from another app pastes as one text element, its lines kept', async ({ page }) => {
+    await startCanvas(page, []);
+    await setClipboard(page, 'Meeting notes\nAna orders the wrappers');
+    await menu(page, 'edit.paste');
+    const texts = ofType(await saved(page), 'text');
+    expect(texts).toHaveLength(1);
+    expect(texts[0].text).toBe('Meeting notes\nAna orders the wrappers');
+    expect(texts[0].id).not.toBe('');
+  });
+
+  test('what is pasted lands under the pointer over the canvas', async ({ page }) => {
+    await startCanvas(page, []);
+    const spot = await onScreen(page, { x: 300, y: 200 });
+    await page.mouse.move(spot.x, spot.y);
+    await setClipboard(page, 'Har gow');
+    await menu(page, 'edit.paste');
+    const [text] = ofType(await saved(page), 'text');
+    expect(text.x + text.w / 2).toBeCloseTo(300, 0);
+    expect(text.y + text.h / 2).toBeCloseTo(200, 0);
+  });
+
+  test('the right-click menu offers Paste when the clipboard holds something, pasting where it was opened', async ({ page }) => {
+    await startCanvas(page, []);
+    const spot = { x: 300, y: 200 };
+    await clickScene(page, spot, { button: 'right' });
+    await expect(menus(page).getByText('Select All')).toBeVisible();
+    await expect(menus(page).getByText('Paste', { exact: true })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await setClipboard(page, 'Siu mai');
+    await clickScene(page, spot, { button: 'right' });
+    await menus(page).getByText('Paste', { exact: true }).click();
+    const [text] = ofType(await saved(page), 'text');
+    expect(text.text).toBe('Siu mai');
+    expect(text.x + text.w / 2).toBeCloseTo(300, 0);
+    expect(text.y + text.h / 2).toBeCloseTo(200, 0);
+  });
+
+  test('Cut then Paste puts the shapes back beside where they were', async ({ page }) => {
+    await startCanvas(page, attached);
+    const before = ofType(await saved(page), 'rect');
+    await menu(page, 'edit.selectAll');
+    await menu(page, 'edit.cut');
+    await expect.poll(() => clipboard(page)).toContain('bava-canvas');
+    await menu(page, 'edit.paste');
+    const after = ofType(await saved(page), 'rect');
+    expect(after).toHaveLength(2);
+    expect(after[0].x - before[0].x).toBeGreaterThan(0);
+    expect(after[0].x - before[0].x).toBeLessThan(40);
+  });
+
+  test('a long paragraph pastes wrapped, and stays wrapped as it is edited', async ({ page }) => {
+    await startCanvas(page, []);
+    const paragraph = 'Collect feedback from the first hundred users, sort it by theme, and share the top five with the team on Friday';
+    await setClipboard(page, paragraph);
+    await menu(page, 'edit.paste');
+    const [pasted] = ofType(await saved(page), 'text');
+    expect(pasted.w).toBeLessThanOrEqual(400);
+    const at = await onScreen(page, { x: pasted.x + pasted.w / 2, y: pasted.y + pasted.h / 2 });
+    await page.mouse.dblclick(at.x, at.y);
+    const field = page.locator('textarea').filter({ visible: true });
+    await expect(field).toHaveValue(paragraph);
+    await field.fill(`${paragraph}, then plan the next round of interviews with the ones who replied`);
+    await page.keyboard.press('Escape');
+    const [edited] = ofType(await saved(page), 'text');
+    expect(edited.w).toBeCloseTo(pasted.w);
+    expect(edited.h).toBeGreaterThan(pasted.h);
+  });
+
+  test("Bava's shapes pasted into the page add nothing there, and say where they go", async ({ page }) => {
+    await startCanvas(page, attached);
+    await menu(page, 'edit.selectAll');
+    await menu(page, 'edit.copy');
+    await expect.poll(() => clipboard(page)).toContain('bava-canvas');
+    await menu(page, 'view.document');
+    const doc = page.locator('.bava-doc');
+    await doc.click();
+    const before = await doc.textContent();
+    await menu(page, 'edit.paste');
+    await expect(statusMessage(page)).toContainText('Shapes paste on the canvas');
+    expect(await doc.textContent()).toBe(before);
   });
 });

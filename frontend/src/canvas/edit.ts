@@ -57,10 +57,14 @@ export function ungroup(scene: Scene, id: ElementId): void {
 }
 
 /** Copy elements into the scene, offset so the copy is visible. */
-export function paste(scene: Scene, elements: SceneElement[]): SceneElement[] {
+export function paste(
+  scene: Scene,
+  elements: SceneElement[],
+  offset: { dx: number; dy: number } = { dx: PASTE_OFFSET, dy: PASTE_OFFSET },
+): SceneElement[] {
   const copies = new Map<ElementId, SceneElement>();
   const pasted = elements.map((element) => {
-    const copy = { ...element, x: element.x + PASTE_OFFSET, y: element.y + PASTE_OFFSET };
+    const copy = { ...element, x: element.x + offset.dx, y: element.y + offset.dy };
     // add() assigns a fresh id and z; the ones carried over are ignored.
     const added = scene.add(copy);
     copies.set(element.id, added);

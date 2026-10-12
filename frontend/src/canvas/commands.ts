@@ -7,7 +7,7 @@
  * snapshot afterwards.
  */
 import { alignMoves, distributeMoves, type Alignment, type Move } from './align';
-import { duplicate, flip, group, paste, steppedOrder, topLevel, ungroup, withContents } from './edit';
+import { drawnBoundsOf, duplicate, flip, group, paste, steppedOrder, topLevel, ungroup, withContents } from './edit';
 import { tidy } from './resize';
 import { copyStyle, pasteStyle, type CopiedStyle } from './style';
 import { createScene, isLocked, type ElementId, type Scene, type SceneElement } from './scene';
@@ -49,11 +49,9 @@ export function createCanvasCommands(options: {
   afterPasteStyle?: (element: SceneElement) => void;
 }) {
   const { history, selection } = options;
-  // In-app only for now. The system clipboard carries text; a scene fragment
-  // there would be the export format, not an ad hoc JSON blob.
+  // The window's own copy. The system clipboard gets these too, inside an
+  // SVG, written by whoever calls copy.
   let clipboard: SceneElement[] = [];
-  /** The ids that were selected when copying: their copies are selected on paste. */
-  let clipboardRoots = new Set<ElementId>();
   // Copy Styles keeps its own clipboard: copying a style must not replace
   // copied elements.
   let copiedStyle: CopiedStyle | null = null;
@@ -88,7 +86,6 @@ export function createCanvasCommands(options: {
     // A group's children and a frame's contents are copied with it, in paint
     // order, and paste selects the copies of what was selected.
     clipboard = withContents(createScene(history.current), elements).sort((a, b) => a.z - b.z);
-    clipboardRoots = new Set(elements.map((e) => e.id));
     return true;
   }
 
@@ -163,8 +160,9 @@ export function createCanvasCommands(options: {
       return selection.ids.length > 0;
     },
 
-    get canPaste(): boolean {
-      return clipboard.length > 0;
+    /** What the last Copy or Cut took, contents included, in paint order. */
+    get copied(): SceneElement[] {
+      return clipboard;
     },
 
     get canPasteStyles(): boolean {
@@ -201,13 +199,25 @@ export function createCanvasCommands(options: {
       select(arriving.map((element) => element.id));
     },
 
-    /** Resolves true when something was pasted. */
-    paste(): boolean {
-      if (clipboard.length === 0) return false;
-      const pasted = edit((scene) => paste(scene, clipboard));
-      // `paste` returns one copy per clipboard element, in the same order.
-      select(pasted.filter((_, i) => clipboardRoots.has(clipboard[i].id)).map((e) => e.id));
-      return true;
+    /**
+     * Paste elements that came from elsewhere: another window, or another
+     * page. Their middle lands on `at`; without it, offset as a copy is.
+     * Arrows and frames point at the pasted copies; an arrow lets go of a
+     * shape that was not carried along.
+     */
+    pasteElements(elements: SceneElement[], at?: { x: number; y: number }): void {
+      if (elements.length === 0) return;
+      // In paint order, so the copies stack as the originals did.
+      const ordered = [...elements].sort((a, b) => a.z - b.z);
+      const box = drawnBoundsOf(ordered);
+      const offset = at ? { dx: at.x - (box.x + box.w / 2), dy: at.y - (box.y + box.h / 2) } : undefined;
+      const pasted = edit((scene) => paste(scene, ordered, offset));
+      const carried = new Set(ordered.map((e) => e.id));
+      const inside = new Set(
+        ordered.flatMap((e) => (e.type === 'group' ? e.children.filter((id) => carried.has(id)) : [])),
+      );
+      const isRoot = (e: SceneElement) => !inside.has(e.id) && !carried.has((e as { frame?: string }).frame ?? '');
+      select(pasted.filter((_, i) => isRoot(ordered[i])).map((e) => e.id));
     },
 
     group(): void {

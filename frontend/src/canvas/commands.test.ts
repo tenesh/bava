@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createHistory } from './history';
 import { createSelection } from './selection';
 import { createCanvasCommands } from './commands';
-import type { SceneData } from './scene';
+import type { SceneData, SceneElement } from './scene';
 import { isDetached } from './binding';
 
 function setup() {
@@ -36,11 +36,20 @@ describe('canvas commands', () => {
     const { history, selection, commands } = setup();
     selection.click('a');
     expect(commands.copy()).toBe(true);
-    commands.paste();
+    commands.pasteElements(commands.copied);
     expect(history.current.elements).toHaveLength(4);
     const pasted = history.current.elements.find((e) => !['a', 'b', 'c'].includes(e.id))!;
     expect(pasted.x).toBeGreaterThan(0);
     expect(selection.ids).toEqual([pasted.id]);
+  });
+
+  it('pastes in one undo step, with ids of its own', () => {
+    const { history, commands } = setup();
+    commands.pasteElements([{ id: '', type: 'text', text: 'Har gow', x: 0, y: 0, w: 40, h: 16, z: 0 } as unknown as SceneElement], { x: 50, y: 50 });
+    const pasted = history.current.elements.find((e) => !['a', 'b', 'c'].includes(e.id))!;
+    expect(pasted.id).not.toBe('');
+    commands.undo();
+    expect(ids(history.current)).toEqual(['a', 'b', 'c']);
   });
 
   it('copies nothing without a selection', () => {
@@ -49,10 +58,23 @@ describe('canvas commands', () => {
   });
 
   // Pasting an empty clipboard must not mark the document changed.
-  it('reports an empty paste and records no history step', () => {
+  it('records no history step for an empty paste', () => {
     const { history, commands } = setup();
-    expect(commands.paste()).toBe(false);
+    commands.pasteElements([]);
     expect(history.canUndo).toBe(false);
+  });
+
+  it('pastes elements from elsewhere with their middle on the point given', () => {
+    const { history, selection, commands } = setup();
+    selection.click('a');
+    commands.copy();
+    const [original] = commands.copied;
+    commands.pasteElements(commands.copied, { x: 1000, y: 2000 });
+    const pasted = history.current.elements.find((e) => !['a', 'b', 'c'].includes(e.id))!;
+    expect(pasted.x + pasted.w / 2).toBeCloseTo(1000);
+    expect(pasted.y + pasted.h / 2).toBeCloseTo(2000);
+    expect([pasted.w, pasted.h]).toEqual([original.w, original.h]);
+    expect(selection.ids).toEqual([pasted.id]);
   });
 
   it('cuts: copies, then deletes', () => {
@@ -60,7 +82,7 @@ describe('canvas commands', () => {
     selection.click('c');
     expect(commands.cut()).toBe(true);
     expect(ids(history.current)).toEqual(['a', 'b']);
-    commands.paste();
+    commands.pasteElements(commands.copied);
     expect(history.current.elements).toHaveLength(3);
   });
 
@@ -336,14 +358,14 @@ describe('arranging elements that share a z', () => {
 });
 
 describe('what can be pasted', () => {
-  it('reports elements and styles to paste once something was copied', () => {
+  it('holds the copied elements and style once something was copied', () => {
     const { selection, commands } = setup();
-    expect(commands.canPaste).toBe(false);
+    expect(commands.copied).toEqual([]);
     expect(commands.canPasteStyles).toBe(false);
     selection.click('a');
     commands.copy();
     commands.copyStyles();
-    expect(commands.canPaste).toBe(true);
+    expect(commands.copied.map((e) => e.id)).toEqual(['a']);
     expect(commands.canPasteStyles).toBe(true);
   });
 });
@@ -637,7 +659,7 @@ describe('frames and groups in commands', () => {
     const { history, selection, commands } = framed();
     selection.click('f');
     commands.copy();
-    commands.paste();
+    commands.pasteElements(commands.copied);
     const copy = history.current.elements.find((e) => e.type === 'frame' && e.id !== 'f')!;
     expect(history.current.elements.filter((e) => (e as { frame?: string }).frame === copy.id)).toHaveLength(1);
     expect(selection.ids).toEqual([copy.id]);
@@ -647,7 +669,7 @@ describe('frames and groups in commands', () => {
     const { history, selection, commands } = framed();
     selection.click('g');
     commands.copy();
-    commands.paste();
+    commands.pasteElements(commands.copied);
     const copy = history.current.elements.find((e) => e.type === 'group' && e.id !== 'g') as unknown as { id: string; children: string[] };
     expect(copy.children.some((id) => id === 'x' || id === 'y')).toBe(false);
     expect(history.current.elements.filter((e) => copy.children.includes(e.id))).toHaveLength(2);
