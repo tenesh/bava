@@ -114,6 +114,11 @@ describe('style properties', () => {
     expect(propertyKeysFor('group')).toEqual(['opacity']);
     // A picture draws itself: no fill, border or label to style.
     expect(propertyKeysFor('image')).toEqual(['opacity']);
+    // A table or class: its box and its words, no label settings of a shape's.
+    for (const type of ['table', 'class']) {
+      expect(styleKeysFor(type)).toEqual(['fill', 'stroke', 'color']);
+      expect(propertyKeysFor(type)).toEqual(['strokeWidth', 'strokeStyle', 'opacity']);
+    }
   });
 
   it('applies a property to every selected element that takes it, in one step', () => {

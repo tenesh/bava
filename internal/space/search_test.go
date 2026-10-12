@@ -170,6 +170,20 @@ func TestSearchNamesTheCanvasElementWhenTheDocumentHasNoMatch(t *testing.T) {
 	}
 }
 
+func TestSearchFindsATablesNameAndRows(t *testing.T) {
+	s := searchSpace(t, map[string]string{
+		"Schema.md": "Nothing.\n" + canvas(
+			`{"id":"t","type":"table","x":0,"y":0,"w":10,"h":10,"z":0,"name":"orders","rows":"id int pk\ncustomer_ref text"}`,
+		),
+	})
+	for _, word := range []string{"orders", "customer_ref"} {
+		hits := search(t, s, word, nil)
+		if len(hits) != 1 || hits[0].Best.Where != "canvas" || hits[0].Best.Element != "t" {
+			t.Errorf("%q: hits = %+v; want the table", word, hits)
+		}
+	}
+}
+
 func TestSearchShowsWhereAPageFoundByNameSits(t *testing.T) {
 	s := searchSpace(t, map[string]string{"Marketing/Launch plan.md": "Nothing.\n"})
 	hit := search(t, s, "launch", nil)[0]

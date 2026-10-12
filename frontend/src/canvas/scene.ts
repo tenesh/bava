@@ -73,6 +73,9 @@ export type ArrowProps = {
   endMode?: 'inside';
   /** The label's place along the drawn path, 0 to 1; absent is the middle. */
   labelPosition?: number;
+  /** The row of a bound table or class each end attaches beside, by its name. */
+  startRow?: string;
+  endRow?: string;
 };
 
 /** The closed shapes: rectangle and ellipse, and the seven with outlines. */
@@ -139,9 +142,18 @@ export type CodeElement = Base & StyleProps & {
  */
 export type ImageElement = Base & StyleProps & { type: 'image'; file: string };
 
+/**
+ * A SQL table or a UML class: its name, and its rows as typed, one a line
+ * (`table-rows.ts` reads them). Its height follows its rows.
+ */
+export type TableElement = Base & StyleProps & { type: 'table'; name: string; rows: string; fill?: string; stroke?: string; color?: string };
+export type ClassElement = Base & StyleProps & { type: 'class'; name: string; rows: string; fill?: string; stroke?: string; color?: string };
+
 export type SceneElement =
   | ShapeElement
   | ImageElement
+  | TableElement
+  | ClassElement
   | LineElement
   | ArrowElement
   | FrameElement
@@ -172,6 +184,8 @@ const EVERY_TYPE: Record<SceneElement['type'], true> = {
   text: true,
   code: true,
   image: true,
+  table: true,
+  class: true,
 };
 
 /** Every element type a scene can hold, at run time. */

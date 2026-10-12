@@ -85,7 +85,7 @@ export function paintFor(element: SceneElement, read: ReadVariable): Paint {
   const strokeWidth = props.strokeWidth ?? DEFAULT_STROKE_WIDTH;
 
   const paint: Paint = {
-    fill: isShapeType(element.type) ? style.fill : '',
+    fill: isShapeType(element.type) || element.type === 'table' || element.type === 'class' ? style.fill : '',
     stroke: element.type === 'text' ? '' : style.stroke,
     // A dashed or dotted line is drawn half a unit thicker, so its dashes
     // read as heavy as a solid line.
@@ -123,6 +123,9 @@ export function paintFor(element: SceneElement, read: ReadVariable): Paint {
       colour: read('--syntax-plain').trim(),
     };
   }
+
+  // A table or class: a box like a shape's, its corners rounded a little.
+  if (element.type === 'table' || element.type === 'class') paint.cornerRadius = number(read, '--radius-md');
 
   if (props.edges === 'round') {
     if (isOutlineShape(element.type)) paint.cornerRadius = Math.min(element.w, element.h) * ROUND_SHARE;

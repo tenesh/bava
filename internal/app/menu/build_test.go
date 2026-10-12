@@ -372,8 +372,12 @@ func TestCanvasMenuStartsWithWhatAddsToTheCanvas(t *testing.T) {
 	if len(items) < 3 || items[0].Kind != "submenu" || items[0].ID != "canvas.diagram" || items[0].Label != "Diagram" {
 		t.Fatalf("Canvas menu starts %+v, want the Diagram submenu", items[:min(len(items), 3)])
 	}
-	if got := items[0].Items; len(got) == 0 || got[0].ID != "insert.d2Diagram" || got[0].Label != "D2 Diagram" {
-		t.Errorf("Diagram submenu = %+v, want D2 Diagram first", got)
+	var diagram []string
+	for _, item := range items[0].Items {
+		diagram = append(diagram, item.ID+" "+item.Label)
+	}
+	if want := []string{"insert.d2Diagram D2 Diagram", "tool.table SQL Table", "tool.class UML Class"}; !slices.Equal(diagram, want) {
+		t.Errorf("Diagram submenu = %v, want %v", diagram, want)
 	}
 	if items[1].ID != "insert.picture" || items[2].Kind != "separator" {
 		t.Errorf("after Diagram: %+v, %+v; want Picture, then a separator", items[1], items[2])

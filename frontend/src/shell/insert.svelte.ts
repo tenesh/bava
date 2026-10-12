@@ -65,7 +65,11 @@ export const CATEGORIES: InsertCategory[] = [
     labelKey: 'insert.diagram',
     descriptionKey: 'insert.diagramDescription',
     icon: 'diagram',
-    items: [{ kind: 'command', id: 'd2Diagram', labelKey: 'insert.d2Diagram', icon: 'code' }],
+    items: [
+      { kind: 'command', id: 'd2Diagram', labelKey: 'insert.d2Diagram', icon: 'code' },
+      { kind: 'item', id: 'table', labelKey: 'tool.table', icon: 'table' },
+      { kind: 'item', id: 'class', labelKey: 'tool.class', icon: 'umlClass' },
+    ],
   },
 ];
 

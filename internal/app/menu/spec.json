@@ -129,7 +129,9 @@
           "id": "canvas.diagram",
           "label": "Diagram",
           "items": [
-            { "kind": "command", "id": "insert.d2Diagram", "label": "D2 Diagram", "when": ["hasDocument", "showsCanvas"] }
+            { "kind": "command", "id": "insert.d2Diagram", "label": "D2 Diagram", "when": ["hasDocument", "showsCanvas"] },
+            { "kind": "command", "id": "tool.table", "label": "SQL Table", "when": ["hasDocument", "showsCanvas"] },
+            { "kind": "command", "id": "tool.class", "label": "UML Class", "when": ["hasDocument", "showsCanvas"] }
           ]
         },
         { "kind": "command", "id": "insert.picture", "label": "Picture", "when": ["hasDocument", "showsCanvas"] },

@@ -31,6 +31,9 @@ text sizes and the single history are in CLAUDE.md.
 - **A shape's label is placed by `placeLabel`** (`label-box.ts`) in the stage,
   the SVG export and the label editor's box; any change that can leave a
   label without room runs `growToLabel` in the same `history.mutate`.
+- **A table's or class's rows are laid out once** (`table-layout.ts`) for the
+  stage, the SVG export, its height and binding an arrow to a row; the rows
+  are read from the text as typed (`table-rows.ts`) and never stored split.
 - **Render skips unchanged elements, except arrows** (detachment depends on
   others). Outside state gets its own setter (`setCodeRuns`, `setEditing`,
   `setPicture`): highlighting and pictures load asynchronously, outside the

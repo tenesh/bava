@@ -82,6 +82,48 @@ func TestSceneSurvivesTheFrontendBridge(t *testing.T) {
       "z": 2
     },
     {
+      "h": 60,
+      "id": "tab1",
+      "name": "users",
+      "rows": "id int pk",
+      "type": "table",
+      "w": 200,
+      "x": 0,
+      "y": 220,
+      "z": 10
+    },
+    {
+      "h": 70,
+      "id": "cls1",
+      "name": "User",
+      "rows": "+ save(): bool",
+      "stereotype": "a key from later",
+      "type": "class",
+      "w": 200,
+      "x": 300,
+      "y": 220,
+      "z": 11
+    },
+    {
+      "endBinding": "cls1",
+      "endRow": "save()",
+      "h": 0,
+      "id": "rowArrow",
+      "points": [
+        0,
+        0,
+        100,
+        0
+      ],
+      "startBinding": "tab1",
+      "startRow": "id",
+      "type": "arrow",
+      "w": 100,
+      "x": 200,
+      "y": 250,
+      "z": 12
+    },
+    {
       "file": "har gow.png",
       "fit": "a key from later",
       "h": 30,

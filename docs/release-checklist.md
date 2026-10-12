@@ -74,6 +74,10 @@ Start Bava as if it had never run:
 - [ ] Paste a screenshot onto the canvas; drag a picture from Media onto it; Canvas ▸ Picture.
 - [ ] A canvas picture in a PDF export and in a frame embed; copy shapes with a picture into another Space and it comes along.
 - [ ] Rename a picture in Media: every canvas showing it follows.
+- [ ] + ▸ Diagram ▸ SQL table and UML class: place one, type rows, Escape; it grows with its rows; dark theme too.
+- [ ] An arrow dropped on a table's row attaches there; typing a row above it moves the end with its row.
+- [ ] A D2 diagram with `sql_table`, `class` and a column-to-column link arrives as tables, a class and an arrow on both rows.
+- [ ] A table and a class in a PDF export and a frame embed.
 
 ## Media
 

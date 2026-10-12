@@ -3,6 +3,7 @@ import layout from './__fixtures__/containers.json';
 import { toElements, unplaceable } from './convert';
 import type { Layout } from './convert';
 import { isShapeType } from '../scene';
+import { tableLayout } from '../table-layout';
 
 const fixture = layout as Layout;
 const converted = () => toElements(fixture, { at: { x: 0, y: 0 } });
@@ -132,5 +133,33 @@ describe('a connection that names something that is not a shape', () => {
   it('reports what it could not place, so the caller can say so', () => {
     expect(unplaceable(stray)).toBe(1);
     expect(unplaceable({ shapes: [], connections: [] })).toBe(0);
+  });
+});
+
+// A SQL table and a UML class arrive as tables and classes, and a link
+// between two columns arrives attached to both rows.
+describe('tables and classes from a D2 diagram', () => {
+  // D2 gives a table's header and each column the same height: 30 here.
+  const users = { id: 'users', type: 'sql_table', x: 0, y: 0, w: 200, h: 90, label: 'users', rows: 'id int pk\nteam_id int fk' };
+  const teams = { id: 'teams', type: 'sql_table', x: 400, y: 0, w: 200, h: 60, label: 'teams', rows: 'id int pk' };
+  const user = { id: 'User', type: 'class', x: 0, y: 200, w: 220, h: 120, label: 'User', rows: '+ email: string\n+ save(): bool' };
+  const link = { id: '(users.team_id -> teams.id)[0]', src: 'users', dst: 'teams', dstArrow: 'triangle', route: [{ x: 200, y: 75 }, { x: 400, y: 45 }], srcColumn: 1, dstColumn: 0 };
+  // To the whole table, its route ending on a side at a row's height.
+  const whole = { id: '(users -> teams)[0]', src: 'users', dst: 'teams', dstArrow: 'triangle', route: [{ x: 200, y: 45 }, { x: 400, y: 45 }] };
+  const elements = () => toElements({ shapes: [users, teams, user], connections: [link, whole] } as unknown as Layout, { at: { x: 300, y: 160 } });
+
+  it('makes tables and classes of them, their rows kept, as tall as their rows', () => {
+    const [t, , c] = elements() as unknown as { type: string; name: string; rows: string; w: number; h: number }[];
+    expect(t).toMatchObject({ type: 'table', name: 'users', rows: 'id int pk\nteam_id int fk', w: 200 });
+    expect(t.h).toBe(tableLayout({ ...t, type: 'table' }).height);
+    expect(c).toMatchObject({ type: 'class', name: 'User', rows: '+ email: string\n+ save(): bool' });
+    expect(t).not.toHaveProperty('label');
+  });
+
+  it('attaches a link between columns to both rows, and a link to a table to no row', () => {
+    const [toColumns, toTable] = elements().filter((e) => e.type === 'arrow');
+    expect(toColumns).toMatchObject({ startRow: 'team_id', endRow: 'id' });
+    expect(toTable).not.toHaveProperty('startRow');
+    expect(toTable).not.toHaveProperty('endRow');
   });
 });

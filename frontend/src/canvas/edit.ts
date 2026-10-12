@@ -105,15 +105,16 @@ function letGoOfOriginals(element: SceneElement, renamed: Map<ElementId, Element
   const copied = new Set(renamed.values());
   const loose = { ...element } as SceneElement & Record<string, unknown>;
   let changed = false;
-  for (const [key, anchor, mode] of [
-    ['startBinding', 'startAnchor', 'startMode'],
-    ['endBinding', 'endAnchor', 'endMode'],
+  for (const [key, anchor, mode, row] of [
+    ['startBinding', 'startAnchor', 'startMode', 'startRow'],
+    ['endBinding', 'endAnchor', 'endMode', 'endRow'],
   ] as const) {
     const target = loose[key] as string | undefined;
     if (target === undefined || copied.has(target) || !scene.get(target)) continue;
     delete loose[key];
     delete loose[anchor];
     delete loose[mode];
+    delete loose[row];
     changed = true;
   }
   return changed ? loose : element;

@@ -373,3 +373,23 @@ describe('pictures in an SVG', () => {
     }
   });
 });
+
+describe('tables and classes in an SVG', () => {
+  const table = { id: 't', type: 'table', name: 'users & co', rows: 'id int pk\nemail text unique', x: 10, y: 20, w: 240, h: 98, z: 1 };
+
+  it('draws the box, the name, the rule and each row as the canvas does', () => {
+    const svg = svgOf([table]);
+    expect(svg).toContain('<rect x="10" y="20" width="240" height="98"');
+    for (const word of ['users &amp; co', '>id<', '>int<', '>PK<', '>email<', '>UNQ<']) expect(svg).toContain(word);
+    // The rule under the header.
+    expect(svg).toContain('<line x1="10" y1="56" x2="250" y2="56"');
+    // Cut at the box, as on the canvas.
+    expect(svg).toMatch(/<clipPath id="clip-t">/);
+  });
+
+  it("draws a class's divider", () => {
+    const svg = svgOf([{ id: 'c', type: 'class', name: 'User', rows: '+ email: string\n+ save(): bool', x: 0, y: 0, w: 260, h: 110, z: 1 }]);
+    expect(svg.match(/<line /g)).toHaveLength(2);
+    expect(svg).toContain('>save()<');
+  });
+});

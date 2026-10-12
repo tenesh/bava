@@ -138,3 +138,20 @@ describe("an arrow's label paint", () => {
     expect(paint.font.colour).toBe('steelblue');
   });
 });
+
+describe('a table or class', () => {
+  it("is painted as a shape: the shape's fill, stroke and words, and slightly rounded corners", () => {
+    for (const type of ['table', 'class']) {
+      const paint = paintFor({ id: 't', type, name: 'users', rows: '', x: 0, y: 0, w: 200, h: 60, z: 1, fill: 'blue', stroke: 'blue', color: 'blue' } as never, read({
+        '--swatch-blue-fill': 'lightblue',
+        '--swatch-blue-stroke': 'steelblue',
+        '--swatch-blue-text': 'navy',
+        '--color-shape-stroke': 'slategray',
+        '--radius-md': '4px',
+        '--font-ui': 'Geist',
+      }));
+      expect(paint).toMatchObject({ fill: 'lightblue', stroke: 'steelblue', cornerRadius: 4 });
+      expect(paint.font.colour).toBe('navy');
+    }
+  });
+});

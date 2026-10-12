@@ -9,6 +9,7 @@
  * Every mutation goes through history. One drag is one step: a user who drags
  * a shape across the canvas expects one undo to put it back, not fifty.
  */
+import { TABLE_MIN_WIDTH, TABLE_START, TABLE_START_WIDTH, tableLayout } from './table-layout';
 import type { History } from './history';
 import type { Selection, Box } from './selection';
 import type { ToolId } from './tools.svelte';
@@ -30,6 +31,7 @@ import {
   fixedOf,
   isInside,
   reroute,
+  rowAtPoint,
   settledAround,
   targetAt,
   unturned,
@@ -1242,6 +1244,22 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         return id;
       }
 
+      // A table or class: placed by a click at its starting width, or dragged
+      // out to a width; its height is its rows'. Typed into at once.
+      if (tools.active === 'table' || tools.active === 'class') {
+        const type = tools.active;
+        const id = started.newId;
+        const dragged = farEnough(started.origin, point);
+        const w = dragged ? Math.max(TABLE_MIN_WIDTH, Math.abs(point.x - started.origin.x)) : TABLE_START_WIDTH;
+        const x = dragged ? Math.min(point.x, started.origin.x) : started.origin.x;
+        const start = TABLE_START[type];
+        history.mutate((scene) => {
+          const element = { id, type, ...start, x: tidy(x), y: tidy(started.origin.y), w: tidy(w), h: 0, z: topZ(scene.elements) + 1, ...newStyle(type) };
+          scene.elements.push({ ...element, h: tableLayout(element).height } as SceneElement);
+        });
+        return id;
+      }
+
       // One step for the whole gesture, however many move events it had.
       copied = [];
       // A line or arrow press released before the minimum length starts one
@@ -1394,7 +1412,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       const aimed = { x: point.x - offset.x, y: point.y - offset.y };
       // The other end's shape too: both ends may be on one.
       const target = attaching() ? targetAt(history.current, aimed, id, reach()) : undefined;
-      const [key, anchorKey, modeKey] = [`${side}Binding`, `${side}Anchor`, `${side}Mode`];
+      const [key, anchorKey, modeKey, rowKey] = [`${side}Binding`, `${side}Anchor`, `${side}Mode`, `${side}Row`];
       // Off every shape, the end itself goes there, free.
       const base = unturned(original);
       const points = [...(('points' in base ? base.points : []) as number[])];
@@ -1411,12 +1429,17 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           bound[anchorKey] = anchorFor(target, aimed, reach(), true);
           if (alt) bound[modeKey] = 'inside';
           else delete bound[modeKey];
+          // On a table's row, beside that row.
+          const row = rowAtPoint(target, aimed);
+          if (row) bound[rowKey] = row;
+          else delete bound[rowKey];
           scene.elements[i] = bound as unknown as SceneElement;
           raiseAbove(scene.elements, id, target.id);
           return;
         }
         const loose = settledAround(base, points) as unknown as Record<string, unknown>;
         delete loose[key];
+        delete loose[rowKey];
         delete loose[anchorKey];
         delete loose[modeKey];
         scene.elements[i] = loose as unknown as SceneElement;
@@ -1506,7 +1529,9 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       // With Shift the shape is the one under the pointer, not under the
       // snapped end, and the side-middle snap is off.
       const grabbed = { x: point.x + started.endpoint.at.x - started.origin.x, y: point.y + started.endpoint.at.y - started.origin.y };
-      const target = attaching() ? targetAt(history.current, shift ? grabbed : aimed, id, reach()) : undefined;
+      // The row too is read where the target was looked for.
+      const looked = shift ? grabbed : aimed;
+      const target = attaching() ? targetAt(history.current, looked, id, reach()) : undefined;
       // Both ends on one shape: allowed, both pinned where they are; an
       // elbow routes round it.
       const sameShape = Boolean(target) && target!.id === other && !elbow;
@@ -1525,6 +1550,10 @@ export function createPointerHandler(options: PointerHandlerOptions) {
         // The binding and where on the target it aims go together.
         // Inside the shape, or anywhere on it with Alt, the end is pinned.
         const inside = Boolean(target) && (sameShape || pinnedAt(target!, aimed, original));
+        const row = target ? rowAtPoint(target, looked) : null;
+        const rowKey = index === 0 ? 'startRow' : 'endRow';
+        if (row) bound[rowKey] = row;
+        else delete bound[rowKey];
         if (target) {
           bound[key] = target.id;
           bound[anchorKey] = anchorFor(target, aimed, reach(), inside, elbow, from, !shift && midpointSnap());
@@ -1575,7 +1604,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           // member there scales through its drawn bounds instead.
           const member = original as SceneElement & { points?: number[] };
           const scaled = angle === 0 ? scaleRotatedInto(member, bounds, next) : scaleInto(member, bounds, next);
-          const resized = scaled.type === 'code' ? codeResized(scaled) : scaled;
+          const resized = scaled.type === 'code' ? codeResized(scaled) : scaled.type === 'table' || scaled.type === 'class' ? tableResized(scaled) : scaled;
           // Too short for its label at its new width, a shape grows, the edge
           // not being dragged held still.
           const before = resized.h;
@@ -1663,15 +1692,16 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           if (element.type !== 'arrow' || !isNew(element.id)) return element;
           const loose = { ...element } as SceneElement & Record<string, unknown>;
           let changed = false;
-          for (const [key, anchor, mode] of [
-            ['startBinding', 'startAnchor', 'startMode'],
-            ['endBinding', 'endAnchor', 'endMode'],
+          for (const [key, anchor, mode, row] of [
+            ['startBinding', 'startAnchor', 'startMode', 'startRow'],
+            ['endBinding', 'endAnchor', 'endMode', 'endRow'],
           ] as const) {
             const target = loose[key] as string | undefined;
             if (target === undefined || !order.has(target)) continue;
             delete loose[key];
             delete loose[anchor];
             delete loose[mode];
+            delete loose[row];
             changed = true;
           }
           return changed ? loose : element;
@@ -1693,9 +1723,9 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           // would pull its ends back and undo the move without a word.
           if (element.type === 'arrow') {
             const bound = element as SceneElement & Record<string, unknown>;
-            for (const [key, anchor, mode] of [
-              ['startBinding', 'startAnchor', 'startMode'],
-              ['endBinding', 'endAnchor', 'endMode'],
+            for (const [key, anchor, mode, row] of [
+              ['startBinding', 'startAnchor', 'startMode', 'startRow'],
+              ['endBinding', 'endAnchor', 'endMode', 'endRow'],
             ] as const) {
               const target = bound[key] as string | undefined;
               // A target already gone stays named: the end is detached, and
@@ -1705,6 +1735,7 @@ export function createPointerHandler(options: PointerHandlerOptions) {
               delete bound[key];
               delete bound[anchor];
               delete bound[mode];
+              delete bound[row];
             }
           }
         }
@@ -1830,6 +1861,11 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     // As tall as the user drags it, never shorter than its wrapped code.
     const h = Math.max(element.h, size.height);
     return { ...element, w: size.width, h, measuredWidth: size.width, measuredHeight: size.height } as SceneElement;
+  }
+
+  /** A table or class after a resize: the width is the user's, the height never below its rows. */
+  function tableResized(element: SceneElement & { name: string; rows: string }): SceneElement {
+    return { ...element, h: Math.max(element.h, tableLayout(element).height) };
   }
 
   /** A line or arrow through `points` (scene space), boxed around them. */
@@ -2181,7 +2217,11 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     const startAnchor = start ? anchorFor(start, from, reach(), startInside, elbow, to, snap) : undefined;
     // The end's edge anchor is carried from the start's anchor when attached.
     const towards = start ? spotOn(start, startAnchor) : from;
+    const startRow = start ? rowAtPoint(start, from) : null;
+    const endRow = end ? rowAtPoint(end, to) : null;
     return {
+      ...(startRow ? { startRow } : {}),
+      ...(endRow ? { endRow } : {}),
       ...(start ? { startBinding: start.id, startAnchor } : {}),
       ...(startInside ? { startMode: 'inside' } : {}),
       ...(end ? { endBinding: end.id, endAnchor: anchorFor(end, to, reach(), endInside, elbow, towards, snap) } : {}),

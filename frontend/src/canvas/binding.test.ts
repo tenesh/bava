@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { anchorFor, anchorOn, BINDING_GAP, bindingReach, elbowSnapSpots, isDetached, reroute, routeFor, targetAt } from './binding';
 import type { SceneData, SceneElement } from './scene';
 import { drawnPathOf, pathBounds } from './hit';
+import { rowMiddle } from './table-layout';
 
 const el = (over: Record<string, unknown>): SceneElement =>
   ({ id: 'e', type: 'rect', x: 0, y: 0, w: 100, h: 60, z: 1, ...over }) as SceneElement;
@@ -636,5 +637,101 @@ describe('an arrow from a child to its container', () => {
     const route = routeFor(data.elements[2], data);
     const arrow = data.elements[2] as unknown as { x: number };
     expect(arrow.x + route[0]).toBeGreaterThan(110);
+  });
+});
+
+// An end that names a table's row sits beside that row, on the side facing
+// the other end, and follows the row as rows above it come and go.
+describe('an end attached to a row', () => {
+  const table = (rows: string) => ({ id: 't', type: 'table', name: 'users', rows, x: 0, y: 0, w: 200, h: 200, z: 1 });
+  const other = { id: 'o', type: 'rect', x: 400, y: 0, w: 100, h: 60, z: 2 };
+  const arrow = (extra: Record<string, unknown> = {}) => ({
+    id: 'a', type: 'arrow', x: 0, y: 0, w: 1, h: 1, z: 3, points: [0, 0, 400, 30], startBinding: 't', startRow: 'team_id', endBinding: 'o', ...extra,
+  });
+  const routed = (rows: string, extra?: Record<string, unknown>) => {
+    const data = { elements: [table(rows), other, arrow(extra)] } as unknown as SceneData;
+    reroute(data);
+    const a = data.elements[2] as SceneElement & { points: number[] };
+    return { start: { x: a.x + a.points[0], y: a.y + a.points[1] }, stored: a };
+  };
+
+  it("leaves from the row's middle on the side facing the other end, clear of the outline as any end", () => {
+    const { start } = routed('id int pk\nteam_id int fk');
+    expect(start.x).toBeCloseTo(200 + BINDING_GAP);
+    expect(start.y).toBeCloseTo(rowMiddle(table('id int pk\nteam_id int fk'), 'team_id')!);
+  });
+
+  it('re-attaches when the row comes back', () => {
+    const rows = 'id int pk\nteam_id int fk';
+    expect(routed('id int pk\nteam int fk').start.y).not.toBeCloseTo(rowMiddle(table(rows), 'team_id')!);
+    expect(routed(rows).start.y).toBeCloseTo(rowMiddle(table(rows), 'team_id')!);
+  });
+
+  it('meets the arrow on the facing side of a turned table, at its row as turned', () => {
+    const rows = 'id int pk\nteam_id int fk';
+    const data = { elements: [{ ...table(rows), angle: 180 }, other, arrow()] } as unknown as SceneData;
+    reroute(data);
+    const a = data.elements[2] as SceneElement & { points: number[] };
+    expect(a.x + a.points[0]).toBeCloseTo(200 + BINDING_GAP);
+    // Half round, a row's middle is measured from the bottom.
+    expect(a.y + a.points[1]).toBeCloseTo(200 - rowMiddle(table(rows), 'team_id')!);
+  });
+
+  it("attaches to a class member's row by its name", () => {
+    const data = {
+      elements: [
+        { id: 't', type: 'class', name: 'User', rows: '+ email: string\n+ save(): bool', x: 0, y: 0, w: 200, h: 200, z: 1 },
+        other,
+        arrow({ startRow: 'save()' }),
+      ],
+    } as unknown as SceneData;
+    reroute(data);
+    const a = data.elements[2] as SceneElement & { points: number[] };
+    expect(a.y + a.points[1]).toBeCloseTo(rowMiddle(data.elements[0] as never, 'save()')!);
+  });
+
+  it('faces the other end on an elbow, not the stub beside it, and flips when the other end moves across', () => {
+    const elbow = (otherX: number) => {
+      const data = {
+        elements: [
+          table('id int pk\nteam_id int fk'),
+          { ...other, x: otherX },
+          arrow({ arrowType: 'elbow', points: [200, 50, 240, 50, 240, 30, 400, 30] }),
+        ],
+      } as unknown as SceneData;
+      reroute(data);
+      const a = data.elements[2] as SceneElement & { points: number[] };
+      return a.x + a.points[0];
+    };
+    expect(elbow(400)).toBeGreaterThan(190);
+    expect(elbow(-400)).toBeLessThan(10);
+  });
+
+  it("leaves an elbow from its row's height, not the middle of the side", () => {
+    const rows = 'id int pk\nemail text\nteam_id int fk\ncreated_at timestamp';
+    const data = {
+      elements: [{ ...table(rows), h: 154 }, other, arrow({ arrowType: 'elbow', points: [200, 50, 240, 50, 240, 30, 400, 30] })],
+    } as unknown as SceneData;
+    reroute(data);
+    const a = data.elements[2] as SceneElement & { points: number[] };
+    expect(a.y + a.points[1]).toBeCloseTo(rowMiddle(table(rows), 'team_id')!);
+  });
+
+  it('follows its row when a row is added above it', () => {
+    const rows = 'id int pk\nemail text\nteam_id int fk';
+    expect(routed(rows).start.y).toBe(rowMiddle(table(rows), 'team_id'));
+  });
+
+  it('keeps the row named in the file, and its own anchor, untouched', () => {
+    const { stored } = routed('id int pk\nteam_id int fk', { startAnchor: [0.5, 0.5] });
+    expect(stored).toMatchObject({ startRow: 'team_id', startAnchor: [0.5, 0.5] });
+    expect(stored).not.toHaveProperty('startMode');
+  });
+
+  it('falls back to the table as a whole while its row is gone', () => {
+    const { start } = routed('id int pk\nteam int fk');
+    // On the outline, aimed from the middle, not at a row.
+    expect(start.x).toBeCloseTo(200 + BINDING_GAP, 0);
+    expect(start.y).not.toBe(rowMiddle(table('id int pk\nteam_id int fk'), 'team_id'));
   });
 });

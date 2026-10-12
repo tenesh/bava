@@ -25,6 +25,7 @@ import { placeLabel } from '../label-box';
 import { canvasLineWidth } from '../text-measure';
 import { smoothPoints } from '../curves';
 import { BASELINE_SHARE, PICTURE_ICON, PLACEHOLDER_LOOK, placeholderLayout } from '../picture-placeholder';
+import { TABLE_PAD, TABLE_ROW, tableLayout, type Cell } from '../table-layout';
 
 export type SvgOptions = {
   /** Reads the theme variables the export resolves against. */
@@ -347,6 +348,45 @@ function picture(element: SceneElement & { file: string }, options: SvgOptions):
   return `${box}${clip}<g clip-path="url(#${escapeXml(id)})">${icon}${words}</g>`;
 }
 
+/** A table's or class's name, rules and rows, from the layout the stage draws with. */
+function tableInsides(element: SceneElement & { name: string; rows: string }, paint: Paint, options: SvgOptions): string {
+  const { x, y, w, h } = element;
+  const read = (name: string) => options.read(name).trim();
+  const rowSize = parseFloat(read('--text-code')) || paint.font.size;
+  // Measured as the canvas measures, so the cells end where they do there.
+  const layout = tableLayout(element, canvasLineWidth(`${rowSize}px ${read('--font-mono')}`));
+  const mono = escapeXml(read('--font-mono'));
+  const chipSize = parseFloat(read('--text-mono-chip')) || rowSize;
+  const muted = read('--color-text-muted');
+  // SVG places text on its baseline: the middle of its band plus a third of the size, as the other labels here.
+  const words = (text: string, at: number, anchor: 'start' | 'middle' | 'end', middle: number, size: number, family: string, fill: string, bold = false) =>
+    `<text x="${round(at)}" y="${round(middle + size / 3)}" text-anchor="${anchor}" font-family="${family}" font-size="${round(size)}"` +
+    `${bold ? ' font-weight="600"' : ''} fill="${fill}">${escapeXml(text)}</text>`;
+  const header = layout.header;
+  // The name at the interface's body size, set bold, as the stage draws it.
+  const nameSize = parseFloat(read('--text-body')) || paint.font.size;
+  let out =
+    header.align === 'left'
+      ? words(header.text, x + TABLE_PAD, 'start', y + header.height / 2, nameSize, escapeXml(paint.font.family), paint.font.colour, true)
+      : words(header.text, x + w / 2, 'middle', y + header.height / 2, nameSize, escapeXml(paint.font.family), paint.font.colour, true);
+  const rule = (at: number, width: number) =>
+    `<line x1="${round(x)}" y1="${round(y + at)}" x2="${round(x + w)}" y2="${round(y + at)}" stroke="${paint.stroke}" stroke-width="${round(width)}"/>`;
+  out += rule(header.height, paint.strokeWidth);
+  if (layout.divider !== null) out += rule(layout.divider, PLACEHOLDER_LOOK.border);
+  for (const row of layout.rows) {
+    const middle = y + row.y + TABLE_ROW / 2;
+    const cell = (c: Cell | undefined, fill: string, size = rowSize, bold = false) =>
+      c && c.text ? words(c.text, x + c.x, c.align === 'left' ? 'start' : 'end', middle, size, mono, fill, bold) : '';
+    out += cell(row.cells.marker, muted) + cell(row.cells.name, paint.font.colour) + cell(row.cells.type, muted) + cell(row.cells.keys, paint.font.colour, chipSize, true);
+  }
+  // Words wider than the box are cut at its edge, as on the canvas.
+  const id = `clip-${element.id}`;
+  return (
+    `<clipPath id="${escapeXml(id)}"><rect x="${round(x)}" y="${round(y)}" width="${round(w)}" height="${round(h)}"/></clipPath>` +
+    `<g clip-path="url(#${escapeXml(id)})">${out}</g>`
+  );
+}
+
 /** One element: its body, its label, its opacity and its rotation. */
 function draw(element: SceneElement, options: SvgOptions, labelInset: number): string {
   const paint = paintFor(element, options.read);
@@ -357,6 +397,7 @@ function draw(element: SceneElement, options: SvgOptions, labelInset: number): s
     body(element, tag ? { ...paint, stroke: '' } : paint, options.read('--color-canvas-bg').trim()) +
     (tag ?? '') +
     (element.type === 'code' ? codeRuns(element, paint, options) : '') +
+    (element.type === 'table' || element.type === 'class' ? tableInsides(element, paint, options) : '') +
     (element.type === 'text'
       ? textElement(element, paint, (element as { text: string }).text, 0)
       : label && element.type === 'arrow'

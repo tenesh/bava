@@ -121,3 +121,113 @@ func TestLayoutIsEmptyWhenTheSourceDoesNotCompile(t *testing.T) {
 		t.Errorf("layout = %+v, want nothing", result.Layout)
 	}
 }
+
+// A SQL table and a UML class carry their rows as Bava writes them, so the
+// canvas can make them tables and classes rather than plain boxes.
+func TestLayoutCarriesTableAndClassRows(t *testing.T) {
+	source := `users: {
+  shape: sql_table
+  id: int {constraint: primary_key}
+  team_id: int {constraint: [foreign_key; unique]}
+  notes: text
+}
+User: {
+  shape: class
+  +email: string
+  -hash: string
+  +save(): bool
+  \#notify(to User)
+}
+plain`
+	result, err := render.Render(context.Background(), source, render.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Errors) > 0 {
+		t.Fatalf("the fixture did not compile: %+v", result.Errors)
+	}
+	rows := map[string]string{}
+	for _, shape := range result.Layout.Shapes {
+		rows[shape.ID] = shape.Rows
+	}
+	if want := "id int pk\nteam_id int fk unique\nnotes text"; rows["users"] != want {
+		t.Errorf("users rows = %q, want %q", rows["users"], want)
+	}
+	if want := "+ email: string\n- hash: string\n+ save(): bool\n# notify(to User)"; rows["User"] != want {
+		t.Errorf("User rows = %q, want %q", rows["User"], want)
+	}
+	if rows["plain"] != "" {
+		t.Errorf("a plain shape has rows %q", rows["plain"])
+	}
+}
+
+// A link between two columns says which columns, as D2 knows them; a link
+// to a whole table says none, wherever its route happens to end.
+func TestLayoutNamesTheColumnsALinkJoins(t *testing.T) {
+	source := `users: {
+  shape: sql_table
+  id: int
+  team_id: int
+}
+teams: {
+  shape: sql_table
+  id: int
+}
+users.team_id -> teams.id
+users -> teams`
+	result, err := render.Render(context.Background(), source, render.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Errors) > 0 {
+		t.Fatalf("the fixture did not compile: %+v", result.Errors)
+	}
+	var columns, whole *render.LayoutConnection
+	for i := range result.Layout.Connections {
+		c := &result.Layout.Connections[i]
+		if c.SrcColumn != nil {
+			columns = c
+		} else {
+			whole = c
+		}
+	}
+	if columns == nil || *columns.SrcColumn != 1 || columns.DstColumn == nil || *columns.DstColumn != 0 {
+		t.Errorf("column link = %+v, want columns 1 and 0", columns)
+	}
+	if whole == nil || whole.DstColumn != nil {
+		t.Errorf("table link = %+v, want no columns", whole)
+	}
+}
+
+// What D2 allows that Bava's rows must still say: a constraint Bava does not
+// draw (kept as a word before the keys, part of the type), a column name with
+// a space (quoted), and a method's void return (left out, as D2 draws a
+// method with no return).
+func TestLayoutRowsKeepWhatD2Allows(t *testing.T) {
+	source := `users: {
+  shape: sql_table
+  id: int {constraint: [primary_key; not_null]}
+  "first name": text
+}
+User: {
+  shape: class
+  +run(): void
+}`
+	result, err := render.Render(context.Background(), source, render.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Errors) > 0 {
+		t.Fatalf("the fixture did not compile: %+v", result.Errors)
+	}
+	rows := map[string]string{}
+	for _, shape := range result.Layout.Shapes {
+		rows[shape.ID] = shape.Rows
+	}
+	if want := "id int not_null pk\n\"first name\" text"; rows["users"] != want {
+		t.Errorf("users rows = %q, want %q", rows["users"], want)
+	}
+	if want := "+ run()"; rows["User"] != want {
+		t.Errorf("User rows = %q, want %q", rows["User"], want)
+	}
+}

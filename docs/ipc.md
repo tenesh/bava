@@ -53,7 +53,9 @@ type Span = { from: number; to: number; line: number }; // where in the source
   `line` is **1-indexed**.
 - **`nodeMap`** maps an SVG element id to the node's earliest reference in the
   source (its declaration). No geometry; no screen reads it yet.
-- **`layout`**: each shape's `id`, `type`, `parent`, position, size and label;
+- **`layout`**: each shape's `id`, `type`, `parent`, position, size and label,
+  and a `sql_table`'s or `class`'s `rows` as Bava writes them ("id int pk",
+  "+ save(): bool");
   each connection's `src`, `dst`, arrowheads, label and `route`. No colours,
   opacity, dashes, icons, tooltips or links: inserted diagrams take Bava's
   style. `parent` comes from the dotted absolute id resolved against existing

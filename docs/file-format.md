@@ -385,6 +385,7 @@ Every element has `id`, `type`, `x`, `y`, `w`, `h`, `z`.
 | `frame` | optional `label`; takes `stroke`, `color` |
 | `group` | `children`: element ids |
 | `image` | `file`: a picture in `.bava/attachments/`, by name, never a path |
+| `table`, `class` | `name`, `rows`: a SQL table, a UML class |
 
 The nine shapes fill their box and take `label` (plain text, not
 measured), `fill`, `stroke` and `color` (label), each a colour, absent
@@ -428,6 +429,7 @@ malformed literals draw as the default and are kept.
 | `startBinding`, `endBinding` | id of the attached element | unattached | `arrow` |
 | `startAnchor`, `endAnchor` | `[fx, fy]`, 0 to 1 on the target's upright box | centre | bound end |
 | `startMode`, `endMode` | `inside`: pinned at the anchor | on the outline | bound end |
+| `startRow`, `endRow` | a row's name, on a bound `table` or `class` | the whole element | bound end |
 | `fixedSegments` | `[{ "index": n, "start": [x, y], "end": [x, y] }]`, dragged middle segments, arrow coordinates | routed | elbow |
 | `label` | text at mid-path | none | `arrow` |
 | `labelPosition` | 0 to 1 along the path | middle point (odd count), else middle of the middle segment | labelled `arrow` |
@@ -458,6 +460,34 @@ Arrowheads: `none`, `arrow`, `bar`, `triangle`, `triangle-outline`, `circle`,
   end is never inside: it stays on its anchor's side. An anchor without a
   binding is kept, meaningless. `points` are always written, the fallback when
   a binding cannot resolve.
+
+### Tables and classes
+
+```json
+{ "id": "e7", "type": "table", "name": "users", "rows": "id int pk\nemail text unique", "x": 40, "y": 24, "w": 240, "h": 98, "z": 4 }
+```
+
+- `rows` is kept exactly as typed, one row a line; Bava reads it each time
+  it draws. A blank line is skipped.
+- A `table` row is `name type… keys`: the first word the column (or a quoted
+  name, spaces and all: `"first name" text`), trailing words among `pk`,
+  `fk`, `unique`, `unq`, `primary_key`, `foreign_key` (any case) its keys,
+  drawn PK, FK, UNQ; the words between are its type. A D2 diagram's other
+  constraints arrive there, part of the type, rather than lost.
+- A `class` row starts with `+`, `-`, `#` or `~` (public, private, protected,
+  package) or none. With `(` it is a method, split at the first `:` after
+  its `)` into name and return; otherwise a field, split at its first `:`
+  into name and type. Fields are drawn above methods, each in typed order.
+  From a D2 diagram, a method's `void` return is left out, as D2 draws a
+  method with no return.
+- `h` follows the rows and is rewritten when they change; `w` is the user's.
+  They take `fill`, `stroke`, `color` (the words), `strokeWidth`,
+  `strokeStyle`, `opacity`, `angle`, `locked`, `frame`.
+- An arrow bound to one may name a row (`startRow`, `endRow`): a table
+  column's name, a class member's name without its marker. The end sits on
+  the side facing the other end at that row's middle. A row no longer there
+  leaves the end on the element as a whole and is kept; it re-attaches if
+  the row returns. Of two rows with one name, the first is the one.
 
 ### Pictures
 

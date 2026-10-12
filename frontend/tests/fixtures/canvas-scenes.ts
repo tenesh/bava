@@ -214,6 +214,19 @@ export function pictures(): El[] {
   ];
 }
 
+/**
+ * Two tables joined column to column, and a class: what a schema and a class
+ * diagram look like on the canvas.
+ */
+export function tables(): El[] {
+  return [
+    el({ id: 'tab-users', type: 'table', name: 'users', rows: 'id int pk\nemail text unique\nteam_id int fk\ncreated_at timestamp', x: 40, y: 40, w: 260, h: 154 }),
+    el({ id: 'tab-teams', type: 'table', name: 'teams', rows: 'id int pk\nname text', x: 460, y: 40, w: 220, h: 98 }),
+    el({ id: 'tab-link', type: 'arrow', x: 300, y: 50, w: 160, h: 80, points: [0, 80, 160, 0], startBinding: 'tab-users', startRow: 'team_id', endBinding: 'tab-teams', endRow: 'id', arrowType: 'elbow' }),
+    el({ id: 'tab-user', type: 'class', name: 'User', rows: '+ email: string\n- hash: string\n+ save(): bool\n# notify(to: User)', x: 40, y: 260, w: 280, h: 166, fill: 'blue', stroke: 'blue', color: 'blue' }),
+  ];
+}
+
 /** Three boxes in a row, the last a little out of line, to drag into it. */
 export function row(): El[] {
   return [
@@ -237,7 +250,7 @@ export const box = (id: string, x: number, y: number, extra: Record<string, unkn
 });
 
 /** Every scene by name, for the walks to go through. */
-export const SCENES = { shapes, labels, colours, styles, arrows, heads, containers, turned, diagram, many, pictures } as const;
+export const SCENES = { shapes, labels, colours, styles, arrows, heads, containers, turned, diagram, many, pictures, tables } as const;
 
 // ---- every element in every state ------------------------------------------------
 
@@ -270,6 +283,8 @@ export const ELEMENT_KINDS = {
   frame: 'frame',
   group: 'group',
   image: 'image',
+  table: 'table',
+  class: 'class',
 } as const;
 
 export type Kind = keyof typeof ELEMENT_KINDS;
@@ -279,7 +294,7 @@ export const FAMILIES = {
   shapes: ['rect', 'ellipse', 'diamond', 'cylinder', 'hexagon', 'parallelogram', 'document', 'person', 'cloud'],
   lines: ['line-open', 'line-bent', 'line-round', 'line-closed'],
   arrows: ['arrow-straight', 'arrow-arc', 'arrow-elbow'],
-  others: ['stroke', 'text', 'code', 'code-plain', 'frame', 'group', 'image'],
+  others: ['stroke', 'text', 'code', 'code-plain', 'frame', 'group', 'image', 'table', 'class'],
 } as const satisfies Record<string, readonly Kind[]>;
 
 export type Family = keyof typeof FAMILIES;
@@ -314,6 +329,8 @@ export const LEFT_OUT: Record<ElementState, Record<string, string>> = {
     stroke: 'a stroke carries no label',
     group: 'a group draws no label of its own',
     image: 'a picture carries no label',
+    table: "a table's rows are typed, not a label",
+    class: "a class's rows are typed, not a label",
   },
   editing: {
     line: 'a double-click on a line edits its points, pictured as point editing',
@@ -443,6 +460,12 @@ function kindAt(kind: Kind, b: Point, v: Variant): { elements: El[]; click: Poin
       const two = put({ id: `${kind}-two`, type: 'diamond', x: b.x + 65, y: b.y + 10, w: 60, h: 60 });
       const group = put({ id: kind, type: 'group', x: b.x - 5, y: b.y + 10, w: 130, h: 60, children: [one.id, two.id] });
       return { elements: [one, two, group], click: p(25, 40), handle: p(125, 70), cursor: 'nwse-resize', edit: p(25, 40) };
+    }
+    case 'table':
+    case 'class': {
+      const rows = kind === 'table' ? 'id int pk' : '+ save(): bool';
+      const e = put({ id: kind, type: kind, name: kind === 'table' ? 'users' : 'User', rows, x: b.x - 10, y: b.y, w: 140, h: kind === 'table' ? 70 : 82 });
+      return { elements: [e], click: { x: e.x + 70, y: e.y + 50 }, edit: { x: e.x + 70, y: e.y + 50 }, handle: { x: e.x + e.w, y: e.y + e.h }, cursor: 'nwse-resize' };
     }
     case 'image': {
       const e = put({ id: kind, type: 'image', file: 'landscape.png', x: b.x, y: b.y, w: 120, h: 80 });

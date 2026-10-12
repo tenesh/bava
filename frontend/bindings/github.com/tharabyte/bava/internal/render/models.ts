@@ -39,6 +39,13 @@ export interface LayoutConnection {
     "dstArrow"?: string;
     "label"?: string;
     "route": LayoutPoint[] | null;
+
+    /**
+     * SrcColumn and DstColumn are the SQL table columns a link joins, by
+     * index, when it joins columns rather than whole tables.
+     */
+    "srcColumn"?: number | null;
+    "dstColumn"?: number | null;
 }
 
 export interface LayoutPoint {
@@ -69,6 +76,13 @@ export interface LayoutShape {
     "w": number;
     "h": number;
     "label"?: string;
+
+    /**
+     * Rows are a SQL table's columns or a UML class's members as the canvas
+     * writes them, one a line ("id int pk", "+ save(): bool"); empty for any
+     * other shape.
+     */
+    "rows"?: string;
 }
 
 /**

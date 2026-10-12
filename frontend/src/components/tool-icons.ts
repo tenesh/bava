@@ -9,6 +9,8 @@ import type { Component } from 'svelte';
 import FileImage from '@lucide/svelte/icons/file-image';
 import ImageIcon from '@lucide/svelte/icons/image';
 import Workflow from '@lucide/svelte/icons/workflow';
+import TableIcon from '@lucide/svelte/icons/table';
+import Rows3 from '@lucide/svelte/icons/rows-3';
 import FilePlay from '@lucide/svelte/icons/file-play';
 import FileText from '@lucide/svelte/icons/file-text';
 import LayoutGrid from '@lucide/svelte/icons/layout-grid';
@@ -143,6 +145,9 @@ export const LUCIDE_ICONS = {
   shapes: Shapes,
   // The + panel's Diagram category: boxes joined.
   diagram: Workflow,
+  // A SQL table, a UML class: a box of rows, the class's without columns.
+  table: TableIcon,
+  umlClass: Rows3,
   // Insert ▸ D2 diagram.
   code: Code,
   diamond: Diamond,

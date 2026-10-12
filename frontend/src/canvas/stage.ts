@@ -42,6 +42,7 @@ import { angleOfElement, centreOf, rotatedBounds, selectionFrame } from './rotat
 import type { Guide } from './snapping';
 import { gridDots } from './grid';
 import { PICTURE_ICON, PLACEHOLDER_LOOK, placeholderLayout } from './picture-placeholder';
+import { TABLE_PAD, TABLE_ROW, tableLayout } from './table-layout';
 
 export type CanvasStageOptions = {
   /** Reads a CSS custom property. Injected so tests need no stylesheet. */
@@ -122,6 +123,8 @@ type Entry = {
   /** A picture element's picture, once it has arrived, and what shows until then. */
   picture: Konva.Image | null;
   placeholder: Konva.Group | null;
+  /** A table's or class's name, rules and rows. */
+  table: Konva.Group | null;
 };
 
 export class CanvasStage {
@@ -1331,6 +1334,7 @@ export class CanvasStage {
       border: null,
       picture: null,
       placeholder: null,
+      table: null,
     };
   }
 
@@ -1483,6 +1487,78 @@ export class CanvasStage {
     this.#drawCode(entry, element, read);
     this.#drawLanguage(entry, element, read);
     this.#drawPicture(entry, element, read);
+    this.#drawTable(entry, element, read);
+  }
+
+  /** The nodes drawing a table's or class's name, rules and rows. */
+  tableNode(id: ElementId): Konva.Group | null {
+    return this.#entries.get(id)?.table ?? null;
+  }
+
+  /**
+   * A table's or class's insides, where `tableLayout` puts them: the export
+   * draws from the same layout. Rebuilt on each apply, which happens only
+   * when the element changed.
+   */
+  #drawTable(entry: Entry, element: SceneElement, read: ReadVariable): void {
+    if (element.type !== 'table' && element.type !== 'class') {
+      entry.table?.destroy();
+      entry.table = null;
+      return;
+    }
+    if (!entry.table) {
+      entry.table = new Konva.Group({ listening: false });
+      entry.group.add(entry.table);
+    }
+    const group = entry.table;
+    group.destroyChildren();
+    // Words wider than the box are cut at its edge.
+    group.clip({ x: 0, y: 0, width: element.w, height: element.h });
+    const paint = paintFor(element, read);
+    const mono = read('--font-mono').trim();
+    const muted = read('--color-text-muted').trim();
+    const rowSize = number(read, '--text-code') || paint.font.size;
+    // Measured as drawn, so cells are kept apart where they really end.
+    const layout = tableLayout(element, canvasLineWidth(`${rowSize}px ${mono}`));
+    const text = (config: Konva.TextConfig) => group.add(new Konva.Text({ wrap: 'none', verticalAlign: 'middle', listening: false, ...config }));
+    const header = layout.header;
+    text({
+      text: header.text,
+      x: header.align === 'left' ? TABLE_PAD : 0,
+      width: header.align === 'left' ? Math.max(0, element.w - 2 * TABLE_PAD) : element.w,
+      height: header.height,
+      align: header.align,
+      fontFamily: paint.font.family,
+      // The name at the interface's body size, set bold: a heading for its rows.
+      fontSize: number(read, '--text-body') || paint.font.size,
+      fontStyle: 'bold',
+      fill: paint.font.colour,
+    });
+    const rule = (y: number, width: number) =>
+      group.add(new Konva.Line({ points: [0, y, element.w, y], stroke: paint.stroke, strokeWidth: width, listening: false }));
+    rule(header.height, paint.strokeWidth);
+    if (layout.divider !== null) rule(layout.divider, PLACEHOLDER_LOOK.border);
+    for (const row of layout.rows) {
+      const cell = (c: { text: string; x: number; align: 'left' | 'right' } | undefined, colour: string, extra: Konva.TextConfig = {}) => {
+        if (!c || !c.text) return;
+        text({
+          text: c.text,
+          // A right-aligned cell ends at its x.
+          ...(c.align === 'left' ? { x: c.x } : { x: 0, width: c.x }),
+          align: c.align,
+          y: row.y,
+          height: TABLE_ROW,
+          fontFamily: mono,
+          fontSize: rowSize,
+          fill: colour,
+          ...extra,
+        });
+      };
+      cell(row.cells.marker, muted);
+      cell(row.cells.name, paint.font.colour);
+      cell(row.cells.type, muted);
+      cell(row.cells.keys, paint.font.colour, { fontSize: number(read, '--text-mono-chip') || rowSize, fontStyle: 'bold' });
+    }
   }
 
   /**

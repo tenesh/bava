@@ -194,11 +194,14 @@ func canvasTexts(scene format.Scene) []canvasText {
 			Label string `json:"label"`
 			Text  string `json:"text"`
 			Code  string `json:"code"`
+			// A table's or class's name and rows.
+			Name string `json:"name"`
+			Rows string `json:"rows"`
 		}
 		if json.Unmarshal(e.Raw, &words) != nil {
 			continue
 		}
-		text := strings.Join(strings.Fields(strings.Join([]string{words.Label, words.Text, words.Code}, " ")), " ")
+		text := strings.Join(strings.Fields(strings.Join([]string{words.Label, words.Text, words.Code, words.Name, words.Rows}, " ")), " ")
 		if text != "" {
 			out = append(out, canvasText{id: e.ID, text: text})
 		}

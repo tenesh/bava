@@ -3,7 +3,8 @@ import { onTeardown } from '../test/render';
 import { describe, expect, it, vi } from 'vitest';
 import { createHistory } from './history';
 import { labelArea } from './label-box';
-import { commitLabel, commitText, editableAt, insertText, labelBox, LabelEditor } from './label-editor';
+import { commitLabel, commitTable, commitText, tableText, editableAt, insertText, labelBox, LabelEditor } from './label-editor';
+import { tableLayout } from './table-layout';
 import { editTarget } from '../shell/edit-target';
 import type { SceneData } from './scene';
 
@@ -425,3 +426,52 @@ describe('a field that grows about its middle', () => {
     host.remove();
   });
 });
+
+// A table or class is typed as lines: its name, then a row a line.
+describe('committing a table or class', () => {
+  const start = () =>
+    createHistory({ elements: [{ id: 't', type: 'table', name: 'users', rows: 'id int pk', x: 0, y: 0, w: 240, h: 70, z: 1 } as never] });
+
+  it('writes the first line as its name, the rest as its rows exactly, and its height, in one step', () => {
+    const history = start();
+    commitTable(history, 't', 'users\nid int pk\n  email   text unique\nteam_id int fk');
+    const table = history.current.elements[0] as unknown as { name: string; rows: string; h: number; w: number };
+    expect(table.name).toBe('users');
+    expect(table.rows).toBe('id int pk\n  email   text unique\nteam_id int fk');
+    expect(table.h).toBe(tableLayout({ type: 'table', name: 'users', rows: table.rows, w: 240 }).height);
+    expect(table.w).toBe(240);
+    history.undo();
+    expect(history.current.elements[0]).toMatchObject({ rows: 'id int pk', h: 70 });
+  });
+
+  it('removes it when emptied, as emptied text is', () => {
+    const history = start();
+    commitTable(history, 't', '  \n ');
+    expect(history.current.elements).toEqual([]);
+  });
+
+  it('records nothing when nothing changed, whatever its name holds', () => {
+    const history = start();
+    commitTable(history, 't', 'users\nid int pk');
+    expect(history.canUndo).toBe(false);
+    const odd = createHistory({ elements: [{ id: 't', type: 'table', name: ' two\nlines ', rows: 'id int', x: 0, y: 0, w: 240, h: 70, z: 1 } as never] });
+    commitTable(odd, 't', tableText(odd.current.elements[0] as never));
+    expect(odd.canUndo).toBe(false);
+  });
+
+  it('keeps a height the user gave it when only the name changes', () => {
+    const history = createHistory({ elements: [{ id: 't', type: 'table', name: 'users', rows: 'id int pk', x: 0, y: 0, w: 240, h: 300, z: 1 } as never] });
+    commitTable(history, 't', 'accounts\nid int pk');
+    expect(history.current.elements[0]).toMatchObject({ name: 'accounts', h: 300 });
+  });
+});
+
+describe('double-clicking a table or class', () => {
+  it('finds it to type into', () => {
+    for (const type of ['table', 'class']) {
+      const scene = { elements: [{ id: 't', type, name: 'users', rows: '', x: 0, y: 0, w: 200, h: 60, z: 1 }] } as unknown as SceneData;
+      expect(editableAt(scene, { x: 100, y: 30 }, 4)?.id).toBe('t');
+    }
+  });
+});
+

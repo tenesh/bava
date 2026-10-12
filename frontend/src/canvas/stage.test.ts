@@ -6,6 +6,7 @@ import { CanvasStage } from './stage';
 import { onTeardown } from '../test/render';
 import { createScene, type SceneData, type SceneElement } from './scene';
 import { pathOf, routePoints } from './arrows';
+import { TABLE_HEADER, TABLE_PAD, TABLE_ROW } from './table-layout';
 
 // jsdom resolves no CSS variables, so the tests hand the stage a reader.
 function reader(values: Record<string, string>) {
@@ -1641,5 +1642,53 @@ describe('pictures on the stage', () => {
     stage.setPicture('har gow.png', loaded());
     expect(stage.pictureNode('a')).not.toBeNull();
     expect(stage.pictureNode('b')).not.toBeNull();
+  });
+});
+
+describe('tables and classes on the stage', () => {
+  const table = { type: 'table', name: 'users', rows: 'id int pk\nemail text unique', x: 10, y: 20, w: 240, h: 98 } as const;
+  const words = (stage: CanvasStage) =>
+    stage
+      .tableNode('e1')!
+      .find<Konva.Text>('Text')
+      .map((node) => node.text());
+
+  it('draws the name, a rule under it, and each row where the layout puts it', () => {
+    const stage = mounted();
+    stage.render(one(table as never));
+    expect(words(stage)).toEqual(['users', 'id', 'int', 'PK', 'email', 'text', 'UNQ']);
+    const group = stage.tableNode('e1')!;
+    const id = group.find<Konva.Text>('Text').find((node) => node.text() === 'id')!;
+    expect(id.x()).toBe(TABLE_PAD);
+    // Each row's words sit within its band.
+    expect(id.y()).toBeGreaterThanOrEqual(TABLE_HEADER);
+    expect(id.y()).toBeLessThan(TABLE_HEADER + TABLE_ROW);
+    const rules = group.find<Konva.Line>('Line').map((line) => line.points()[1]);
+    expect(rules).toEqual([TABLE_HEADER]);
+    // Words wider than the box are cut at its edge.
+    expect(group.clipWidth()).toBe(240);
+    expect(stage.bodyFor('e1')!.fill()).toBe('ivory');
+  });
+
+  it("draws a class's divider between its fields and methods", () => {
+    const stage = mounted();
+    stage.render(one({ type: 'class', name: 'User', rows: '+ email: string\n+ save(): bool', x: 0, y: 0, w: 260, h: 110 } as never));
+    expect(words(stage)).toEqual(['User', '+', 'email', 'string', '+', 'save()', 'bool']);
+    expect(stage.tableNode('e1')!.find<Konva.Line>('Line')).toHaveLength(2);
+  });
+
+  it('turns and fades with its element, its rows with it', () => {
+    const stage = mounted();
+    stage.render(one({ ...table, angle: 30, opacity: 50 } as never));
+    expect(stage.nodeFor('e1')!.rotation()).toBe(30);
+    expect(stage.nodeFor('e1')!.opacity()).toBe(0.5);
+    expect(stage.tableNode('e1')!.getParent()).toBe(stage.nodeFor('e1'));
+  });
+
+  it('redraws its rows when they change', () => {
+    const stage = mounted();
+    stage.render(one(table as never));
+    stage.render(one({ ...table, rows: 'id int pk' } as never));
+    expect(words(stage)).toEqual(['users', 'id', 'int', 'PK']);
   });
 });

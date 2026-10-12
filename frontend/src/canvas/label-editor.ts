@@ -7,6 +7,7 @@
  * While it has focus, canvas keys stand down, because `editTarget` treats a
  * textarea as a field.
  */
+import { tableLayout } from './table-layout';
 import { growToLabel, labelArea } from './label-box';
 import type { History } from './history';
 import type { ElementId, SceneData, SceneElement } from './scene';
@@ -65,6 +66,38 @@ export function commitText(
   });
 }
 
+/** What the field shows for a table or class: its name, then its rows, a line each. */
+export function tableText(element: { name: string; rows: string }): string {
+  return element.rows ? `${element.name}\n${element.rows}` : element.name;
+}
+
+/**
+ * Set a table's or class's name (the first line) and rows (the rest, exactly
+ * as typed) as one undo step; a change of rows makes its height theirs. The
+ * field left as it opened records nothing, whatever the name holds. Emptied,
+ * it is removed, as emptied text is.
+ */
+export function commitTable(history: History, id: ElementId, value: string): void {
+  const element = history.current.elements.find((e) => e.id === id) as (SceneElement & { name: string; rows: string }) | undefined;
+  if (!element || value === tableText(element)) return;
+  const newline = value.indexOf('\n');
+  const name = (newline < 0 ? value : value.slice(0, newline)).trim();
+  const rows = newline < 0 ? '' : value.slice(newline + 1);
+  history.mutate((draft) => {
+    const index = draft.elements.findIndex((e) => e.id === id);
+    if (index < 0) return;
+    if (!value.trim()) {
+      draft.elements.splice(index, 1);
+      return;
+    }
+    const table = draft.elements[index] as SceneElement & { name: string; rows: string };
+    const rowsChanged = rows !== table.rows;
+    table.name = name;
+    table.rows = rows;
+    if (rowsChanged) table.h = tableLayout({ ...table, name, rows }).height;
+  });
+}
+
 /**
  * The topmost shape, frame or text element under a point, which can be typed
  * into. `lineTolerance` is how near an arrow counts, in scene units: the caller
@@ -76,7 +109,7 @@ export function editableAt(scene: SceneData, point: Point, lineTolerance: number
     // An arrow carries a label too, and is typed on where it is drawn: its
     // box is mostly empty space.
     if (e.type === 'arrow') return nearElement(e, point, lineTolerance);
-    if (!(isShapeType(e.type) || e.type === 'text' || e.type === 'frame' || e.type === 'code')) return false;
+    if (!(isShapeType(e.type) || e.type === 'text' || e.type === 'frame' || e.type === 'code' || e.type === 'table' || e.type === 'class')) return false;
     // Where the element is drawn, rotation included: the field opens on the
     // shape the user double-clicked, not on the box it is stored as.
     return containsPoint(e, point);

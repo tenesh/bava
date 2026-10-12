@@ -133,7 +133,7 @@ func Render(ctx context.Context, source string, opts Options) (Result, error) {
 		if diags := diagnostics(err); len(diags) > 0 {
 			// The diagram did not compile. That is an expected state, not a
 			// failed call: the caller keeps the last good SVG on screen.
-			return Result{Errors: diags, Layout: layoutOf(nil)}, nil
+			return Result{Errors: diags, Layout: layoutOf(nil, nil)}, nil
 		}
 		return Result{}, fmt.Errorf("compile: %w", err)
 	}
@@ -143,7 +143,7 @@ func Render(ctx context.Context, source string, opts Options) (Result, error) {
 		return Result{}, fmt.Errorf("render svg: %w", err)
 	}
 
-	return Result{SVG: string(svg), NodeMap: nodeMap(graph), Layout: layoutOf(diagram)}, nil
+	return Result{SVG: string(svg), NodeMap: nodeMap(graph), Layout: layoutOf(diagram, graph)}, nil
 }
 
 // nodeMap maps each object's SVG element id to where it was declared.

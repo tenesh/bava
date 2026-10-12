@@ -440,6 +440,72 @@ func TestRoundTripPictures(t *testing.T) {
 	}
 }
 
+// A table's and a class's rows are kept exactly as typed, and an arrow's
+// row beside its binding (docs/file-format.md, "Tables and classes").
+func TestRoundTripTablesAndClasses(t *testing.T) {
+	source := "# Schema\n\n```bava-canvas\n" + `{
+  "elements": [
+    {
+      "fill": "blue",
+      "h": 118,
+      "id": "users",
+      "name": "users",
+      "rows": "id int pk\nemail   text  UNIQUE\n\nteam_id int fk",
+      "type": "table",
+      "w": 240,
+      "x": 0,
+      "y": 0,
+      "z": 1
+    },
+    {
+      "h": 90,
+      "id": "User",
+      "name": "User",
+      "rows": "+ email: string\n# notify(to: User)",
+      "stereotype": "a key from later",
+      "type": "class",
+      "w": 260,
+      "x": 0,
+      "y": 200,
+      "z": 2
+    },
+    {
+      "endBinding": "User",
+      "endRow": "email",
+      "h": 200,
+      "id": "a1",
+      "points": [
+        0,
+        0,
+        0,
+        200
+      ],
+      "startBinding": "users",
+      "startRow": "team_id",
+      "type": "arrow",
+      "w": 0,
+      "x": 240,
+      "y": 50,
+      "z": 3
+    }
+  ],
+  "version": 1
+}
+` + "```\n"
+
+	file, err := format.Read(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	written, err := format.Write(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written != source {
+		t.Errorf("a table, class or row binding changed on the way through.\nwant:\n%s\ngot:\n%s", source, written)
+	}
+}
+
 // Bends, anchors and a label position are plain JSON the frontend writes; an
 // older reader keeps them verbatim, and this one must too
 // (docs/file-format.md, "Lines, arrows and strokes", "Attachment and

@@ -1587,3 +1587,45 @@ test.describe('pictures added to the canvas', () => {
   });
 });
 
+
+// A table or class is typed as lines: its name, then a row a line.
+test.describe('tables and classes', () => {
+  const users = { id: 'users', type: 'table', name: 'users', rows: 'id int pk', x: 100, y: 100, w: 240, h: 70, z: 1 };
+
+  test('a double-click opens its lines; typing a row and leaving draws it, taller', async ({ page }) => {
+    await startCanvas(page, [users]);
+    const at = await onScreen(page, { x: 220, y: 140 });
+    await page.mouse.dblclick(at.x, at.y);
+    const field = page.locator('textarea').filter({ visible: true });
+    await expect(field).toHaveValue('users\nid int pk');
+    await field.fill('users\nid int pk\nemail text unique');
+    await page.keyboard.press('Escape');
+    const table = byId(await saved(page), 'users') as unknown as { name: string; rows: string; h: number; w: number };
+    expect(table).toMatchObject({ name: 'users', rows: 'id int pk\nemail text unique', w: 240 });
+    expect(table.h).toBeGreaterThan(70);
+  });
+
+  test('+ ▸ Diagram ▸ SQL table: a click places one, open for typing', async ({ page }) => {
+    await startCanvas(page);
+    await page.getByRole('toolbar', { name: 'Tools' }).getByRole('button', { name: 'Insert', exact: true }).click();
+    await page.getByRole('option', { name: /^Diagram/ }).click();
+    await page.getByRole('option', { name: 'SQL table' }).click();
+    await clickScene(page, { x: 300, y: 200 });
+    const field = page.locator('textarea').filter({ visible: true });
+    await expect(field).toHaveValue('table\nid int pk');
+    await field.fill('orders\nid int pk\ntotal numeric');
+    await page.keyboard.press('Escape');
+    const [table] = ofType(await saved(page), 'table') as unknown as { name: string; rows: string }[];
+    expect(table).toMatchObject({ name: 'orders', rows: 'id int pk\ntotal numeric' });
+  });
+
+  test('Canvas ▸ Diagram ▸ UML Class places a class the same way', async ({ page }) => {
+    await startCanvas(page);
+    await menu(page, 'tool.class');
+    await clickScene(page, { x: 300, y: 200 });
+    await expect(page.locator('textarea').filter({ visible: true })).toHaveValue('Class\n+ name: string');
+    await page.keyboard.press('Escape');
+    expect(ofType(await saved(page), 'class')).toHaveLength(1);
+  });
+});
+

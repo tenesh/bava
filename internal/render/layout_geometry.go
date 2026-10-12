@@ -3,6 +3,7 @@ package render
 import (
 	"strings"
 
+	"github.com/d2lang/d2/d2graph"
 	"github.com/d2lang/d2/d2target"
 )
 
@@ -34,6 +35,10 @@ type LayoutShape struct {
 	W      float64 `json:"w"`
 	H      float64 `json:"h"`
 	Label  string  `json:"label,omitempty"`
+	// Rows are a SQL table's columns or a UML class's members as the canvas
+	// writes them, one a line ("id int pk", "+ save(): bool"); empty for any
+	// other shape.
+	Rows string `json:"rows,omitempty"`
 }
 
 // LayoutConnection is one edge, with the route the engine chose.
@@ -45,6 +50,10 @@ type LayoutConnection struct {
 	DstArrow string        `json:"dstArrow,omitempty"`
 	Label    string        `json:"label,omitempty"`
 	Route    []LayoutPoint `json:"route"`
+	// SrcColumn and DstColumn are the SQL table columns a link joins, by
+	// index, when it joins columns rather than whole tables.
+	SrcColumn *int `json:"srcColumn,omitempty"`
+	DstColumn *int `json:"dstColumn,omitempty"`
 }
 
 type LayoutPoint struct {
@@ -53,7 +62,7 @@ type LayoutPoint struct {
 }
 
 // layoutOf reads the geometry out of a laid-out diagram.
-func layoutOf(diagram *d2target.Diagram) Layout {
+func layoutOf(diagram *d2target.Diagram, graph *d2graph.Graph) Layout {
 	if diagram == nil {
 		return Layout{Shapes: []LayoutShape{}, Connections: []LayoutConnection{}}
 	}
@@ -74,6 +83,7 @@ func layoutOf(diagram *d2target.Diagram) Layout {
 			W:      float64(shape.Width),
 			H:      float64(shape.Height),
 			Label:  shape.Label,
+			Rows:   rowsOf(shape),
 		})
 	}
 
@@ -86,14 +96,17 @@ func layoutOf(diagram *d2target.Diagram) Layout {
 			}
 			route = append(route, LayoutPoint{X: point.X, Y: point.Y})
 		}
+		src, dst := columnsOf(graph, connection.ID)
 		connections = append(connections, LayoutConnection{
-			ID:       connection.ID,
-			Src:      connection.Src,
-			Dst:      connection.Dst,
-			SrcArrow: string(connection.SrcArrow),
-			DstArrow: string(connection.DstArrow),
-			Label:    connection.Label,
-			Route:    route,
+			SrcColumn: src,
+			DstColumn: dst,
+			ID:        connection.ID,
+			Src:       connection.Src,
+			Dst:       connection.Dst,
+			SrcArrow:  string(connection.SrcArrow),
+			DstArrow:  string(connection.DstArrow),
+			Label:     connection.Label,
+			Route:     route,
 		})
 	}
 
@@ -112,4 +125,85 @@ func parentOf(id string, ids map[string]bool) string {
 		}
 	}
 	return ""
+}
+
+// rowsOf writes a table's columns and a class's members as lines the canvas
+// reads back (docs/file-format.md, "Tables and classes").
+func rowsOf(shape d2target.Shape) string {
+	var lines []string
+	switch shape.Type {
+	case d2target.ShapeSQLTable:
+		for _, column := range shape.Columns {
+			name := column.Name.Label
+			// A name with a space is quoted, so its words stay one name.
+			if strings.ContainsAny(name, " \t") {
+				name = `"` + name + `"`
+			}
+			words := []string{name}
+			if column.Type.Label != "" {
+				words = append(words, column.Type.Label)
+			}
+			// Keys last, where the canvas reads them; any other constraint
+			// before them, kept as part of the type rather than lost.
+			var keys []string
+			for _, constraint := range column.Constraint {
+				switch constraint {
+				case "primary_key":
+					keys = append(keys, "pk")
+				case "foreign_key":
+					keys = append(keys, "fk")
+				case "unique":
+					keys = append(keys, "unique")
+				default:
+					words = append(words, constraint)
+				}
+			}
+			lines = append(lines, strings.Join(append(words, keys...), " "))
+		}
+	case d2target.ShapeClass:
+		member := func(visibility, name, kind string) string {
+			line := visibilityMark(visibility) + " " + name
+			if kind != "" {
+				line += ": " + kind
+			}
+			return line
+		}
+		for _, field := range shape.Fields {
+			lines = append(lines, member(field.Visibility, field.Name, field.Type))
+		}
+		for _, method := range shape.Methods {
+			ret := method.Return
+			if ret == "void" {
+				ret = ""
+			}
+			lines = append(lines, member(method.Visibility, method.Name, ret))
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// visibilityMark is the sign a class member is written with.
+func visibilityMark(visibility string) string {
+	switch visibility {
+	case "private":
+		return "-"
+	case "protected":
+		return "#"
+	default:
+		return "+"
+	}
+}
+
+// columnsOf is the table columns the connection with this id joins, as D2's
+// graph records them; nil where it joins a whole shape.
+func columnsOf(graph *d2graph.Graph, id string) (src, dst *int) {
+	if graph == nil {
+		return nil, nil
+	}
+	for _, edge := range graph.Edges {
+		if edge.AbsID() == id {
+			return edge.SrcTableColumnIndex, edge.DstTableColumnIndex
+		}
+	}
+	return nil, nil
 }

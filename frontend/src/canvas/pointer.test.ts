@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { TABLE_START_WIDTH, tableLayout } from './table-layout';
+import type { SceneElement } from './scene';
 import { createPointerHandler } from './pointer';
 import { createHistory } from './history';
 import { createSelection } from './selection';
@@ -4032,6 +4034,89 @@ describe('resizing a picture', () => {
     handler.down(at(100, 100));
     const [p] = handler.preview(at(140, 110))!.elements;
     expect(p.w / p.h).toBeCloseTo(2);
+  });
+});
+
+// A table or class is never shorter than its rows; its width is the user's.
+describe('resizing a table', () => {
+  it('keeps the width asked, and never a height below its rows', () => {
+    const history = createHistory({
+      elements: [{ id: 't', type: 'table', name: 'users', rows: 'id int pk\nemail text\nname text', x: 0, y: 0, w: 200, h: 120, z: 1 } as never],
+    });
+    const selection = createSelection();
+    const tools = createTools();
+    tools.activate('select');
+    const handler = createPointerHandler({ history, selection, tools, handleSize: () => 4 });
+    selection.click('t');
+    handler.down(at(200, 120));
+    const [t] = handler.preview(at(300, 20))!.elements;
+    expect(t.w).toBe(300);
+    expect(t.h).toBe(tableLayout({ type: 'table', name: 'users', rows: 'id int pk\nemail text\nname text', w: 300 }).height);
+  });
+});
+
+// An arrow end dropped on a table's row attaches beside that row.
+describe('attaching an arrow to a row', () => {
+  function withTables() {
+    const kit = harness('arrow');
+    kit.history.mutate((scene) => {
+      scene.elements.push(
+        { id: 'users', type: 'table', name: 'users', rows: 'id int pk\nteam_id int fk', x: 0, y: 0, w: 200, h: 98, z: 1 } as never,
+        { id: 'teams', type: 'table', name: 'teams', rows: 'id int pk', x: 400, y: 0, w: 200, h: 70, z: 2 } as never,
+      );
+    });
+    const drawn = () => kit.history.current.elements.find((e) => e.type === 'arrow') as (SceneElement & Record<string, unknown>) | undefined;
+    return { ...kit, drawn };
+  }
+  // A point in the middle of a row's band, by its index.
+  const inRow = (x: number, index: number) => at(x, 36 + 28 * index + 14);
+
+  it('records the row under each end, the table as a whole over its header', () => {
+    const { handler, drawn } = withTables();
+    handler.down(inRow(100, 1));
+    handler.move(at(500, 18));
+    handler.up(at(500, 18));
+    expect(drawn()).toMatchObject({ startBinding: 'users', startRow: 'team_id', endBinding: 'teams' });
+    expect(drawn()).not.toHaveProperty('endRow');
+  });
+
+  it('moves the row with the end dragged onto another row, and drops it off the table', () => {
+    const { selection, handler, tools, drawn } = withTables();
+    handler.down(inRow(100, 1));
+    handler.move(inRow(500, 0));
+    handler.up(inRow(500, 0));
+    expect(drawn()).toMatchObject({ endRow: 'id' });
+    tools.activate('select');
+    selection.click(drawn()!.id);
+    // The end is drawn on the teams table's left side, at its row's middle.
+    const end = { x: 400, y: 36 + 14 };
+    handler.down(end);
+    handler.move(at(300, 400));
+    handler.up(at(300, 400));
+    expect(drawn()).not.toHaveProperty('endRow');
+    expect(drawn()).not.toHaveProperty('endBinding');
+  });
+});
+
+// A table or class is placed by a click, or dragged out to a width, with a
+// row to start from; the caller opens it for typing.
+describe('placing a table or class', () => {
+  it('places one at its starting width with a starting row, by a click', () => {
+    const { history, handler } = harness('table' as never);
+    handler.down(at(100, 100));
+    const id = handler.up(at(100, 100));
+    const [t] = history.current.elements as unknown as { id: string; type: string; name: string; rows: string; x: number; w: number; h: number }[];
+    expect(t).toMatchObject({ id, type: 'table', name: 'table', rows: 'id int pk', x: 100, w: TABLE_START_WIDTH });
+    expect(t.h).toBe(tableLayout(t).height);
+  });
+
+  it('takes the width dragged out, and makes a class with its own start', () => {
+    const { history, handler } = harness('class' as never);
+    handler.down(at(100, 100));
+    handler.move(at(400, 160));
+    handler.up(at(400, 160));
+    expect(history.current.elements[0]).toMatchObject({ type: 'class', name: 'Class', rows: '+ name: string', x: 100, w: 300 });
+    expect(history.canUndo).toBe(true);
   });
 });
 

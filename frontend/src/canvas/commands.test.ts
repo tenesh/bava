@@ -705,3 +705,17 @@ describe('frames and groups in commands', () => {
     expect(inside.x - f.x).toBe(10);
   });
 });
+
+describe('pasting an arrow bound to a row', () => {
+  it("lets go of the row with the table when the table stays behind", () => {
+    const history = createHistory({
+      elements: [{ id: 'users', type: 'table', name: 'users', rows: 'id int pk', x: 0, y: 0, w: 200, h: 70, z: 1 } as never],
+    });
+    const commands = createCanvasCommands({ history, selection: createSelection() });
+    const arrow = { id: 'a', type: 'arrow', x: 200, y: 50, w: 100, h: 0, z: 2, points: [0, 0, 100, 0], startBinding: 'users', startRow: 'id' };
+    commands.pasteElements([arrow as never]);
+    const pasted = history.current.elements.find((e) => e.type === 'arrow')!;
+    expect(pasted).not.toHaveProperty('startBinding');
+    expect(pasted).not.toHaveProperty('startRow');
+  });
+});

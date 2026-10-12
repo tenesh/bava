@@ -106,3 +106,23 @@ describe('inserting a D2 diagram', () => {
     expect(insert.choose(0)).toEqual({ type: 'command', id: 'd2Diagram' });
   });
 });
+
+describe('a table or class from the Diagram category', () => {
+  it('is offered beside the D2 diagram, and chosen as its tool', () => {
+    const insert = createInsert();
+    insert.choose(insert.entries.findIndex((e) => e.id === 'diagram'));
+    expect(insert.entries.map((e) => [e.id, t(e.labelKey)])).toEqual([
+      ['d2Diagram', 'D2 diagram'],
+      ['table', 'SQL table'],
+      ['class', 'UML class'],
+    ]);
+    expect(insert.choose(1)).toEqual({ type: 'choose', tool: 'table' });
+  });
+
+  it('is found by searching', () => {
+    const insert = createInsert();
+    insert.setQuery('uml');
+    expect(insert.entries.map((e) => e.id)).toEqual(['class']);
+  });
+});
+

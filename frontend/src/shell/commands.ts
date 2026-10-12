@@ -60,6 +60,8 @@ export const COMMAND_IDS = [
   'tool.text',
   'tool.frame',
   'tool.code',
+  'tool.table',
+  'tool.class',
   'tool.eraser',
   'tool.diamond',
   'tool.cylinder',

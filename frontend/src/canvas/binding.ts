@@ -9,7 +9,8 @@
  *
  * Pure over scene data, so the geometry is testable without a stage.
  */
-import { angleOfElement, centreOf, rotatedBounds, rotatePoint } from './rotate';
+import { angleOfElement, centreOf, rotatedBounds, rotatePoint, toLocal } from './rotate';
+import { rowAt, rowMiddle } from './table-layout';
 import { isOutlineShape, drawOutline, type PathSink } from './shapes';
 import { isShapeType, type ElementId, type SceneData, type SceneElement } from './scene';
 import { drawnPathOf, pathBounds } from './hit';
@@ -165,7 +166,8 @@ function outlinePoints(shape: SceneElement): Point[] {
  * be resolved keeps the point it was drawn with: the endpoint freezes rather
  * than the arrow moving or disappearing.
  */
-export function routeFor(arrow: SceneElement, scene: SceneData): number[] {
+export function routeFor(stored: SceneElement, scene: SceneData): number[] {
+  const arrow = rowAnchored(stored, scene);
   const points = [...(('points' in arrow ? arrow.points : []) as number[])];
   if (points.length < 4) return points;
 
@@ -237,6 +239,58 @@ export function routeFor(arrow: SceneElement, scene: SceneData): number[] {
     if (endShape && bound.endMode !== 'inside') pin(endSpot, last);
   }
   return points;
+}
+
+/**
+ * The arrow as it is routed: an end naming a row of its table or class is
+ * pinned beside that row, on the side facing the arrow's next point (an
+ * elbow's other end), at the row's middle, the usual gap off the outline. Worked out on every route, never stored, so the end follows
+ * its row as rows above it come and go; a row no longer there leaves the end
+ * on the element as a whole.
+ */
+function rowAnchored(arrow: SceneElement, scene: SceneData): SceneElement {
+  const bound = arrow as SceneElement & { points?: number[]; startRow?: string; endRow?: string };
+  const points = bound.points ?? [];
+  if ((!bound.startRow && !bound.endRow) || points.length < 4) return arrow;
+  const { start, end } = bindingsOf(arrow);
+  const find = (id?: string) => (id === undefined ? undefined : scene.elements.find((e) => e.id === id));
+  const last = points.length - 2;
+  const world = (index: number): Point => ({ x: arrow.x + points[index], y: arrow.y + points[index + 1] });
+  // An elbow's stored route starts with a stub off the side it already
+  // uses, so it faces the other end itself; a bent arrow faces its next bend.
+  const elbow = (arrow as { arrowType?: string }).arrowType === 'elbow';
+  const towardsFrom = (index: number, otherId?: string): Point => {
+    if (points.length > 4 && !elbow) return world(index === 0 ? 2 : last - 2);
+    const other = find(otherId);
+    return other ? centreOf(other) : world(index === 0 ? last : 0);
+  };
+  const pinned = (id: string | undefined, row: string | undefined, towards: Point) => {
+    const table = find(id);
+    if (!row || !table || (table.type !== 'table' && table.type !== 'class')) return null;
+    const middle = rowMiddle(table, row);
+    if (middle === null || table.h <= 0) return null;
+    const facing = toLocal(towards, table).x >= table.x + table.w / 2 ? 1 : 0;
+    // Clear of the outline by the gap every attached end keeps; an elbow's
+    // router keeps it itself, reading the side from an anchor on the edge.
+    const clear = !elbow && table.w > 0 ? gapOf(table) / table.w : 0;
+    return { anchor: [facing === 1 ? 1 + clear : -clear, Math.min(1, middle / table.h)] as [number, number] };
+  };
+  const startPin = pinned(start, bound.startRow, towardsFrom(0, end));
+  const endPin = pinned(end, bound.endRow, towardsFrom(last, start));
+  if (!startPin && !endPin) return arrow;
+  return {
+    ...arrow,
+    ...(startPin ? { startAnchor: startPin.anchor, startMode: 'inside' } : {}),
+    ...(endPin ? { endAnchor: endPin.anchor, endMode: 'inside' } : {}),
+  } as SceneElement;
+}
+
+/** The row of a table or class under a point, by its name; null for any other element, or off its rows. */
+export function rowAtPoint(element: SceneElement, point: Point): string | null {
+  if (element.type !== 'table' && element.type !== 'class') return null;
+  const local = toLocal(point, element);
+  if (local.x < element.x || local.x > element.x + element.w) return null;
+  return rowAt(element, local.y - element.y);
 }
 
 /** The shortest an attached arrow's ends may be apart, in scene units. */
@@ -728,7 +782,7 @@ export function reroute(scene: SceneData): void {
     if (element.type !== 'arrow') continue;
 
     const elbow = (element as { arrowType?: string }).arrowType === 'elbow';
-    const shaped = elbow && fixedOf(element).length > 0 ? shapedRoute(element, scene) : null;
+    const shaped = elbow && fixedOf(element).length > 0 ? shapedRoute(rowAnchored(element, scene), scene) : null;
     const routed = shaped ? shaped.points : routeFor(element, scene);
     const { start, end } = bindingsOf(element);
     const attached = start !== undefined || end !== undefined;

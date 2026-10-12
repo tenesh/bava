@@ -18,6 +18,9 @@ export type ToolId =
   | 'frame'
   | 'code'
   | 'eraser'
+  // A SQL table and a UML class: placed from the + panel's Diagram category and Canvas ▸ Diagram, no key.
+  | 'table'
+  | 'class'
   | ShapeToolId;
 
 /** The further shapes, chosen from the rail's shape menu. */

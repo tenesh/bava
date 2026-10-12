@@ -91,7 +91,8 @@
   import { handleKey } from './canvas/keymap';
   import { createCanvasCommands } from './canvas/commands';
   import { wheelAction } from './canvas/navigation';
-  import { LabelEditor, commitLabel, commitText, editableAt, insertText, labelBox } from './canvas/label-editor';
+  import { LabelEditor, commitLabel, commitTable, commitText, editableAt, insertText, labelBox, tableText } from './canvas/label-editor';
+  import { TABLE_PAD } from './canvas/table-layout';
   import { canvasLineWidth, measureFor } from './canvas/text-measure';
   import { carriedPictures, readCanvasClipboard } from './canvas/clipboard-read';
   import { PASTED_TEXT_WIDTH, isWrapped, longestLine, pastedText, textSize } from './canvas/paste-text';
@@ -2682,6 +2683,10 @@
   /** Open the editor over a shape's label, a frame's label, or a text element. */
   function editElement(element: SceneElement) {
     if (!labelEditor) return;
+    if (element.type === 'table' || element.type === 'class') {
+      editTable(element);
+      return;
+    }
     const isText = element.type === 'text';
     const isArrow = element.type === 'arrow';
     const paint = paintFor(element, readRootVariable);
@@ -2730,6 +2735,46 @@
   function arrowLabelField(element: SceneElement, paint: ReturnType<typeof paintFor>, measure: (text: string) => number) {
     const drawn = smoothPoints(pathOf(('points' in element ? element.points : []) as number[], (element as { arrowType?: string }).arrowType), paint.tension);
     return labelField(element, drawn, paint.tension, paint.font, measure);
+  }
+
+  /**
+   * Type into a table or class: its name on the first line, a row a line,
+   * in the mono face its rows are drawn in. The field grows with the lines,
+   * never narrower than the element.
+   */
+  function editTable(element: SceneElement & { name: string; rows: string }) {
+    if (!labelEditor) return;
+    const paint = paintFor(element, readRootVariable);
+    const font = {
+      ...paint.font,
+      family: readRootVariable('--font-mono').trim(),
+      size: parseFloat(readRootVariable('--text-code')) || paint.font.size,
+      lineHeight: parseFloat(readRootVariable('--leading-code')) || paint.font.lineHeight,
+      align: 'left' as const,
+      verticalAlign: 'top' as const,
+    };
+    const widthOf = canvasLineWidth(`${font.size}px ${font.family}`);
+    const line = font.size * font.lineHeight;
+    const measure = (value: string) => {
+      const lines = value.split('\n');
+      return { width: Math.max(element.w, longestLine(value, widthOf) + 2 * TABLE_PAD), height: lines.length * line + TABLE_PAD };
+    };
+    const topLeft = viewport.sceneToScreen({ x: element.x, y: element.y });
+    canvas.setEditing(element.id);
+    labelEditor.open({
+      value: tableText(element),
+      rect: { x: topLeft.x, y: topLeft.y, width: element.w * viewport.zoom, height: element.h * viewport.zoom },
+      angle: angleOfElement(element),
+      font,
+      opacity: paint.opacity,
+      zoom: viewport.zoom,
+      measure: onScreen(measure),
+      onCommit: (value) => {
+        canvas.setEditing(null);
+        commitTable(history, element.id, value);
+        commit();
+      },
+    });
   }
 
   /** Free text's size on screen: its scene measurement at the current zoom. */
@@ -3123,6 +3168,8 @@
     'tool.text': () => tools.activate('text'),
     'tool.frame': () => tools.activate('frame'),
     'tool.code': () => tools.activate('code'),
+    'tool.table': () => tools.activate('table'),
+    'tool.class': () => tools.activate('class'),
     'tool.eraser': () => tools.activate('eraser'),
     'tool.diamond': () => tools.activate('diamond'),
     'tool.cylinder': () => tools.activate('cylinder'),
@@ -3438,7 +3485,8 @@
         tools.escape();
         const element = history.current.elements.find((e) => e.id === placed);
         // After the release, so the click's own focus change cannot close it.
-        if (element) queueMicrotask(() => editCode(element));
+        if (element?.type === 'code') queueMicrotask(() => editCode(element));
+        else if (element) queueMicrotask(() => editElement(element));
       }
       canvas.setMarquee(null);
       canvas.setSnapGuides([]);

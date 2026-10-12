@@ -18,6 +18,14 @@ describe('findOnCanvas', () => {
     expect(findOnCanvas(elements, 'launch')).toEqual(['shape', 'note', 'code', 'frame', 'arrow']);
   });
 
+  it("finds a table's or class's name and rows", () => {
+    const elements = [
+      el('t', 'table', 0, 0, { name: 'orders', rows: 'id int pk\nlaunch_date date' }),
+      el('c', 'class', 0, 100, { name: 'Launcher', rows: '' }),
+    ];
+    expect(findOnCanvas(elements, 'launch')).toEqual(['t', 'c']);
+  });
+
   it('never finds lines or strokes', () => {
     expect(findOnCanvas([el('l', 'line', 0, 0, { label: 'launch' }), el('s', 'stroke', 0, 0, { label: 'launch' })], 'launch')).toEqual([]);
   });

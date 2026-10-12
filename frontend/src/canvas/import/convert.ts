@@ -11,6 +11,8 @@
  * mapping is testable against a fixture taken from the real pipeline.
  */
 import { canvasShapeFor } from './shapes';
+import { tableLayout } from '../table-layout';
+import { tableRows } from '../table-rows';
 import type {
   LayoutConnection as WireConnection,
   LayoutShape as WireShape,
@@ -118,6 +120,12 @@ export function toElements(layout: Layout, options: ConvertOptions): SceneElemen
   const elements: SceneElement[] = ordered.map((shape) => {
     z += 1;
     const container = isContainer(shape, layout);
+    const kind = tableKind(shape.type);
+    if (kind && !container) {
+      // A table or class: its name and rows, as tall as its rows are drawn here.
+      const element = { id: idFor(shape.id), type: kind, name: shape.label ?? '', rows: shape.rows ?? '', x: shape.x + offset.x, y: shape.y + offset.y, w: shape.w, z };
+      return { ...element, h: tableLayout(element).height, ...(shape.parent ? { frame: idFor(shape.parent) } : {}) } as SceneElement;
+    }
     return {
       id: idFor(shape.id),
       type: container ? 'frame' : canvasShapeFor(shape.type),
@@ -130,7 +138,8 @@ export function toElements(layout: Layout, options: ConvertOptions): SceneElemen
       ...(shape.parent ? { frame: idFor(shape.parent) } : {}),
     } as SceneElement;
   });
-  for (const element of elements) if (element.type !== 'frame') options.fit?.(element);
+  for (const element of elements) if (element.type !== 'frame' && element.type !== 'table' && element.type !== 'class') options.fit?.(element);
+  const byId = new Map(layout.shapes.map((shape) => [shape.id, shape]));
 
   const shapeIds = new Set(layout.shapes.map((shape) => shape.id));
   for (const connection of layout.connections) {
@@ -162,11 +171,25 @@ export function toElements(layout: Layout, options: ConvertOptions): SceneElemen
       // with it. This is what makes a generated diagram survive being edited.
       startBinding: idFor(connection.src),
       endBinding: idFor(connection.dst),
+      ...rowAttached('startRow', byId.get(connection.src), connection.srcColumn),
+      ...rowAttached('endRow', byId.get(connection.dst), connection.dstColumn),
       ...(connection.label ? { label: connection.label } : {}),
     } as SceneElement);
   }
 
   return elements;
+}
+
+/** Bava's element for a D2 shape that is a table or a class; null for any other. */
+function tableKind(type: string): 'table' | 'class' | null {
+  return type === 'sql_table' ? 'table' : type === 'class' ? 'class' : null;
+}
+
+/** The row a link joins on a SQL table, by the column D2 says it joins; nothing for a whole shape. */
+function rowAttached(key: 'startRow' | 'endRow', shape: LayoutShape | undefined, column: number | null | undefined): Record<string, string> {
+  if (!shape || shape.type !== 'sql_table' || column === null || column === undefined) return {};
+  const row = tableRows(shape.rows ?? '')[column];
+  return row ? { [key]: row.name } : {};
 }
 
 /** How far to move the diagram so its centre lands on `at`. */

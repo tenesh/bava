@@ -27,6 +27,9 @@ export function styleKeysFor(type: string): StyleKey[] {
       return ['stroke', 'color'];
     case 'text':
       return ['color'];
+    case 'table':
+    case 'class':
+      return ['fill', 'stroke', 'color'];
     default:
       return [];
   }
@@ -172,6 +175,11 @@ export function propertyKeysFor(type: string): PropertyKey[] {
     case 'frame':
       keys.push(...STROKE_KEYS, ...LABEL_KEYS);
       break;
+    case 'table':
+    case 'class':
+      // A box and its words; the rows are laid out by their own rules.
+      keys.push(...STROKE_KEYS);
+      break;
     case 'text':
       keys.push('fontSize', 'align');
       break;
@@ -225,7 +233,7 @@ export function applyProperty(
           record.type = 'line';
           // A line has no ends that attach, no heads and no label: nothing of
           // them is left hidden in the file (undo brings them back).
-          for (const gone of ['arrowType', 'startBinding', 'endBinding', 'startAnchor', 'endAnchor', 'startMode', 'endMode', 'startArrowhead', 'endArrowhead', 'fixedSegments', 'label', 'labelPosition', 'labelDirection', 'fontSize']) delete record[gone];
+          for (const gone of ['arrowType', 'startBinding', 'endBinding', 'startAnchor', 'endAnchor', 'startMode', 'endMode', 'startRow', 'endRow', 'startArrowhead', 'endArrowhead', 'fixedSegments', 'label', 'labelPosition', 'labelDirection', 'fontSize']) delete record[gone];
           if (curved) record.edges = 'round';
           continue;
         }
