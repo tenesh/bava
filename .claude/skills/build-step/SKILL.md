@@ -130,9 +130,9 @@ What is true now and affects the gates. Update it when a milestone closes.
 
 **Position:** R1 done (repository `tharabyte/bava`; adapted canvas code
 attributed in `NOTICE` for good). R2 done (the stores' sandboxes: the same walks pass inside the Mac sandbox,
-the installed MSIX and Flatpak, run 38143080459). 15.3 (import) built,
-its `import` walk awaiting CI. Next 15.4 (canvas work), Milestone 16,
-Milestone 17. Help ▸ Report Issue
+the installed MSIX and Flatpak, run 38143080459). 15.3 done (import;
+its walk passes on all three systems and inside each store's package, run
+38197233990). Next 15.4 (canvas work), Milestone 16, Milestone 17. Help ▸ Report Issue
 is hidden until release (`REPORT_ISSUE_ENABLED` in
 `frontend/src/shell/report-issue.ts`); the DMG icon and background stay
 Wails-branded until release.
@@ -152,7 +152,7 @@ store's package. Never `wails3 dev` locally.
 **Gates:** all green on the host (go vet, go test 15 packages, 2 golden
 fixtures, check, lint, `npm test` 2,937 passed); `npm run browser` 545 passed,
 310 references in `testdata/visual/`; CI end-to-end green, inside each
-store's package too, before 15.3. `npm run build`'s minifier rejects some CSS the browser
+store's package too. `npm run build`'s minifier rejects some CSS the browser
 tests accept (WebKit-only selectors).
 
 **Owed at a running window:** `docs/release-checklist.md`, the one list of
