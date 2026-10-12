@@ -32,6 +32,22 @@ describe('a frame’s picture', () => {
     expect(ids).toContain('edge');
   });
 
+  // Another page's canvas comes from its file, its attached arrows holding
+  // stored points: the picture ends them at their shapes, as the canvas does.
+  it("ends an attached arrow at its shapes' edges, not at the points stored", () => {
+    const withArrow = {
+      elements: [
+        el({ id: 'f', type: 'frame', x: 0, y: 0, w: 500, h: 200, z: 1 }),
+        el({ id: 'p', type: 'rect', x: 20, y: 20, w: 100, h: 60, z: 2, frame: 'f' } as never),
+        el({ id: 'q', type: 'rect', x: 320, y: 20, w: 100, h: 60, z: 3, frame: 'f' } as never),
+        el({ id: 'pq', type: 'arrow', x: 70, y: 50, w: 300, h: 0, z: 4, frame: 'f', points: [0, 0, 300, 0], arrowType: 'straight', startBinding: 'p', endBinding: 'q' } as never),
+      ],
+    };
+    const arrow = frameArea(withArrow, 'f')!.elements.find((e) => e.id === 'pq')!;
+    expect(arrow.x).toBeGreaterThanOrEqual(120);
+    expect(withArrow.elements[3].x).toBe(70);
+  });
+
   it('leaves out what is wholly outside the area', () => {
     expect(frameArea(scene, 'f1')!.elements.map((e) => e.id)).not.toContain('outside');
   });

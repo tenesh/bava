@@ -3,6 +3,8 @@
  * its edges, with everything drawn over it (frames inside it too), without
  * the frame's border or label, drawn at twice size on the canvas background.
  */
+import { produce } from 'immer';
+import { reroute } from '../binding';
 import type { SceneData, SceneElement } from '../scene';
 import type { ExportArea } from './area';
 import { drawnBoundsOf } from '../edit';
@@ -16,7 +18,10 @@ export const PICTURE_SCALE = 2;
  * frame. Everything drawn over the frame's area, whether or not the frame
  * holds it: what crosses its edge is cut there when drawn.
  */
-export function frameArea(scene: SceneData, frameId: string): ExportArea | null {
+export function frameArea(read: SceneData, frameId: string): ExportArea | null {
+  // As read from another page's file, an attached arrow holds stored
+  // points: its ends are worked out from what it is attached to first.
+  const scene = produce(read, (draft) => reroute(draft));
   const frame = scene.elements.find((element) => element.id === frameId && element.type === 'frame');
   if (!frame) return null;
   const box = { x: frame.x, y: frame.y, w: frame.w, h: frame.h };

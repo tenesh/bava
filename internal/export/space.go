@@ -90,7 +90,7 @@ func SpacePDF(ctx context.Context, req SpaceRequest, src Sources, print Printer,
 			page.CSS = req.CSS
 			doc = &page
 		}
-		parts, err := printPage(dir, fmt.Sprintf("page-%d", i), doc, e.Canvas, req.Setup, l, src, print)
+		parts, err := printPage(ctx, dir, fmt.Sprintf("page-%d", i), doc, e.Canvas, req.Setup, l, src, print, conf)
 		if err != nil {
 			return &PageError{Path: e.Path, Err: err}
 		}

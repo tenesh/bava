@@ -113,7 +113,7 @@ func PagePDF(ctx context.Context, req Request, src Sources, print Printer, out s
 		return err
 	}
 	defer done()
-	parts, err := printPage(dir, "page", req.Document, req.Canvas, req.Setup, l, src, print)
+	parts, err := printPage(ctx, dir, "page", req.Document, req.Canvas, req.Setup, l, src, print, conf)
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func PagePDF(ctx context.Context, req Request, src Sources, print Printer, out s
 
 // printPage prints a page's Document and then its Canvas, each a part,
 // named after name in dir.
-func printPage(dir, name string, doc *Page, canvas *Canvas, setup pdfprint.PageSetup, l look, src Sources, print Printer) ([]part, error) {
+func printPage(ctx context.Context, dir, name string, doc *Page, canvas *Canvas, setup pdfprint.PageSetup, l look, src Sources, print Printer, conf *model.Configuration) ([]part, error) {
 	setup.Background = true
 	var parts []part
 	if doc != nil {
@@ -149,8 +149,22 @@ func printPage(dir, name string, doc *Page, canvas *Canvas, setup pdfprint.PageS
 		s := setup
 		s.Landscape = canvas.Width > canvas.Height
 		p := part{filepath.Join(dir, name+"-canvas.pdf"), s}
-		if err := print(canvasPage(*canvas, s, l.dark, l.paper), s, p.file); err != nil {
-			return nil, fmt.Errorf("print the Canvas: %w", err)
+		// A webview can print a picture larger than it is sized (macOS
+		// does): a Canvas that spills onto a second sheet is printed again,
+		// a little smaller each time, until it takes one.
+		fit := 1.0
+		for try := 0; ; try++ {
+			if err := print(canvasPage(*canvas, s, l.dark, l.paper, fit), s, p.file); err != nil {
+				return nil, fmt.Errorf("print the Canvas: %w", err)
+			}
+			n, err := sheets(ctx, p.file, conf)
+			if err != nil {
+				return nil, err
+			}
+			if n <= 1 || try == spillTries {
+				break
+			}
+			fit *= spillShrink
 		}
 		parts = append(parts, p)
 	}
@@ -277,10 +291,10 @@ func room(s pdfprint.PageSetup) (float64, float64) {
 }
 
 // canvasPage is the Canvas's picture alone on a sheet, scaled down to fit
-// it whole and never enlarged.
-func canvasPage(c Canvas, s pdfprint.PageSetup, dark bool, paper string) string {
+// it whole and never enlarged, then by fit (1 at first).
+func canvasPage(c Canvas, s pdfprint.PageSetup, dark bool, paper string, fit float64) string {
 	w, h := room(s)
-	scale := min(1, w/c.Width, (h-spillPx)/c.Height)
+	scale := min(1, w/c.Width, (h-spillPx)/c.Height) * fit
 	theme, background := "light", ""
 	if dark {
 		theme = "dark"
@@ -299,6 +313,10 @@ const (
 	// spillPx keeps a fitted Canvas a pixel short of its sheet, so rounding
 	// never spills it onto a second one.
 	spillPx = 1
+	// spillShrink is how much smaller a Canvas that spilled is printed
+	// again, and spillTries how many times before its sheets are kept.
+	spillShrink = 0.92
+	spillTries  = 6
 	// numberHalfMM is half a number's height: it is centred in the bottom
 	// margin by its middle.
 	numberHalfMM = 1.5

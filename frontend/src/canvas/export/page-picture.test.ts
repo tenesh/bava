@@ -17,4 +17,22 @@ describe('pagePicture', () => {
     expect(picture?.svg).toContain('<svg');
     expect(picture?.svg).toContain('fill="black"');
   });
+
+  // A page read from its file keeps an attached arrow's stored points, a
+  // fallback: the picture ends it where it meets its shapes, as the canvas
+  // does on opening, never through them.
+  it("ends an attached arrow at its shapes' edges, not at the points stored", async () => {
+    const scene = {
+      elements: [
+        { id: 'a', type: 'rect', x: 0, y: 0, w: 100, h: 60, z: 1 },
+        { id: 'b', type: 'rect', x: 300, y: 0, w: 100, h: 60, z: 2 },
+        { id: 'ab', type: 'arrow', x: 50, y: 30, w: 300, h: 0, z: 3, points: [0, 0, 300, 0], arrowType: 'straight', startBinding: 'a', endBinding: 'b' },
+      ],
+    } as unknown as SceneData;
+    const picture = await pagePicture(scene, { read, fonts });
+    const arrow = picture!.svg.slice(picture!.svg.indexOf('data-id="ab"'));
+    const start = Number(/points="(-?[\d.]+)/.exec(arrow)![1]);
+    expect(start).toBeGreaterThanOrEqual(100);
+    expect(scene.elements[2]).toMatchObject({ x: 50 });
+  });
 });

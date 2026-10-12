@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -152,6 +153,41 @@ func TestPageNumbersRunAcrossTheParts(t *testing.T) {
 	}
 	if got := sizes(t, out); len(got) != 3 {
 		t.Errorf("numbering changed the pages: %v", got)
+	}
+}
+
+// A webview can print a picture larger than it was sized (macOS does), so
+// a Canvas sized to fit its sheet spills onto a second: it is printed again,
+// smaller, until it takes one sheet.
+func TestACanvasThatSpillsIsPrintedAgainSmaller(t *testing.T) {
+	var heights []float64
+	size := regexp.MustCompile(`height: ([\d.]+)px`)
+	spilling := func(html string, setup pdfprint.PageSetup, out string) error {
+		n := 1
+		if m := size.FindStringSubmatch(html); m != nil {
+			h, _ := strconv.ParseFloat(m[1], 64)
+			heights = append(heights, h)
+			// This printer draws pictures a fifth larger than asked.
+			_, room := room(setup)
+			if h*1.2 > room {
+				n = 2
+			}
+		}
+		w, h, err := setup.Size()
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(out, testutil.BlankPDF(n, w, h), 0o644)
+	}
+	out := filepath.Join(t.TempDir(), "Tall.pdf")
+	if err := PagePDF(context.Background(), Request{Setup: a4, Canvas: tall}, sources(), spilling, out); err != nil {
+		t.Fatal(err)
+	}
+	if got := sizes(t, out); len(got) != 1 {
+		t.Errorf("the Canvas took %d sheets; want one", len(got))
+	}
+	if len(heights) < 2 || heights[len(heights)-1] >= heights[0] {
+		t.Errorf("heights printed = %v; want it printed again, smaller", heights)
 	}
 }
 
