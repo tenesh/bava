@@ -385,9 +385,14 @@ Every element has `id`, `type`, `x`, `y`, `w`, `h`, `z`.
 | `frame` | optional `label`; takes `stroke`, `color` |
 | `group` | `children`: element ids |
 
-The nine shapes fill their box and take `label` (plain text, centred and
-wrapped, not measured), `fill`, `stroke` and `color` (label), each a colour,
-absent meaning the theme's default.
+The nine shapes fill their box and take `label` (plain text, not
+measured), `fill`, `stroke` and `color` (label), each a colour, absent
+meaning the theme's default. A label sits in the box inside its shape, clear
+of curved and slanted edges (an ellipse's inscribed box, a diamond's middle
+half), less an inset; it wraps there, a word too wide broken across lines.
+When a label, its size or its shape's width changes, Bava makes the shape's
+`h` tall enough to hold it; nothing changes on open, and a label longer than
+its stored `h` draws on past the shape until it is next edited.
 
 ```json
 { "id": "e4", "type": "cylinder", "x": 40, "y": 24, "w": 120, "h": 90, "z": 2, "label": "Postgres", "fill": "blue" }

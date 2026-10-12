@@ -28,6 +28,9 @@ text sizes and the single history are in CLAUDE.md.
 - **Lines are broken once**: text by `text-layout.ts` (Konva gets
   `wrap: 'none'`), code by `code/wrap.ts`, curves by `curves.ts` (Konva
   `tension` stays 0).
+- **A shape's label is placed by `placeLabel`** (`label-box.ts`) in the stage,
+  the SVG export and the label editor's box; any change that can leave a
+  label without room runs `growToLabel` in the same `history.mutate`.
 - **Render skips unchanged elements, except arrows** (detachment depends on
   others). Outside state gets its own setter (`setCodeRuns`, `setEditing`).
 - **Drawing is once per frame (`frameThrottle`); input is not.**

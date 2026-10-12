@@ -58,6 +58,7 @@ import {
 } from './snapping';
 import { erasableAlong, eraseSet } from './eraser';
 import { handleAt, isRotateHandle, resizeBox, scaleInto, tidy, type Handle } from './resize';
+import { growToLabel } from './label-box';
 import {
   angleOf,
   canRotate,
@@ -96,6 +97,11 @@ export type PointerHandlerOptions = {
   eraserTolerance?: () => number;
   /** How near a click counts as hitting a line, in scene units. */
   hitTolerance?: () => number;
+  /**
+   * The height a labelled shape needs for its label as drawn at its width; a
+   * resize never leaves one shorter. None in tests that do not measure.
+   */
+  labelHeight?: (element: SceneElement) => number;
   /** How far above the selection the rotate handle sits, in scene units. */
   rotateGap?: () => number;
   /**
@@ -1083,6 +1089,20 @@ export function createPointerHandler(options: PointerHandlerOptions) {
      * Finish a drag. Returns the id of an element that wants an editor opened
      * on it (a code block, which arrives empty), or null.
      */
+    /**
+     * End a press without its release: what it was doing stops and nothing is
+     * committed. For a press the system cuts off before it moved.
+     */
+    cancel(): void {
+      drag = null;
+      marquee = null;
+      guides = [];
+      erasing = new Set();
+      trailEnd = null;
+      trail = [];
+      copied = [];
+    },
+
     up(point: Point, options: { alt?: boolean; mod?: boolean; shift?: boolean } = {}): ElementId | null {
       if (!drag) return null;
       shift = Boolean(options.shift);
@@ -1552,7 +1572,12 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           // member there scales through its drawn bounds instead.
           const member = original as SceneElement & { points?: number[] };
           const scaled = angle === 0 ? scaleRotatedInto(member, bounds, next) : scaleInto(member, bounds, next);
-          scene.elements[i] = letGoOutside(scaled.type === 'code' ? codeResized(scaled) : scaled, new Set(originals.keys()));
+          const resized = scaled.type === 'code' ? codeResized(scaled) : scaled;
+          // Too short for its label at its new width, a shape grows, the edge
+          // not being dragged held still.
+          const before = resized.h;
+          if (options.labelHeight && growToLabel(resized, options.labelHeight)) keepEdge(resized, resized.h - before, handle.startsWith('top'));
+          scene.elements[i] = letGoOutside(resized, new Set(originals.keys()));
         }
       };
     }
@@ -2226,4 +2251,18 @@ function nextId(count: number): string {
 
 function isElbow(element: SceneElement): boolean {
   return element.type === 'arrow' && (element as { arrowType?: string }).arrowType === 'elbow';
+}
+
+/**
+ * Moves an element grown `grown` taller so the edge held still stays where it
+ * was: its bottom when `keepBottom`, else its top. Measured along its own
+ * axes, so a turned shape grows along its turn.
+ */
+function keepEdge(element: SceneElement, grown: number, keepBottom: boolean): void {
+  const angle = (angleOfElement(element) * Math.PI) / 180;
+  const before = element.h - grown;
+  const shift = ((keepBottom ? -1 : 1) * grown) / 2;
+  const centre = { x: element.x + element.w / 2 - Math.sin(angle) * shift, y: element.y + before / 2 + Math.cos(angle) * shift };
+  element.x = tidy(centre.x - element.w / 2);
+  element.y = tidy(centre.y - element.h / 2);
 }

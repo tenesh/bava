@@ -3917,3 +3917,81 @@ describe('what a move carries', () => {
     expect(handler.moving).toEqual([]);
   });
 });
+
+// A shape grows to hold its label: resized narrower it grows taller, and
+// pulled shorter it stops at its label, the edge held still kept still.
+describe('resizing a labelled shape', () => {
+  // The label needs 6000 / width: 60 tall at 100 wide, 120 at 50.
+  function labelled() {
+    const history = createHistory({ elements: [{ id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 60, z: 1, label: 'A label' } as never] });
+    const selection = createSelection();
+    const tools = createTools();
+    tools.activate('select');
+    const handler = createPointerHandler({ history, selection, tools, handleSize: () => 4, labelHeight: (e) => 6000 / e.w });
+    selection.click('r');
+    return { history, handler };
+  }
+
+  it('grows taller as it is made narrower, its top kept', () => {
+    const { history, handler } = labelled();
+    handler.down(at(100, 30));
+    handler.up(at(50, 30));
+    expect(history.current.elements[0]).toMatchObject({ x: 0, y: 0, w: 50, h: 120 });
+  });
+
+  it('stops at its label when its bottom is pulled up', () => {
+    const { history, handler } = labelled();
+    handler.down(at(50, 60));
+    handler.up(at(50, 20));
+    expect(history.current.elements[0]).toMatchObject({ y: 0, h: 60 });
+  });
+
+  // Turned a quarter, its bottom handle sits left of the centre and pulls in
+  // to the right; held at its label, nothing moves, its top edge least of all.
+  it('stops at its label when turned, its other edge kept where it was drawn', () => {
+    const history = createHistory({ elements: [{ id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 60, z: 1, angle: 90, label: 'A label' } as never] });
+    const selection = createSelection();
+    const tools = createTools();
+    tools.activate('select');
+    const handler = createPointerHandler({ history, selection, tools, handleSize: () => 4, labelHeight: (e) => 6000 / e.w });
+    selection.click('r');
+    handler.down(at(20, 30));
+    handler.up(at(40, 30));
+    const shape = history.current.elements[0] as { x: number; y: number; w: number; h: number };
+    expect(shape.h).toBe(60);
+    expect(shape.x).toBeCloseTo(0);
+    expect(shape.y).toBeCloseTo(0);
+  });
+
+  it('stops at its label when its top is pulled down, its bottom kept', () => {
+    const { history, handler } = labelled();
+    handler.down(at(50, 0));
+    handler.up(at(50, 40));
+    expect(history.current.elements[0]).toMatchObject({ y: 0, h: 60 });
+  });
+});
+
+// A press the system cuts off before it moved ends as nothing: no click, no
+// line begun click by click, nothing following the pointer after.
+describe('cancelling a press', () => {
+  it('leaves the scene as it was, nothing moving after', () => {
+    const { history, handler } = harness('select');
+    history.mutate((scene) => {
+      scene.elements.push({ id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 60, z: 1 } as never);
+    });
+    handler.down(at(50, 30));
+    handler.cancel();
+    expect(handler.dragging).toBe(false);
+    handler.move(at(250, 30));
+    handler.up(at(250, 30));
+    expect(history.current.elements[0]).toMatchObject({ x: 0, y: 0 });
+  });
+
+  it('begins no line click by click', () => {
+    const { history, handler } = harness('line');
+    handler.down(at(10, 10));
+    handler.cancel();
+    expect(handler.drawingPoints).toBe(false);
+    expect(history.current.elements).toHaveLength(0);
+  });
+});

@@ -58,6 +58,9 @@ Start Bava as if it had never run:
 - [ ] Arrow ends dropped on overlapping shapes, a locked shape and into a frame attach as expected; an attached arrow follows rotate, resize and nudge.
 - [ ] Text at a free arrow end, and "along" labels on vertical and leftward arrows, sit right.
 - [ ] A styled label looks the same while typing and after.
+- [ ] Type a long label into a rectangle, an ellipse, a diamond and a cloud: each grows taller as typed, the text inside its shape, in both themes; a long address breaks across lines.
+- [ ] Mid-drag, raise a system alert, switch apps, or let a gesture take over (a trackpad's swipe, a touchscreen's palm): the drag ends where it was, on each system.
+- [ ] View ▸ Zoom to Fit (⇧1) and Zoom to Selection (⇧2) fill the canvas with the drawing and with the selection.
 - [ ] A code block of several lines stays visible while typing and fits after Escape.
 - [ ] Diagram from Code: the preview keeps up while typing; switching engine visibly changes it; dragging a container brings its contents; a shape recolours.
 - [ ] Arrow heads and labels match between the canvas and an export.

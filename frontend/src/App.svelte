@@ -88,6 +88,7 @@
   import { wheelAction } from './canvas/navigation';
   import { LabelEditor, commitLabel, commitText, editableAt, insertText, labelBox } from './canvas/label-editor';
   import { canvasLineWidth, measureFor } from './canvas/text-measure';
+  import { growToLabel, labelHeight } from './canvas/label-box';
   import { wrapLines } from './canvas/text-layout';
   import { applyStyle, currentStyle, CODE_FONT_SIZE, setProperty, shownProperty, type PropertyKey } from './canvas/style';
   import SelectionToolbar from './components/SelectionToolbar.svelte';
@@ -167,10 +168,32 @@
   });
   // The style a new element takes: the last chosen, for this session.
   const newElementStyle = createCurrentStyle();
+  /** The height a labelled shape needs for its label as drawn: it never stays shorter. */
+  function shapeLabelHeight(element: SceneElement): number {
+    const label = (element as { label?: string }).label;
+    if (!label) return 0;
+    const paint = paintFor(element, readRootVariable);
+    const inset = parseFloat(readRootVariable('--size-label-inset')) || 0;
+    return labelHeight(element.type, element.w, element.h, label, inset, paint.font, canvasLineWidth(`${paint.font.size}px ${paint.font.family}`));
+  }
+
+  /** A shape from Diagram from Code grown to its label about its centre, where the layout placed it. */
+  function fitArriving(element: SceneElement) {
+    const before = element.h;
+    if (growToLabel(element, shapeLabelHeight)) element.y -= (element.h - before) / 2;
+  }
+
+  /** After a style change: a code block refitted, a shape grown to its label. */
+  function refit(element: SceneElement) {
+    fitToCode(element, codeMetrics(element));
+    growToLabel(element, shapeLabelHeight);
+  }
+
   const pointer = createPointerHandler({
     history,
     selection,
     tools,
+    labelHeight: shapeLabelHeight,
     newStyle: (type) => newElementStyle.for(type),
     bindingEnabled: () => settingsState.arrowBinding,
     midpointSnap: () => settingsState.midpointSnap,
@@ -215,7 +238,7 @@
     codeMetrics,
   });
   // A code block pasted a new size re-wraps and grows to its code.
-  const canvasCommands = createCanvasCommands({ history, selection, afterPasteStyle: (element) => fitToCode(element, codeMetrics(element)) });
+  const canvasCommands = createCanvasCommands({ history, selection, afterPasteStyle: refit });
 
   /** How near a click counts as hitting a line, in scene units at the current zoom. */
   function hitTolerance() {
@@ -333,7 +356,7 @@
       x: (canvasHostEl?.clientWidth ?? 0) / 2,
       y: (canvasHostEl?.clientHeight ?? 0) / 2,
     });
-    canvasCommands.insertDiagram(toElements(layout, { at: centre }));
+    canvasCommands.insertDiagram(toElements(layout, { at: centre, fit: fitArriving }));
     // The engine used becomes the default, so the next dialog opens with it.
     void diagramDialog.inserted();
     diagramOpen = false;
@@ -342,7 +365,7 @@
   }
   /** The diagram in a new frame below the canvas's content, embedded at the page's caret. */
   function insertDiagramInPage() {
-    canvasCommands.insertDiagram(inNewFrame(history.current, toElements(diagramClient.state.layout, { at: { x: 0, y: 0 } }), t('frames.diagram')));
+    canvasCommands.insertDiagram(inNewFrame(history.current, toElements(diagramClient.state.layout, { at: { x: 0, y: 0 }, fit: fitArriving }), t('frames.diagram')));
     void diagramDialog.inserted();
     diagramOpen = false;
     diagramForPage = false;
@@ -2461,11 +2484,11 @@
       // arrow's field is the label's own box, wrapped as the stage wraps it.
       textHeight: isText
         ? undefined
-        : (value) => wrapLines(value, box.w, lineWidth).length * paint.font.size * paint.font.lineHeight * viewport.zoom,
+        : (value) => wrapLines(value, box.w, lineWidth, { breakWords: !isArrow }).length * paint.font.size * paint.font.lineHeight * viewport.zoom,
       onCommit: (value) => {
         canvas.setEditing(null);
         if (isText) commitText(history, element.id, value, measure);
-        else commitLabel(history, element.id, value);
+        else commitLabel(history, element.id, value, shapeLabelHeight);
         commit();
       },
     });
@@ -2541,6 +2564,16 @@
       y: (canvasHostEl?.clientHeight ?? 0) / 2,
     };
     viewport.zoomAt(centre, next);
+    applyView();
+  }
+
+  /** Fit the view to elements as drawn, a margin round them; nothing to show, nothing moves. */
+  function zoomToShow(elements: SceneElement[]) {
+    if (elements.length === 0 || !canvasHostEl) return;
+    labelEditor?.commit();
+    const size = { width: canvasHostEl.clientWidth, height: canvasHostEl.clientHeight };
+    if (!size.width || !size.height) return;
+    viewport.fit(drawnBoundsOf(elements), size, parseFloat(readRootVariable('--size-fit-margin')) || 0);
     applyView();
   }
 
@@ -2748,6 +2781,8 @@
     'view.zoomIn': () => zoomTo(viewport.zoom * 1.2),
     'view.zoomOut': () => zoomTo(viewport.zoom / 1.2),
     'view.actualSize': () => zoomTo(1),
+    'view.zoomToFit': () => zoomToShow(history.current.elements),
+    'view.zoomToSelection': () => zoomToShow(history.current.elements.filter((e) => selectedIds.includes(e.id))),
     'view.theme.light': () => theme.set('light'),
     'view.theme.dark': () => theme.set('dark'),
     'view.theme.system': () => theme.set('system'),
@@ -2917,6 +2952,9 @@
     // Where the pointer last was during a drag, so a modifier pressed without
     // moving it can redraw the preview.
     let lastDragPoint: { x: number; y: number } | null = null;
+    // The keys held at the last move, for a drag the system ends: it ends as
+    // a release with them would.
+    let lastMods = { alt: false, mod: false, shift: false };
     // Where the pointer last was over the canvas, for the cursor.
     let lastPointer: { x: number; y: number } | null = null;
     // The cursor for what is under the pointer and what is going on
@@ -2938,6 +2976,9 @@
       // The right button opens the context menu; it never draws, drags or selects.
       if (event.button === 2) return;
       diagramHost.setPointerCapture(event.pointerId);
+      // A press starts with no drag point: one comes with the first move.
+      lastDragPoint = null;
+      lastMods = { alt: event.altKey, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey };
       if (event.button === 1 || spaceHeld) {
         panningFrom = screenPoint(event);
         updateCursor();
@@ -3000,6 +3041,7 @@
       const point = scenePoint(event);
       lastDragPoint = point;
       lastPointer = point;
+      lastMods = { alt: event.altKey, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey };
       pointer.move(point, { alt: event.altKey, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey });
       drawHover(point, event.altKey, event.shiftKey);
       // Drawing click by click: the next segment follows the pointer, pressed
@@ -3016,6 +3058,29 @@
       if (labelEditor?.contains(event.target)) return;
       // The right button belongs to the context menu, on release as on press.
       if (event.button === 2) return;
+      finish(scenePoint(event), { alt: event.altKey, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey }, true);
+    };
+    // A drag the system ends without a release (a touch cancelled, the
+    // pointer taken away, the window losing focus to an alert or a gesture)
+    // ends as a release does, where the drag last was; nothing is left
+    // following the pointer. After a release there is no drag, so the lost
+    // capture every release brings does nothing.
+    const onCutOff = () => {
+      if (!pointer.dragging && !panningFrom) return;
+      // Before it moved, a press cut off is no click: it ends as nothing.
+      if (!lastDragPoint && !panningFrom) {
+        pointer.cancel();
+        finish(null, lastMods, false);
+        return;
+      }
+      // A pan needs no point: it keeps where it got to.
+      finish(lastDragPoint ?? { x: 0, y: 0 }, lastMods, false);
+    };
+    /**
+     * The end of a press at `point`: `released` by the user, else cut off by
+     * the system; no point when it was cancelled before it moved.
+     */
+    const finish = (point: { x: number; y: number } | null, mods: { alt: boolean; mod: boolean; shift: boolean }, released: boolean) => {
       lastDragPoint = null;
       // Nothing from before the release may be drawn after it.
       drawDrag.cancel();
@@ -3027,16 +3092,18 @@
         updateCursor();
         return;
       }
-      if (tools.active === 'text') {
-        // Placed where the click snaps, as a drawn box starts.
-        const point = pointer.snapPlacement(scenePoint(event), { mod: event.metaKey || event.ctrlKey });
+      if (tools.active === 'text' || !point) {
         canvas.setSnapGuides([]);
+        canvas.setMarquee(null);
+        if (!released || !point) return;
+        // Placed where the click snaps, as a drawn box starts.
+        const at = pointer.snapPlacement(point, { mod: mods.mod });
         tools.escape();
         // After the release, so the click's own focus change cannot close it.
-        queueMicrotask(() => placeText(point));
+        queueMicrotask(() => placeText(at));
         return;
       }
-      const placed = pointer.up(scenePoint(event), { alt: event.altKey, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey });
+      const placed = pointer.up(point, mods);
       if (placed) {
         tools.escape();
         const element = history.current.elements.find((e) => e.id === placed);
@@ -3053,7 +3120,7 @@
       // did not commit (a drag back to its start changes nothing, so nothing
       // republishes). Show what is. Unchanged elements are skipped. While a
       // line is drawn click by click, what is includes its next segment.
-      canvas.render(pointer.pointsPreview(scenePoint(event), { shift: event.shiftKey }) ?? history.current);
+      canvas.render(pointer.pointsPreview(point, { shift: mods.shift }) ?? history.current);
       updateCursor();
     };
     // Right-click: an unselected element under the pointer becomes the
@@ -3110,6 +3177,7 @@
         return;
       }
       if (!pointer.dragging || !lastDragPoint) return;
+      lastMods = { alt: event.altKey, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey };
       // Through the frame throttle, so a move queued before the key cannot
       // draw over this with the old state.
       drawDrag(lastDragPoint, event.shiftKey, event.altKey, event.metaKey || event.ctrlKey);
@@ -3140,6 +3208,9 @@
     };
     diagramHost.addEventListener('pointerleave', onLeave);
     diagramHost.addEventListener('pointerup', onUp);
+    diagramHost.addEventListener('pointercancel', onCutOff);
+    diagramHost.addEventListener('lostpointercapture', onCutOff);
+    window.addEventListener('blur', onCutOff);
     diagramHost.addEventListener('wheel', onWheel, { passive: false });
     diagramHost.addEventListener('dblclick', onDoubleClick);
     diagramHost.addEventListener('contextmenu', onContextMenu);
@@ -3311,6 +3382,9 @@
       diagramHost.removeEventListener('pointermove', onMove);
       diagramHost.removeEventListener('pointerleave', onLeave);
       diagramHost.removeEventListener('pointerup', onUp);
+      diagramHost.removeEventListener('pointercancel', onCutOff);
+      diagramHost.removeEventListener('lostpointercapture', onCutOff);
+      window.removeEventListener('blur', onCutOff);
       diagramHost.removeEventListener('wheel', onWheel);
       diagramHost.removeEventListener('dblclick', onDoubleClick);
       diagramHost.removeEventListener('contextmenu', onContextMenu);
@@ -3702,7 +3776,7 @@
             onProperty={(key, value) => {
               // A code block at a new size re-wraps and grows to its code, in
               // the same step.
-              setProperty(history, selectedIds, key, value, key === 'fontSize' ? (element) => fitToCode(element, codeMetrics(element)) : undefined);
+              setProperty(history, selectedIds, key, value, key === 'fontSize' ? refit : undefined);
               // Which sizes it was chosen from: the code ones only for code alone.
               const codeSizes = toolbar.controls.some((control) => control.id === 'fontSize' && control.variant === 'code');
               newElementStyle.remember(key, value, codeSizes ? 'code' : 'text');
@@ -3857,7 +3931,7 @@
       // other entry is a command the native menu has too.
       const choice = parseOverflowId(id);
       if (choice?.kind === 'property') {
-        setProperty(history, selectedIds, choice.key, choice.value, choice.key === 'fontSize' ? (element) => fitToCode(element, codeMetrics(element)) : undefined);
+        setProperty(history, selectedIds, choice.key, choice.value, choice.key === 'fontSize' ? refit : undefined);
         const codeSizes = toolbar.controls.some((control) => control.id === 'fontSize' && control.variant === 'code');
         newElementStyle.remember(choice.key, choice.value, codeSizes ? 'code' : 'text');
       } else if (choice?.kind === 'style') {

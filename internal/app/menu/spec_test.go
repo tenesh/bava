@@ -294,6 +294,8 @@ func TestOnlyTheKeptShortcutsAreBound(t *testing.T) {
 		"file.openSpace": true,
 		// Search across a Space, beside ⌘F (find in this page).
 		"file.search": true,
+		// The user chose ⇧1 and ⇧2.
+		"view.zoomToFit": true, "view.zoomToSelection": true,
 	}
 	bound := map[string]bool{}
 	for _, item := range load(t).AllItems() {

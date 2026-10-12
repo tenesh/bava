@@ -111,6 +111,19 @@ describe('exporting to SVG', () => {
     expect((svg.match(/<tspan/g) ?? []).length).toBeGreaterThan(1);
   });
 
+  it('keeps every line of a label taller than its shape', () => {
+    const svg = svgOf([{ id: 'r', type: 'rect', x: 0, y: 0, w: 60, h: 12, z: 1, label: 'one two three four five six seven eight' }]);
+    const spans = [...svg.matchAll(/<tspan[^>]*>([^<]*)<\/tspan>/g)].map((m) => m[1]);
+    expect(spans.join(' ')).toBe('one two three four five six seven eight');
+  });
+
+  it("writes an ellipse's label in the box inside its curve, a long word broken", () => {
+    const svg = svgOf([{ id: 'e', type: 'ellipse', x: 0, y: 0, w: 80, h: 60, z: 1, label: 'Supercalifragilisticexpialidocious' }]);
+    const spans = [...svg.matchAll(/<tspan[^>]*>([^<]*)<\/tspan>/g)].map((m) => m[1]);
+    expect(spans.length).toBeGreaterThan(1);
+    expect(spans.join('')).toBe('Supercalifragilisticexpialidocious');
+  });
+
   it("writes a shape's label inside it", () => {
     const svg = svgOf([{ id: 'r', type: 'rect', x: 0, y: 0, w: 100, h: 50, z: 1, label: 'Hello' }]);
     expect(svg).toContain('Hello');

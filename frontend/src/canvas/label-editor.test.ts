@@ -2,6 +2,7 @@
 import { onTeardown } from '../test/render';
 import { describe, expect, it, vi } from 'vitest';
 import { createHistory } from './history';
+import { labelArea } from './label-box';
 import { commitLabel, commitText, editableAt, insertText, labelBox, LabelEditor } from './label-editor';
 import { editTarget } from '../shell/edit-target';
 import type { SceneData } from './scene';
@@ -33,6 +34,14 @@ describe('committing an edit', () => {
     expect(history.current.elements[0]).toMatchObject({ label: 'New label' });
     history.undo();
     expect(history.current.elements[0]).toMatchObject({ label: 'Old' });
+  });
+
+  it('grows the shape to hold a long label, in the same step', () => {
+    const history = createHistory(scene());
+    commitLabel(history, 'r', 'A label far longer than the shape', () => 120);
+    expect(history.current.elements[0]).toMatchObject({ label: 'A label far longer than the shape', h: 120 });
+    history.undo();
+    expect(history.current.elements[0]).toMatchObject({ label: 'Old', h: 50 });
   });
 
   it('removes the label key when the label is emptied', () => {
@@ -325,6 +334,27 @@ describe('the editor looks like the text it edits', () => {
     overflowing.editor.destroy();
   });
 
+  // The shape grows to hold its label, so the field grows with the lines,
+  // down from where it opened, as the shape will.
+  it('grows down as lines come past its height, and back as they go', () => {
+    const { editor, field } = open({ textHeight: (value: string) => value.split('\n').length * 40 });
+    const top = field.style.top;
+    field.value = 'a\nb\nc\nd';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(field.style.height).toBe('160px');
+    expect(field.style.top).toBe(top);
+    field.value = 'a';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(field.style.height).toBe('100px');
+    editor.destroy();
+  });
+
+  it("breaks a label's word too wide for its line, as the stage draws it", () => {
+    const { editor, field } = open({ textHeight: () => 20 });
+    expect(field.style.overflowWrap).toBe('anywhere');
+    editor.destroy();
+  });
+
   it('does not commit on Cmd+Enter while a character is being composed', () => {
     const onCommit = vi.fn();
     const { editor, field } = open({ onCommit });
@@ -341,8 +371,13 @@ describe('the editor looks like the text it edits', () => {
 describe('labelBox', () => {
   const el = (type: string) => ({ id: 'e', type, x: 10, y: 20, w: 100, h: 50, z: 1 }) as never;
 
-  it('insets a shape label left and right', () => {
-    expect(labelBox(el('rect'), 6)).toEqual({ x: 16, y: 20, w: 88, h: 50 });
+  it('insets a shape label on every side, as the stage places it', () => {
+    expect(labelBox(el('rect'), 6)).toEqual({ x: 16, y: 26, w: 88, h: 38 });
+  });
+
+  it("takes the box inside an ellipse's curve", () => {
+    const area = labelArea('ellipse', 100, 50, 6);
+    expect(labelBox(el('ellipse'), 6)).toEqual({ x: 10 + area.x, y: 20 + area.y, w: area.w, h: area.h });
   });
 
   it('insets a frame label on every side', () => {

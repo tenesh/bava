@@ -44,6 +44,8 @@ only platform that right-aligns text after a tab).
 | View | Zoom In | `⌘=` | `Ctrl+=` |
 | View | Zoom Out | `⌘-` | `Ctrl+-` |
 | View | Actual Size | `⌘0` | `Ctrl+0` |
+| View | Zoom to Fit | `⇧1` | `Shift+1` |
+| View | Zoom to Selection | `⇧2` | `Shift+2` |
 | Canvas: Tools | Select | `V` | `V` |
 | Canvas: Tools | Rectangle | `R` | `R` |
 | Canvas: Tools | Ellipse | `O` | `O` |

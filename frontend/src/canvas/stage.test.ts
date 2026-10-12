@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { labelArea } from './label-box';
 import { describe, expect, it, vi } from 'vitest';
 import Konva from 'konva';
 import { CanvasStage } from './stage';
@@ -472,14 +473,34 @@ describe('CanvasStage', () => {
     expect(label.y()).toBe(6);
   });
 
-  // Konva cuts a line wider than a fixed width, even with wrapping off; the
-  // rule (and the exporter) draws a word too wide for its box whole.
-  it('draws a label word wider than its shape whole', () => {
+  // A shape's label stays inside it: a word too wide breaks across lines.
+  it('breaks a label word wider than its shape across lines', () => {
     const stage = newStage({ read: reader({ '--size-label-inset': '2px' }) });
     stage.mount(host());
     stage.render(one({ type: 'rect', x: 0, y: 0, w: 8, h: 40, label: 'orange' }));
     const label = stage.labelFor('e1') as Konva.Text & { textArr: { text: string }[] };
-    expect(label.textArr.map((line) => line.text)).toEqual(['orange']);
+    expect(label.textArr.length).toBeGreaterThan(1);
+    expect(label.textArr.map((line) => line.text).join('')).toBe('orange');
+  });
+
+  it("sits an ellipse's label in the box inside its curve", () => {
+    const stage = newStage({ read: reader({ '--size-label-inset': '6px' }) });
+    stage.mount(host());
+    stage.render(one({ type: 'ellipse', x: 0, y: 0, w: 200, h: 100, label: 'Hi' }));
+    const label = stage.labelFor('e1')!;
+    const area = labelArea('ellipse', 200, 100, 6);
+    expect(label.x()).toBeCloseTo(area.x);
+    expect(label.width()).toBeCloseTo(area.w);
+  });
+
+  // Konva stops at a fixed height: the node grows with the text instead.
+  it('keeps every line of a label taller than its shape', () => {
+    const stage = newStage({ read: reader({ '--size-label-inset': '2px', '--leading-tight': '1.2' }) });
+    stage.mount(host());
+    stage.render(one({ type: 'rect', x: 0, y: 0, w: 20, h: 12, label: 'one two three four five six seven eight', fontSize: 10 }));
+    const label = stage.labelFor('e1') as Konva.Text & { textArr: { text: string }[] };
+    expect(label.textArr.length).toBeGreaterThan(2);
+    expect(label.textArr.map((line) => line.text).join(' ')).toBe('one two three four five six seven eight');
   });
 
   it('draws a free text word wider than its box whole', () => {

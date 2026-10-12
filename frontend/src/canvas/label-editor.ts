@@ -7,6 +7,7 @@
  * While it has focus, canvas keys stand down, because `editTarget` treats a
  * textarea as a field.
  */
+import { growToLabel, labelArea } from './label-box';
 import type { History } from './history';
 import type { ElementId, SceneData, SceneElement } from './scene';
 import { isLocked, isShapeType } from './scene';
@@ -16,8 +17,12 @@ import type { TextPaint } from './paint';
 
 import type { Point } from './viewport';
 
-/** Set or clear a shape's label, as one undo step. */
-export function commitLabel(history: History, id: ElementId, value: string): void {
+/**
+ * Set or clear a shape's label, as one undo step. `need`, when given, is the
+ * height the shape needs for a label as it will be drawn: a shape too short
+ * for its new label grows to it in the same step.
+ */
+export function commitLabel(history: History, id: ElementId, value: string, need?: (element: SceneElement) => number): void {
   const label = value.trim();
   history.mutate((draft) => {
     const element = draft.elements.find((e) => e.id === id) as (SceneElement & { label?: string }) | undefined;
@@ -27,6 +32,7 @@ export function commitLabel(history: History, id: ElementId, value: string): voi
     } else if ('label' in element) {
       delete element.label;
     }
+    if (need) growToLabel(element, need);
   });
 }
 
@@ -147,16 +153,14 @@ export type EditorRequest = {
 };
 
 /**
- * The box a label is drawn in, in scene units, as the stage lays it out: inset
- * from the sides of a shape, and from every edge of a frame. Free text has its
- * own box. The field covers this box, so its text wraps and sits where the
- * stage will draw it.
+ * The box a label is drawn in, in scene units, as the stage lays it out: the
+ * area inside its shape (`labelArea`). Free text has its own box. The field
+ * covers this box, so its text wraps and sits where the stage will draw it.
  */
 export function labelBox(element: SceneElement, inset: number): { x: number; y: number; w: number; h: number } {
   if (element.type === 'text' || element.type === 'arrow') return { x: element.x, y: element.y, w: element.w, h: element.h };
-  const w = Math.max(0, element.w - inset * 2);
-  if (element.type === 'frame') return { x: element.x + inset, y: element.y + inset, w, h: Math.max(0, element.h - inset * 2) };
-  return { x: element.x + inset, y: element.y, w, h: element.h };
+  const area = labelArea(element.type, element.w, element.h, inset);
+  return { x: element.x + area.x, y: element.y + area.y, w: area.w, h: area.h };
 }
 
 export class LabelEditor {
@@ -197,8 +201,10 @@ export class LabelEditor {
       });
     }
     if (request.opacity !== undefined) field.style.opacity = String(request.opacity);
-    // Free text grows to its lines; a label wraps inside its box, as drawn.
+    // Free text grows to its lines; a label wraps inside its box, as drawn,
+    // a word too wide for a line broken across lines.
     field.style.whiteSpace = request.measure ? 'pre' : 'pre-wrap';
+    if (!request.measure) field.style.overflowWrap = 'anywhere';
     // Position and size are the element's, in screen units, set inline because
     // they change with every element; the minimum size is a token in the
     // stylesheet.
@@ -249,7 +255,11 @@ export class LabelEditor {
           field.style.top = `${request.rect.y - (height - request.rect.height) / 2}px`;
           return;
         }
-        const free = Math.max(0, request.rect.height - textHeight(field.value));
+        // Taller than its box, the field grows down with the lines, as the
+        // shape will grow to hold them.
+        const height = textHeight(field.value);
+        field.style.height = `${Math.max(request.rect.height, height)}px`;
+        const free = Math.max(0, request.rect.height - height);
         const align = font?.verticalAlign ?? 'middle';
         field.style.paddingTop = `${align === 'top' ? 0 : align === 'bottom' ? free : free / 2}px`;
       };

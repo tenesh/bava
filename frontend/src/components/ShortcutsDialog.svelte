@@ -21,21 +21,23 @@
 
 <Dialog bind:open {title} size="shortcuts" flush closable {onOpenChange}>
   <div class="shortcuts">
-    {#each groups as group (group.title)}
-      <section class="group">
-        <h3 class="heading">{group.title}</h3>
-        <dl class="rows">
-          {#each group.rows as row (row.label + row.keys)}
-            <div class="row">
-              <dt>{row.label}</dt>
-              <dd class="caps" aria-label={row.keys}>
-                {#each keycaps(row.keys) as key, index (index)}<kbd class="cap">{key}</kbd>{/each}
-              </dd>
-            </div>
-          {/each}
-        </dl>
-      </section>
-    {/each}
+    <div class="columns">
+      {#each groups as group (group.title)}
+        <section class="group">
+          <h3 class="heading">{group.title}</h3>
+          <dl class="rows">
+            {#each group.rows as row (row.label + row.keys)}
+              <div class="row">
+                <dt>{row.label}</dt>
+                <dd class="caps" aria-label={row.keys}>
+                  {#each keycaps(row.keys) as key, index (index)}<kbd class="cap">{key}</kbd>{/each}
+                </dd>
+              </div>
+            {/each}
+          </dl>
+        </section>
+      {/each}
+    </div>
   </div>
 </Dialog>
 
@@ -43,7 +45,9 @@
   /*
    * One size whatever the groups hold, spanning the body edge to edge; its
    * height leaves room for the header (its padding, close button and rule).
-   * Groups flow down three columns, as a menu's shortcuts read in order.
+   * Groups flow down three columns, as a menu's shortcuts read in order; the
+   * columns are as tall as they need inside the body, which scrolls. Columns
+   * of a fixed height would put what does not fit in a fourth, out of sight.
    * The space between groups is each group's own bottom padding: a heading's
    * top margin is dropped at some column breaks and kept at others, which
    * started the columns at different heights.
@@ -53,6 +57,9 @@
     height: 100%;
     padding: var(--space-5) var(--space-6) var(--space-2);
     overflow-y: auto;
+  }
+
+  .columns {
     column-count: 3;
     column-gap: var(--space-7);
   }

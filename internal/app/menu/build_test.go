@@ -75,7 +75,7 @@ func TestSelectionEnablesArrangeCommands(t *testing.T) {
 		t.Error("Group is disabled with a selection")
 	}
 
-	for _, id := range []string{"canvas.bringForward", "canvas.sendBackward", "canvas.duplicate", "canvas.flipHorizontal", "canvas.flipVertical", "canvas.alignLeft", "canvas.distributeVertical"} {
+	for _, id := range []string{"canvas.bringForward", "canvas.sendBackward", "canvas.duplicate", "canvas.flipHorizontal", "canvas.flipVertical", "canvas.alignLeft", "canvas.distributeVertical", "view.zoomToSelection"} {
 		built.Apply(menu.State{HasSelection: false})
 		if built.Item(id).Enabled() {
 			t.Errorf("%s is enabled with nothing selected", id)
@@ -284,5 +284,33 @@ func TestInsertDiagramNeedsADocument(t *testing.T) {
 	built.Apply(menu.State{HasDocument: true, ShowsCanvas: true})
 	if !built.Item("insert.diagram").Enabled() {
 		t.Error("Diagram from Code is disabled with a document open and the canvas shown")
+	}
+}
+
+// Zoom to Fit and Zoom to Selection follow Actual Size, their shortcuts left
+// to the canvas: Shift+1 is "!" in a text field.
+func TestZoomToFitFollowsActualSize(t *testing.T) {
+	spec, err := menu.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := []string{}
+	for _, m := range spec.Menus {
+		if m.ID == "view" {
+			for _, item := range m.Items {
+				ids = append(ids, item.ID)
+			}
+		}
+	}
+	built, _ := build(t, "windows")
+	at := slices.Index(ids, "view.actualSize")
+	if at < 0 || at+2 >= len(ids) || ids[at+1] != "view.zoomToFit" || ids[at+2] != "view.zoomToSelection" {
+		t.Fatalf("View menu = %v, want Zoom to Fit and Zoom to Selection after Actual Size", ids)
+	}
+	if got := built.Item("view.zoomToFit").Label(); got != "Zoom to Fit\tShift+1" {
+		t.Errorf("label %q", got)
+	}
+	if built.IsNativeShortcut("view.zoomToFit") {
+		t.Error("Zoom to Fit is bound natively, taking ! from text fields")
 	}
 }

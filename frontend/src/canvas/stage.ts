@@ -20,8 +20,9 @@ import type { SceneData, SceneElement, ElementId } from './scene';
 import type { ArrowProps, StyleProps } from './scene';
 import { isShapeType } from './scene';
 import { drawOutline, isOutlineShape, type OutlineShape, type PathSink } from './shapes';
-import { DEFAULT_STROKE_WIDTH, defaultAlign, defaultVerticalAlign, paintFor, ROUND_SHARE } from './paint';
+import { DEFAULT_STROKE_WIDTH, defaultAlign, paintFor, ROUND_SHARE } from './paint';
 import { overflowBox, wrapLines } from './text-layout';
+import { placeLabel } from './label-box';
 import { smoothPoints } from './curves';
 import { bindingsOf, drawnPoints, isDetached, type Point } from './binding';
 import { tensionOf } from './hit';
@@ -1287,15 +1288,10 @@ export class CanvasStage {
         group.add(entry.label);
       }
       const inset = number(read, '--size-label-inset');
-      const isFrame = element.type === 'frame';
       const isArrow = element.type === 'arrow';
       const props = element as SceneElement & StyleProps;
-      const measure = this.#lineWidth(element, read);
-      const lines = wrapLines(label, Math.max(0, element.w - inset * 2), measure);
-      entry.label.text(lines.join('\n'));
       const align = props.align ?? defaultAlign(element.type);
       entry.label.align(align);
-      entry.label.verticalAlign(props.verticalAlign ?? defaultVerticalAlign(element.type));
       if (isArrow) {
         // Centred on the middle point (or where it was slid), in the group's
         // own space, and wrapped by `labelLayout`: the exporter does the
@@ -1327,14 +1323,19 @@ export class CanvasStage {
           return ['evenodd'];
         });
       } else {
+        // In the box inside the shape, words broken to it; a label taller
+        // than the box runs on past it rather than losing lines.
+        const paint = paintFor(element, read);
+        const placed = placeLabel(element.type, element.w, element.h, label, inset, paint.font, this.#lineWidth(element, read));
+        entry.label.text(placed.lines.join('\n'));
+        entry.label.verticalAlign(placed.verticalAlign);
         entry.label.rotation(0);
         entry.label.offsetX(0);
         entry.label.offsetY(0);
-        const box = overflowBox(inset, Math.max(0, element.w - inset * 2), widestOf(lines, measure), align);
-        entry.label.x(box.x);
-        entry.label.y(isFrame ? inset : 0);
-        entry.label.width(box.width);
-        entry.label.height(isFrame ? Math.max(0, element.h - inset * 2) : element.h);
+        entry.label.x(placed.x);
+        entry.label.y(placed.y);
+        entry.label.width(placed.w);
+        entry.label.height(placed.h);
       }
     } else if (entry.label) {
       entry.label.destroy();

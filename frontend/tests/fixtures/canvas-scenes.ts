@@ -94,6 +94,25 @@ export function heads(): El[] {
   ]);
 }
 
+/**
+ * Long labels kept inside their shapes: clear of curves and slants, a word
+ * too wide broken, and one label taller than its shape running on past it
+ * (as a file saved where text measured narrower opens).
+ */
+export function labels(): El[] {
+  const long = 'Collect feedback from the first hundred users and sort it by theme';
+  const at = { label: long, fontSize: 14 };
+  return [
+    el({ id: 'l-rect', type: 'rect', x: 40, y: 40, w: 180, h: 100, ...at }),
+    el({ id: 'l-ellipse', type: 'ellipse', x: 260, y: 40, w: 220, h: 170, ...at }),
+    el({ id: 'l-diamond', type: 'diamond', x: 520, y: 30, w: 260, h: 250, ...at }),
+    el({ id: 'l-hexagon', type: 'hexagon', x: 40, y: 320, w: 220, h: 140, ...at }),
+    el({ id: 'l-cloud', type: 'cloud', x: 300, y: 300, w: 280, h: 210, ...at }),
+    el({ id: 'l-word', type: 'rect', x: 620, y: 320, w: 120, h: 90, label: 'https://example.com/a/long/address', fontSize: 14 }),
+    el({ id: 'l-short', type: 'rect', x: 620, y: 450, w: 120, h: 36, label: 'A label taller than its shape', fontSize: 14 }),
+  ];
+}
+
 /** A frame holding shapes, a group, an arrow crossing the frame, and code blocks. */
 export function containers(): El[] {
   const frame = el({ id: 'frame', type: 'frame', x: 40, y: 40, w: 340, h: 220, label: 'Write path', stroke: 'blue' });
@@ -206,7 +225,7 @@ export const box = (id: string, x: number, y: number, extra: Record<string, unkn
 });
 
 /** Every scene by name, for the walks to go through. */
-export const SCENES = { shapes, colours, styles, arrows, heads, containers, turned, diagram, many } as const;
+export const SCENES = { shapes, labels, colours, styles, arrows, heads, containers, turned, diagram, many } as const;
 
 // ---- every element in every state ------------------------------------------------
 

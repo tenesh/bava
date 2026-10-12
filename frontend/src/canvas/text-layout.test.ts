@@ -36,6 +36,30 @@ describe('breaking text into lines', () => {
 
 // A word wider than its box is drawn whole and overflows: centred text both
 // ways, left-aligned text to the right, right-aligned text to the left.
+describe("breaking a word wider than its line, as a shape's label does", () => {
+  it('splits it where it meets the edge, carrying on the next line', () => {
+    // Ten characters fit in 60.
+    const lines = wrapLines('Supercalifragilistic', 60, width, { breakWords: true });
+    expect(lines).toEqual(['Supercalif', 'ragilistic']);
+  });
+
+  it('fills the line before a long word, then breaks the word', () => {
+    expect(wrapLines('go Supercalifragilistic now', 60, width, { breakWords: true })).toEqual(['go', 'Supercalif', 'ragilistic', 'now']);
+  });
+
+  it('keeps at least one character a line, however narrow the line', () => {
+    expect(wrapLines('abc', 3, width, { breakWords: true })).toEqual(['a', 'b', 'c']);
+  });
+
+  it('puts one character a line in a box with no width at all, never one long line', () => {
+    expect(wrapLines('ab cd', 0, width, { breakWords: true })).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('leaves the word whole without being asked, as text elements do', () => {
+    expect(wrapLines('Supercalifragilistic', 60, width)).toEqual(['Supercalifragilistic']);
+  });
+});
+
 describe('the box a word wider than its box is drawn in', () => {
   it('is the box itself when every line fits', () => {
     expect(overflowBox(10, 100, 80, 'center')).toEqual({ x: 10, width: 100 });

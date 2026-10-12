@@ -140,6 +140,8 @@
   // and an ellipsis.
   --size-crumb-min: 52px;
 
+  // Clear space round what Zoom to Fit and Zoom to Selection show, on screen.
+  --size-fit-margin: 48px;
   // Space between a label and its shape's edge.
   --size-label-inset: 6px;
   // A selection handle's side on screen, whatever the zoom.

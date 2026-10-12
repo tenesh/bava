@@ -1,9 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { FAMILIES, SCENES, box, elementScene, kinds, pictured } from '../fixtures/canvas-scenes';
 import {
   CANVAS_PAGE,
   angleOf,
   byId,
+  canvasHost,
   clickScene,
   dragScene,
   ends,
@@ -1215,4 +1216,105 @@ test.describe('Diagram from Code', () => {
       await expect(openDialog(page).locator('.bava-diagram-preview svg')).toBeVisible();
     });
   }
+});
+
+// A drag the system cuts off (a touch cancelled, the pointer taken away, the
+// window losing focus to an alert) ends where it was, as a release would:
+// one undo step, and nothing left following the pointer.
+test.describe('a drag the system cuts off', () => {
+  const cuts = {
+    'a cancelled pointer': (page: Page) => canvasHost(page).dispatchEvent('pointercancel', { pointerId: 1 }),
+    'the pointer taken away': (page: Page) => canvasHost(page).dispatchEvent('lostpointercapture', { pointerId: 1 }),
+    'the window losing focus': (page: Page) => page.evaluate(() => window.dispatchEvent(new Event('blur'))),
+  };
+  for (const [cause, cut] of Object.entries(cuts)) {
+    test(`ends where it was, on ${cause}`, async ({ page }) => {
+      await startCanvas(page, [box('b1', 100, 100)]);
+      await dragScene(page, { x: 160, y: 140 }, { x: 360, y: 140 }, { hold: true });
+      await cut(page);
+      // Still pressed as far as the page knows: nothing more may follow it.
+      const further = await onScreen(page, { x: 560, y: 140 });
+      await page.mouse.move(further.x, further.y, { steps: 4 });
+      await page.mouse.up();
+      expect(byId(await saved(page), 'b1')).toMatchObject({ x: 300, y: 100 });
+      await menu(page, 'edit.undo');
+      expect(byId(await saved(page), 'b1')).toMatchObject({ x: 100, y: 100 });
+    });
+  }
+  test('an Alt-drag cut off leaves the copy it showed, the original kept', async ({ page }) => {
+    await startCanvas(page, [box('b1', 100, 100)]);
+    await dragScene(page, { x: 160, y: 140 }, { x: 360, y: 140 }, { modifiers: ['Alt'], hold: true });
+    await cuts['a cancelled pointer'](page);
+    await page.mouse.up();
+    await page.keyboard.up('Alt');
+    const rects = ofType(await saved(page), 'rect').sort((p, q) => p.x - q.x);
+    expect(rects).toHaveLength(2);
+    expect(rects[0]).toMatchObject({ id: 'b1', x: 100 });
+    expect(rects[1].x).toBe(300);
+  });
+
+  test('a box dragged round shapes and cut off selects them, as a release does', async ({ page }) => {
+    await startCanvas(page, [box('b1', 100, 100)]);
+    await dragScene(page, { x: 60, y: 60 }, { x: 260, y: 220 }, { hold: true });
+    await cuts['the window losing focus'](page);
+    await page.mouse.up();
+    await expect(selectionToolbar(page)).toBeVisible();
+  });
+
+  test('a line press cut off before it moved begins nothing', async ({ page }) => {
+    await startCanvas(page, [box('b1', 100, 100)]);
+    await page.keyboard.press('l');
+    const at = await onScreen(page, { x: 500, y: 400 });
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    await cuts['the pointer taken away'](page);
+    await page.mouse.up();
+    const later = await onScreen(page, { x: 600, y: 450 });
+    await page.mouse.move(later.x, later.y, { steps: 3 });
+    await page.mouse.click(later.x, later.y);
+    // Escape finishes a line drawn click by click, were one begun.
+    await page.keyboard.press('Escape');
+    expect(ofType(await saved(page), 'line')).toHaveLength(0);
+  });
+});
+
+// A label longer than its shape makes the shape taller, its width kept; a
+// word too wide for the shape breaks rather than sticking out.
+test.describe('a label that fits its shape', () => {
+  test('a long label typed into a shape makes it taller, its width kept', async ({ page }) => {
+    await startCanvas(page, [box('b1', 100, 100, { label: 'Short' })]);
+    const at = await onScreen(page, { x: 160, y: 140 });
+    await page.mouse.dblclick(at.x, at.y);
+    const field = page.locator('textarea').filter({ visible: true });
+    await expect(field).toHaveValue('Short');
+    await field.fill('Collect feedback from the first hundred users, sort it by theme, and share the top five with the team');
+    await page.keyboard.press('Escape');
+    const shape = byId(await saved(page), 'b1');
+    expect(shape).toMatchObject({ x: 100, y: 100, w: 120 });
+    expect(shape.h).toBeGreaterThan(80);
+    // One step: undo takes the label and the height back together.
+    await menu(page, 'edit.undo');
+    expect(byId(await saved(page), 'b1')).toMatchObject({ h: 80, label: 'Short' });
+  });
+
+  test('a larger label size pasted onto a shape makes it taller', async ({ page }) => {
+    await startCanvas(page, [box('b1', 100, 100, { label: 'Big', fontSize: 36 }), box('b2', 300, 100, { label: 'Collect feedback from the first users', fontSize: 14 })]);
+    await clickScene(page, { x: 160, y: 140 });
+    await menu(page, 'canvas.copyStyles');
+    await clickScene(page, { x: 360, y: 140 });
+    await menu(page, 'canvas.pasteStyles');
+    const shape = byId(await saved(page), 'b2');
+    expect(shape).toMatchObject({ fontSize: 36, w: 120, y: 100 });
+    expect(shape.h).toBeGreaterThan(80);
+  });
+
+  test('pulled shorter, a labelled shape stops at its label', async ({ page }) => {
+    await startCanvas(page, [box('b1', 100, 100, { label: 'Collect feedback from the first hundred users and sort it' })]);
+    await clickScene(page, { x: 160, y: 140 });
+    // The bottom handle, dragged far up.
+    await dragScene(page, { x: 160, y: 180 }, { x: 160, y: 110 });
+    const shape = byId(await saved(page), 'b1');
+    expect(shape.y).toBe(100);
+    expect(shape.h).toBeGreaterThan(40);
+  });
 });

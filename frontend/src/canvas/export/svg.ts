@@ -21,6 +21,7 @@ import { columnsIn } from '../code/measure';
 import { columnsFor, wrapRuns } from '../code/wrap';
 import type { Run } from '../code/highlight';
 import { wrapLines } from '../text-layout';
+import { placeLabel } from '../label-box';
 import { canvasLineWidth } from '../text-measure';
 import { smoothPoints } from '../curves';
 
@@ -97,6 +98,24 @@ function textElement(element: SceneElement, paint: Paint, value: string, inset: 
   const at = textPosition(box, paint, lines.length);
   const step = round(paint.font.size * paint.font.lineHeight);
   const spans = lines
+    .map((line, i) => `<tspan x="${round(at.x)}" dy="${i === 0 ? 0 : step}">${escapeXml(line)}</tspan>`)
+    .join('');
+  return (
+    `<text x="${round(at.x)}" y="${round(at.y)}" fill="${paint.font.colour}"` +
+    ` font-family="${escapeXml(paint.font.family)}" font-size="${round(paint.font.size)}"` +
+    ` text-anchor="${ANCHOR[paint.font.align]}">${spans}</text>`
+  );
+}
+
+/** A shape's or frame's label, placed as the stage places it (`placeLabel`). */
+function shapeLabel(element: SceneElement, paint: Paint, label: string, inset: number): string {
+  const measure = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
+  const placed = placeLabel(element.type, element.w, element.h, label, inset, paint.font, measure);
+  const box = { ...element, x: element.x + placed.x, y: element.y + placed.y, w: placed.w, h: placed.h };
+  const font = { ...paint.font, verticalAlign: placed.verticalAlign };
+  const at = textPosition(box, { ...paint, font }, placed.lines.length);
+  const step = round(paint.font.size * paint.font.lineHeight);
+  const spans = placed.lines
     .map((line, i) => `<tspan x="${round(at.x)}" dy="${i === 0 ? 0 : step}">${escapeXml(line)}</tspan>`)
     .join('');
   return (
@@ -295,7 +314,7 @@ function draw(element: SceneElement, options: SvgOptions, labelInset: number): s
       : label && element.type === 'arrow'
         ? arrowLabel(element, paint, label)
         : label && (isShapeType(element.type) || element.type === 'frame')
-          ? textElement(element, paint, label, labelInset)
+          ? shapeLabel(element, paint, label, labelInset)
           : '');
   if (inner === '') return '';
 

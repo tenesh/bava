@@ -65,6 +65,22 @@ export function createViewport() {
     },
 
     /**
+     * Fit a scene box into a view of `size`, `margin` screen units clear on
+     * every side: the zoom that shows it whole, in or out within the zoom's
+     * limits, and the box centred. A box with no size takes the largest zoom.
+     */
+    fit(box: { x: number; y: number; w: number; h: number }, size: { width: number; height: number }, margin: number): void {
+      const room = { width: Math.max(1, size.width - margin * 2), height: Math.max(1, size.height - margin * 2) };
+      const across = box.w > 0 ? room.width / box.w : Infinity;
+      const down = box.h > 0 ? room.height / box.h : Infinity;
+      zoom = clampZoom(Math.min(across, down));
+      pan = {
+        x: size.width / 2 - (box.x + box.w / 2) * zoom,
+        y: size.height / 2 - (box.y + box.h / 2) * zoom,
+      };
+    },
+
+    /**
      * Zoom about a screen point, keeping whatever is under it in place.
      *
      * The scene point under the cursor is found first, then the pan is solved

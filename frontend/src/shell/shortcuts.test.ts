@@ -120,6 +120,9 @@ describe('canvas-scoped shortcuts', () => {
       match(key({ code, key: code.replace(/^Key/, '').toLowerCase(), ...mods }));
     expect(press('BracketRight', { metaKey: true })).toBe('canvas.bringForward');
     expect(press('KeyH', { shiftKey: true })).toBe('canvas.flipHorizontal');
+    // ⇧1 reports "!" on a US keyboard, and other symbols elsewhere: the key's code decides.
+    expect(match(key({ code: 'Digit1', key: '!', shiftKey: true }))).toBe('view.zoomToFit');
+    expect(match(key({ code: 'Digit2', key: '@', shiftKey: true }))).toBe('view.zoomToSelection');
     expect(press('KeyD', { metaKey: true })).toBe('canvas.duplicate');
     // ⌘/Ctrl+Enter edits the selected line's or arrow's points.
     expect(press('Enter', { metaKey: true })).toBe('canvas.editPoints');

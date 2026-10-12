@@ -103,6 +103,8 @@
         { "kind": "command", "id": "view.zoomIn", "label": "Zoom In", "shortcut": "CmdOrCtrl+=", "nativeOn": ["darwin"] },
         { "kind": "command", "id": "view.zoomOut", "label": "Zoom Out", "shortcut": "CmdOrCtrl+-", "nativeOn": ["darwin"] },
         { "kind": "command", "id": "view.actualSize", "label": "Actual Size", "accelerator": "CmdOrCtrl+0" },
+        { "kind": "command", "id": "view.zoomToFit", "label": "Zoom to Fit", "shortcut": "Shift+1", "scope": "canvas" },
+        { "kind": "command", "id": "view.zoomToSelection", "label": "Zoom to Selection", "shortcut": "Shift+2", "scope": "canvas" },
         { "kind": "separator" },
         {
           "kind": "submenu",

@@ -91,3 +91,37 @@ describe('viewport', () => {
     expect(viewport.sceneToScreen({ x: 800, y: 50 })).toEqual({ x: 400, y: 300 });
   });
 });
+
+describe('fitting the view to a box', () => {
+  const size = { width: 800, height: 600 };
+
+  it('zooms out to show a box larger than the view within the margin, centred', () => {
+    const viewport = createViewport();
+    viewport.fit({ x: 0, y: 0, w: 2000, h: 500 }, size, 50);
+    // 700 of the 800 across hold 2000: a zoom of 0.35.
+    expect(viewport.zoom).toBeCloseTo(0.35);
+    expect(viewport.sceneToScreen({ x: 1000, y: 250 })).toEqual({ x: 400, y: 300 });
+  });
+
+  it('zooms in to fill the view with a small box, centred', () => {
+    const viewport = createViewport();
+    viewport.fit({ x: 10, y: 10, w: 100, h: 50 }, size, 50);
+    expect(viewport.zoom).toBeCloseTo(7);
+    expect(viewport.sceneToScreen({ x: 60, y: 35 })).toEqual({ x: 400, y: 300 });
+  });
+
+  it('stops at the largest and smallest zoom', () => {
+    const viewport = createViewport();
+    viewport.fit({ x: 0, y: 0, w: 2, h: 2 }, size, 50);
+    expect(viewport.zoom).toBe(MAX_ZOOM);
+    viewport.fit({ x: 0, y: 0, w: 1e6, h: 1e6 }, size, 50);
+    expect(viewport.zoom).toBe(MIN_ZOOM);
+  });
+
+  it('centres a box with no size, a point, at the largest zoom', () => {
+    const viewport = createViewport();
+    viewport.fit({ x: 5, y: 5, w: 0, h: 0 }, size, 50);
+    expect(viewport.zoom).toBe(MAX_ZOOM);
+    expect(viewport.sceneToScreen({ x: 5, y: 5 })).toEqual({ x: 400, y: 300 });
+  });
+});

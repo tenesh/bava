@@ -63,6 +63,18 @@ for (const theme of THEMES) {
       });
     }
 
+    // The short shape of the labels sheet, its label edited: the shape grows
+    // to hold every line, its width and top kept.
+    test('a shape grown to its label', async ({ page }) => {
+      await openCanvas(page, theme, CANVAS_PAGE, SCENES.labels());
+      const at = await onScreen(page, { x: 680, y: 468 });
+      await page.mouse.dblclick(at.x, at.y);
+      await expect(page.locator('textarea').filter({ visible: true })).toHaveValue('A label taller than its shape');
+      await page.keyboard.press('Escape');
+      await restPointer(page);
+      await shotPane(canvasPane(page), shot(AREA, 'labels', 'grown', theme));
+    });
+
     test('an empty canvas, with the tool rail and the zoom buttons', async ({ page }) => {
       await openCanvas(page, theme, CANVAS_PAGE, []);
       await restPointer(page);

@@ -221,6 +221,7 @@ func (b *Built) Apply(state State) bool {
 		"canvas.distributeHorizontal", "canvas.distributeVertical",
 		"canvas.copyStyles",
 		"canvas.copyPng", "canvas.copySvg", "canvas.exportSelection",
+		"view.zoomToSelection",
 	} {
 		enable(id, state.HasSelection)
 	}

@@ -360,6 +360,16 @@ for (const theme of THEMES) {
     test('Keyboard shortcuts', async ({ page }) => {
       await openApp(page, theme);
       await menu(page, 'help.shortcuts');
+      // Every group within the dialog's width: more than three columns hold
+      // flows down, to be scrolled to, never off to the side.
+      const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+      const frame = (await dialog.boundingBox())!;
+      const headings = dialog.locator('.heading');
+      await expect(headings.filter({ hasText: 'Canvas: Tools' })).toHaveCount(1);
+      for (const box of await headings.evaluateAll((all) => all.map((h) => h.getBoundingClientRect().toJSON() as DOMRect))) {
+        expect(box.x).toBeGreaterThanOrEqual(frame.x);
+        expect(box.x + box.width).toBeLessThanOrEqual(frame.x + frame.width);
+      }
       await shotDialog(page, shot('dialogs', 'shortcuts', 'default', theme));
     });
 

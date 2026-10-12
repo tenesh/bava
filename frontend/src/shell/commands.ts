@@ -44,6 +44,8 @@ export const COMMAND_IDS = [
   'view.zoomIn',
   'view.zoomOut',
   'view.actualSize',
+  'view.zoomToFit',
+  'view.zoomToSelection',
   'view.theme.light',
   'view.theme.dark',
   'view.theme.system',

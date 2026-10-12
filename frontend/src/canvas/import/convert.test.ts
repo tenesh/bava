@@ -90,6 +90,15 @@ describe('converting a D2 layout into canvas elements', () => {
     expect(frame.z).toBeLessThan(child.z);
   });
 
+  // A shape is fitted to its label as it arrives; containers and arrows are not.
+  it('fits each shape as it arrives, and nothing else', () => {
+    const fitted: string[] = [];
+    const elements = toElements(fixture, { at: { x: 0, y: 0 }, fit: (element) => fitted.push(element.id) });
+    const shapes = elements.filter((element) => element.type !== 'arrow' && element.type !== 'frame');
+    expect(fitted.sort()).toEqual(shapes.map((element) => element.id).sort());
+    expect(fitted.length).toBeGreaterThan(0);
+  });
+
   it('converts an empty layout into nothing at all', () => {
     expect(toElements({ shapes: [], connections: [] }, { at: { x: 0, y: 0 } })).toEqual([]);
   });

@@ -132,7 +132,9 @@ What is true now and affects the gates. Update it when a milestone closes.
 attributed in `NOTICE` for good). R2 done (the stores' sandboxes: the same walks pass inside the Mac sandbox,
 the installed MSIX and Flatpak, run 38143080459). 15.3 done (import;
 its walk passes on all three systems and inside each store's package, run
-38197233990). Next 15.4 (canvas work), Milestone 16, Milestone 17. Help ▸ Report Issue
+38197233990). 15.4a (zoom to fit, labels that fit, drags the system ends)
+built, awaiting CI. Next 15.4b (palette), 15.4c (paste), 15.4d (shapes),
+Milestone 16, Milestone 17. Help ▸ Report Issue
 is hidden until release (`REPORT_ISSUE_ENABLED` in
 `frontend/src/shell/report-issue.ts`); the DMG icon and background stay
 Wails-branded until release.
@@ -150,8 +152,8 @@ The real app only on CI: `-tags e2e` walks `tests/e2e/` (`create`, `reopen`,
 store's package. Never `wails3 dev` locally.
 
 **Gates:** all green on the host (go vet, go test 15 packages, 2 golden
-fixtures, check, lint, `npm test` 2,937 passed); `npm run browser` 545 passed,
-310 references in `testdata/visual/`; CI end-to-end green, inside each
+fixtures, check, lint, `npm test` 3,003 passed); `npm run browser` 558 passed,
+314 references in `testdata/visual/`; CI end-to-end green, inside each
 store's package too. `npm run build`'s minifier rejects some CSS the browser
 tests accept (WebKit-only selectors).
 
@@ -161,7 +163,7 @@ there, in the same change; a plan's As built points to it.
 
 **Open problems:**
 - Browser tests see WebKit in a container, not the real webviews.
-- A drag the system cuts off never ends: nothing handles `pointercancel` (15.4).
+- Media's Sort dropdown, picked by pointer, missed once under a full run (`dialogs.spec.ts`); 15 alone passed.
 - A canvas embed's first save can leave the page unsaved, about 1 in 20 in `document.spec.ts`; not investigated.
 - A floating menu's picture timing out in `placed` (`frontend/tests/helpers.ts`) is fixed locally; watch CI.
 

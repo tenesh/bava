@@ -22,6 +22,16 @@ export function isOutlineShape(type: string): type is OutlineShape {
   return (OUTLINE_SHAPES as readonly string[]).includes(type);
 }
 
+/** A hexagon's slant, a share of its width, at most half its height. */
+export const HEXAGON_SLANT = 0.25;
+/** A parallelogram's slant, a share of its width, at most half its height. */
+export const PARALLELOGRAM_SLANT = 0.2;
+/** A cylinder lid's half-height, a share of its height, at most this share of its width. */
+export const CYLINDER_LID = 0.12;
+export const CYLINDER_LID_MAX = 0.25;
+/** The height of a document's bottom wave, a share of its height. */
+export const DOCUMENT_WAVE = 0.08;
+
 // Cubic Bézier approximation of a quarter circle.
 const KAPPA = 0.5522847498;
 
@@ -96,7 +106,7 @@ const outlines: Record<OutlineShape, (p: PathSink, w: number, h: number, radius?
   },
 
   cylinder(p, w, h) {
-    const ry = Math.min(h * 0.12, w * 0.25);
+    const ry = Math.min(h * CYLINDER_LID, w * CYLINDER_LID_MAX);
     const oy = ry * KAPPA;
     const ox = (w / 2) * KAPPA;
     // Body: down the left side, round the front of the base, up the right.
@@ -111,7 +121,7 @@ const outlines: Record<OutlineShape, (p: PathSink, w: number, h: number, radius?
   },
 
   hexagon(p, w, h, radius) {
-    const inset = Math.min(w * 0.25, h * 0.5);
+    const inset = Math.min(w * HEXAGON_SLANT, h * 0.5);
     polygon(
       p,
       [
@@ -127,7 +137,7 @@ const outlines: Record<OutlineShape, (p: PathSink, w: number, h: number, radius?
   },
 
   parallelogram(p, w, h, radius) {
-    const slant = Math.min(w * 0.2, h * 0.5);
+    const slant = Math.min(w * PARALLELOGRAM_SLANT, h * 0.5);
     polygon(
       p,
       [
@@ -141,7 +151,7 @@ const outlines: Record<OutlineShape, (p: PathSink, w: number, h: number, radius?
   },
 
   document(p, w, h) {
-    const wave = h * 0.08;
+    const wave = h * DOCUMENT_WAVE;
     p.moveTo(0, 0);
     p.lineTo(w, 0);
     p.lineTo(w, h - wave);

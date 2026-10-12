@@ -32,6 +32,8 @@ export type Layout = { shapes: LayoutShape[]; connections: LayoutConnection[] };
 export type ConvertOptions = {
   /** Where the diagram's centre should land, in scene coordinates. */
   at: { x: number; y: number };
+  /** Called on each shape as it arrives, before its arrows: a shape grown to its label. */
+  fit?: (element: SceneElement) => void;
 };
 
 /**
@@ -128,6 +130,7 @@ export function toElements(layout: Layout, options: ConvertOptions): SceneElemen
       ...(shape.parent ? { frame: idFor(shape.parent) } : {}),
     } as SceneElement;
   });
+  for (const element of elements) if (element.type !== 'frame') options.fit?.(element);
 
   const shapeIds = new Set(layout.shapes.map((shape) => shape.id));
   for (const connection of layout.connections) {
