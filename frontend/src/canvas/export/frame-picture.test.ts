@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SceneElement } from '../scene';
 import { frameArea, framePicture } from './frame-picture';
+import { iconEntry } from '../icons/sets';
 
 const el = (fields: Partial<SceneElement> & { id: string; type: string }) =>
   ({ x: 0, y: 0, w: 10, h: 10, z: 1, ...fields }) as unknown as SceneElement;
@@ -63,5 +64,22 @@ describe('a frame’s picture', () => {
     expect(picture).toBeInstanceOf(Blob);
     expect(draw).toHaveBeenCalledWith(frameArea(scene, 'f1'), expect.objectContaining({ scale: 2, background: true, theme: 'dark' }));
     expect(await framePicture(scene, 'gone', { theme: 'light', draw })).toBeNull();
+  });
+
+  // Another page's canvas may name icons nothing has loaded yet.
+  it("has its icons' sets loaded before it is drawn", async () => {
+    const withIcon = {
+      elements: [
+        { id: 'f1', type: 'frame', x: 0, y: 0, w: 200, h: 200, z: 1 },
+        { id: 'i', type: 'icon', icon: 'solid/cloud', x: 20, y: 20, w: 48, h: 48, z: 2 },
+      ] as unknown as SceneElement[],
+    };
+    let seen: unknown;
+    const draw = vi.fn(async () => {
+      seen = iconEntry('solid/cloud');
+      return new Blob(['png'], { type: 'image/png' });
+    });
+    await framePicture(withIcon, 'f1', { theme: 'light', draw });
+    expect(seen).toMatchObject({ set: 'solid', name: 'cloud' });
   });
 });

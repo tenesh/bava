@@ -8,7 +8,8 @@
 import type { ElementId, GroupElement, Scene, SceneData, SceneElement } from './scene';
 import { carriedWith } from './containment';
 import type { Box } from './selection';
-import { angleOfElement, normalise, rotatedBounds } from './rotate';
+import { angleOfElement, centreOf, normalise, rotatePoint, rotatedBounds } from './rotate';
+import { iconBounds } from './icons/icon-look';
 import { remapReferences } from './references';
 import { tidy } from './resize';
 
@@ -26,9 +27,29 @@ export function boundsOf(elements: SceneElement[]): Box {
   return { x: left, y: top, w: right - left, h: bottom - top };
 }
 
-/** The box around elements as they are drawn, rotation included. */
+/** The box around elements as they are drawn, rotation and an icon's label included. */
 export function drawnBoundsOf(elements: SceneElement[]): Box {
-  return boundsOf(elements.map((e) => ({ ...e, ...rotatedBounds(e), angle: 0 }) as SceneElement));
+  return boundsOf(elements.map((e) => ({ ...e, ...drawnBox(e), angle: 0 }) as SceneElement));
+}
+
+/** One element's box as drawn: an icon's label turns with it, about its square's centre. */
+function drawnBox(element: SceneElement): Box {
+  if (element.type !== 'icon') return rotatedBounds(element);
+  const box = iconBounds(element);
+  const angle = angleOfElement(element);
+  if (angle === 0) return box;
+  const centre = centreOf(element);
+  const corners = [
+    { x: box.x, y: box.y },
+    { x: box.x + box.w, y: box.y },
+    { x: box.x + box.w, y: box.y + box.h },
+    { x: box.x, y: box.y + box.h },
+  ].map((corner) => rotatePoint(corner, centre, angle));
+  const xs = corners.map((c) => c.x);
+  const ys = corners.map((c) => c.y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
 }
 
 /** Wrap two or more elements in a group. Returns undefined for fewer. */
@@ -223,7 +244,8 @@ export function flip(scene: Scene, selection: SceneElement[], axis: 'horizontal'
     }
     return;
   }
-  const bounds = drawnBoundsOf(selection);
+  // About the elements as turned, an icon's label left out: words under it are not mirrored.
+  const bounds = boundsOf(selection.map((e) => ({ ...e, ...rotatedBounds(e), angle: 0 }) as SceneElement));
   for (const element of withContents(scene, selection)) {
     // A mirrored element leans the other way; which axis it was mirrored
     // across is already carried by the box.

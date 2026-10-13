@@ -11,6 +11,7 @@ import { resolveStyle, type ReadVariable } from './palette';
 import { isOutlineShape } from './shapes';
 import { isShapeType, type SceneElement } from './scene';
 import { CODE_FONT_SIZE, PROPERTY_DEFAULTS } from './style-defaults';
+import { iconColour } from './icons/icon-look';
 
 /** The proportional radius: a quarter of the shorter side. */
 export const ROUND_SHARE = 0.25;
@@ -151,6 +152,13 @@ export function paintFor(element: SceneElement, read: ReadVariable): Paint {
       // in it, so the arrow reads as one colour.
       paint.fill = style.stroke;
       paint.font.colour = style.stroke;
+      break;
+    case 'icon':
+      // The drawing is the icon's own paths; its box is only where it sits.
+      // The label takes the icon's colour, a logo's own included.
+      paint.fill = '';
+      paint.stroke = '';
+      paint.font.colour = iconColour(element, read);
       break;
     default:
       break;

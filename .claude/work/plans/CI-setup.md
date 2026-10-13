@@ -56,24 +56,24 @@ named one way, the same word in its id, its shown name and its download.
 
 ### Task 1: The setup action
 **Files:** `.github/actions/setup/action.yml` (new).
-- [ ] Write it; check it with `actionlint` (run once with `go run`, not
+- [x] Write it; check it with `actionlint` (run once with `go run`, not
   installed).
 
 ### Task 2: The jobs use it, named one way
 **Files:** `.github/workflows/ci.yml`.
-- [ ] Every job checks out, then calls the action with what it needs; the
+- [x] Every job checks out, then calls the action with what it needs; the
   repeated steps go.
-- [ ] Ids, shown names and downloads as above.
-- [ ] `actionlint` clean; the diff read step by step against the old file,
+- [x] Ids, shown names and downloads as above.
+- [x] `actionlint` clean; the diff read step by step against the old file,
   each test step still there.
 
 ### Task 3: Docs and the build skill
 **Files:** `docs/testing.md`, `.claude/skills/build-step/SKILL.md`.
-- [ ] The jobs by their new names; the CI section of the skill's repo state
+- [x] The jobs by their new names; the CI section of the skill's repo state
   and the commands that watch a run.
 
 ### Verification
-- [ ] CI green on all three systems, every job shown by its new name and
+- [x] CI green on all three systems, every job shown by its new name and
   every download named as above (read from the run's job and artifact lists).
 
 ## Artifacts
@@ -107,4 +107,6 @@ tests; the Flathub manifest (never touched).
   (linux)` now runs the webview packages' pkg-config check, which the old
   job skipped. Neither changes what is tested.
 - The `wails3` step fails clearly if a job asks for it with Go off.
-
+- Green on all three systems under the new names: run 38338032045 (with a
+  fix and test tooling committed after 52726d1, whose run failed only the
+  macOS import walk, an open problem of its own).

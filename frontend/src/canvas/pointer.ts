@@ -104,6 +104,11 @@ export type PointerHandlerOptions = {
    * resize never leaves one shorter. None in tests that do not measure.
    */
   labelHeight?: (element: SceneElement) => number;
+  /**
+   * An icon's label measured as drawn at the icon's size: a resize stores it
+   * again, as the label wraps anew. None in tests that do not measure.
+   */
+  iconLabelSize?: (element: SceneElement & { label: string }) => { width: number; height: number };
   /** How far above the selection the rotate handle sits, in scene units. */
   rotateGap?: () => number;
   /**
@@ -1591,8 +1596,10 @@ export function createPointerHandler(options: PointerHandlerOptions) {
       }
       // Shift keeps a shape's proportions; a picture keeps its own, and Shift
       // frees it. A selection holding one keeps them, so it is never squashed.
+      // An icon is a square, Shift or not.
       const holdsPicture = [...originals.values()].some((e) => e.type === 'image');
-      const next = placeResized(bounds, resizeBox(bounds, handle, local.x, local.y, { keepAspect: shift !== holdsPicture }), angle);
+      const holdsIcon = [...originals.values()].some((e) => e.type === 'icon');
+      const next = placeResized(bounds, resizeBox(bounds, handle, local.x, local.y, { keepAspect: holdsIcon || shift !== holdsPicture }), angle);
       guides = angle === 0 && snapping() && started.snap?.corners ? guidesFor(started.snap.corners, next) : [];
       return (scene) => {
         for (let i = 0; i < scene.elements.length; i += 1) {
@@ -1604,11 +1611,23 @@ export function createPointerHandler(options: PointerHandlerOptions) {
           // member there scales through its drawn bounds instead.
           const member = original as SceneElement & { points?: number[] };
           const scaled = angle === 0 ? scaleRotatedInto(member, bounds, next) : scaleInto(member, bounds, next);
-          const resized = scaled.type === 'code' ? codeResized(scaled) : scaled.type === 'table' || scaled.type === 'class' ? tableResized(scaled) : scaled;
+          const resized =
+            scaled.type === 'code'
+              ? codeResized(scaled)
+              : scaled.type === 'table' || scaled.type === 'class'
+                ? tableResized(scaled)
+                : scaled.type === 'icon'
+                  ? squared(scaled, original)
+                  : scaled;
           // Too short for its label at its new width, a shape grows, the edge
           // not being dragged held still.
           const before = resized.h;
           if (options.labelHeight && growToLabel(resized, options.labelHeight)) keepEdge(resized, resized.h - before, handle.startsWith('top'));
+          if (resized.type === 'icon' && resized.label && options.iconLabelSize) {
+            const size = options.iconLabelSize({ ...resized, label: resized.label });
+            resized.measuredWidth = size.width;
+            resized.measuredHeight = size.height;
+          }
           scene.elements[i] = letGoOutside(resized, new Set(originals.keys()));
         }
       };
@@ -2316,4 +2335,11 @@ function keepEdge(element: SceneElement, grown: number, keepBottom: boolean): vo
   const centre = { x: element.x + element.w / 2 - Math.sin(angle) * shift, y: element.y + before / 2 + Math.cos(angle) * shift };
   element.x = tidy(centre.x - element.w / 2);
   element.y = tidy(centre.y - element.h / 2);
+}
+
+/** An icon kept square: the side the drag changed most decides the size, the corner opposite the handle held. */
+function squared(element: SceneElement, before: SceneElement): SceneElement {
+  if (element.w === element.h) return element;
+  const side = Math.abs(element.w - before.w) >= Math.abs(element.h - before.h) ? element.w : element.h;
+  return { ...element, w: side, h: side };
 }

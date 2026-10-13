@@ -9,6 +9,7 @@ import type { SceneData, SceneElement } from '../scene';
 import type { ExportArea } from './area';
 import { drawnBoundsOf } from '../edit';
 import { toPng, type PngOptions } from './png';
+import { iconsReady } from '../icons/wanted';
 
 /** Pixels per scene unit: sharp on a high-resolution screen. */
 export const PICTURE_SCALE = 2;
@@ -42,6 +43,7 @@ export type PictureOptions = Pick<PngOptions, 'theme' | 'read' | 'codeRuns' | 'p
 export async function framePicture(scene: SceneData, frameId: string, options: PictureOptions): Promise<Blob | null> {
   const area = frameArea(scene, frameId);
   if (!area) return null;
+  await iconsReady(area.elements);
   const { draw = toPng, ...rest } = options;
   return draw(area, { ...rest, scale: PICTURE_SCALE, background: true });
 }

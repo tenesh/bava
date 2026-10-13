@@ -564,6 +564,13 @@ export async function openCanvas(page: Page, theme: Theme, path: string, element
   await menu(page, 'view.canvas');
   await expect(canvasHost(page)).toBeVisible();
   if (elements.some((element) => (element as { type?: string }).type === 'image')) await picturesSettled(page);
+  if (elements.some((element) => (element as { type?: string }).type === 'icon')) await iconsSettled(page);
+}
+
+/** The canvas's icon sets loaded, and its icons drawn. */
+export async function iconsSettled(page: Page) {
+  await expect(page.locator('.canvas-region')).toHaveAttribute('data-icons', 'ready');
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
 }
 
 /** The canvas's pictures loaded or found missing, and drawn. */

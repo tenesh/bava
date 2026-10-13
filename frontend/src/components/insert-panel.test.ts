@@ -78,3 +78,58 @@ describe('InsertPanel', () => {
     expect(document.querySelector('[aria-selected="true"]')?.textContent).toBe(first);
   });
 });
+
+describe('the Icon category', () => {
+  function openIcons(props: Record<string, unknown> = {}) {
+    const onOutcome = vi.fn();
+    const { target } = render(InsertHarness, { onOutcome, ...props });
+    const input = () => target.querySelector('input')!;
+    const key = (k: string) => flushSync(() => input().dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true })));
+    const tiles = () => [...target.querySelectorAll('.icon-grid .tile')] as HTMLElement[];
+    flushSync(() => (target.querySelectorAll('[role="option"]')[4] as HTMLElement).click());
+    return { target, input, key, tiles, onOutcome };
+  }
+
+  it('opens with its tabs, a search for icons and a grid of them', async () => {
+    const { target, input, tiles } = openIcons();
+    expect(target.querySelector('.crumbs')?.textContent).toContain('Icon');
+    expect([...target.querySelectorAll('.bava-segment')].map((s) => s.textContent?.trim())).toEqual(['General', 'Logos', 'Custom']);
+    expect(input().getAttribute('placeholder')).toBe('Search icons');
+    await vi.waitFor(() => expect(tiles()).toHaveLength(3));
+    expect(tiles()[0].querySelector('svg')).not.toBeNull();
+    expect(tiles().map((tile) => tile.textContent?.trim())).toEqual(['database', 'database', 'server']);
+  });
+
+  it('searches as words are typed and places the highlighted icon on Enter', async () => {
+    const { input, key, tiles, onOutcome } = openIcons();
+    await vi.waitFor(() => expect(tiles()).toHaveLength(3));
+    flushSync(() => {
+      input().value = 'serv';
+      input().dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(tiles()).toHaveLength(1);
+    key('Enter');
+    expect(onOutcome).toHaveBeenCalledWith({ type: 'icon', icon: 'line/server' });
+  });
+
+  it('leaves the arrow keys and Enter on its tabs to the tabs', async () => {
+    const { target, tiles, onOutcome } = openIcons();
+    await vi.waitFor(() => expect(tiles()).toHaveLength(3));
+    const tab = target.querySelector('.bava-segment') as HTMLElement;
+    for (const key of ['ArrowRight', 'Enter']) flushSync(() => tab.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })));
+    expect(target.querySelector('.icon-grid [aria-selected="true"]')).toBe(tiles()[0]);
+    expect(onOutcome).not.toHaveBeenCalled();
+  });
+
+  it('goes back to all categories with Escape', async () => {
+    const { target, key } = openIcons();
+    key('Escape');
+    expect(target.querySelector('.crumbs')?.textContent?.trim()).toBe('All Categories');
+  });
+
+  it('says so when a set cannot be loaded', async () => {
+    const { target } = openIcons({ failLogos: true });
+    flushSync(() => ([...target.querySelectorAll('.bava-segment')][1] as HTMLElement).click());
+    await vi.waitFor(() => expect(target.querySelector('.icon-grid')?.textContent).toContain("couldn't be loaded"));
+  });
+});

@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
 import { labelArea } from './label-box';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import Konva from 'konva';
 import { CanvasStage } from './stage';
 import { onTeardown } from '../test/render';
 import { createScene, type SceneData, type SceneElement } from './scene';
 import { pathOf, routePoints } from './arrows';
 import { TABLE_HEADER, TABLE_PAD, TABLE_ROW } from './table-layout';
+import { loadSet } from './icons/sets';
+import { ICON_LABEL_GAP, ICON_LABEL_WIDTH } from './icons/icon-look';
+import { PICTURE_ICON } from './picture-placeholder';
 
 // jsdom resolves no CSS variables, so the tests hand the stage a reader.
 function reader(values: Record<string, string>) {
@@ -1690,5 +1693,75 @@ describe('tables and classes on the stage', () => {
     stage.render(one(table as never));
     stage.render(one({ ...table, rows: 'id int pk' } as never));
     expect(words(stage)).toEqual(['users', 'id', 'int', 'PK']);
+  });
+});
+
+// Sets load after the scene is drawn: what arrives then is the whole icon, its label's colour too.
+describe('an icon whose set arrives after it is drawn', () => {
+  it("draws a logo's label in its Brand colour once the logos load", async () => {
+    const stage = mounted();
+    stage.render(one({ type: 'icon', icon: 'logo/postgresql', color: 'brand', label: 'Orders DB', x: 0, y: 0, w: 48, h: 48 } as never));
+    expect(stage.labelFor('e1')!.fill()).toBe('black');
+    await loadSet('logo');
+    stage.iconsArrived();
+    expect(stage.labelFor('e1')!.fill()).toBe('#4169E1');
+  });
+});
+
+describe('icons on the stage', () => {
+  const database = { type: 'icon', icon: 'line/database', x: 10, y: 20, w: 48, h: 48 } as const;
+  const paths = (stage: CanvasStage) => stage.iconNode('e1')!.find<Konva.Path>('Path');
+
+  beforeAll(async () => {
+    await Promise.all([loadSet('line'), loadSet('logo')]);
+  });
+
+  it("strokes a line icon's paths in ink, scaled from its 24 grid to its box", () => {
+    const stage = mounted();
+    stage.render(one(database as never));
+    const drawn = paths(stage);
+    expect(drawn).toHaveLength(3);
+    expect(drawn[0].data()).toBe('M4 6a8 3 0 1 0 16 0a8 3 0 1 0 -16 0');
+    expect([drawn[0].stroke(), drawn[0].fill(), drawn[0].strokeWidth(), drawn[0].scaleX()]).toEqual(['black', '', 2, 2]);
+    expect(stage.bodyFor('e1')!.stroke()).toBe('');
+  });
+
+  it('fills a logo in its own colour for Brand, and in a swatch when one is picked', () => {
+    const stage = mounted();
+    stage.render(one({ ...database, icon: 'logo/redis', color: 'brand' } as never));
+    expect(paths(stage)[0].fill()).toBe('#FF4438');
+    stage.render(one({ ...database, icon: 'logo/redis', color: 'blue' } as never));
+    expect(paths(stage)[0].fill()).toBe('navy');
+  });
+
+  it('draws its label centred under it, in its colour', () => {
+    const stage = mounted();
+    stage.render(one({ ...database, icon: 'logo/redis', color: 'brand', label: 'Cache' } as never));
+    const label = stage.labelFor('e1')!;
+    expect(label.text()).toBe('Cache');
+    expect(label.fill()).toBe('#FF4438');
+    expect(label.align()).toBe('center');
+    expect([label.x(), label.y(), label.width()]).toEqual([24 - ICON_LABEL_WIDTH / 2, 48 + ICON_LABEL_GAP, ICON_LABEL_WIDTH]);
+  });
+
+  it('draws a dashed box for an icon no set holds, and names it under the box', () => {
+    const stage = mounted();
+    stage.render(one({ ...database, icon: 'line/not-an-icon' } as never));
+    expect(paths(stage).filter((path) => path.data() !== PICTURE_ICON.path)).toHaveLength(0);
+    const box = stage.iconNode('e1')!.findOne<Konva.Rect>('Rect')!;
+    expect(box.dash().length).toBeGreaterThan(0);
+    expect([box.width(), box.height()]).toEqual([48, 48]);
+    const words = stage.iconNode('e1')!.find<Konva.Text>('Text').map((node) => node.text());
+    expect(words).toEqual(['Missing icon: line/not-an-icon']);
+  });
+
+  it('draws an icon once its set arrives, and nothing while it loads', async () => {
+    const stage = mounted();
+    stage.render(one({ ...database, icon: 'solid/database' } as never));
+    expect(stage.iconNode('e1')!.getChildren()).toHaveLength(0);
+    await loadSet('solid');
+    stage.iconsArrived();
+    expect(paths(stage).length).toBeGreaterThan(0);
+    expect(paths(stage)[0].fill()).toBe('black');
   });
 });

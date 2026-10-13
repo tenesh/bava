@@ -227,6 +227,20 @@ export function tables(): El[] {
   ];
 }
 
+/**
+ * Icons: a line one in ink, a filled one in a swatch, a logo in its own
+ * colour with a label, the same logo in ink, and one no set holds.
+ */
+export function icons(): El[] {
+  return [
+    el({ id: 'ico-line', type: 'icon', icon: 'line/database', x: 40, y: 60, w: 64, h: 64, label: 'Orders', measuredWidth: 46, measuredHeight: 19 }),
+    el({ id: 'ico-solid', type: 'icon', icon: 'solid/cloud', x: 200, y: 60, w: 64, h: 64, color: 'blue' }),
+    el({ id: 'ico-brand', type: 'icon', icon: 'logo/postgresql', x: 360, y: 60, w: 64, h: 64, color: 'brand', label: 'Orders DB', measuredWidth: 72, measuredHeight: 19 }),
+    el({ id: 'ico-ink', type: 'icon', icon: 'logo/redis', x: 520, y: 60, w: 64, h: 64 }),
+    el({ id: 'ico-missing', type: 'icon', icon: 'custom/acme-billing', x: 200, y: 240, w: 64, h: 64, label: 'Billing', measuredWidth: 44, measuredHeight: 19 }),
+  ];
+}
+
 /** Three boxes in a row, the last a little out of line, to drag into it. */
 export function row(): El[] {
   return [
@@ -250,7 +264,7 @@ export const box = (id: string, x: number, y: number, extra: Record<string, unkn
 });
 
 /** Every scene by name, for the walks to go through. */
-export const SCENES = { shapes, labels, colours, styles, arrows, heads, containers, turned, diagram, many, pictures, tables } as const;
+export const SCENES = { shapes, labels, colours, styles, arrows, heads, containers, turned, diagram, many, pictures, tables, icons } as const;
 
 // ---- every element in every state ------------------------------------------------
 
@@ -283,6 +297,7 @@ export const ELEMENT_KINDS = {
   frame: 'frame',
   group: 'group',
   image: 'image',
+  icon: 'icon',
   table: 'table',
   class: 'class',
 } as const;
@@ -294,7 +309,7 @@ export const FAMILIES = {
   shapes: ['rect', 'ellipse', 'diamond', 'cylinder', 'hexagon', 'parallelogram', 'document', 'person', 'cloud'],
   lines: ['line-open', 'line-bent', 'line-round', 'line-closed'],
   arrows: ['arrow-straight', 'arrow-arc', 'arrow-elbow'],
-  others: ['stroke', 'text', 'code', 'code-plain', 'frame', 'group', 'image', 'table', 'class'],
+  others: ['stroke', 'text', 'code', 'code-plain', 'frame', 'group', 'image', 'icon', 'table', 'class'],
 } as const satisfies Record<string, readonly Kind[]>;
 
 export type Family = keyof typeof FAMILIES;
@@ -470,6 +485,12 @@ function kindAt(kind: Kind, b: Point, v: Variant): { elements: El[]; click: Poin
     case 'image': {
       const e = put({ id: kind, type: 'image', file: 'landscape.png', x: b.x, y: b.y, w: 120, h: 80 });
       return { elements: [e], click: p(60, 40), edit: p(60, 40), ...resize };
+    }
+    case 'icon': {
+      // A square, its label under it; the long label wraps at the label width.
+      const label = v.long ? LONG.shape : 'Label';
+      const e = put({ id: kind, type: 'icon', icon: 'line/server', x: b.x + 28, y: b.y, w: 64, h: 64, label, measuredWidth: v.long ? 160 : 36, measuredHeight: v.long ? 57 : 19 });
+      return { elements: [e], click: p(60, 32), edit: p(60, 32), handle: p(92, 64), cursor: 'nwse-resize' };
     }
     default:
       return shape(kind);

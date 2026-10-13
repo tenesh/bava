@@ -7,7 +7,7 @@ describe('insert panel state', () => {
     const insert = createInsert();
     expect(insert.category).toBeNull();
     // Categories, then the tools that are not shapes, then what is not a tool.
-    expect(insert.entries.map((e) => e.id)).toEqual(['shape', 'diagram', 'code', 'picture']);
+    expect(insert.entries.map((e) => e.id)).toEqual(['shape', 'diagram', 'code', 'picture', 'icon']);
     expect(insert.entries[0].kind).toBe('category');
     expect(insert.highlighted).toBe(0);
   });
@@ -78,6 +78,25 @@ describe('inserting a picture', () => {
     insert.setQuery('picture');
     expect(insert.entries.map((entry) => entry.id)).toEqual(['picture']);
     expect(insert.choose(0)).toEqual({ type: 'command', id: 'picture' });
+  });
+});
+
+// Icons are picked in a category of their own, after Picture.
+describe('the Icon category', () => {
+  it('opens as a category whose grid is the icon picker', () => {
+    const insert = createInsert();
+    expect(insert.icons).toBe(false);
+    insert.choose(insert.entries.findIndex((e) => e.id === 'icon'));
+    expect(insert.category && t(insert.category.labelKey)).toBe('Icon');
+    expect(insert.icons).toBe(true);
+    insert.up();
+    expect(insert.icons).toBe(false);
+  });
+
+  it('is found by its name', () => {
+    const insert = createInsert();
+    insert.setQuery('icon');
+    expect(insert.entries.map((entry) => entry.id)).toEqual(['icon']);
   });
 });
 

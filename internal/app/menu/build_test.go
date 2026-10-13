@@ -358,7 +358,7 @@ func TestItemsAreEnabledAsTheSpecSays(t *testing.T) {
 }
 
 // What adds to the canvas is grouped at the top of the Canvas menu: the
-// Diagram submenu, then Picture; File holds neither.
+// Diagram submenu, then Picture and Icon; File holds none of them.
 func TestCanvasMenuStartsWithWhatAddsToTheCanvas(t *testing.T) {
 	spec, err := menu.Load()
 	if err != nil {
@@ -369,7 +369,7 @@ func TestCanvasMenuStartsWithWhatAddsToTheCanvas(t *testing.T) {
 		menus[m.ID] = m
 	}
 	items := menus["canvas"].Items
-	if len(items) < 3 || items[0].Kind != "submenu" || items[0].ID != "canvas.diagram" || items[0].Label != "Diagram" {
+	if len(items) < 4 || items[0].Kind != "submenu" || items[0].ID != "canvas.diagram" || items[0].Label != "Diagram" {
 		t.Fatalf("Canvas menu starts %+v, want the Diagram submenu", items[:min(len(items), 3)])
 	}
 	var diagram []string
@@ -379,8 +379,8 @@ func TestCanvasMenuStartsWithWhatAddsToTheCanvas(t *testing.T) {
 	if want := []string{"insert.d2Diagram D2 Diagram", "tool.table SQL Table", "tool.class UML Class"}; !slices.Equal(diagram, want) {
 		t.Errorf("Diagram submenu = %v, want %v", diagram, want)
 	}
-	if items[1].ID != "insert.picture" || items[2].Kind != "separator" {
-		t.Errorf("after Diagram: %+v, %+v; want Picture, then a separator", items[1], items[2])
+	if items[1].ID != "insert.picture" || items[2].ID != "insert.icon" || items[2].Label != "Icon" || items[3].Kind != "separator" {
+		t.Errorf("after Diagram: %+v, %+v, %+v; want Picture, Icon, then a separator", items[1], items[2], items[3])
 	}
 	var inFile func([]menu.Item) []string
 	inFile = func(list []menu.Item) []string {

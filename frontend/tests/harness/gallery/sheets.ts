@@ -8,7 +8,7 @@ export const SHEETS = {
   pickers: ['OptionPicker', 'OpacityPicker', 'StyleBar', 'DatePicker', 'EmojiPicker', 'FramePicker', 'TagFilter'],
   menus: ['ContextMenu', 'SlashMenu', 'SpaceSwitcher', 'Tooltip', 'Keycaps'],
   fields: ['LinkField', 'EquationField', 'FindBar'],
-  'canvas-chrome': ['ToolRail', 'SelectionToolbar', 'CanvasControls', 'InsertPanel'],
+  'canvas-chrome': ['ToolRail', 'SelectionToolbar', 'CanvasControls', 'InsertPanel', 'IconGrid'],
   'side-pane': ['SpaceTree', 'MediaSection', 'MediaThumb', 'PageHeader', 'StatusBar', 'BlockHandle'],
   'document-floating': ['FormatBubble', 'LinkCard'],
   feedback: ['PanelBoundary', 'EmptyState', 'Progress'],

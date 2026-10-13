@@ -9,15 +9,29 @@
    */
   import { onMount } from 'svelte';
   import { GRID_COLUMNS, type InsertOutcome, type InsertState } from '../shell/insert.svelte';
+  import { ICON_TABS, type IconPickerOutcome, type IconPickerState, type IconTab } from '../shell/icon-picker.svelte';
   import ToolIcon from './ToolIcon.svelte';
+  import IconGrid from './IconGrid.svelte';
+  import Segments from './Segments.svelte';
   import { t } from '../i18n/t';
 
   type Props = {
     insert: InsertState;
+    /** The Icon category's picker; without it the category shows nothing. */
+    icons?: IconPickerState;
     onOutcome: (outcome: InsertOutcome) => void;
   };
 
-  let { insert, onOutcome }: Props = $props();
+  let { insert, icons, onOutcome }: Props = $props();
+
+  const TAB_LABELS: Record<IconTab, string> = {
+    general: t('insert.iconGeneral'),
+    logos: t('insert.iconLogos'),
+    custom: t('insert.iconCustom'),
+  };
+
+  /** Whether the picker has the keys and the search: the Icon category is open. */
+  const picking = $derived(insert.icons && icons !== undefined);
 
   let search: HTMLInputElement;
   let panel: HTMLDivElement;
@@ -38,6 +52,17 @@
   });
 
   function onKeydown(event: KeyboardEvent) {
+    if (picking && icons) {
+      // Keys on the tabs move between the tabs, but Escape still goes up.
+      if ((event.target as Element | null)?.closest?.('.tabs') && event.key !== 'Escape') return;
+      const own = ['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key) ||
+        (icons.query === '' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Backspace'));
+      if (!own) return;
+      event.preventDefault();
+      event.stopPropagation();
+      reportIcon(icons.press(event.key));
+      return;
+    }
     const handled = ['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key) ||
       (insert.grid && insert.query === '' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) ||
       (event.key === 'Backspace' && insert.query === '' && insert.category !== null);
@@ -52,13 +77,27 @@
     if (outcome.type !== 'none') onOutcome(outcome);
   }
 
+  function reportIcon(outcome: IconPickerOutcome) {
+    if (outcome.type === 'up') insert.up();
+    else if (outcome.type === 'icon') onOutcome(outcome);
+  }
+
+  function pickIcon(index: number) {
+    if (!icons) return;
+    icons.highlight(index);
+    reportIcon(icons.choose(index));
+    search.focus();
+  }
+
   function pick(index: number) {
     insert.highlight(index);
     report(insert.choose(index));
     search.focus();
   }
 
-  const highlightedName = $derived(insert.highlightedEntry ? t(insert.highlightedEntry.labelKey) : '');
+  const highlightedName = $derived(
+    picking ? (icons?.highlightedIcon?.title ?? '') : insert.highlightedEntry ? t(insert.highlightedEntry.labelKey) : '',
+  );
 </script>
 
 <!-- Keys are handled here, so focus anywhere inside the panel still navigates. -->
@@ -68,13 +107,19 @@
     <input
       bind:this={search}
       type="text"
-      placeholder={t('insert.search')}
-      value={insert.query}
-      oninput={(event) => insert.setQuery(event.currentTarget.value)}
+      placeholder={picking ? t('insert.iconSearch') : t('insert.search')}
+      value={picking ? icons?.query : insert.query}
+      oninput={(event) => (picking ? icons?.setQuery(event.currentTarget.value) : insert.setQuery(event.currentTarget.value))}
       role="combobox"
       aria-expanded="true"
       aria-controls={listId}
-      aria-activedescendant={insert.entries.length > 0 ? optionId(insert.highlighted) : undefined}
+      aria-activedescendant={picking
+        ? icons && icons.results.length > 0
+          ? optionId(icons.highlighted)
+          : undefined
+        : insert.entries.length > 0
+          ? optionId(insert.highlighted)
+          : undefined}
       autocomplete="off"
       spellcheck="false"
     />
@@ -97,6 +142,20 @@
     {/if}
   </nav>
 
+  {#if picking && icons}
+    <div class="tabs">
+      <Segments
+        value={icons.tab}
+        options={ICON_TABS.map((tab) => ({ value: tab, label: TAB_LABELS[tab] }))}
+        label={t('insert.iconTabs')}
+        onValueChange={(tab) => {
+          icons?.setTab(tab);
+          search.focus();
+        }}
+      />
+    </div>
+    <IconGrid {icons} {optionId} {listId} onPick={pickIcon} />
+  {:else}
   <div
     id={listId}
     class="entries"
@@ -148,6 +207,7 @@
       <p class="empty">{t('insert.empty')}</p>
     {/each}
   </div>
+  {/if}
 
   <footer>
     <span class="highlighted">{highlightedName}</span>
@@ -184,6 +244,10 @@
     font-size: var(--text-body);
     color: var(--color-text-primary);
     outline: none;
+  }
+
+  .tabs {
+    padding: 0 var(--space-3) var(--space-2);
   }
 
   .crumbs {

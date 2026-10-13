@@ -21,10 +21,16 @@
     fill: Current;
     stroke: Current;
     color: Current;
+    /** A logo's own colour, offered as one more swatch for `color`; null offers none. */
+    brand?: string | null;
+    /** The colour picker's name when it colours something other than text. */
+    colorLabel?: string;
     onApply: (key: StyleKey, swatch: string | null) => void;
   };
 
-  let { fill, stroke, color, onApply }: Props = $props();
+  let { fill, stroke, color, brand = null, colorLabel, onApply }: Props = $props();
+
+  const BRAND = 'brand';
 
   const modality = createPressModality();
 
@@ -37,7 +43,7 @@
       [
         { key: 'fill', label: t('style.fill'), current: fill, part: 'fill' },
         { key: 'stroke', label: t('style.stroke'), current: stroke, part: 'stroke' },
-        { key: 'color', label: t('style.color'), current: color, part: 'text' },
+        { key: 'color', label: colorLabel ?? t('style.color'), current: color, part: 'text' },
       ] as const
     ).filter((picker) => picker.current !== 'unavailable'),
   );
@@ -47,6 +53,7 @@
   /** The swatch checked in a picker: none for mixed or a colour of the user's own. */
   function checked(current: Current): string | null {
     if (current === 'mixed' || current === 'unavailable' || isLiteralColour(current)) return null;
+    if (current === BRAND && brand) return BRAND;
     return isSwatch(current) ? current : DEFAULT;
   }
 
@@ -58,6 +65,7 @@
     if (current === 'mixed' || current === 'unavailable') return undefined;
     // A colour the user picked is shown as picked.
     if (isLiteralColour(current)) return current;
+    if (current === BRAND && brand && part === 'text') return brand;
     // An unknown name (from a newer Bava) draws as the default on the canvas;
     // the chip shows the same.
     return isSwatch(current) ? `var(--swatch-${current}-${part})` : `var(--color-shape-${part})`;
@@ -105,13 +113,12 @@
                 details.value && onApply(picker.key, details.value === DEFAULT ? null : details.value)}
               aria-label={picker.label}
             >
-              {#each [DEFAULT, ...SWATCHES] as swatch (swatch)}
-                {@const name = swatch === DEFAULT ? t('swatch.default') : swatchName(swatch)}
+              {#each picker.key === 'color' && brand ? [DEFAULT, ...SWATCHES, BRAND] : [DEFAULT, ...SWATCHES] as swatch (swatch)}
+                {@const name = swatch === DEFAULT ? t('swatch.default') : swatch === BRAND ? t('swatch.brand') : swatchName(swatch)}
+                {@const colour =
+                  swatch === DEFAULT ? `var(--color-shape-${picker.part})` : swatch === BRAND ? brand : `var(--swatch-${swatch}-${picker.part})`}
                 <RadioGroup.Item value={swatch} class="bava-swatch" title={name}>
-                  <RadioGroup.ItemControl
-                    class="bava-swatch-control"
-                    style={`background: ${swatch === DEFAULT ? `var(--color-shape-${picker.part})` : `var(--swatch-${swatch}-${picker.part})`}`}
-                  />
+                  <RadioGroup.ItemControl class="bava-swatch-control" style={`background: ${colour}`} />
                   <!-- Named for assistive technology and in the tooltip, not on screen. -->
                   <RadioGroup.ItemText class="bava-swatch-name">{name}</RadioGroup.ItemText>
                   <RadioGroup.ItemHiddenInput />

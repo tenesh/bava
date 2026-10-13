@@ -15,5 +15,7 @@
     "checkJs": true,
     "isolatedModules": true
   },
-  "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte", "tests/**/*.ts", "bindings"],
+  "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte", "tests/**/*.ts", "tooling/**/*.ts", "bindings"],
+  // Run by Node itself, which needs the `.ts` on its imports, as the design scripts are.
+  "exclude": ["tooling/write-*.ts"],
 }

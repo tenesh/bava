@@ -10,7 +10,11 @@
   import CanvasControls from './components/CanvasControls.svelte';
   import ToolRail from './components/ToolRail.svelte';
   import InsertPanel from './components/InsertPanel.svelte';
-  import { createInsert } from './shell/insert.svelte';
+  import { createInsert, ICON_CATEGORY } from './shell/insert.svelte';
+  import { createIconPicker } from './shell/icon-picker.svelte';
+  import { loadSet, loadedSet, setCustomIcons } from './canvas/icons/sets';
+  import { setsWanted } from './canvas/icons/wanted';
+  import { placedIcon } from './canvas/add-icon';
   import ContextMenu from './components/ContextMenu.svelte';
   import { contextMenuFor, contextSelection, EMBED_IN_DOCUMENT, overflowMenu, parseOverflowId, rightClickHit, type MenuNode } from './canvas/context-menu';
   import { PASTE_OFFSET, boundsOf, drawnBoundsOf, nudged, topLevel } from './canvas/edit';
@@ -91,19 +95,20 @@
   import { handleKey } from './canvas/keymap';
   import { createCanvasCommands } from './canvas/commands';
   import { wheelAction } from './canvas/navigation';
-  import { LabelEditor, commitLabel, commitTable, commitText, editableAt, insertText, labelBox, tableText } from './canvas/label-editor';
+  import { LabelEditor, commitIconLabel, commitLabel, commitTable, commitText, editableAt, insertText, labelBox, tableText } from './canvas/label-editor';
+  import { iconLabelSize } from './canvas/icons/icon-look';
   import { TABLE_PAD } from './canvas/table-layout';
   import { canvasLineWidth, measureFor } from './canvas/text-measure';
   import { carriedPictures, readCanvasClipboard } from './canvas/clipboard-read';
   import { PASTED_TEXT_WIDTH, isWrapped, longestLine, pastedText, textSize } from './canvas/paste-text';
   import { growToLabel, labelHeight } from './canvas/label-box';
   import { wrapLines } from './canvas/text-layout';
-  import { applyStyle, currentStyle, CODE_FONT_SIZE, setProperty, shownProperty, type PropertyKey } from './canvas/style';
+  import { applyStyle, brandOf, colourIsIcons, currentStyle, CODE_FONT_SIZE, setProperty, shownProperty, type PropertyKey } from './canvas/style';
   import SelectionToolbar from './components/SelectionToolbar.svelte';
   import { toolbarFor, type LineAction, type ToolbarControl } from './canvas/toolbar';
   import { closeLine, openLine } from './canvas/closed';
   import { readRootVariable } from './canvas/palette';
-  import type { SceneData, SceneElement } from './canvas/scene';
+  import type { IconElement, SceneData, SceneElement } from './canvas/scene';
   import SpaceTree from './components/SpaceTree.svelte';
   import ToolIcon from './components/ToolIcon.svelte';
   import SpaceSwitcher from './components/SpaceSwitcher.svelte';
@@ -198,6 +203,13 @@
   function refit(element: SceneElement) {
     fitToCode(element, codeMetrics(element));
     growToLabel(element, shapeLabelHeight);
+    // An icon's label measured again at its new size.
+    if (element.type === 'icon' && element.label) {
+      const paint = paintFor(element, readRootVariable);
+      const size = iconLabelSize(element, element.label, canvasLineWidth(`${paint.font.size}px ${paint.font.family}`), paint.font);
+      element.measuredWidth = size.width;
+      element.measuredHeight = size.height;
+    }
   }
 
   const pointer = createPointerHandler({
@@ -205,6 +217,10 @@
     selection,
     tools,
     labelHeight: shapeLabelHeight,
+    iconLabelSize: (element) => {
+      const paint = paintFor(element, readRootVariable);
+      return iconLabelSize(element as IconElement, element.label, canvasLineWidth(`${paint.font.size}px ${paint.font.family}`), paint.font);
+    },
     newStyle: (type) => newElementStyle.for(type),
     bindingEnabled: () => settingsState.arrowBinding,
     midpointSnap: () => settingsState.midpointSnap,
@@ -303,6 +319,23 @@
     const files = scene.elements.flatMap((e) => (e.type === 'image' ? [e.file] : []));
     if (root) pictures.want(root, files);
     else for (const file of files) canvas.setPicture(file, null);
+  }
+
+  /** Icon sets still loading, shown on the canvas as `data-icons`, for what waits on them. */
+  let iconsLoading = $state(0);
+
+  /** Load the bundled sets the scene's icons name; each draws once its set arrives. */
+  function loadIcons(scene: SceneData) {
+    for (const set of setsWanted(scene.elements)) {
+      if (loadedSet(set)) continue;
+      iconsLoading += 1;
+      loadSet(set)
+        .then(
+          () => canvas.iconsArrived(),
+          () => {},
+        )
+        .finally(() => (iconsLoading -= 1));
+    }
   }
 
   /** Open the editor over a code block, sized and placed as it is drawn. */
@@ -492,10 +525,31 @@
   // The insert panel beside the rail.
   let insertOpen = $state(false);
   const insert = createInsert();
+  /** The + panel's Icon category: the bundled sets as they load, and the custom library. */
+  const iconPicker = createIconPicker({ load: loadSet, custom: () => loadedSet('custom') ?? [] });
+  // The custom library starts empty, so a custom icon shows as missing rather than as nothing.
+  setCustomIcons([]);
 
   function openInsertPanel() {
     insert.reset();
+    iconPicker.reset();
     insertOpen = true;
+  }
+
+  /** Canvas ▸ Icon: the + panel, opened at its Icon category. */
+  function openIconPicker() {
+    if (!canvasShown()) return;
+    insert.reset();
+    iconPicker.reset();
+    insert.choose(insert.entries.indexOf(ICON_CATEGORY));
+    insertOpen = true;
+  }
+
+  /** An icon picked in the panel, in the middle of the view, selected. */
+  function placeIcon(icon: string) {
+    canvasCommands.pasteElements([placedIcon(icon, { x: 0, y: 0 })], viewMiddle());
+    commit();
+    syncSelection();
   }
 
   /** Close the panel; the rail gives focus back to its + button. */
@@ -2712,7 +2766,7 @@
       angle: field ? field.angle : angleOfElement(element),
       growCentred: field !== null,
       // An arrow's label is always centred on its path, whatever it stores.
-      font: isArrow ? { ...paint.font, align: 'center', verticalAlign: 'middle' } : paint.font,
+      font: isArrow ? { ...paint.font, align: 'center', verticalAlign: 'middle' } : element.type === 'icon' ? { ...paint.font, align: 'center', verticalAlign: 'top' } : paint.font,
       opacity: paint.opacity,
       zoom: viewport.zoom,
       measure: isText ? onScreen(measure) : undefined,
@@ -2725,6 +2779,7 @@
       onCommit: (value) => {
         canvas.setEditing(null);
         if (isText) commitText(history, element.id, value, measure);
+        else if (element.type === 'icon') commitIconLabel(history, element.id, value, (label) => iconLabelSize(element, label, lineWidth, paint.font));
         else commitLabel(history, element.id, value, shapeLabelHeight);
         commit();
       },
@@ -3079,6 +3134,7 @@
     'file.export': () => exporter.open({ onlySelected: false }),
     'insert.d2Diagram': openD2DiagramDialog,
     'insert.picture': () => void insertPicture(),
+    'insert.icon': () => openIconPicker(),
 
     'edit.undo': () =>
       routeEdit({
@@ -3873,6 +3929,7 @@
     canvas.render(published);
     void highlightBlocks(published);
     untrack(() => loadPictures(published));
+    untrack(() => loadIcons(published));
   });
 </script>
 
@@ -4157,7 +4214,7 @@
   {/snippet}
 
   {#snippet canvas()}
-    <div class="canvas-region" data-file-drop-target data-pictures={picturesLoading > 0 ? 'loading' : 'ready'}>
+    <div class="canvas-region" data-file-drop-target data-pictures={picturesLoading > 0 ? 'loading' : 'ready'} data-icons={iconsLoading > 0 ? 'loading' : 'ready'}>
       <div class="fill" bind:this={canvasHost}></div>
       {#if canvasFinding}
         <div class="canvas-find">
@@ -4183,6 +4240,8 @@
               stroke: currentStyle(published, selectedIds, 'stroke'),
               color: currentStyle(published, selectedIds, 'color'),
             }}
+            brand={brandOf(published, selectedIds)}
+            colorLabel={colourIsIcons(published, selectedIds) ? t('style.iconColor') : undefined}
             controls={toolbar.controls}
             properties={toolbarProperties}
             capacity={toolbarCapacity}
@@ -4229,7 +4288,9 @@
         <div class="insert-panel">
           <InsertPanel
             {insert}
+            icons={iconPicker}
             onOutcome={(outcome) => {
+              if (outcome.type === 'icon') placeIcon(outcome.icon);
               if (outcome.type === 'choose') tools.activate(outcome.tool);
               if (outcome.type === 'command' && outcome.id === 'd2Diagram') openD2DiagramDialog();
               if (outcome.type === 'command' && outcome.id === 'picture') void insertPicture();

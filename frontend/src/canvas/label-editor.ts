@@ -12,7 +12,8 @@ import { growToLabel, labelArea } from './label-box';
 import type { History } from './history';
 import type { ElementId, SceneData, SceneElement } from './scene';
 import { isLocked, isShapeType } from './scene';
-import { containsPoint } from './rotate';
+import { angleOfElement, containsPoint, toLocal } from './rotate';
+import { ICON_LABEL_GAP, ICON_LABEL_WIDTH, iconBounds } from './icons/icon-look';
 import { nearElement } from './hit';
 import type { TextPaint } from './paint';
 
@@ -34,6 +35,37 @@ export function commitLabel(history: History, id: ElementId, value: string, need
       delete element.label;
     }
     if (need) growToLabel(element, need);
+  });
+}
+
+/**
+ * Set or clear an icon's label, as one undo step: the label and its measured
+ * size are written, or removed, together. The same label records nothing.
+ */
+export function commitIconLabel(
+  history: History,
+  id: ElementId,
+  value: string,
+  measure: (label: string) => { width: number; height: number },
+): void {
+  const label = value.trim();
+  const current = history.current.elements.find((e) => e.id === id) as (SceneElement & { label?: string }) | undefined;
+  if (!current || (current.label ?? '') === label) return;
+  history.mutate((draft) => {
+    const element = draft.elements.find((e) => e.id === id) as
+      | (SceneElement & { label?: string; measuredWidth?: number; measuredHeight?: number })
+      | undefined;
+    if (!element) return;
+    if (!label) {
+      delete element.label;
+      delete element.measuredWidth;
+      delete element.measuredHeight;
+      return;
+    }
+    const size = measure(label);
+    element.label = label;
+    element.measuredWidth = size.width;
+    element.measuredHeight = size.height;
   });
 }
 
@@ -110,6 +142,12 @@ export function editableAt(scene: SceneData, point: Point, lineTolerance: number
     // An arrow carries a label too, and is typed on where it is drawn: its
     // box is mostly empty space.
     if (e.type === 'arrow') return nearElement(e, point, lineTolerance);
+    // An icon is typed on at its square or at its label under it.
+    if (e.type === 'icon') {
+      const local = toLocal(point, e);
+      const box = angleOfElement(e) === 0 ? iconBounds(e) : { x: e.x, y: e.y, w: e.w, h: e.h };
+      return local.x >= box.x && local.x <= box.x + box.w && local.y >= box.y && local.y <= box.y + box.h;
+    }
     if (!(isShapeType(e.type) || e.type === 'text' || e.type === 'frame' || e.type === 'code' || e.type === 'table' || e.type === 'class')) return false;
     // Where the element is drawn, rotation included: the field opens on the
     // shape the user double-clicked, not on the box it is stored as.
@@ -195,6 +233,11 @@ export type EditorRequest = {
  */
 export function labelBox(element: SceneElement, inset: number): { x: number; y: number; w: number; h: number } {
   if (element.type === 'text' || element.type === 'arrow') return { x: element.x, y: element.y, w: element.w, h: element.h };
+  // Under the icon, as wide as its label is broken.
+  if (element.type === 'icon') {
+    const w = Math.max(element.w, ICON_LABEL_WIDTH);
+    return { x: element.x + element.w / 2 - w / 2, y: element.y + element.h + ICON_LABEL_GAP, w, h: element.measuredHeight ?? 0 };
+  }
   const area = labelArea(element.type, element.w, element.h, inset);
   return { x: element.x + area.x, y: element.y + area.y, w: area.w, h: area.h };
 }

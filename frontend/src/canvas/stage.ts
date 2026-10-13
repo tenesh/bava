@@ -43,6 +43,9 @@ import type { Guide } from './snapping';
 import { gridDots } from './grid';
 import { PICTURE_ICON, PLACEHOLDER_LOOK, placeholderLayout } from './picture-placeholder';
 import { TABLE_PAD, TABLE_ROW, tableLayout } from './table-layout';
+import { ICON_GRID, ICON_STROKE, iconEntry } from './icons/sets';
+import { ICON_LABEL_GAP, iconLabelLayout, iconParts } from './icons/icon-look';
+import { t } from '../i18n/t';
 
 export type CanvasStageOptions = {
   /** Reads a CSS custom property. Injected so tests need no stylesheet. */
@@ -125,6 +128,8 @@ type Entry = {
   placeholder: Konva.Group | null;
   /** A table's or class's name, rules and rows. */
   table: Konva.Group | null;
+  /** An icon's drawing, or what shows when there is none. */
+  icon: Konva.Group | null;
 };
 
 export class CanvasStage {
@@ -1335,6 +1340,7 @@ export class CanvasStage {
       picture: null,
       placeholder: null,
       table: null,
+      icon: null,
     };
   }
 
@@ -1415,7 +1421,7 @@ export class CanvasStage {
 
     // A shape's label is centred in it; a frame's sits at its top-left corner;
     // an arrow's sits on the middle of the path it takes.
-    const labelled = isShapeType(element.type) || element.type === 'frame' || element.type === 'arrow';
+    const labelled = isShapeType(element.type) || element.type === 'frame' || element.type === 'arrow' || element.type === 'icon';
     const label = labelled && 'label' in element ? element.label : undefined;
     if (label) {
       if (!entry.label) {
@@ -1457,6 +1463,19 @@ export class CanvasStage {
           context.closePath();
           return ['evenodd'];
         });
+      } else if (element.type === 'icon') {
+        // Centred under the icon's square, broken at the wider of the two.
+        const layout = iconLabelLayout(element, this.#lineWidth(element, read));
+        entry.label.text(layout.lines.join('\n'));
+        entry.label.align('center');
+        entry.label.verticalAlign('top');
+        entry.label.rotation(0);
+        entry.label.offsetX(0);
+        entry.label.offsetY(0);
+        entry.label.x(layout.x);
+        entry.label.y(layout.y);
+        entry.label.width(layout.width);
+        entry.label.height(undefined as never);
       } else {
         // In the box inside the shape, words broken to it; a label taller
         // than the box runs on past it rather than losing lines.
@@ -1488,6 +1507,97 @@ export class CanvasStage {
     this.#drawLanguage(entry, element, read);
     this.#drawPicture(entry, element, read);
     this.#drawTable(entry, element, read);
+    this.#drawIcon(entry, element, read);
+  }
+
+  /**
+   * Redraw every icon: a set has loaded, or the custom library has been
+   * read. Sets load asynchronously and the stage is synchronous, so they
+   * arrive here, as pictures do; until then an icon draws nothing.
+   */
+  iconsArrived(): void {
+    // The whole element: a logo's colour reaches its label too.
+    const read = cached(this.#read);
+    for (const element of this.#last.elements) {
+      const entry = this.#entries.get(element.id);
+      if (entry && element.type === 'icon') this.#apply(entry, element, read);
+    }
+    this.#layer?.batchDraw();
+  }
+
+  /** The nodes drawing an icon element. */
+  iconNode(id: ElementId): Konva.Group | null {
+    return this.#entries.get(id)?.icon ?? null;
+  }
+
+  #drawIcon(entry: Entry, element: SceneElement, read: ReadVariable): void {
+    if (element.type !== 'icon') return;
+    if (!entry.icon) {
+      entry.icon = new Konva.Group({ listening: false });
+      entry.group.add(entry.icon);
+    }
+    const group = entry.icon;
+    group.destroyChildren();
+    const found = iconEntry(element.icon);
+    // Its set is still loading: nothing yet, rather than a box that flashes.
+    if (found === undefined) return;
+    const colour = paintFor(element, read).font.colour;
+    if (found && found.set !== 'custom') {
+      const scale = Math.min(element.w, element.h) / ICON_GRID;
+      for (const part of iconParts(found)) {
+        group.add(
+          new Konva.Path({
+            data: part.d,
+            scaleX: scale,
+            scaleY: scale,
+            fill: part.fill ? colour : '',
+            stroke: part.stroke ? colour : '',
+            strokeWidth: part.stroke ? ICON_STROKE : 0,
+            opacity: part.opacity,
+            lineCap: 'round',
+            lineJoin: 'round',
+          }),
+        );
+      }
+      return;
+    }
+    if (found) return;
+    // No icon by that name here: a dashed box, and its name under it.
+    group.add(
+      new Konva.Rect({
+        width: element.w,
+        height: element.h,
+        cornerRadius: PLACEHOLDER_LOOK.radius,
+        stroke: read('--color-text-muted').trim(),
+        strokeWidth: PLACEHOLDER_LOOK.border,
+        dash: [...PLACEHOLDER_LOOK.dash],
+      }),
+    );
+    const muted = read('--color-text-muted').trim();
+    if (element.w >= PICTURE_ICON.w && element.h >= PICTURE_ICON.h) {
+      group.add(
+        new Konva.Path({
+          x: (element.w - PICTURE_ICON.w) / 2,
+          y: (element.h - PICTURE_ICON.h) / 2,
+          data: PICTURE_ICON.path,
+          stroke: muted,
+          strokeWidth: PLACEHOLDER_LOOK.iconStroke,
+          lineCap: 'round',
+          lineJoin: 'round',
+        }),
+      );
+    }
+    const below = entry.label ? entry.label.y() + entry.label.height() : element.h + ICON_LABEL_GAP;
+    const note = new Konva.Text({
+      text: t('canvas.iconMissing').replace('{name}', element.icon),
+      y: below,
+      fontFamily: read('--font-ui').trim(),
+      fontSize: number(read, '--text-meta'),
+      fill: muted,
+      wrap: 'none',
+    });
+    note.x(element.w / 2 - note.width() / 2);
+    group.add(note);
   }
 
   /** The nodes drawing a table's or class's name, rules and rows. */

@@ -6,6 +6,14 @@ const read = (name: string) => (({ '--color-canvas-bg': 'black', '--color-shape-
 const fonts = { family: 'Geist', read: async () => new ArrayBuffer(4) };
 
 describe('pagePicture', () => {
+  // A page's Canvas may name icons no open canvas has loaded: they load first.
+  it('draws an icon whose set had not loaded yet', async () => {
+    const scene = { elements: [{ id: 'i', type: 'icon', icon: 'solid/database', x: 0, y: 0, w: 48, h: 48, z: 1 }] } as unknown as SceneData;
+    const picture = await pagePicture(scene, { read, fonts });
+    expect(picture?.svg).toContain('<g transform="translate(0 0) scale(2)"><path d=');
+    expect(picture?.svg).not.toContain('Missing icon');
+  });
+
   it('is nothing for a Canvas that holds nothing', async () => {
     expect(await pagePicture({ elements: [] } as unknown as SceneData, { read, fonts })).toBeNull();
   });

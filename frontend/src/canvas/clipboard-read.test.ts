@@ -40,6 +40,8 @@ describe("Bava's shapes on the clipboard", () => {
     expect(readCanvasClipboard(wrapped({ version: 1, elements: [rect] }))).toEqual([rect]);
     const picture = { id: 'p', type: 'image', file: 'har gow.png', x: 0, y: 0, w: 10, h: 10, z: 1 };
     expect(readCanvasClipboard(wrapped({ version: 1, elements: [picture] }))).toEqual([picture]);
+    const icon = { id: 'i', type: 'icon', icon: 'logo/postgresql', color: 'brand', label: 'Orders DB', measuredWidth: 74, measuredHeight: 18, x: 0, y: 0, w: 64, h: 64, z: 1 };
+    expect(readCanvasClipboard(wrapped({ version: 1, elements: [icon] }))).toEqual([icon]);
     expect(readCanvasClipboard(wrapped({ version: 2, elements: [rect] }))).toBeNull();
     expect(readCanvasClipboard(wrapped({ version: 1, elements: [{ ...rect, type: 'hexagram' }] }))).toBeNull();
     expect(readCanvasClipboard(wrapped({ version: 1, elements: [{ ...rect, w: 'wide' }] }))).toBeNull();

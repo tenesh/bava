@@ -36,8 +36,13 @@ text sizes and the single history are in CLAUDE.md.
   are read from the text as typed (`table-rows.ts`) and never stored split.
 - **Render skips unchanged elements, except arrows** (detachment depends on
   others). Outside state gets its own setter (`setCodeRuns`, `setEditing`,
-  `setPicture`): highlighting and pictures load asynchronously, outside the
-  stage (`code/runs.ts`, `pictures.ts`), and arrive there.
+  `setPicture`, `iconsArrived`): highlighting, pictures and icon sets load
+  asynchronously, outside the stage (`code/runs.ts`, `pictures.ts`,
+  `icons/sets.ts`), and arrive there. Anything drawn away from the open canvas
+  (an export, a page's picture) awaits `iconsReady` first.
+- **An icon is looked up by name, never stored drawn** (`icons/sets.ts`); its
+  colour, parts, label and bounds come from `icons/icon-look.ts` for the stage
+  and the export alike. Its label counts in `drawnBoundsOf`, not in binding.
 - **Drawing is once per frame (`frameThrottle`); input is not.**
 - **Test what Konva draws** (stroke, fill, points, text), not only scene data.
 - **The dot grid** (`grid.ts`, its own layer) never listens, is never saved,

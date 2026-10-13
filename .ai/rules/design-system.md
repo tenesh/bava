@@ -114,7 +114,8 @@ NumberInput (in `NumberField`), Toast, ToggleGroup. Build when a screen needs.
 | `FramePicker` | `/` Embed frame list |
 | `ImportDialog` | Import: what comes in as it lands, Into, renames, progress and Cancel |
 | `Icon` | SVG path wrapper, tokenised size |
-| `InsertPanel` | Insert search, categories, tiles |
+| `InsertPanel` | Insert search, categories, tiles; the Icon category's picker |
+| `IconGrid` | The icon picker's grid, a page at a time (Segments for its tabs) |
 | `Keycaps` | A shortcut as mono key boxes |
 | `LayoutEnginePicker` | TALA, Dagre, ELK; direction hidden under TALA |
 | `LinkCard` | Card under a clicked link |

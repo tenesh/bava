@@ -40,7 +40,7 @@ export default tseslint.config(
 
   // Build and tooling config run in Node, not the webview.
   {
-    files: ['*.config.{js,ts}'],
+    files: ['*.config.{js,ts}', 'tooling/**/*.ts'],
     languageOptions: {
       globals: { ...globals.node },
     },

@@ -15,6 +15,7 @@ import { fontCss } from './fonts';
 import { copyPng, copySvg, type CopyResult } from './clipboard';
 import { withTheme } from './theme';
 import type { Run } from '../code/highlight';
+import { iconsReady } from '../icons/wanted';
 
 export type ExportFormat = 'png' | 'svg';
 
@@ -110,8 +111,14 @@ export function createExporter(options: ExporterOptions) {
     return read ? draw(read) : withTheme(theme(), draw);
   }
 
-  /** The pictures an export carries, as data addresses. */
-  const picturesOf = async (current: ExportArea) => (await options.pictures?.(current.elements)) ?? {};
+  /**
+   * The pictures an export carries, as data addresses. Every export waits on
+   * this, so the icons it draws have their sets loaded here too.
+   */
+  const picturesOf = async (current: ExportArea) => {
+    await iconsReady(current.elements);
+    return (await options.pictures?.(current.elements)) ?? {};
+  };
 
   async function writeFile(format: ExportFormat, current: ExportArea): Promise<void> {
     try {

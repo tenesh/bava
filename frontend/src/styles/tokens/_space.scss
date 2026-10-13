@@ -229,6 +229,8 @@
   // The insert panel beside the rail, and a tile in its grid.
   --size-insert-panel: 400px;
   --size-insert-tile: 52px;
+  // The icon picker's grid scrolls past this height.
+  --size-icon-grid-height: 300px;
   // A menu is never narrower than this, so short labels still leave room for keys.
   --size-menu-min: 200px;
   // The label editor never shrinks below a usable box.

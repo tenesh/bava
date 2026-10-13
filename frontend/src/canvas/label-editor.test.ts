@@ -3,7 +3,8 @@ import { onTeardown } from '../test/render';
 import { describe, expect, it, vi } from 'vitest';
 import { createHistory } from './history';
 import { labelArea } from './label-box';
-import { commitLabel, commitTable, commitText, tableText, editableAt, insertText, labelBox, LabelEditor } from './label-editor';
+import { commitIconLabel, commitLabel, commitTable, commitText, tableText, editableAt, insertText, labelBox, LabelEditor } from './label-editor';
+import { ICON_LABEL_GAP, ICON_LABEL_WIDTH } from './icons/icon-look';
 import { tableLayout } from './table-layout';
 import { editTarget } from '../shell/edit-target';
 import type { SceneData } from './scene';
@@ -475,3 +476,38 @@ describe('double-clicking a table or class', () => {
   });
 });
 
+
+describe("an icon's label", () => {
+  const withIcon = (over: Record<string, unknown> = {}): SceneData => ({
+    elements: [{ id: 'i', type: 'icon', icon: 'line/database', x: 100, y: 100, w: 64, h: 64, z: 1, ...over } as never],
+  });
+  const measure = (label: string) => ({ width: label.length * 10, height: 18 });
+
+  it('is edited by double-clicking the icon or the label under it', () => {
+    const labelled = withIcon({ label: 'Orders DB', measuredWidth: 90, measuredHeight: 18 });
+    expect(editableAt(labelled, { x: 130, y: 130 }, 4)?.id).toBe('i');
+    expect(editableAt(labelled, { x: 130, y: 175 }, 4)?.id).toBe('i');
+    expect(editableAt(labelled, { x: 130, y: 260 }, 4)).toBeUndefined();
+  });
+
+  it('stores what was typed with its measured size, in one step', () => {
+    const history = createHistory(withIcon());
+    commitIconLabel(history, 'i', '  Orders DB ', measure);
+    expect(history.current.elements[0]).toMatchObject({ label: 'Orders DB', measuredWidth: 90, measuredHeight: 18 });
+    expect(history.canUndo).toBe(true);
+  });
+
+  it('clears the label and its size together, and records nothing unchanged', () => {
+    const history = createHistory(withIcon({ label: 'API', measuredWidth: 30, measuredHeight: 18 }));
+    commitIconLabel(history, 'i', 'API', measure);
+    expect(history.canUndo).toBe(false);
+    commitIconLabel(history, 'i', '   ', measure);
+    const icon = history.current.elements[0] as Record<string, unknown>;
+    expect(['label', 'measuredWidth', 'measuredHeight'].filter((key) => key in icon)).toEqual([]);
+  });
+
+  it('opens its field under the icon, as wide as the label is drawn', () => {
+    const box = labelBox(withIcon({ label: 'API', measuredWidth: 30, measuredHeight: 18 }).elements[0], 8);
+    expect(box).toEqual({ x: 100 + 32 - ICON_LABEL_WIDTH / 2, y: 100 + 64 + ICON_LABEL_GAP, w: ICON_LABEL_WIDTH, h: 18 });
+  });
+});

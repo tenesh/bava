@@ -128,7 +128,7 @@ exit code (`npm test` can fail with every test passed).
 
 What is true now and affects the gates. Update it when a milestone closes.
 
-**Position:** 15.4 done (15.4d, run 38322558497). R1 done (repository `tharabyte/bava`; adapted canvas code
+**Position:** 15.4 done; CI setup in one place done (run 38338032045). R1 done (repository `tharabyte/bava`; adapted canvas code
 attributed in `NOTICE` for good). R2 done (the stores' sandboxes: the same walks pass inside the Mac sandbox,
 the installed MSIX and Flatpak, run 38143080459). 15.3 done (import;
 its walk passes on all three systems and inside each store's package, run
@@ -166,7 +166,7 @@ there, in the same change; a plan's As built points to it.
 - Browser tests see WebKit in a container, not the real webviews.
 - Media's Sort dropdown, picked by pointer, missed once under a full run (`dialogs.spec.ts`); 15 alone passed.
 - A canvas embed's first save can leave the page unsaved, about 1 in 20 in `document.spec.ts`; not investigated.
-- The `import` walk in `store walks (macos)` (then `sandboxed run (macos)`) once never showed the imported folder (step 8, run 38322558497) and passed on a re-run; not investigated.
+- The `import` walk on macOS failed three times right after File ▸ New Folder (step 5 or 8; runs 38322558497, 38329667461, 38336118999): the new folder's naming ended with focus on nothing. Suspected: the window losing focus ends the naming. A failed walk now reports focus, the naming and the window's focus by step; read that before fixing.
 - A floating menu's picture timing out in `placed` (`frontend/tests/helpers.ts`) is fixed locally; watch CI.
 
 **Traps:**

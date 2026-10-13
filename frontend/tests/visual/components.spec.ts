@@ -80,6 +80,12 @@ for (const theme of THEMES) {
         await expect(cell(page, 'a row hovered').getByRole('option').nth(1)).toHaveAttribute('aria-selected', 'true');
         await expect(cell(page, 'a category').locator('.entries.grid')).toBeVisible();
         await expect(cell(page, 'nothing matching').getByText('Nothing matches')).toBeVisible();
+        // The icon sets load before the picture: every grid drawn, or saying why not.
+        await expect(cell(page, 'the Icon category').locator('.icon-grid .tile svg').first()).toBeVisible();
+        await expect(cell(page, 'General, searching').locator('.tile[aria-selected="true"]')).toHaveCount(1);
+        await expect(cell(page, 'Logos').locator('.icon-grid .tile svg').first()).toBeVisible();
+        await expect(cell(page, 'Custom').locator('.icon-grid .tile img')).toHaveCount(1);
+        await expect(cell(page, 'failed').getByText("These icons couldn't be loaded.")).toBeVisible();
       });
     });
 

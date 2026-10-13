@@ -11,6 +11,7 @@ import { withTheme } from './theme';
 import type { ReadVariable } from '../palette';
 import type { Run } from '../code/highlight';
 import type { SceneData } from '../scene';
+import { iconsReady } from '../icons/wanted';
 
 export type PagePicture = { svg: string; width: number; height: number };
 
@@ -34,6 +35,7 @@ export async function pagePicture(scene: SceneData, options: PagePictureOptions)
   // canvas does when it opens the page.
   const area = exportArea(produce(scene, (draft) => reroute(draft)), []);
   if (area.elements.length === 0) return null;
+  await iconsReady(area.elements);
   const css = await fontCss(area.elements, options.fonts);
   const draw = (read: ReadVariable) => toSvg(area, { read, background: true, css, codeRuns: options.codeRuns, monoAdvance: options.monoAdvance, pictures: options.pictures });
   const svg = options.read ? draw(options.read) : withTheme(options.theme ?? 'light', draw);

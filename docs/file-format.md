@@ -385,6 +385,7 @@ Every element has `id`, `type`, `x`, `y`, `w`, `h`, `z`.
 | `frame` | optional `label`; takes `stroke`, `color` |
 | `group` | `children`: element ids |
 | `image` | `file`: a picture in `.bava/attachments/`, by name, never a path |
+| `icon` | `icon`: a bundled or custom icon, by name, never its drawing; optional `label` |
 | `table`, `class` | `name`, `rows`: a SQL table, a UML class |
 
 The nine shapes fill their box and take `label` (plain text, not
@@ -503,6 +504,32 @@ Arrowheads: `none`, `arrow`, `bar`, `triangle`, `triangle-outline`, `circle`,
   label.
 - A file that cannot be loaded draws as a dashed box naming it, and is kept.
 
+### Icons
+
+```json
+{ "id": "k3", "type": "icon", "x": 120, "y": 80, "w": 64, "h": 64, "z": 7,
+  "icon": "logo/postgresql", "color": "brand",
+  "label": "Orders DB", "measuredWidth": 74, "measuredHeight": 18 }
+```
+
+- `icon` is `<set>/<name>`. The sets: `line` and `solid` (general icons,
+  outline and filled), `logo` (product logos), `custom` (the user's own
+  library, in Bava's config folder, not in the Space). A name keeps
+  resolving across Bava releases.
+- `w` and `h` are the icon's square; resizing keeps it square. Arrows attach
+  to it.
+- `label` is optional plain text drawn centred under the square, wrapped at
+  the wider of `w` and 160; its measured size is stored in
+  `measuredWidth` and `measuredHeight`, as a text's is, and all three are
+  absent when there is no label. It takes `fontSize`.
+- `color` (icon and label): a colour as above, or `brand` for a logo, its
+  owner's colour, drawn as is in both themes. Absent: the theme's ink. A
+  custom icon keeps its own colours and ignores it; if the library has a
+  dark copy (`<name>.dark.svg`), a dark canvas draws that.
+- It takes `opacity`, `angle`, `locked` and `frame`; no fill or border.
+- A name no set holds, or a custom icon this machine's library lacks, draws
+  as a dashed box naming it, and is kept.
+
 ### Frames and code
 
 - `frame` lives on the child: one frame at most. Moving a frame moves its
@@ -533,6 +560,9 @@ stays so as it is edited.
 A picture element in the copy is drawn from its file's bytes, as a data
 address on an `<image data-file="<name>">`. Pasted into a Space without that
 file, the bytes are attached under its name (or a free one) first.
+
+An icon element in the copy is drawn as its own paths, so other apps get a
+drawing; Bava pastes it back by its name, as the file stores it.
 
 ## Spaces
 

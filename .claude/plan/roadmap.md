@@ -64,9 +64,10 @@ download keeps `bava-<os>-<commit>`), with `docs/testing.md` and the build skill
 Exit: green on all three systems.
 
 ### 9: Icons and assets
-Bundled general icons and open-licensed tech logos with a searchable
-picker; user-imported SVGs. A D2 `icon:` resolves locally; a remote icon is
-never fetched without the user asking. Proprietary cloud icon sets are
+An icon element: a bundled line set and an open-licensed logo set in
+Bava's palette, a searchable picker, and a custom SVG library shared by
+every Space (`.claude/work/specs/icons.md`). A D2 `icon:` resolves locally
+by name; a remote icon is never fetched. Proprietary cloud icon sets are
 never bundled. Exit: a test that conversion never yields a remote icon.
 
 ### 10: Source editor polish

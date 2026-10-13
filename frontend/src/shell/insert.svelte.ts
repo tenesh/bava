@@ -35,6 +35,19 @@ const shape = (id: ToolId & IconId, labelKey: MessageKey): InsertItem => ({ kind
 /** Entries that are not a category and not a tool. */
 export const COMMANDS: InsertCommand[] = [{ kind: 'command', id: 'picture', labelKey: 'insert.picture', icon: 'image' }];
 
+/**
+ * Icons: a category whose grid is the icon picker (`icon-picker.svelte.ts`),
+ * not a list of items, after Picture.
+ */
+export const ICON_CATEGORY: InsertCategory = {
+  kind: 'category',
+  id: 'icon',
+  labelKey: 'insert.icon',
+  descriptionKey: 'insert.iconDescription',
+  icon: 'sticker',
+  items: [],
+};
+
 /** Tools that are not shapes, offered on their own rather than in a category. */
 export const TOOL_ENTRIES: InsertItem[] = [
   { kind: 'item', id: 'code', labelKey: 'tool.code', icon: 'code' },
@@ -77,7 +90,8 @@ export type InsertOutcome =
   | { type: 'none' }
   | { type: 'close' }
   | { type: 'choose'; tool: ToolId }
-  | { type: 'command'; id: InsertCommand['id'] };
+  | { type: 'command'; id: InsertCommand['id'] }
+  | { type: 'icon'; icon: string };
 
 const NONE: InsertOutcome = { type: 'none' };
 
@@ -89,11 +103,11 @@ export function createInsert() {
   const entries = $derived.by((): InsertEntry[] => {
     const needle = query.trim().toLowerCase();
     if (needle) {
-      return [...CATEGORIES.flatMap((c) => c.items), ...TOOL_ENTRIES, ...COMMANDS].filter((item) =>
+      return [...CATEGORIES.flatMap((c) => c.items), ...TOOL_ENTRIES, ...COMMANDS, ICON_CATEGORY].filter((item) =>
         t(item.labelKey).toLowerCase().includes(needle),
       );
     }
-    return category ? category.items : [...CATEGORIES, ...TOOL_ENTRIES, ...COMMANDS];
+    return category ? category.items : [...CATEGORIES, ...TOOL_ENTRIES, ...COMMANDS, ICON_CATEGORY];
   });
 
   /** Whether the entries show as a grid of tiles rather than rows. */
@@ -110,6 +124,7 @@ export function createInsert() {
     if (!entry) return NONE;
     if (entry.kind === 'category') {
       category = entry;
+      query = '';
       highlighted = 0;
       return NONE;
     }
@@ -135,6 +150,10 @@ export function createInsert() {
     get grid() {
       return grid;
     },
+    /** Whether the Icon category is open, its grid the icon picker's. */
+    get icons() {
+      return category?.id === ICON_CATEGORY.id;
+    },
     get highlighted() {
       return highlighted;
     },
@@ -152,6 +171,9 @@ export function createInsert() {
     },
 
     choose,
+
+    /** Back to all categories. */
+    up,
 
     /** Start over: all categories, no search. */
     reset() {

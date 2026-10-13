@@ -8,6 +8,7 @@
 import type { Component } from 'svelte';
 import FileImage from '@lucide/svelte/icons/file-image';
 import ImageIcon from '@lucide/svelte/icons/image';
+import Sticker from '@lucide/svelte/icons/sticker';
 import Workflow from '@lucide/svelte/icons/workflow';
 import TableIcon from '@lucide/svelte/icons/table';
 import Rows3 from '@lucide/svelte/icons/rows-3';
@@ -229,6 +230,8 @@ export const LUCIDE_ICONS = {
   fileImage: FileImage,
   // A picture, as one goes on the canvas.
   image: ImageIcon,
+  // An icon, as one goes on the canvas.
+  sticker: Sticker,
   fileVideo: FilePlay,
   fileText: FileText,
   viewGrid: LayoutGrid,

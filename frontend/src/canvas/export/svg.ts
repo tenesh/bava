@@ -26,6 +26,10 @@ import { canvasLineWidth } from '../text-measure';
 import { smoothPoints } from '../curves';
 import { BASELINE_SHARE, PICTURE_ICON, PLACEHOLDER_LOOK, placeholderLayout } from '../picture-placeholder';
 import { TABLE_PAD, TABLE_ROW, tableLayout, type Cell } from '../table-layout';
+import { ICON_GRID, ICON_STROKE, iconEntry } from '../icons/sets';
+import { ICON_LABEL_GAP, iconLabelLayout, iconParts } from '../icons/icon-look';
+import type { IconElement } from '../scene';
+import { t } from '../../i18n/t';
 
 export type SvgOptions = {
   /** Reads the theme variables the export resolves against. */
@@ -348,6 +352,60 @@ function picture(element: SceneElement & { file: string }, options: SvgOptions):
   return `${box}${clip}<g clip-path="url(#${escapeXml(id)})">${icon}${words}</g>`;
 }
 
+/**
+ * An icon: a bundled one as its own paths, in its colour, so it stays a
+ * drawing; one no set holds as the stage shows it, a dashed box named under
+ * it. Its label is centred under it, broken as the stage breaks it.
+ */
+function icon(element: IconElement, paint: Paint, options: SvgOptions): string {
+  const { x, y, w, h } = element;
+  const read = (name: string) => options.read(name).trim();
+  const colour = paint.font.colour;
+  const found = iconEntry(element.icon);
+  let out = '';
+  if (found && found.set !== 'custom') {
+    const scale = Math.min(w, h) / ICON_GRID;
+    const parts = iconParts(found)
+      .map((part) => {
+        const stroke = part.stroke
+          ? ` stroke="${colour}" stroke-width="${ICON_STROKE}" stroke-linecap="round" stroke-linejoin="round"`
+          : ' stroke="none"';
+        const opacity = part.opacity === 1 ? '' : ` opacity="${round(part.opacity)}"`;
+        return `<path d="${escapeXml(part.d)}" fill="${part.fill ? colour : 'none'}"${stroke}${opacity}/>`;
+      })
+      .join('');
+    out += `<g transform="translate(${round(x)} ${round(y)}) scale(${round(scale)})">${parts}</g>`;
+  }
+  const measure = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
+  const layout = iconLabelLayout(element, measure);
+  const step = paint.font.size * paint.font.lineHeight;
+  const middle = round(x + w / 2);
+  if (layout.lines.length > 0) {
+    const spans = layout.lines.map((line, i) => `<tspan x="${middle}" dy="${i === 0 ? 0 : round(step)}">${escapeXml(line)}</tspan>`).join('');
+    // SVG places text on its baseline; Konva places a line by its top.
+    out +=
+      `<text x="${middle}" y="${round(y + layout.y + paint.font.size)}" fill="${colour}"` +
+      ` font-family="${escapeXml(paint.font.family)}" font-size="${round(paint.font.size)}" text-anchor="middle">${spans}</text>`;
+  }
+  if (!found) {
+    const muted = read('--color-text-muted');
+    out +=
+      `<rect x="${round(x)}" y="${round(y)}" width="${round(w)}" height="${round(h)}" rx="${PLACEHOLDER_LOOK.radius}"` +
+      ` fill="none" stroke="${muted}" stroke-width="${PLACEHOLDER_LOOK.border}" stroke-dasharray="${PLACEHOLDER_LOOK.dash.join(' ')}"/>`;
+    if (w >= PICTURE_ICON.w && h >= PICTURE_ICON.h) {
+      out +=
+        `<path transform="translate(${round(x + (w - PICTURE_ICON.w) / 2)} ${round(y + (h - PICTURE_ICON.h) / 2)})" d="${PICTURE_ICON.path}" fill="none"` +
+        ` stroke="${muted}" stroke-width="${PLACEHOLDER_LOOK.iconStroke}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+    const size = parseFloat(read('--text-meta')) || paint.font.size;
+    const below = y + h + ICON_LABEL_GAP + layout.lines.length * step;
+    out +=
+      `<text x="${middle}" y="${round(below + size * BASELINE_SHARE)}" text-anchor="middle" font-family="${escapeXml(read('--font-ui'))}"` +
+      ` font-size="${round(size)}" fill="${muted}">${escapeXml(t('canvas.iconMissing').replace('{name}', element.icon))}</text>`;
+  }
+  return out;
+}
+
 /** A table's or class's name, rules and rows, from the layout the stage draws with. */
 function tableInsides(element: SceneElement & { name: string; rows: string }, paint: Paint, options: SvgOptions): string {
   const { x, y, w, h } = element;
@@ -392,7 +450,7 @@ function draw(element: SceneElement, options: SvgOptions, labelInset: number): s
   const paint = paintFor(element, options.read);
   const label = 'label' in element ? (element.label as string | undefined) : undefined;
   const tag = element.type === 'code' ? codeLanguage(element, paint, options) : null;
-  const inner = element.type === 'image' ? picture(element, options) :
+  const inner = element.type === 'image' ? picture(element, options) : element.type === 'icon' ? icon(element, paint, options) :
     // A named code block's border is drawn apart, broken for the name.
     body(element, tag ? { ...paint, stroke: '' } : paint, options.read('--color-canvas-bg').trim()) +
     (tag ?? '') +

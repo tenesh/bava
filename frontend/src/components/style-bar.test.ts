@@ -145,3 +145,31 @@ describe('a picked colour in its picker', () => {
     expect((document.querySelector('.bava-custom input') as HTMLInputElement).value).toBe('#e03131');
   });
 });
+
+// A logo can be drawn in its owner's colour: one more swatch, named Brand.
+describe("StyleBar's Brand swatch", () => {
+  const items = () => [...document.querySelectorAll('[data-part="item"][data-scope="radio-group"]')] as HTMLElement[];
+
+  it('is offered for a logo, in its colour, and applies brand', async () => {
+    const { target, onApply } = setup({ fill: 'unavailable', stroke: 'unavailable', color: null, brand: '#4169E1', colorLabel: 'Icon colour' });
+    const trigger = target.querySelector('button[aria-label="Icon colour"]') as HTMLElement;
+    flushSync(() => trigger.click());
+    await vi.waitFor(() => expect(items()).toHaveLength(10));
+    const brand = items().find((el) => el.textContent?.trim() === 'Brand')!;
+    expect((brand.querySelector('[data-part="item-control"]') as HTMLElement).style.background).toContain('rgb(65, 105, 225)');
+    flushSync(() => brand.click());
+    await vi.waitFor(() => expect(onApply).toHaveBeenCalledWith('color', 'brand'));
+  });
+
+  it('shows on the chip when chosen', () => {
+    const { target } = setup({ fill: 'unavailable', stroke: 'unavailable', color: 'brand', brand: '#4169E1' });
+    const chip = target.querySelector('.chip') as HTMLElement;
+    expect(chip.style.background).toContain('rgb(65, 105, 225)');
+  });
+
+  it('is not offered for anything else', async () => {
+    const { target } = setup({ fill: 'unavailable', stroke: 'unavailable', color: null });
+    flushSync(() => (target.querySelector('button[aria-label="Text colour"]') as HTMLElement).click());
+    await vi.waitFor(() => expect(items()).toHaveLength(9));
+  });
+});

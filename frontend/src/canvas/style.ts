@@ -12,6 +12,7 @@ import { angleOfElement } from './rotate';
 import { tidy } from './resize';
 import { CODE_FONT_SIZE, PROPERTY_DEFAULTS } from './style-defaults';
 import { defaultAlign, defaultVerticalAlign } from './paint';
+import { iconEntry, parseIconName } from './icons/sets';
 
 export type StyleKey = 'fill' | 'stroke' | 'color';
 
@@ -26,6 +27,7 @@ export function styleKeysFor(type: string): StyleKey[] {
     case 'frame':
       return ['stroke', 'color'];
     case 'text':
+    case 'icon':
       return ['color'];
     case 'table':
     case 'class':
@@ -40,6 +42,8 @@ export function styleKeysFor(type: string): StyleKey[] {
  * (`docs/file-format.md`, "Lines, arrows and strokes").
  */
 export function styleKeysOf(element: SceneElement): StyleKey[] {
+  // A custom icon keeps its own colours.
+  if (element.type === 'icon' && parseIconName(element.icon)?.set === 'custom') return [];
   const keys = styleKeysFor(element.type);
   return element.type === 'line' && (element as { closed?: boolean }).closed === true ? ['fill', ...keys] : keys;
 }
@@ -75,6 +79,30 @@ export function currentStyle(scene: SceneData, ids: ElementId[], key: StyleKey):
     .map((e) => (e as typeof e & Partial<Record<StyleKey, string>>)[key] ?? null);
   if (values.length === 0) return 'unavailable';
   return values.every((value) => value === values[0]) ? values[0] : 'mixed';
+}
+
+/** The selected elements that take a colour (`color`). */
+function coloured(scene: SceneData, ids: ElementId[]): SceneElement[] {
+  const selected = new Set(ids);
+  return scene.elements.filter((e) => selected.has(e.id) && styleKeysOf(e).includes('color'));
+}
+
+/**
+ * The colour the Brand swatch shows: the first logo's own, when every
+ * selected element that takes a colour is a logo; otherwise null, and no
+ * Brand is offered.
+ */
+export function brandOf(scene: SceneData, ids: ElementId[]): string | null {
+  const taking = coloured(scene, ids);
+  if (taking.length === 0 || !taking.every((e) => e.type === 'icon' && parseIconName(e.icon)?.set === 'logo')) return null;
+  const hex = iconEntry((taking[0] as SceneElement & { icon: string }).icon)?.hex;
+  return hex ? `#${hex}` : null;
+}
+
+/** Whether every selected element that takes a colour is an icon, so its picker is named for icons. */
+export function colourIsIcons(scene: SceneData, ids: ElementId[]): boolean {
+  const taking = coloured(scene, ids);
+  return taking.length > 0 && taking.every((e) => e.type === 'icon');
 }
 
 /** A copied style: each key the source takes, `null` where it used the default. */
@@ -182,6 +210,10 @@ export function propertyKeysFor(type: string): PropertyKey[] {
       break;
     case 'text':
       keys.push('fontSize', 'align');
+      break;
+    case 'icon':
+      // Its label's size; the drawing is the icon's own.
+      keys.push('fontSize');
       break;
     case 'code':
       // A code block's look comes from its language and the theme; the shape

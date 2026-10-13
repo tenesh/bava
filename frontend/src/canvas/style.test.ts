@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { loadSet } from './icons/sets';
 import { createHistory } from './history';
-import { applyProperty, applyStyle, copyStyle, currentStyle, pasteStyle, propertyKeysFor, setProperty, shownProperty, styleKeysFor } from './style';
+import { applyProperty, applyStyle, brandOf, colourIsIcons, copyStyle, currentStyle, pasteStyle, propertyKeysFor, setProperty, shownProperty, styleKeysFor } from './style';
 import type { SceneData } from './scene';
 
 const scene = (): SceneData => ({
@@ -384,5 +385,45 @@ describe('a frame label’s vertical alignment', () => {
     setProperty(history, ['f'], 'verticalAlign', 'top');
     expect('verticalAlign' in history.current.elements[0]).toBe(false);
     expect(shownProperty(history.current, ['f'], 'verticalAlign')).toBe('top');
+  });
+});
+
+describe("an icon's colour", () => {
+  const icons: SceneData = {
+    elements: [
+      { id: 'pg', type: 'icon', icon: 'logo/postgresql', x: 0, y: 0, w: 64, h: 64, z: 1 } as never,
+      { id: 'redis', type: 'icon', icon: 'logo/redis', x: 0, y: 0, w: 64, h: 64, z: 2 } as never,
+      { id: 'db', type: 'icon', icon: 'line/database', x: 0, y: 0, w: 64, h: 64, z: 3 } as never,
+      { id: 'own', type: 'icon', icon: 'custom/acme', x: 0, y: 0, w: 64, h: 64, z: 4 } as never,
+      { id: 'box', type: 'rect', x: 0, y: 0, w: 64, h: 64, z: 5 } as never,
+    ],
+  };
+
+  beforeAll(async () => {
+    await loadSet('logo');
+  });
+
+  it('is its color key, and a custom icon has none', () => {
+    expect(styleKeysFor('icon')).toEqual(['color']);
+    expect(currentStyle(icons, ['own'], 'color')).toBe('unavailable');
+    const history = createHistory(icons);
+    applyStyle(history, ['db', 'own'], 'color', 'blue');
+    expect(history.current.elements.map((e) => (e as { color?: string }).color)).toEqual([undefined, undefined, 'blue', undefined, undefined]);
+  });
+
+  it("offers Brand, in the first logo's colour, only when every coloured icon chosen is a logo", () => {
+    expect(brandOf(icons, ['pg', 'redis', 'own'])).toBe('#4169E1');
+    expect(brandOf(icons, ['pg', 'db'])).toBeNull();
+    expect(brandOf(icons, ['pg', 'box'])).toBeNull();
+    expect(brandOf(icons, ['db'])).toBeNull();
+  });
+
+  it("takes its label's size and its opacity, nothing of a shape's", () => {
+    expect(propertyKeysFor('icon')).toEqual(['fontSize', 'opacity']);
+  });
+
+  it("names the picker for icons when only icons take it", () => {
+    expect(colourIsIcons(icons, ['pg', 'db'])).toBe(true);
+    expect(colourIsIcons(icons, ['pg', 'box'])).toBe(false);
   });
 });

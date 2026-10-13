@@ -38,6 +38,12 @@
     { "do": "click", "target": "text=Insert" },
     { "do": "gone", "target": ".bava-dialog-content" },
     { "do": "wait", "target": "footer", "text": "Nodes 10" },
+    { "do": "menu", "target": "insert.icon" },
+    { "do": "wait", "target": ".icon-grid .tile svg", "timeoutMs": 20000 },
+    { "do": "type", "text": "database" },
+    { "do": "wait", "target": ".icon-grid .tile[aria-selected='true']", "text": "database" },
+    { "do": "key", "text": "Enter" },
+    { "do": "wait", "target": "footer", "text": "Nodes 11" },
 
     { "do": "menu", "target": "file.save" },
     { "do": "file", "target": "Smoke/First page.md", "text": "\"type\": \"ellipse\"" },
@@ -45,13 +51,14 @@
     { "do": "file", "target": "Smoke/First page.md", "text": "\"endBinding\": \"" },
     { "do": "file", "target": "Smoke/First page.md", "text": "\"label\": \"web\"" },
     { "do": "file", "target": "Smoke/First page.md", "text": "\"label\": \"db\"" },
+    { "do": "file", "target": "Smoke/First page.md", "text": "\"icon\": \"line/database\"" },
 
     { "do": "click", "target": "[data-path='Goal.md']" },
     { "do": "wait", "target": "header", "text": "Goal" },
     { "do": "click", "target": "[data-path='First page.md']" },
     { "do": "wait", "target": "header", "text": "First page" },
     { "do": "menu", "target": "view.canvas" },
-    { "do": "wait", "target": "footer", "text": "Nodes 10" },
+    { "do": "wait", "target": "footer", "text": "Nodes 11" },
     { "do": "shot", "name": "reopened" },
 
     { "do": "menu", "target": "view.both" },

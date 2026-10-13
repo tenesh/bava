@@ -23,6 +23,10 @@
 
   type Props = {
     styles: Record<StyleKey, Current>;
+    /** A logo's own colour, offered as a swatch; null offers none. */
+    brand?: string | null;
+    /** The colour picker's name when only icons take it. */
+    colorLabel?: string;
     /** The controls this selection takes, in row order. */
     controls?: ToolbarControl[];
     /** What each property control should show. */
@@ -46,6 +50,8 @@
 
   let {
     styles,
+    brand = null,
+    colorLabel,
     controls = [],
     properties = {},
     align,
@@ -100,7 +106,7 @@
 
 <div class="toolbar" role="toolbar" aria-label={t('toolbar.label')}>
   {#if colours}
-    <StyleBar fill={styles.fill} stroke={styles.stroke} color={styles.color} {onApply} />
+    <StyleBar fill={styles.fill} stroke={styles.stroke} color={styles.color} {brand} {colorLabel} {onApply} />
   {/if}
 
   {#each split.shown as control, index (control.id)}

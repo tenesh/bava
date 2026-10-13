@@ -4037,6 +4037,49 @@ describe('resizing a picture', () => {
   });
 });
 
+// An icon is a square: it stays one, with or without Shift.
+describe('resizing an icon', () => {
+  function icon() {
+    const history = createHistory({
+      elements: [{ id: 'i', type: 'icon', icon: 'line/database', x: 0, y: 0, w: 64, h: 64, z: 1 } as never],
+    });
+    const selection = createSelection();
+    const tools = createTools();
+    tools.activate('select');
+    const handler = createPointerHandler({ history, selection, tools, handleSize: () => 4 });
+    selection.click('i');
+    return { handler };
+  }
+
+  it('stays square from a corner, Shift or not', () => {
+    const { handler } = icon();
+    handler.down(at(64, 64));
+    expect(handler.preview(at(100, 80))?.elements[0]).toMatchObject({ w: 100, h: 100 });
+    expect(handler.preview(at(100, 80), { shift: true })?.elements[0]).toMatchObject({ w: 100, h: 100 });
+  });
+
+  it("measures its label again at its new size, as it now wraps", () => {
+    const history = createHistory({
+      elements: [{ id: 'i', type: 'icon', icon: 'line/database', label: 'Orders', measuredWidth: 50, measuredHeight: 19, x: 0, y: 0, w: 64, h: 64, z: 1 } as never],
+    });
+    const selection = createSelection();
+    const tools = createTools();
+    tools.activate('select');
+    const iconLabelSize = (element: { w: number }) => ({ width: element.w, height: 19 });
+    const handler = createPointerHandler({ history, selection, tools, handleSize: () => 4, iconLabelSize });
+    selection.click('i');
+    handler.down(at(64, 64));
+    expect(handler.preview(at(200, 200))?.elements[0]).toMatchObject({ w: 200, measuredWidth: 200, measuredHeight: 19 });
+  });
+
+  it('stays square from a side', () => {
+    const { handler } = icon();
+    handler.down(at(64, 32));
+    const [i] = handler.preview(at(96, 32))!.elements;
+    expect(i.w).toBe(i.h);
+  });
+});
+
 // A table or class is never shorter than its rows; its width is the user's.
 describe('resizing a table', () => {
   it('keeps the width asked, and never a height below its rows', () => {

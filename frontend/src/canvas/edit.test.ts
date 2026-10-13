@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createScene, type SceneElement } from './scene';
-import { boundsOf, duplicate, flip, group, nudged, paste, ungroup, PASTE_OFFSET } from './edit';
+import { boundsOf, drawnBoundsOf, duplicate, flip, group, nudged, paste, ungroup, PASTE_OFFSET } from './edit';
+import { ICON_LABEL_GAP } from './icons/icon-look';
 
 function threeRects() {
   const scene = createScene();
@@ -18,6 +19,13 @@ describe('bounds', () => {
 
   it('is empty for no elements', () => {
     expect(boundsOf([])).toEqual({ x: 0, y: 0, w: 0, h: 0 });
+  });
+
+  // What is drawn, for fitting, exporting and the readout: an icon's label too.
+  it("as drawn take in an icon's label", () => {
+    const icon = { id: 'i', type: 'icon', icon: 'line/database', label: 'Orders DB', measuredWidth: 100, measuredHeight: 18, x: 0, y: 0, w: 64, h: 64, z: 1 } as SceneElement;
+    expect(drawnBoundsOf([icon])).toEqual({ x: -18, y: 0, w: 100, h: 64 + ICON_LABEL_GAP + 18 });
+    expect(boundsOf([icon])).toEqual({ x: 0, y: 0, w: 64, h: 64 });
   });
 });
 
@@ -265,6 +273,16 @@ describe('what arrow keys move', () => {
 
 // Flipping a selection about its centre.
 describe('flipping', () => {
+  // A label is words under an icon, not part of what is mirrored.
+  it('mirrors one labelled icon in place, about its square', () => {
+    const scene = createScene({
+      elements: [{ id: 'i', type: 'icon', icon: 'line/database', label: 'Orders', measuredWidth: 50, measuredHeight: 19, x: 10, y: 20, w: 64, h: 64, z: 1 }] as never[],
+    });
+    flip(scene, [scene.get('i')!], 'vertical');
+    flip(scene, [scene.get('i')!], 'horizontal');
+    expect(scene.get('i')).toMatchObject({ x: 10, y: 20 });
+  });
+
   it('swaps the heads of a selection of attached arrows only, moving nothing', () => {
     const scene = createScene({
       elements: [

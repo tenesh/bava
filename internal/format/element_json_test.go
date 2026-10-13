@@ -105,6 +105,20 @@ func TestSceneSurvivesTheFrontendBridge(t *testing.T) {
       "z": 11
     },
     {
+      "color": "brand",
+      "h": 64,
+      "icon": "logo/postgresql",
+      "id": "ico1",
+      "label": "Orders DB",
+      "measuredHeight": 18,
+      "measuredWidth": 74,
+      "type": "icon",
+      "w": 64,
+      "x": 500,
+      "y": 220,
+      "z": 12
+    },
+    {
       "endBinding": "cls1",
       "endRow": "save()",
       "h": 0,

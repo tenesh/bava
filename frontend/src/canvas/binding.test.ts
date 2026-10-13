@@ -344,6 +344,13 @@ describe('finding what an end attaches to', () => {
     expect(targetAt(two, { x: 118, y: 50 }, 'x', 15)?.id).toBe('right');
   });
 
+  // An icon's label is words under it, not part of what an arrow meets.
+  it("finds an icon by its square, not by its label", () => {
+    const icon = { elements: [shape({ id: 'icon', type: 'icon', icon: 'line/database', label: 'Orders DB', measuredWidth: 70, measuredHeight: 18, x: 0, y: 0, w: 64, h: 64 })] } as SceneData;
+    expect(targetAt(icon, { x: 32, y: 30 }, 'x', 15)?.id).toBe('icon');
+    expect(targetAt(icon, { x: 32, y: 120 }, 'x', 15)).toBeUndefined();
+  });
+
   it('takes a small shape inside a big one when the point is inside both', () => {
     const nested = {
       elements: [shape({ id: 'big', x: 0, y: 0, w: 300, h: 300 }), shape({ id: 'small', x: 100, y: 100, w: 50, h: 50, z: 2 })],

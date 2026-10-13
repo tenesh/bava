@@ -78,6 +78,10 @@ Start Bava as if it had never run:
 - [ ] An arrow dropped on a table's row attaches there; typing a row above it moves the end with its row.
 - [ ] A D2 diagram with `sql_table`, `class` and a column-to-column link arrives as tables, a class and an arrow on both rows.
 - [ ] A table and a class in a PDF export and a frame embed.
+- [ ] Canvas ▸ Icon and + ▸ Icon: General, Logos and Custom tabs, search, arrow keys and Enter place an icon; the grid scrolls on to more.
+- [ ] Icons stay sharp at 400% zoom, and in a PNG export at 4x.
+- [ ] A logo set to Brand keeps its colour in dark theme; a line icon in ink turns light with the theme.
+- [ ] An icon's label: double-click to type, centred under it; a new size re-wraps it.
 
 ## Media
 

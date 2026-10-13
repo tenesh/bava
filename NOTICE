@@ -38,3 +38,21 @@ Canvas (adapted code)
     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Icons (bundled for drawings)
+  Tabler Icons: MIT
+    Copyright (c) 2020-2026 Paweł Kuna
+    https://github.com/tabler/tabler-icons
+  The general icons an icon element draws (sets "line" and "solid"), built
+  into the app from the package at build time (frontend/tooling/icon-sets.ts).
+  Its licence is the MIT licence above, with this copyright notice.
+
+  Simple Icons: CC0 1.0
+    https://github.com/simple-icons/simple-icons
+  The product logos an icon element draws (set "logo"). Only logos with no
+  licence of their own listed, or a permissive one, are bundled. Those under
+  a licence of their own (MIT, Apache 2.0, BSD) are each listed with it and
+  its source, followed by those licences' texts, in
+  frontend/public/LOGO-LICENCES.txt, which ships with the app. The logos are
+  trademarks of their owners, offered to name their products in a drawing;
+  their inclusion implies no endorsement.

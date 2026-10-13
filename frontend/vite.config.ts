@@ -1,6 +1,7 @@
 import { defineConfig, searchForWorkspaceRoot } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import wails from "@wailsio/runtime/plugins/vite";
+import { iconSets } from "./tooling/icon-sets.ts";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -14,5 +15,5 @@ export default defineConfig({
       allow: [searchForWorkspaceRoot(process.cwd()), "../internal/app/menu"],
     },
   },
-  plugins: [svelte(), wails("./bindings")],
+  plugins: [svelte(), wails("./bindings"), iconSets()],
 });

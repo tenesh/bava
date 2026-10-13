@@ -27,6 +27,7 @@ export const COMMAND_IDS = [
   'file.export',
   'insert.d2Diagram',
   'insert.picture',
+  'insert.icon',
   'file.settings',
   'edit.undo',
   'edit.redo',

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
 import type { Plugin } from 'vite';
 import { forceStates } from './tests/harness/force-states';
+import { iconSets } from './tooling/icon-sets.ts';
 
 const MEDIA = fileURLToPath(new URL('../testdata/fixtures/media/', import.meta.url));
 const TYPES: Record<string, string> = { png: 'image/png', mp4: 'video/mp4' };
@@ -46,7 +47,7 @@ function fileRoute(): Plugin {
 // The browser tests' page: the real interface with the Go bindings pointed at
 // the stand-in in tests/harness. Never used by the app's own build.
 export default defineConfig({
-  plugins: [svelte(), fileRoute()],
+  plugins: [svelte(), fileRoute(), iconSets()],
   // A sheet can show hovered, focused and pressed side by side.
   css: { postcss: { plugins: [forceStates] } },
   resolve: {

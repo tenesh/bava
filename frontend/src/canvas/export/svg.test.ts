@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { loadSet } from '../icons/sets';
 import { toSvg } from './svg';
 import { exportArea } from './area';
 import { svgPathSink } from './path-sink';
@@ -391,5 +392,37 @@ describe('tables and classes in an SVG', () => {
     const svg = svgOf([{ id: 'c', type: 'class', name: 'User', rows: '+ email: string\n+ save(): bool', x: 0, y: 0, w: 260, h: 110, z: 1 }]);
     expect(svg.match(/<line /g)).toHaveLength(2);
     expect(svg).toContain('>save()<');
+  });
+});
+
+describe('icons in an SVG', () => {
+  beforeAll(async () => {
+    await Promise.all([loadSet('line'), loadSet('logo')]);
+  });
+
+  const icon = (over: Record<string, unknown>) => ({ id: 'i', type: 'icon', icon: 'line/database', x: 10, y: 20, w: 48, h: 48, z: 1, ...over });
+
+  it('draws a line icon as its own paths, stroked in its colour and scaled to its box', () => {
+    const svg = svgOf([icon({})]);
+    expect(svg).toContain('<g transform="translate(10 20) scale(2)">');
+    expect(svg).toContain('<path d="M4 6a8 3 0 1 0 16 0a8 3 0 1 0 -16 0" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>');
+    expect(svg).not.toContain('<image');
+  });
+
+  it("fills a logo in its own colour for Brand, and writes its label under it", () => {
+    const svg = svgOf([icon({ icon: 'logo/redis', color: 'brand', label: 'Cache', measuredWidth: 40, measuredHeight: 19 })]);
+    expect(svg).toMatch(/<path d="[^"]+" fill="#FF4438" stroke="none"\/>/);
+    expect(svg).toMatch(/<text x="34" y="[\d.]+" fill="#FF4438"[^>]*text-anchor="middle"><tspan x="34" dy="0">Cache<\/tspan><\/text>/);
+  });
+
+  it('draws the dashed box and names an icon no set holds', () => {
+    const svg = svgOf([icon({ icon: 'line/not-an-icon' })]);
+    expect(svg).toContain('stroke-dasharray="4 4"');
+    expect(svg).toContain('Missing icon: line/not-an-icon');
+  });
+
+  it("takes in the label when sizing the document", () => {
+    const svg = svgOf([icon({ label: 'Orders database', measuredWidth: 120, measuredHeight: 19 })]);
+    expect(svg).toContain('viewBox="-42 4 152 105"');
   });
 });

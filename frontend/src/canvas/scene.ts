@@ -143,6 +143,21 @@ export type CodeElement = Base & StyleProps & {
 export type ImageElement = Base & StyleProps & { type: 'image'; file: string };
 
 /**
+ * An icon: a bundled or custom drawing named `<set>/<name>` (never the
+ * drawing itself), with an optional label under its square whose measured
+ * size is stored, as a text's is. `color` is a colour or `brand`.
+ */
+export type IconElement = Base &
+  StyleProps & {
+    type: 'icon';
+    icon: string;
+    color?: string;
+    label?: string;
+    measuredWidth?: number;
+    measuredHeight?: number;
+  };
+
+/**
  * A SQL table or a UML class: its name, and its rows as typed, one a line
  * (`table-rows.ts` reads them). Its height follows its rows.
  */
@@ -152,6 +167,7 @@ export type ClassElement = Base & StyleProps & { type: 'class'; name: string; ro
 export type SceneElement =
   | ShapeElement
   | ImageElement
+  | IconElement
   | TableElement
   | ClassElement
   | LineElement
@@ -184,6 +200,7 @@ const EVERY_TYPE: Record<SceneElement['type'], true> = {
   text: true,
   code: true,
   image: true,
+  icon: true,
   table: true,
   class: true,
 };

@@ -135,6 +135,7 @@
           ]
         },
         { "kind": "command", "id": "insert.picture", "label": "Picture", "when": ["hasDocument", "showsCanvas"] },
+        { "kind": "command", "id": "insert.icon", "label": "Icon", "when": ["hasDocument", "showsCanvas"] },
         { "kind": "separator" },
         {
           "kind": "submenu",

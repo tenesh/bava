@@ -440,6 +440,81 @@ func TestRoundTripPictures(t *testing.T) {
 	}
 }
 
+// An icon names its set and icon, never its drawing; a label keeps its
+// measured size, a logo its brand colour, and a key from a later Bava
+// rides along (docs/file-format.md, "Icons").
+func TestRoundTripIcons(t *testing.T) {
+	source := "# Stack\n\n```bava-canvas\n" + `{
+  "elements": [
+    {
+      "h": 64,
+      "icon": "line/database",
+      "id": "i1",
+      "type": "icon",
+      "w": 64,
+      "x": 0,
+      "y": 0,
+      "z": 1
+    },
+    {
+      "color": "blue",
+      "h": 48,
+      "icon": "solid/database",
+      "id": "i2",
+      "type": "icon",
+      "w": 48,
+      "x": 100,
+      "y": 0,
+      "z": 2
+    },
+    {
+      "color": "brand",
+      "fontSize": 20,
+      "h": 64,
+      "icon": "logo/postgresql",
+      "id": "i3",
+      "label": "Orders DB",
+      "measuredHeight": 18,
+      "measuredWidth": 74,
+      "type": "icon",
+      "w": 64,
+      "x": 200,
+      "y": 0,
+      "z": 3
+    },
+    {
+      "angle": 0.5,
+      "frame": "f1",
+      "h": 40,
+      "icon": "custom/acme-billing",
+      "id": "i4",
+      "locked": true,
+      "opacity": 60,
+      "spin": "a key from later",
+      "type": "icon",
+      "w": 40,
+      "x": 300,
+      "y": 0,
+      "z": 4
+    }
+  ],
+  "version": 1
+}
+` + "```\n"
+
+	file, err := format.Read(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	written, err := format.Write(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written != source {
+		t.Errorf("an icon changed on the way through.\nwant:\n%s\ngot:\n%s", source, written)
+	}
+}
+
 // A table's and a class's rows are kept exactly as typed, and an arrow's
 // row beside its binding (docs/file-format.md, "Tables and classes").
 func TestRoundTripTablesAndClasses(t *testing.T) {
