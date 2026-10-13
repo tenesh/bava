@@ -27,7 +27,7 @@ var smokeFixtures embed.FS
 // folder pickers answered from the scenario. BAVA_E2E_SCENARIO names the
 // scenario, BAVA_E2E_OUT where screenshots go, BAVA_E2E_SCRATCH the folder
 // the scenario may make Spaces in, and the only folder a "file" step may read.
-func smokeRun(_ func() *application.App, closeSession func()) (application.Service, pickers) {
+func smokeRun(_ func() *application.App, closeSession func(), recentLog func() []string) (application.Service, pickers) {
 	// The run starts in the repository, whose test files a scenario may pick.
 	repo, _ := os.Getwd()
 	out, scratch := os.Getenv("BAVA_E2E_OUT"), os.Getenv("BAVA_E2E_SCRATCH")
@@ -92,6 +92,8 @@ func smokeRun(_ func() *application.App, closeSession func()) (application.Servi
 		Quit: e2e.QuitAfter(closeSession, os.Exit),
 		// A "pdf" step prints through the system's webview, on the main thread.
 		RunOnMain: application.InvokeSync,
+		// What led up to a failure, for a run that keeps nothing else.
+		RecentLog: recentLog,
 	})
 	pdfFailed := func(err error) {
 		fmt.Fprintln(os.Stderr, "PDF failed:", err)

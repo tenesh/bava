@@ -48,6 +48,30 @@ func TestDoneRecordsTheResultAndQuitsWithItsCode(t *testing.T) {
 	}
 }
 
+// A failed walk also says what the app logged just before, under its first
+// line, which stays the line a runner reads PASS or FAIL from.
+func TestAFailedResultCarriesTheRecentLog(t *testing.T) {
+	out := t.TempDir()
+	s := e2e.NewService(e2e.Options{
+		Scenario:  e2e.Scenario{Name: "import"},
+		Out:       out,
+		Capture:   func(string) error { return nil },
+		Quit:      func(int) {},
+		RecentLog: func() []string { return []string{"level=INFO msg=one", "level=ERROR msg=two"} },
+	})
+	s.Done("step 5 (wait input.rename): never showed")
+	data, _ := os.ReadFile(filepath.Join(out, "import-result.txt"))
+	want := "FAIL step 5 (wait input.rename): never showed\nthe log before it:\n  level=INFO msg=one\n  level=ERROR msg=two\n"
+	if string(data) != want {
+		t.Errorf("result %q, want %q", data, want)
+	}
+	s.Done("")
+	data, _ = os.ReadFile(filepath.Join(out, "import-result.txt"))
+	if string(data) != "PASS\n" {
+		t.Errorf("a pass carries no log: %q", data)
+	}
+}
+
 func TestTheScenarioGoesToThePage(t *testing.T) {
 	sc := e2e.Scenario{Name: "x", Steps: []e2e.Step{{Do: "menu", Target: "file.new"}}}
 	s := e2e.NewService(e2e.Options{Scenario: sc, Capture: func(string) error { return nil }, Quit: func(int) {}})

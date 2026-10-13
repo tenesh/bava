@@ -4,6 +4,7 @@
  * Go for a screenshot at each shot. Loaded only in a -tags e2e build, behind
  * VITE_BAVA_E2E; the app never imports it otherwise.
  */
+import { PENDING } from '../files/tree';
 import { Call } from '@wailsio/runtime';
 
 /** Keys held through a key or a drag: `mod` is ⌘ on macOS and Ctrl elsewhere. */
@@ -40,7 +41,32 @@ export type DriverEnv = {
   visible?: (el: HTMLElement) => boolean;
   /** What the page raised so far, named in a failed step's report. */
   errors?: () => string[];
+  /** The page as a failed step found it (`describePage`), for the report. */
+  describe?: () => string;
 };
+
+/** An element as a report names it: its tag, id, classes and label. */
+function named(el: Element): string {
+  const id = el.id ? `#${el.id}` : '';
+  const classes = [...el.classList].map((c) => `.${c}`).join('');
+  const label = el.getAttribute('aria-label');
+  return `${el.tagName.toLowerCase()}${id}${classes}${label ? ` "${label}"` : ''}`;
+}
+
+/**
+ * The page as a failed step found it: what had focus, and whether a new page
+ * or folder was waiting to be named in the Files tree (its row's path is
+ * `PENDING`), its name field open or not. A naming ends when its field loses
+ * focus, so the two together say why a field never showed.
+ */
+export function describePage(doc: Document): string {
+  const active = doc.activeElement;
+  const parts = [`focus on ${active && active !== doc.body ? named(active) : 'nothing'}`];
+  // Compared, not selected: a selector cannot hold the NUL its path starts with.
+  const row = [...doc.querySelectorAll<HTMLElement>('.space-tree [data-path]')].find((el) => el.dataset.path === PENDING);
+  if (row) parts.push(`a new entry waits to be named, its name field ${row.querySelector('input.rename') ? 'open' : 'closed'}`);
+  return parts.join('; ');
+}
 
 /** A thrown value in words: an error's name and message, anything else as it is. */
 const described = (value: unknown) => (value instanceof Error ? `${value.name}: ${value.message}` : String(value));
@@ -297,7 +323,8 @@ export async function runScenario(steps: Step[], env: DriverEnv): Promise<string
       await env.shot('failure').catch(() => '');
       const raised = env.errors?.() ?? [];
       const also = raised.length > 0 ? `; the page raised: ${raised.join('; ')}` : '';
-      return `step ${index + 1} (${s.do}${s.target ? ` ${s.target}` : ''}): ${failure}${also}`;
+      const page = env.describe ? `; the page: ${env.describe()}` : '';
+      return `step ${index + 1} (${s.do}${s.target ? ` ${s.target}` : ''}): ${failure}${also}${page}`;
     }
     // Let the app settle between steps, as a person's pace would.
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -311,6 +338,7 @@ export async function start(): Promise<void> {
   const watch = watchErrors(window);
   const failure = await runScenario(scenario.steps, {
     errors: watch.seen,
+    describe: () => describePage(document),
     menu: (id) =>
       (window as unknown as { _wails: { dispatchWailsEvent(e: { name: string; data: unknown }): void } })._wails.dispatchWailsEvent({
         name: 'menu:command',

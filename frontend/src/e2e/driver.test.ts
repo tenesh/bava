@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { runScenario, watchErrors, type Step } from './driver';
+import { runScenario, watchErrors, type Step, describePage } from './driver';
+import { PENDING } from '../files/tree';
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -298,3 +299,30 @@ describe("the driver's report of what went wrong in the page", () => {
   });
 });
 
+
+// A failed step says what the page looked like to it: what had focus, and
+// whether a new page or folder was being named, which the tree's naming
+// depends on.
+describe('the page described at a failure', () => {
+  it('names what has focus and a row waiting to be named', () => {
+    document.body.innerHTML =
+      '<div class="space-tree"><div class="row"><input class="rename" aria-label="Name"></div></div><div class="bava-doc" contenteditable="true"></div>';
+    // Set as the tree sets it: the HTML parser would turn its NUL into another character.
+    document.querySelector('.row')!.setAttribute('data-path', PENDING);
+    (document.querySelector('.bava-doc') as HTMLElement).focus();
+    expect(describePage(document)).toBe('focus on div.bava-doc; a new entry waits to be named, its name field open');
+    (document.querySelector('input.rename') as HTMLElement).focus();
+    expect(describePage(document)).toBe('focus on input.rename "Name"; a new entry waits to be named, its name field open');
+  });
+
+  it('says so when nothing has focus and nothing is being named', () => {
+    document.body.innerHTML = '<p>Nothing</p>';
+    (document.activeElement as HTMLElement | null)?.blur();
+    expect(describePage(document)).toBe('focus on nothing');
+  });
+
+  it('adds it to a failed step', async () => {
+    const failure = await runScenario([{ do: 'wait', target: '#never' }], { ...env(), describe: () => 'focus on nothing' });
+    expect(failure).toBe('step 1 (wait #never): never showed; the page: focus on nothing');
+  });
+});

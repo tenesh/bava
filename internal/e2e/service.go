@@ -21,6 +21,9 @@ type Options struct {
 	// RunOnMain runs a function on the app's main thread, for a "pdf" step's
 	// printing.
 	RunOnMain func(func())
+	// RecentLog is the app's last log lines, written under a failed result
+	// so a run that kept nothing else still says what led up to it.
+	RecentLog func() []string
 }
 
 // Service is bound to the page in a -tags e2e build: the page's driver asks
@@ -89,6 +92,12 @@ func (s *Service) Done(failure string) {
 	result, code := "PASS\n", 0
 	if failure != "" {
 		result, code = "FAIL "+failure+"\n", 1
+		// Under the first line, which a runner reads PASS or FAIL from.
+		if s.options.RecentLog != nil {
+			if lines := s.options.RecentLog(); len(lines) > 0 {
+				result += "the log before it:\n  " + strings.Join(lines, "\n  ") + "\n"
+			}
+		}
 	}
 	path := filepath.Join(s.options.Out, s.options.Scenario.Name+"-result.txt")
 	if err := os.WriteFile(path, []byte(result), 0o644); err != nil {

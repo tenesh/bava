@@ -32,6 +32,9 @@ var assets embed.FS
 // main creates the application, registers its services, and opens the window.
 // The native surface stays thin on purpose: the render pipeline, file I/O and
 // logging live in internal/, everything else in the frontend.
+// recentLogLines is how many of the log's last lines a failed walk reports.
+const recentLogLines = 40
+
 func main() {
 	// Inside the Mac sandbox, temporary files belong in its container,
 	// whatever the launcher passed down. Before anything makes one.
@@ -78,7 +81,10 @@ func main() {
 	grants := openGrants()
 	menus := app.NewMenuService()
 	// Only a -tags e2e build has a driver and answers pickers itself.
-	driver, answers := smokeRun(current.Load, func() { _ = session.Close() })
+	driver, answers := smokeRun(current.Load, func() { _ = session.Close() }, func() []string {
+		lines, _ := session.Tail(recentLogLines)
+		return lines
+	})
 	services := []application.Service{
 		application.NewService(app.NewRenderService()),
 		application.NewService(app.NewFileService(app.FileServiceOptions{
