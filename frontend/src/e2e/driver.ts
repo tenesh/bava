@@ -43,6 +43,8 @@ export type DriverEnv = {
   errors?: () => string[];
   /** The page as a failed step found it (`describePage`), for the report. */
   describe?: () => string;
+  /** When the window lost and regained focus (`watchWindow`), for the report. */
+  windowFocus?: () => string[];
 };
 
 /** An element as a report names it: its tag, id, classes and label. */
@@ -93,6 +95,29 @@ export function watchErrors(target: EventTarget) {
     },
   };
 }
+
+/**
+ * When the window lost and regained focus, by the step running then: a
+ * naming in the Files tree ends when its field loses focus, which a window
+ * losing it to another app also does.
+ */
+export function watchWindow(target: EventTarget, stepNow: () => number) {
+  const seen: string[] = [];
+  const onBlur = () => void seen.push(`lost focus in step ${stepNow()}`);
+  const onFocus = () => void seen.push(`regained it in step ${stepNow()}`);
+  target.addEventListener('blur', onBlur);
+  target.addEventListener('focus', onFocus);
+  return {
+    seen: () => [...seen],
+    stop() {
+      target.removeEventListener('blur', onBlur);
+      target.removeEventListener('focus', onFocus);
+    },
+  };
+}
+
+/** The step running now, counted from 1, for what is recorded while it runs. */
+let stepRunning = 0;
 
 const SERVICE = 'github.com/tharabyte/bava/internal/e2e.Service';
 
@@ -318,13 +343,16 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
  */
 export async function runScenario(steps: Step[], env: DriverEnv): Promise<string> {
   for (const [index, s] of steps.entries()) {
+    stepRunning = index + 1;
     const failure = await step(s, env);
     if (failure) {
       await env.shot('failure').catch(() => '');
       const raised = env.errors?.() ?? [];
       const also = raised.length > 0 ? `; the page raised: ${raised.join('; ')}` : '';
       const page = env.describe ? `; the page: ${env.describe()}` : '';
-      return `step ${index + 1} (${s.do}${s.target ? ` ${s.target}` : ''}): ${failure}${also}${page}`;
+      const changes = env.windowFocus?.();
+      const windowNote = changes ? `; the window: ${changes.length > 0 ? changes.join(', ') : 'kept focus throughout'}` : '';
+      return `step ${index + 1} (${s.do}${s.target ? ` ${s.target}` : ''}): ${failure}${also}${page}${windowNote}`;
     }
     // Let the app settle between steps, as a person's pace would.
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -336,9 +364,11 @@ export async function runScenario(steps: Step[], env: DriverEnv): Promise<string
 export async function start(): Promise<void> {
   const scenario = (await Call.ByName(`${SERVICE}.Scenario`)) as { steps: Step[] };
   const watch = watchErrors(window);
+  const focus = watchWindow(window, () => stepRunning);
   const failure = await runScenario(scenario.steps, {
     errors: watch.seen,
     describe: () => describePage(document),
+    windowFocus: focus.seen,
     menu: (id) =>
       (window as unknown as { _wails: { dispatchWailsEvent(e: { name: string; data: unknown }): void } })._wails.dispatchWailsEvent({
         name: 'menu:command',

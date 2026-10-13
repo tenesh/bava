@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { runScenario, watchErrors, type Step, describePage } from './driver';
+import { runScenario, watchErrors, watchWindow, type Step, describePage } from './driver';
 import { PENDING } from '../files/tree';
 
 afterEach(() => {
@@ -324,5 +324,29 @@ describe('the page described at a failure', () => {
   it('adds it to a failed step', async () => {
     const failure = await runScenario([{ do: 'wait', target: '#never' }], { ...env(), describe: () => 'focus on nothing' });
     expect(failure).toBe('step 1 (wait #never): never showed; the page: focus on nothing');
+  });
+});
+
+// Whether the window lost focus, and in which step: a naming in the Files
+// tree ends when its field loses focus, and a window losing focus takes it.
+describe("the window's focus during a walk", () => {
+  it('records each loss and return with the step it happened in', () => {
+    const target = new EventTarget();
+    let step = 4;
+    const watch = watchWindow(target, () => step);
+    target.dispatchEvent(new Event('blur'));
+    step = 5;
+    target.dispatchEvent(new Event('focus'));
+    expect(watch.seen()).toEqual(['lost focus in step 4', 'regained it in step 5']);
+    watch.stop();
+    target.dispatchEvent(new Event('blur'));
+    expect(watch.seen()).toHaveLength(2);
+  });
+
+  it('adds it to a failed step, and says so when it never changed', async () => {
+    const failed = await runScenario([{ do: 'wait', target: '#never' }], { ...env(), windowFocus: () => ['lost focus in step 1'] });
+    expect(failed).toBe('step 1 (wait #never): never showed; the window: lost focus in step 1');
+    const steady = await runScenario([{ do: 'wait', target: '#never' }], { ...env(), windowFocus: () => [] });
+    expect(steady).toBe('step 1 (wait #never): never showed; the window: kept focus throughout');
   });
 });

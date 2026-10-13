@@ -45,8 +45,8 @@ runs each scenario on a fresh launch, answering native pickers from the
 scenario's `folders`, `files` and `saves`. The `walks` job runs them on each
 system; its screenshots are kept as `walks-<os>`, and a failing step takes
 one and stops the chain. A failed result also says what had focus, whether
-a new page or folder was waiting to be named, and the app's last 40 log
-lines, so a run that kept nothing else still shows what led up to it. A default build must not contain the driver: the
+a new page or folder was waiting to be named, in which steps the window
+lost and regained focus, and the app's last 40 log lines, so a run that kept nothing else still shows what led up to it. A default build must not contain the driver: the
 `release check` job checks the frontend bundle, `release_test.go` (in
 `test`) the Go side.
 
