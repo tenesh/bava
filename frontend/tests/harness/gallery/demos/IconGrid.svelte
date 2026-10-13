@@ -4,7 +4,7 @@
   import { loadSet } from '../../../../src/canvas/icons/sets';
   import Cell from '../Cell.svelte';
 
-  const custom = () => [
+  const custom = async () => [
     {
       set: 'custom' as const,
       name: 'acme-billing',

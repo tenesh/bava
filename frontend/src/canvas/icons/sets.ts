@@ -96,15 +96,12 @@ function namespaced(svg: string): string {
   return /^<svg[^>]*\sxmlns=/.test(svg) ? svg : svg.replace(/^<svg/, `<svg xmlns="${SVG_NS}"`);
 }
 
-/**
- * The icon as a whole SVG: a line icon stroked and anything else bundled
- * filled in `colour`; a custom icon as drawn, its dark copy on a dark canvas.
- */
-export function iconSvg(entry: IconEntry, colour: string, dark: boolean): string {
-  if (entry.set === 'custom') return namespaced((dark && entry.darkSvg) || entry.svg || '');
-  const paint =
-    entry.set === 'line'
-      ? `fill="none" stroke="${colour}" stroke-width="${ICON_STROKE}" stroke-linecap="round" stroke-linejoin="round"`
-      : `fill="${colour}" stroke="none"`;
-  return `<svg xmlns="${SVG_NS}" viewBox="0 0 ${ICON_GRID} ${ICON_GRID}" ${paint}>${entry.body ?? ''}</svg>`;
+/** A custom icon's SVG as an address a picture is made from: it travels as text, never fetched. */
+export function iconPictureAddress(svg: string): string {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(namespaced(svg))}`;
+}
+
+/** The SVGs a custom icon may draw: its own and its dark copy. */
+export function customSvgs(entry: IconEntry): string[] {
+  return [entry.svg, entry.darkSvg].filter((svg): svg is string => Boolean(svg));
 }

@@ -13,16 +13,46 @@
   import ToolIcon from './ToolIcon.svelte';
   import IconGrid from './IconGrid.svelte';
   import Segments from './Segments.svelte';
+  import ContextMenu from './ContextMenu.svelte';
   import { t } from '../i18n/t';
+
+  /** What the Custom tab does to the library; each change answers an error message, '' when done. */
+  type IconLibrary = {
+    add: () => void;
+    showFolder: () => void;
+    rename: (from: string, to: string) => Promise<string>;
+    remove: (name: string) => Promise<string>;
+  };
 
   type Props = {
     insert: InsertState;
     /** The Icon category's picker; without it the category shows nothing. */
     icons?: IconPickerState;
+    library?: IconLibrary;
+    /** Whether the app is dark: a custom icon shows its dark copy. */
+    dark?: boolean;
     onOutcome: (outcome: InsertOutcome) => void;
   };
 
-  let { insert, icons, onOutcome }: Props = $props();
+  let { insert, icons, library, dark = false, onOutcome }: Props = $props();
+
+  /** A custom icon's menu, where it was asked for; the icon being renamed; what went wrong last. */
+  let iconMenu = $state<{ name: string; anchor: { x: number; y: number } } | null>(null);
+  let renaming = $state<string | null>(null);
+  /** Rename was chosen: the field opens once the menu has closed and let go of the keys. */
+  let renameNext: string | null = null;
+  let libraryProblem = $state('');
+
+  const ICON_MENU = [
+    { kind: 'item' as const, id: 'rename', label: t('insert.iconRename'), keys: '' },
+    { kind: 'item' as const, id: 'delete', label: t('insert.iconDelete'), keys: '' },
+  ];
+
+  async function changed(change: Promise<string>) {
+    libraryProblem = await change;
+    icons?.refresh();
+    search.focus();
+  }
 
   const TAB_LABELS: Record<IconTab, string> = {
     general: t('insert.iconGeneral'),
@@ -53,6 +83,8 @@
 
   function onKeydown(event: KeyboardEvent) {
     if (picking && icons) {
+      // A name being typed, or the icon's menu, keeps its own keys.
+      if ((event.target as Element | null)?.closest?.('.rename, [data-scope="menu"]')) return;
       // Keys on the tabs move between the tabs, but Escape still goes up.
       if ((event.target as Element | null)?.closest?.('.tabs') && event.key !== 'Escape') return;
       const own = ['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key) ||
@@ -154,7 +186,50 @@
         }}
       />
     </div>
-    <IconGrid {icons} {optionId} {listId} onPick={pickIcon} />
+    {#if icons.tab === 'custom' && library}
+      <div class="library">
+        <button type="button" class="bava-button" onclick={() => library?.add()}>{t('insert.iconAdd')}</button>
+        <button type="button" class="bava-button ghost" onclick={() => library?.showFolder()}>{t('insert.iconFolder')}</button>
+      </div>
+    {/if}
+    <IconGrid
+      {icons}
+      {dark}
+      {optionId}
+      {listId}
+      onPick={pickIcon}
+      onMenu={library ? (index, anchor) => (iconMenu = { name: icons?.results[index]?.name ?? '', anchor }) : undefined}
+      {renaming}
+      onRename={(from, to) => {
+        renaming = null;
+        search.focus();
+        if (to.trim() !== '' && to !== from && library) void changed(library.rename(from, to));
+      }}
+      onCancelRename={() => {
+        renaming = null;
+        search.focus();
+      }}
+    />
+    <ContextMenu
+      within
+      items={ICON_MENU}
+      open={iconMenu !== null}
+      anchor={iconMenu?.anchor ?? null}
+      onOpenChange={(open) => !open && (iconMenu = null)}
+      onClosed={() => {
+        // The keys go to the name about to be typed, which takes them as it opens, or back to the search.
+        if (renameNext !== null) {
+          renaming = renameNext;
+          renameNext = null;
+        } else search.focus();
+      }}
+      onSelect={(id) => {
+        const name = iconMenu?.name ?? '';
+        iconMenu = null;
+        if (id === 'rename') renameNext = name;
+        else if (id === 'delete' && library) void changed(library.remove(name));
+      }}
+    />
   {:else}
   <div
     id={listId}
@@ -211,7 +286,11 @@
 
   <footer>
     <span class="highlighted">{highlightedName}</span>
-    <span class="hint">{t('insert.hint')}</span>
+    {#if picking && libraryProblem}
+      <span class="hint problem" role="status">{libraryProblem}</span>
+    {:else}
+      <span class="hint">{t('insert.hint')}</span>
+    {/if}
   </footer>
 </div>
 
@@ -248,6 +327,16 @@
 
   .tabs {
     padding: 0 var(--space-3) var(--space-2);
+  }
+
+  .library {
+    display: flex;
+    gap: var(--space-2);
+    padding: 0 var(--space-3) var(--space-2);
+  }
+
+  .problem {
+    color: var(--color-danger);
   }
 
   .crumbs {

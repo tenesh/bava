@@ -82,6 +82,9 @@ Start Bava as if it had never run:
 - [ ] Icons stay sharp at 400% zoom, and in a PNG export at 4x.
 - [ ] A logo set to Brand keeps its colour in dark theme; a line icon in ink turns light with the theme.
 - [ ] An icon's label: double-click to type, centred under it; a new size re-wraps it.
+- [ ] Icon ▸ Custom ▸ Add icons: the system's file dialog takes SVGs (in a store's sandbox too); an SVG with a script or a remote picture is added without them; Show folder opens the library; a file dropped there by hand shows next time Custom opens.
+- [ ] A custom icon with `name.dark.svg` beside it switches copies with the theme, on the canvas and in a dark export.
+- [ ] Rename and Delete from a custom icon's right-click menu; a deleted one is in the library's `.trash` folder.
 
 ## Media
 

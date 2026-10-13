@@ -229,7 +229,8 @@ export function tables(): El[] {
 
 /**
  * Icons: a line one in ink, a filled one in a swatch, a logo in its own
- * colour with a label, the same logo in ink, and one no set holds.
+ * colour with a label, the same logo in ink, a custom one in its own colours,
+ * and one the library lacks.
  */
 export function icons(): El[] {
   return [
@@ -237,6 +238,7 @@ export function icons(): El[] {
     el({ id: 'ico-solid', type: 'icon', icon: 'solid/cloud', x: 200, y: 60, w: 64, h: 64, color: 'blue' }),
     el({ id: 'ico-brand', type: 'icon', icon: 'logo/postgresql', x: 360, y: 60, w: 64, h: 64, color: 'brand', label: 'Orders DB', measuredWidth: 72, measuredHeight: 19 }),
     el({ id: 'ico-ink', type: 'icon', icon: 'logo/redis', x: 520, y: 60, w: 64, h: 64 }),
+    el({ id: 'ico-custom', type: 'icon', icon: 'custom/acme', x: 360, y: 240, w: 64, h: 64, label: 'Payments', measuredWidth: 80, measuredHeight: 19 }),
     el({ id: 'ico-missing', type: 'icon', icon: 'custom/acme-billing', x: 200, y: 240, w: 64, h: 64, label: 'Billing', measuredWidth: 44, measuredHeight: 19 }),
   ];
 }

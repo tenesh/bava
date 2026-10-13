@@ -27,7 +27,7 @@ import { smoothPoints } from '../curves';
 import { BASELINE_SHARE, PICTURE_ICON, PLACEHOLDER_LOOK, placeholderLayout } from '../picture-placeholder';
 import { TABLE_PAD, TABLE_ROW, tableLayout, type Cell } from '../table-layout';
 import { ICON_GRID, ICON_STROKE, iconEntry } from '../icons/sets';
-import { ICON_LABEL_GAP, iconLabelLayout, iconParts } from '../icons/icon-look';
+import { ICON_LABEL_GAP, customSvg, iconLabelLayout, iconParts } from '../icons/icon-look';
 import type { IconElement } from '../scene';
 import { t } from '../../i18n/t';
 
@@ -352,6 +352,35 @@ function picture(element: SceneElement & { file: string }, options: SvgOptions):
   return `${box}${clip}<g clip-path="url(#${escapeXml(id)})">${icon}${words}</g>`;
 }
 
+const ROOT_TAG = /^<svg\b([^>]*?)(\/?)>/;
+const ROOT_ATTRIBUTE = /\s([\w:-]+)="([^"]*)"/g;
+
+/**
+ * A custom icon's own (cleaned) SVG, nested at the element's box: scaled to
+ * fit it in its proportions, and its ids prefixed with the element's, so two
+ * icons' gradients never answer to each other's names.
+ */
+function nestedIcon(svg: string, element: IconElement): string {
+  const prefix = `${element.id}-`;
+  const own = svg
+    .replace(/\sid="([^"]*)"/g, (_, id: string) => ` id="${escapeXml(prefix)}${id}"`)
+    .replace(/url\(#([^)]*)\)/g, (_, id: string) => `url(#${escapeXml(prefix)}${id})`)
+    .replace(/\shref="#([^"]*)"/g, (_, id: string) => ` href="#${escapeXml(prefix)}${id}"`);
+  const root = ROOT_TAG.exec(own);
+  if (!root) return '';
+  const kept: string[] = [];
+  let viewBox = '';
+  for (const [, name, value] of root[1].matchAll(ROOT_ATTRIBUTE)) {
+    if (name === 'viewBox') viewBox = value;
+    else if (!['xmlns', 'width', 'height', 'x', 'y', 'preserveAspectRatio', 'overflow', 'transform'].includes(name)) kept.push(` ${name}="${value}"`);
+  }
+  const open =
+    `<svg x="${round(element.x)}" y="${round(element.y)}" width="${round(element.w)}" height="${round(element.h)}"` +
+    // Drawn inside its box, whatever it says.
+    `${viewBox ? ` viewBox="${viewBox}"` : ''} preserveAspectRatio="xMidYMid meet" overflow="hidden"${kept.join('')}`;
+  return root[2] ? `${open}/>` : `${open}>${own.slice(root[0].length)}`;
+}
+
 /**
  * An icon: a bundled one as its own paths, in its colour, so it stays a
  * drawing; one no set holds as the stage shows it, a dashed box named under
@@ -375,6 +404,9 @@ function icon(element: IconElement, paint: Paint, options: SvgOptions): string {
       })
       .join('');
     out += `<g transform="translate(${round(x)} ${round(y)}) scale(${round(scale)})">${parts}</g>`;
+  } else if (found) {
+    // A custom icon keeps its own drawing and colours, its dark copy in a dark export.
+    out += nestedIcon(customSvg(found, options.read), element);
   }
   const measure = canvasLineWidth(`${paint.font.size}px ${paint.font.family}`);
   const layout = iconLabelLayout(element, measure);

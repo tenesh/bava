@@ -7,7 +7,7 @@ import { onTeardown } from '../test/render';
 import { createScene, type SceneData, type SceneElement } from './scene';
 import { pathOf, routePoints } from './arrows';
 import { TABLE_HEADER, TABLE_PAD, TABLE_ROW } from './table-layout';
-import { loadSet } from './icons/sets';
+import { loadSet, setCustomIcons } from './icons/sets';
 import { ICON_LABEL_GAP, ICON_LABEL_WIDTH } from './icons/icon-look';
 import { PICTURE_ICON } from './picture-placeholder';
 
@@ -1763,5 +1763,34 @@ describe('icons on the stage', () => {
     stage.iconsArrived();
     expect(paths(stage).length).toBeGreaterThan(0);
     expect(paths(stage)[0].fill()).toBe('black');
+  });
+});
+
+describe('custom icons on the stage', () => {
+  const light = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 10" width="20" height="10"><rect width="20" height="10" fill="#0F766E"/></svg>';
+  const dark = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 10" width="20" height="10"><rect width="20" height="10" fill="#5EEAD4"/></svg>';
+  const picture = () => document.createElement('canvas');
+  const images = (stage: CanvasStage) => stage.iconNode('e1')!.find<Konva.Image>('Image');
+
+  it('draws its picture once it has arrived, in its proportions, in its own colours', () => {
+    setCustomIcons([{ name: 'acme', svg: light, darkSvg: dark }]);
+    const stage = mounted();
+    stage.render(one({ type: 'icon', icon: 'custom/acme', color: 'blue', x: 0, y: 0, w: 64, h: 64 } as never));
+    expect(images(stage)).toHaveLength(0);
+    const drawn = picture();
+    stage.setIconPicture(light, drawn);
+    const [image] = images(stage);
+    expect(image.image()).toBe(drawn);
+    expect([image.x(), image.y(), image.width(), image.height()]).toEqual([0, 16, 64, 32]);
+  });
+
+  it('draws its dark copy on a dark canvas', () => {
+    setCustomIcons([{ name: 'acme', svg: light, darkSvg: dark }]);
+    const stage = mounted(reader({ '--color-canvas-bg': '#101010', '--color-shape-text': 'white' }));
+    stage.render(one({ type: 'icon', icon: 'custom/acme', x: 0, y: 0, w: 64, h: 64 } as never));
+    const shown = picture();
+    stage.setIconPicture(light, picture());
+    stage.setIconPicture(dark, shown);
+    expect(images(stage)[0].image()).toBe(shown);
   });
 });

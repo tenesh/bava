@@ -1469,6 +1469,37 @@ test.describe('the system clipboard on the canvas', () => {
 
 // A picture becomes a canvas element four ways, attached to the Space first
 // as the page attaches one, or reusing its attachment from Media.
+test.describe('icons added to the canvas', () => {
+  type Fakes = { __bava: { fakes: { harness: Record<string, unknown> } } };
+  const setHarness = (page: Page, values: Record<string, unknown>) =>
+    page.evaluate((v) => Object.assign((window as unknown as Fakes).__bava.fakes.harness, v), values);
+  const icons = async (page: Page) => ofType(await saved(page), 'icon') as (Awaited<ReturnType<typeof saved>>[number] & { icon: string })[];
+  const panel = (page: Page) => page.getByRole('dialog', { name: 'Insert item' });
+
+  test('Canvas ▸ Icon places a general icon by name, in the middle of the view', async ({ page }) => {
+    await startCanvas(page, []);
+    await menu(page, 'insert.icon');
+    await expect(panel(page).locator('.icon-grid .tile svg').first()).toBeVisible();
+    await page.keyboard.type('database');
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await icons(page)).map((icon) => icon.icon)).toEqual(['line/database']);
+  });
+
+  test('the Custom tab lists the library, adds to it, and places one of its icons', async ({ page }) => {
+    await startCanvas(page, []);
+    await setHarness(page, {
+      iconsToAdd: [{ name: 'billing', svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" width="10" height="10"><rect width="10" height="10" fill="#E11D48"/></svg>' }],
+    });
+    await menu(page, 'insert.icon');
+    await panel(page).getByRole('radio', { name: 'Custom' }).click({ force: true });
+    await expect(panel(page).locator('.icon-grid .tile')).toHaveText(['acme']);
+    await panel(page).getByRole('button', { name: 'Add icons' }).click();
+    await expect(panel(page).locator('.icon-grid .tile')).toHaveText(['acme', 'billing']);
+    await panel(page).locator('.icon-grid .tile', { hasText: 'billing' }).click();
+    await expect.poll(async () => (await icons(page)).map((icon) => icon.icon)).toEqual(['custom/billing']);
+  });
+});
+
 test.describe('pictures added to the canvas', () => {
   type Fakes = { __bava: { fakes: { harness: Record<string, unknown>; SpaceService: { Attachments(root: string): Promise<{ attachments: { name: string }[] }> } } } };
   const setHarness = (page: Page, values: Record<string, unknown>) =>

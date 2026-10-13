@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { iconEntry, iconSvg, loadSet, parseIconName, setCustomIcons } from './sets';
+import { customSvgs, iconEntry, iconPictureAddress, loadSet, parseIconName, setCustomIcons } from './sets';
 
 describe('icon names', () => {
   it('are a set and a name', () => {
@@ -31,28 +31,19 @@ describe('the bundled sets', () => {
   });
 });
 
-describe('drawing an icon', () => {
-  it('strokes a line icon in the colour given', async () => {
-    await loadSet('line');
-    const svg = iconSvg(iconEntry('line/database')!, '#123456', false);
-    expect(svg).toMatch(/^<svg xmlns="http:\/\/www.w3.org\/2000\/svg" viewBox="0 0 24 24" fill="none" stroke="#123456" stroke-width="2"/);
-    expect(svg).toContain('<path d="M4 6v6a8 3 0 0 0 16 0v-6"/>');
+describe("a custom icon's picture", () => {
+  it('is made from its SVG as text, its namespace named, never from an address', () => {
+    const address = iconPictureAddress('<svg viewBox="0 0 10 10"><rect width="10" height="10"/></svg>');
+    expect(address.startsWith('data:image/svg+xml;charset=utf-8,')).toBe(true);
+    expect(decodeURIComponent(address.slice(address.indexOf(',') + 1))).toBe(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>',
+    );
   });
 
-  it('fills a filled icon or a logo in the colour given', async () => {
-    await loadSet('logo');
-    expect(iconSvg(iconEntry('logo/redis')!, '#FF4438', false)).toMatch(/^<svg [^>]*fill="#FF4438" stroke="none"/);
-  });
-
-  it("draws a custom icon in its own colours, its dark copy on a dark canvas", () => {
-    setCustomIcons([
-      { name: 'acme', svg: '<svg viewBox="0 0 10 10"><rect fill="#0f766e" width="10" height="10"/></svg>', darkSvg: '<svg viewBox="0 0 10 10"><rect fill="#5eead4" width="10" height="10"/></svg>' },
-      { name: 'plain', svg: '<svg viewBox="0 0 10 10"><circle fill="#111" r="5" cx="5" cy="5"/></svg>' },
-    ]);
-    const acme = iconEntry('custom/acme')!;
-    expect(iconSvg(acme, '#ff0000', false)).toContain('#0f766e');
-    expect(iconSvg(acme, '#ff0000', true)).toContain('#5eead4');
-    expect(iconSvg(iconEntry('custom/plain')!, '#ff0000', true)).toContain('#111');
+  it('is either copy of an icon, its dark one when it has one', () => {
+    setCustomIcons([{ name: 'acme', svg: '<svg/>', darkSvg: '<svg><g/></svg>' }, { name: 'plain', svg: '<svg/>' }]);
+    expect(customSvgs(iconEntry('custom/acme')!)).toEqual(['<svg/>', '<svg><g/></svg>']);
+    expect(customSvgs(iconEntry('custom/plain')!)).toEqual(['<svg/>']);
     expect(iconEntry('custom/gone')).toBeNull();
   });
 });

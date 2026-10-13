@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { loadSet } from '../icons/sets';
+import { loadSet, setCustomIcons } from '../icons/sets';
 import { toSvg } from './svg';
 import { exportArea } from './area';
 import { svgPathSink } from './path-sink';
@@ -424,5 +424,36 @@ describe('icons in an SVG', () => {
   it("takes in the label when sizing the document", () => {
     const svg = svgOf([icon({ label: 'Orders database', measuredWidth: 120, measuredHeight: 19 })]);
     expect(svg).toContain('viewBox="-42 4 152 105"');
+  });
+});
+
+describe('custom icons in an SVG', () => {
+  const own = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 10" width="20" height="10"><defs><linearGradient id="g"><stop offset="0" stop-color="#0F766E"/></linearGradient></defs><rect width="20" height="10" fill="url(#g)"/><use href="#g"/></svg>';
+  const dark = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 10" width="20" height="10"><rect width="20" height="10" fill="#5EEAD4"/></svg>';
+
+  it('nests its own drawing at its box, its ids kept apart from the rest of the file', () => {
+    setCustomIcons([{ name: 'acme', svg: own, darkSvg: dark }]);
+    const svg = svgOf([{ id: 'k', type: 'icon', icon: 'custom/acme', x: 10, y: 20, w: 48, h: 48, z: 1 }]);
+    expect(svg).toContain('<svg x="10" y="20" width="48" height="48" viewBox="0 0 20 10" preserveAspectRatio="xMidYMid meet" overflow="hidden">');
+    expect(svg).toContain('<linearGradient id="k-g">');
+    expect(svg).toContain('fill="url(#k-g)"');
+    expect(svg).toContain('<use href="#k-g"/>');
+    expect(svg).not.toContain('#5EEAD4');
+  });
+
+  // As the library cleans them: a > in a value escaped, a quote in an id escaped. Neither ends the tag early or adds markup.
+  it('nests a drawing whose values hold escaped characters, whole', () => {
+    const tricky = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" width="10" height="10" aria-label="a/&gt;b"><rect id="r&quot; onload=&quot;x" width="10" height="10" fill="#E11D48"/></svg>';
+    setCustomIcons([{ name: 'tricky', svg: tricky }]);
+    const svg = svgOf([{ id: 'k', type: 'icon', icon: 'custom/tricky', x: 0, y: 0, w: 10, h: 10, z: 1 }]);
+    expect(svg).toContain('aria-label="a/&gt;b">');
+    expect(svg).toContain('<rect id="k-r&quot; onload=&quot;x" width="10" height="10" fill="#E11D48"/>');
+  });
+
+  it('nests its dark copy for a dark export', () => {
+    setCustomIcons([{ name: 'acme', svg: own, darkSvg: dark }]);
+    const darkRead = (name: string) => (name === '--color-canvas-bg' ? '#101010' : read(name));
+    const svg = svgOf([{ id: 'k', type: 'icon', icon: 'custom/acme', x: 10, y: 20, w: 48, h: 48, z: 1 }], { read: darkRead });
+    expect(svg).toContain('#5EEAD4');
   });
 });

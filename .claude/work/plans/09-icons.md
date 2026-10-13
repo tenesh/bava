@@ -228,38 +228,38 @@ inventory (`IconGrid`).
 
 ### Task 14: Sanitising an SVG
 **Files:** `internal/icons/sanitise.go`, test.
-- [ ] Failing test: `TestSanitise` table: scripts, `on*` handlers,
+- [x] Failing test: `TestSanitise` table: scripts, `on*` handlers,
   `foreignObject`, external `href`/`src`, `<use>` pointing outside the
   file, CSS `url(http…)` and `@import` removed; shapes, gradients, groups,
   `viewBox` kept; not XML or no `<svg>` root is refused. Expected failure:
   no package.
-- [ ] An allow-list walk with `encoding/xml`.
-- [ ] Green: `go test ./internal/icons -run Sanitise`
+- [x] An allow-list walk with `encoding/xml`.
+- [x] Green: `go test ./internal/icons -run Sanitise`
 
 ### Task 15: The library
 **Files:** `internal/icons/library.go`, `internal/config/config.go`
 (`Dir()`), `internal/app/icons.go` (`IconService`), `main.go`,
 `docs/ipc.md`, bindings, tests.
-- [ ] Failing tests: `TestListPairsDarkFiles` (`a.svg` and `a.dark.svg` are
+- [x] Failing tests: `TestListPairsDarkFiles` (`a.svg` and `a.dark.svg` are
   one icon); `TestAddCopiesAndNamesByFile` (a clash gets `name-2`; a
   folder adds its `.svg` files, not deeper); `TestAddRefusesWhatIsNotSVG`;
   `TestRenameMovesThePair`; `TestDeleteMovesThePairToTheBin` (the
   platform's trash, as Space trash does not apply); a file dropped into
   the folder by hand is listed, sanitised as it is read.
-- [ ] `IconService.List() []CustomIcon{Name, SVG, DarkSVG}`,
+- [x] `IconService.List() []CustomIcon{Name, SVG, DarkSVG}`,
   `Add() ([]string, Problem)` (the chooser), `Rename`, `Delete`,
   `ShowFolder`. The folder is made on first use.
-- [ ] Green: `go test ./internal/icons ./internal/app -run Icon` and
+- [x] Green: `go test ./internal/icons ./internal/app -run Icon` and
   `wails3 generate bindings -f '' -clean=true -ts -i`
 
 ### Task 16: The Custom tab
 **Files:** `frontend/src/shell/icon-picker.svelte.ts`,
 `components/IconGrid.svelte`, `App.svelte`, `canvas/icons/sets.ts`, tests.
-- [ ] Failing tests: "the Custom tab lists the library each time it opens";
+- [x] Failing tests: "the Custom tab lists the library each time it opens";
   "a custom icon draws in its own colours, the dark copy on a dark
   canvas"; "right-click on a tile offers Rename and Delete"; "a deleted
   icon's elements draw the missing box".
-- [ ] Green: `npx vitest run src/shell/icon-picker src/canvas/icons`;
+- [x] Green: `npx vitest run src/shell/icon-picker src/canvas/icons`;
   `npm run browser` for the Custom tab.
 
 # Part 3: D2 icons
@@ -351,3 +351,56 @@ folder while the picker is open; a keyboard shortcut for Icon.
 - Gates: go vet, go test, check, lint, `npm test` 3,219 passed, `npm run
   browser` (new pictures `canvas/icons--100--*`, `canvas/icon--selected--*`,
   and the controls and canvas-chrome sheets, read in both themes).
+
+### Part 2
+
+- `internal/icons`: `Sanitise` and `Library`; `internal/app/icon_library.go`
+  is `IconService` (List, Add, Rename, Delete, ShowFolder), registered in
+  `main.go` with `config.IconsDir` (new beside `config.Dir`). Its files are
+  named `icon_library*` because `internal/app/icons_test.go` already holds the
+  app icon's tests.
+- The cleaner keeps an allow-list of drawing elements and drops everything
+  else with what it holds (scripts, animations, foreign content, other apps'
+  markup). It never writes a stylesheet: a `<style>` is gathered whole and
+  only its plain class rules are moved onto the elements they style as
+  `style` attributes. Every kept value is refused if it holds an escape or
+  an `@`, or calls any function but colours, transforms and `url(#id)`; an
+  internal url() is written plainly. One root only; a `>` in a value is
+  escaped. This replaced a first version the spec review broke (a comment or
+  CDATA could split an import, capitals and escapes passed). A second
+  review broke that too (a `srcset` on a picture inside a `<title>`, which a
+  page reads as its own element; class rules copied without bound), so the
+  cleaner now keeps an allow-list of drawing attributes as well as elements,
+  keeps a title's or description's words only, counts a class named twice
+  once, and refuses a drawing more than four times its file's size. A third
+  and fourth pass bounded the stylesheets as a whole (one budget for every
+  `<style>` in the file, counted as each element gathers its classes), took
+  every style off the root, and capped nesting at 256; the last pass found
+  no bypass.
+- The preview's `withoutRemoteRefs` also drops style imports, image sets and
+  outside url()s, as a second layer.
+- Names: what Rename and Delete are given must be a name, never a path; a
+  file added gets a name every platform can hold (unsafe characters become
+  dashes, Windows device names get "-icon"); the library's own files end in
+  lower-case `.svg`; a rename never overwrites an icon or a dark copy and is
+  undone if its dark copy cannot follow.
+- Changed from the plan: Delete moves to the library's own `.trash/`, not the
+  system trash (no system-trash helper exists, and one inside every store's
+  sandbox is a sizeable job of its own); Add picks files, not a folder (a
+  combined dialog is unreliable on Windows; `Library.Add` takes folders, and
+  dropping one into the library folder works); renaming a custom icon leaves
+  canvases naming the old name showing it missing.
+- Frontend: `canvas/icons/library.ts` reads the library, drops a read that
+  answers after a newer one, and makes each SVG a picture once before it
+  answers; the stage draws a custom icon from `setIconPicture`, its dark copy
+  on a dark canvas, in its proportions; the SVG export nests its drawing with
+  ids prefixed by the element's; the PNG makes its pictures first. The
+  Custom tab has Add icons, Show folder, and a right-click menu with Rename
+  (typed in place, settled once by Enter, Escape or leaving the field) and
+  Delete; it reads the library each time it opens and once after each
+  change, and shows dark copies in a dark theme. A refused name shows Go's
+  reason, which names it; other problems are the app's own words.
+- The whole library is sent on each read, as text; documented in
+  `docs/ipc.md` as the cost of icons carrying large embedded pictures.
+- Not built: an end-to-end walk through the native file dialog (the browser
+  tests drive Add through the stand-in service).

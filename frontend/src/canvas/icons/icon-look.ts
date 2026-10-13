@@ -3,7 +3,7 @@
  * its colour, the parts it is drawn from, where its label goes, and the
  * room it takes, label included (`docs/file-format.md`, "Icons").
  */
-import { resolveStyle, type ReadVariable } from '../palette';
+import { isDarkCanvas, resolveStyle, type ReadVariable } from '../palette';
 import type { IconElement } from '../scene';
 import { wrapLines, type MeasureLine } from '../text-layout';
 import { iconEntry, type IconEntry } from './sets';
@@ -96,4 +96,24 @@ export function iconBounds(element: IconElement): { x: number; y: number; w: num
   if (!element.label || !element.measuredWidth || !element.measuredHeight) return box;
   const w = Math.max(element.w, element.measuredWidth);
   return { x: element.x + element.w / 2 - w / 2, y: element.y, w, h: element.h + ICON_LABEL_GAP + element.measuredHeight };
+}
+
+/** The SVG a custom icon draws: its dark copy on a dark canvas, when it has one. */
+export function customSvg(entry: IconEntry, read: ReadVariable): string {
+  return (isDarkCanvas(read) && entry.darkSvg) || entry.svg || '';
+}
+
+const ROOT_SIZE = /^<svg\b[^>]*?\swidth="([\d.]+)"[^>]*?\sheight="([\d.]+)"/;
+
+/**
+ * Where a custom icon's picture sits in its square: as large as fits, its own
+ * proportions kept (its width and height, as cleaning sets them), centred.
+ */
+export function pictureBox(svg: string, w: number, h: number): { x: number; y: number; w: number; h: number } {
+  const match = ROOT_SIZE.exec(svg);
+  const ratio = match ? Number(match[1]) / Number(match[2]) : 0;
+  if (!(ratio > 0) || !Number.isFinite(ratio)) return { x: 0, y: 0, w, h };
+  const fit = Math.min(w / ratio, h);
+  const width = fit * ratio;
+  return { x: (w - width) / 2, y: (h - fit) / 2, w: width, h: fit };
 }

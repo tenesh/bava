@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { iconPictureAddress, setCustomIcons } from '../icons/sets';
 import { describe, expect, it, vi } from 'vitest';
 import { toPng } from './png';
 import { CanvasStage } from '../stage';
@@ -105,6 +106,24 @@ describe('pictures in a PNG', () => {
     expect(loadImage).toHaveBeenCalledWith('data:,a');
     expect(handed).toHaveBeenCalledWith('a.png', loaded);
     expect(handed).toHaveBeenCalledWith('gone.png', null);
+    handed.mockRestore();
+  });
+});
+
+// A custom icon is a picture made from its SVG: made before the drawing, its dark copy too.
+describe('custom icons in a PNG', () => {
+  it('are made into pictures before the drawing', async () => {
+    const own = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" width="10" height="10"/>';
+    const dark = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" width="10" height="10"><g/></svg>';
+    setCustomIcons([{ name: 'acme', svg: own, darkSvg: dark }]);
+    const handed = vi.spyOn(CanvasStage.prototype, 'setIconPicture');
+    const loaded = document.createElement('canvas');
+    const loadImage = vi.fn(async () => loaded);
+    const area = exportArea({ elements: [{ id: 'k', type: 'icon', icon: 'custom/acme', x: 0, y: 0, w: 48, h: 48, z: 1 }] } as never, []);
+    await toPng(area, { read, scale: 1, encode: encoder().encode, loadImage });
+    expect(loadImage).toHaveBeenCalledWith(iconPictureAddress(own));
+    expect(loadImage).toHaveBeenCalledWith(iconPictureAddress(dark));
+    expect(handed).toHaveBeenCalledWith(own, loaded);
     handed.mockRestore();
   });
 });

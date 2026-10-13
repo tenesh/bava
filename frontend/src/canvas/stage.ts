@@ -44,7 +44,7 @@ import { gridDots } from './grid';
 import { PICTURE_ICON, PLACEHOLDER_LOOK, placeholderLayout } from './picture-placeholder';
 import { TABLE_PAD, TABLE_ROW, tableLayout } from './table-layout';
 import { ICON_GRID, ICON_STROKE, iconEntry } from './icons/sets';
-import { ICON_LABEL_GAP, iconLabelLayout, iconParts } from './icons/icon-look';
+import { ICON_LABEL_GAP, customSvg, iconLabelLayout, iconParts, pictureBox } from './icons/icon-look';
 import { t } from '../i18n/t';
 
 export type CanvasStageOptions = {
@@ -165,6 +165,8 @@ export class CanvasStage {
   #codeRuns = new Map<ElementId, Run[][]>();
   /** Pictures by attachment name, handed in by the caller; null: it cannot be loaded. */
   #pictures = new Map<string, CanvasImageSource | null>();
+  /** Custom icons' pictures, by the SVG they were made from; null: it cannot be drawn. */
+  #iconPictures = new Map<string, CanvasImageSource | null>();
   #marquee: Konva.Rect | null = null;
   /** The guides snapping to objects draws, and their lines. */
   #snapGuides: Guide[] = [];
@@ -1525,6 +1527,15 @@ export class CanvasStage {
     this.#layer?.batchDraw();
   }
 
+  /**
+   * A custom icon's picture, made from its SVG outside the stage as a
+   * picture is loaded, or null when it cannot be drawn.
+   */
+  setIconPicture(svg: string, picture: CanvasImageSource | null): void {
+    this.#iconPictures.set(svg, picture);
+    this.iconsArrived();
+  }
+
   /** The nodes drawing an icon element. */
   iconNode(id: ElementId): Konva.Group | null {
     return this.#entries.get(id)?.icon ?? null;
@@ -1561,7 +1572,15 @@ export class CanvasStage {
       }
       return;
     }
-    if (found) return;
+    if (found) {
+      // A custom icon: its own picture, in its own colours, once it has arrived.
+      const svg = customSvg(found, read);
+      const picture = this.#iconPictures.get(svg);
+      if (!picture) return;
+      const box = pictureBox(svg, element.w, element.h);
+      group.add(new Konva.Image({ image: picture, x: box.x, y: box.y, width: box.w, height: box.h, listening: false }));
+      return;
+    }
     // No icon by that name here: a dashed box, and its name under it.
     group.add(
       new Konva.Rect({

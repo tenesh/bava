@@ -6,4 +6,4 @@
 import { createFakes } from './fake-services';
 
 export const fakes = createFakes();
-export const { ExportService, FileService, LogService, MenuService, RenderService, SpaceService } = fakes;
+export const { ExportService, FileService, IconService, LogService, MenuService, RenderService, SpaceService } = fakes;

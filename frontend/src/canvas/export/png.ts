@@ -12,6 +12,7 @@ import type { ExportArea } from './area';
 import type { Run } from '../code/highlight';
 import { withTheme } from './theme';
 import { loadPicture } from '../pictures';
+import { customSvgs, iconEntry, iconPictureAddress } from '../icons/sets';
 
 export type PngOptions = {
   /**
@@ -70,6 +71,17 @@ export async function toPng(area: ExportArea, options: PngOptions): Promise<Blob
     ),
   );
 
+  // Custom icons' pictures, both copies: which one shows depends on the theme drawn in.
+  const svgs = [
+    ...new Set(
+      area.elements.flatMap((e) => {
+        const entry = e.type === 'icon' ? iconEntry(e.icon) : null;
+        return entry?.set === 'custom' ? customSvgs(entry) : [];
+      }),
+    ),
+  ];
+  const iconPictures = await Promise.all(svgs.map(async (svg) => [svg, await load(iconPictureAddress(svg)).catch(() => null)] as const));
+
   const draw = (read: ReadVariable): HTMLCanvasElement => {
     // Offscreen but in the document: Konva reads the container's size at mount.
     const host = document.createElement('div');
@@ -98,6 +110,7 @@ export async function toPng(area: ExportArea, options: PngOptions): Promise<Blob
       // asynchronous and a draw is not.
       for (const [id, runs] of Object.entries(options.codeRuns ?? {})) stage.setCodeRuns(id, runs);
       for (const [file, picture] of loaded) stage.setPicture(file, picture);
+      for (const [svg, picture] of iconPictures) stage.setIconPicture(svg, picture);
       options.onDraw?.();
       const drawn = stage.toCanvas(options.scale);
       return options.background ? withBackground(drawn, read('--color-canvas-bg').trim()) : drawn;

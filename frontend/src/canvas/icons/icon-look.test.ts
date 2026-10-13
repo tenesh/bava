@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { IconElement } from '../scene';
-import { ICON_LABEL_GAP, ICON_LABEL_WIDTH, iconBounds, iconColour, iconLabelLayout, iconLabelSize, iconParts } from './icon-look';
+import { ICON_LABEL_GAP, ICON_LABEL_WIDTH, customSvg, iconBounds, iconColour, iconLabelLayout, iconLabelSize, iconParts, pictureBox } from './icon-look';
 import { iconEntry, loadSet } from './sets';
 
 const LIGHT: Record<string, string> = {
@@ -80,6 +80,22 @@ describe("an icon's label size", () => {
     const measure = (line: string) => line.length * 10 + 0.4;
     const font = { size: 20, lineHeight: 1.25 };
     expect(iconLabelSize(icon(), 'Orders database primary', measure, font)).toEqual({ width: 151, height: 50 });
+  });
+});
+
+describe('a custom icon', () => {
+  const entry = { set: 'custom' as const, name: 'acme', title: 'acme', keywords: [], svg: '<svg xmlns="x" viewBox="0 0 20 10" width="20" height="10"/>', darkSvg: '<svg viewBox="0 0 20 10" width="20" height="10"><g/></svg>' };
+
+  it('draws its dark copy on a dark canvas, its own otherwise', () => {
+    expect(customSvg(entry, reader(LIGHT))).toBe(entry.svg);
+    expect(customSvg(entry, reader(DARK))).toBe(entry.darkSvg);
+    expect(customSvg({ ...entry, darkSvg: undefined }, reader(DARK))).toBe(entry.svg);
+  });
+
+  it('keeps its proportions, centred in the square', () => {
+    expect(pictureBox(entry.svg, 64, 64)).toEqual({ x: 0, y: 16, w: 64, h: 32 });
+    expect(pictureBox('<svg viewBox="0 0 10 40" width="10" height="40"/>', 64, 64)).toEqual({ x: 24, y: 0, w: 16, h: 64 });
+    expect(pictureBox('<svg/>', 64, 64)).toEqual({ x: 0, y: 0, w: 64, h: 64 });
   });
 });
 

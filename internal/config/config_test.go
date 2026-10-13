@@ -105,6 +105,22 @@ func TestPathIsUnderTheUsersConfigDirectory(t *testing.T) {
 	}
 }
 
+// Bava's own folder holds the settings and the custom icon library side by side.
+func TestDirHoldsTheSettingsAndTheIcons(t *testing.T) {
+	dir, err := config.Dir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	path, _ := config.Path()
+	if filepath.Dir(path) != dir || filepath.Base(dir) != "bava" {
+		t.Errorf("dir = %q, settings at %q", dir, path)
+	}
+	icons, _ := config.IconsDir()
+	if icons != filepath.Join(dir, "icons") {
+		t.Errorf("icons at %q", icons)
+	}
+}
+
 // Autosave writes to the user's files without being asked. It is opt-in.
 func TestAutosaveDefaultsToOff(t *testing.T) {
 	settings := config.Defaults()

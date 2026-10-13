@@ -85,6 +85,8 @@ for (const theme of THEMES) {
         await expect(cell(page, 'General, searching').locator('.tile[aria-selected="true"]')).toHaveCount(1);
         await expect(cell(page, 'Logos').locator('.icon-grid .tile svg').first()).toBeVisible();
         await expect(cell(page, 'Custom').locator('.icon-grid .tile img')).toHaveCount(1);
+        await expect(cell(page, 'the Custom tab').getByRole('button', { name: 'Add icons' })).toBeVisible();
+        await expect(cell(page, 'the Custom tab').locator('.icon-grid .tile img')).toHaveCount(1);
         await expect(cell(page, 'failed').getByText("These icons couldn't be loaded.")).toBeVisible();
       });
     });

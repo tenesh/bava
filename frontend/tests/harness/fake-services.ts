@@ -480,6 +480,15 @@ export function createFakes(first: FakeSpace = seedSpace()) {
 
   const harness = {
     exports,
+    /** The custom icon library, as Go would list it; and what Add icons picks next. */
+    icons: [
+      {
+        name: 'acme',
+        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><rect x="3" y="5" width="18" height="14" rx="2" fill="#0F766E"/><rect x="3" y="8" width="18" height="3" fill="#F59E0B"/></svg>',
+        darkSvg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><rect x="3" y="5" width="18" height="14" rx="2" fill="#5EEAD4"/><rect x="3" y="8" width="18" height="3" fill="#FCD34D"/></svg>',
+      },
+    ] as { name: string; svg: string; darkSvg?: string }[],
+    iconsToAdd: [] as { name: string; svg: string; darkSvg?: string }[],
     /** The system clipboard's text, as the app writes and reads it. */
     clipboard: '',
     /** A picture on the system clipboard, in base64; '' for none. */
@@ -847,6 +856,32 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     },
     MenuService: {
       async SetState(_state: unknown) {},
+    },
+    IconService: {
+      async List() {
+        return { icons: harness.icons.map((icon) => ({ ...icon })), error: '' };
+      },
+      async Add() {
+        const added = harness.iconsToAdd.map((icon) => icon.name);
+        harness.icons = [...harness.icons, ...harness.iconsToAdd].sort((a, b) => a.name.localeCompare(b.name));
+        harness.iconsToAdd = [];
+        return { added, problems: [], error: '' };
+      },
+      async Rename(from: string, to: string) {
+        const icon = harness.icons.find((each) => each.name === from);
+        if (!icon) return { error: `no icon named ${from}`, code: 'notFound' };
+        if (harness.icons.some((each) => each.name === to)) return { error: `an icon named ${to} is already there`, code: 'refused' };
+        icon.name = to;
+        return { error: '', code: '' };
+      },
+      async Delete(name: string) {
+        if (!harness.icons.some((each) => each.name === name)) return { error: `no icon named ${name}`, code: 'notFound' };
+        harness.icons = harness.icons.filter((each) => each.name !== name);
+        return { error: '', code: '' };
+      },
+      async ShowFolder() {
+        return { error: '', code: '' };
+      },
     },
     LogService: {
       async Report(_entry: unknown) {},

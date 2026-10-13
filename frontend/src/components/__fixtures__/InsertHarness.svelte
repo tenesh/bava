@@ -5,8 +5,14 @@
   import { createIconPicker } from '../../shell/icon-picker.svelte';
   import type { BundledSet, IconEntry } from '../../canvas/icons/sets';
 
-  type Props = { onOutcome: (outcome: InsertOutcome) => void; failLogos?: boolean };
-  let { onOutcome, failLogos = false }: Props = $props();
+  type Library = {
+    add: () => void;
+    showFolder: () => void;
+    rename: (from: string, to: string) => Promise<string>;
+    remove: (name: string) => Promise<string>;
+  };
+  type Props = { onOutcome: (outcome: InsertOutcome) => void; failLogos?: boolean; library?: Library; custom?: IconEntry[]; dark?: boolean };
+  let { onOutcome, failLogos = false, library, custom = [], dark = false }: Props = $props();
   const insert = createInsert();
   const icon = (set: IconEntry['set'], name: string, title = name): IconEntry => ({
     set,
@@ -25,8 +31,8 @@
       if (set === 'logo' && failLogos) throw new Error('gone');
       return SETS[set];
     },
-    custom: () => [],
+    custom: async () => custom,
   });
 </script>
 
-<InsertPanel {insert} {icons} {onOutcome} />
+<InsertPanel {insert} {icons} {library} {dark} {onOutcome} />

@@ -81,13 +81,31 @@ func Defaults() Settings {
 	}
 }
 
-// Path is where settings live on this platform.
-func Path() (string, error) {
+// Dir is Bava's own folder in the platform config directory.
+func Dir() (string, error) {
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		return "", fmt.Errorf("locate config directory: %w", err)
 	}
-	return filepath.Join(dir, "bava", "settings.json"), nil
+	return filepath.Join(dir, "bava"), nil
+}
+
+// Path is where settings live on this platform.
+func Path() (string, error) {
+	dir, err := Dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "settings.json"), nil
+}
+
+// IconsDir is the custom icon library, shared by every Space.
+func IconsDir() (string, error) {
+	dir, err := Dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "icons"), nil
 }
 
 // Load reads the user's settings, falling back to defaults.

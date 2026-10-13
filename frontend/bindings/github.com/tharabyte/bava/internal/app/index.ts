@@ -3,6 +3,7 @@
 
 import * as ExportService from "./exportservice.js";
 import * as FileService from "./fileservice.js";
+import * as IconService from "./iconservice.js";
 import * as LogService from "./logservice.js";
 import * as MenuService from "./menuservice.js";
 import * as RenderService from "./renderservice.js";
@@ -10,6 +11,7 @@ import * as SpaceService from "./spaceservice.js";
 export {
     ExportService,
     FileService,
+    IconService,
     LogService,
     MenuService,
     RenderService,
@@ -17,10 +19,12 @@ export {
 };
 
 export type {
+    AddResult,
     AttachmentList,
     CardDetails,
     DialogResult,
     FileDetailsResult,
+    IconsResult,
     ImportPlanResult,
     ImportResult,
     IndexPage,

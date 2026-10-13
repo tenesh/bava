@@ -69,6 +69,12 @@ export function adaptLiteral(hex: string, canvas: string): string {
   ]);
 }
 
+/** Whether the canvas `read` describes is dark: what a custom icon's dark copy is for. */
+export function isDarkCanvas(read: ReadVariable): boolean {
+  const canvas = read('--color-canvas-bg').trim();
+  return HEX.test(canvas) && luminance(canvas) < 0.5;
+}
+
 function pick(value: unknown, part: 'fill' | 'stroke' | 'text', read: ReadVariable): string {
   // A colour the user picked, kept as it is unless the theme swallows it.
   if (isLiteralColour(value)) return adaptLiteral(value, read('--color-canvas-bg').trim());

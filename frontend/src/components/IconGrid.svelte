@@ -8,7 +8,7 @@
    */
   import { GRID_COLUMNS } from '../shell/insert.svelte';
   import type { IconPickerState } from '../shell/icon-picker.svelte';
-  import { ICON_GRID, ICON_STROKE, iconSvg } from '../canvas/icons/sets';
+  import { ICON_GRID, ICON_STROKE, iconPictureAddress } from '../canvas/icons/sets';
   import { iconParts } from '../canvas/icons/icon-look';
   import { t } from '../i18n/t';
 
@@ -18,9 +18,27 @@
     optionId: (index: number) => string;
     listId: string;
     onPick: (index: number) => void;
+    /** A custom icon's menu asked for, at a point in the window. */
+    onMenu?: (index: number, at: { x: number; y: number }) => void;
+    /** The custom icon being renamed, typed in place of its name. */
+    renaming?: string | null;
+    onRename?: (from: string, to: string) => void;
+    onCancelRename?: () => void;
+    /** Whether the app is dark: a custom icon shows its dark copy. */
+    dark?: boolean;
   };
 
-  let { icons, optionId, listId, onPick }: Props = $props();
+  let { icons, optionId, listId, onPick, onMenu, renaming = null, onRename, onCancelRename, dark = false }: Props = $props();
+
+  /** Answered by Enter or Escape: the blur as the field goes is no second answer. */
+  let settled = false;
+
+  /** Focus and select the name as the field opens, as a file's name is renamed. */
+  function selected(field: HTMLInputElement) {
+    settled = false;
+    field.focus();
+    field.select();
+  }
 
   let grid: HTMLDivElement;
 
@@ -63,12 +81,17 @@
         tabindex="-1"
         title={icon.title}
         onpointermove={() => icons.highlight(index)}
-        onclick={() => onPick(index)}
+        onclick={() => renaming !== icon.name && onPick(index)}
+        oncontextmenu={(event) => {
+          if (icon.set !== 'custom' || !onMenu) return;
+          event.preventDefault();
+          onMenu(index, { x: event.clientX, y: event.clientY });
+        }}
       >
         <span class="tile-icon">
           {#if icon.set === 'custom'}
             <!-- A custom icon as a picture, in its own colours: a picture runs nothing. -->
-            <img alt="" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg(icon, '', false))}`} />
+            <img alt="" src={iconPictureAddress((dark && icon.darkSvg) || icon.svg || '')} />
           {:else}
             <svg viewBox={`0 0 ${ICON_GRID} ${ICON_GRID}`} aria-hidden="true">
               {#each iconParts(icon) as part, n (n)}
@@ -85,7 +108,32 @@
             </svg>
           {/if}
         </span>
-        <span class="tile-label">{icon.title}</span>
+        {#if icon.set === 'custom' && renaming === icon.name}
+          <input
+            class="bava-field rename"
+            value={icon.name}
+            aria-label={t('insert.iconRename')}
+            spellcheck="false"
+            autocomplete="off"
+            use:selected
+            onkeydown={(event) => {
+              if (event.key !== 'Enter' && event.key !== 'Escape') return;
+              event.preventDefault();
+              event.stopPropagation();
+              if (settled) return;
+              settled = true;
+              if (event.key === 'Enter') onRename?.(icon.name, event.currentTarget.value);
+              else onCancelRename?.();
+            }}
+            onblur={(event) => {
+              if (settled) return;
+              settled = true;
+              onRename?.(icon.name, event.currentTarget.value);
+            }}
+          />
+        {:else}
+          <span class="tile-label">{icon.title}</span>
+        {/if}
       </div>
     {:else}
       <p class="empty">{t('insert.empty')}</p>
@@ -144,6 +192,19 @@
     white-space: nowrap;
     font-size: var(--text-meta);
     color: var(--color-text-muted);
+  }
+
+  .rename {
+    width: 100%;
+    min-width: 0;
+    font-size: var(--text-meta);
+  }
+
+  /* The shared field's ring, stated here as every component states its own. */
+  .rename:focus-visible {
+    outline: none;
+    border-color: var(--color-focus-ring);
+    box-shadow: 0 0 0 var(--focus-halo-width) var(--color-focus-halo);
   }
 
   .empty {

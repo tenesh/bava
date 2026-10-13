@@ -37,12 +37,32 @@ describe('previewing rendered SVG safely', () => {
 
   // A picture on the canvas, previewed for export: its bytes are already in
   // the document, so nothing is fetched.
-  it('keeps a PNG picture carried inside the document as data, and no other kind', () => {
-    const png = '<svg><image href="data:image/png;base64,iVBORw0KGgo="/></svg>';
-    expect(withoutRemoteRefs(png)).toBe(png);
+  it('keeps a picture carried inside the document as data, and no other kind', () => {
+    for (const kind of ['png', 'jpeg', 'gif', 'webp']) {
+      const picture = `<svg><image href="data:image/${kind};base64,iVBORw0KGgo="/></svg>`;
+      expect(withoutRemoteRefs(picture)).toBe(picture);
+    }
     for (const url of ['data:image/svg+xml;base64,PHN2Zz4=', 'data:image/png,raw', 'data:text/html;base64,abc']) {
       expect(withoutRemoteRefs(`<svg><image href="${url}"/></svg>`)).not.toContain(url);
     }
+  });
+
+  // Styles fetch too: an import, a url() or an image set reaching outside the document goes.
+  it('drops what a style would fetch, in any case, and keeps what the document holds', () => {
+    const svg =
+      '<svg><style>@IMPORT "https://example.com/a.css"; @import url(https://example.com/b.css); ' +
+      '.a{fill:URL(https://example.com/x)} .b{fill:url(#g)} @font-face{src:url(data:font/woff2;base64,AAAA)} ' +
+      '.c{background:-webkit-image-set("https://example.com/i.png" 1x)}</style>' +
+      '<rect style="fill:url( \'https://example.com/y\' )"/></svg>';
+    const safe = withoutRemoteRefs(svg);
+    expect(safe).not.toContain('example.com');
+    expect(safe).toContain('url(#g)');
+    expect(safe).toContain('url(data:font/woff2;base64,AAAA)');
+  });
+
+  // A page reads an element in an SVG's title as its own, where srcset fetches.
+  it('drops a source set too', () => {
+    expect(withoutRemoteRefs('<svg><title><image srcset="https://example.com/x.png 1x"/></title></svg>')).not.toContain('example.com');
   });
 });
 

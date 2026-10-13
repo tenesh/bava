@@ -12,7 +12,8 @@
   import InsertPanel from './components/InsertPanel.svelte';
   import { createInsert, ICON_CATEGORY } from './shell/insert.svelte';
   import { createIconPicker } from './shell/icon-picker.svelte';
-  import { loadSet, loadedSet, setCustomIcons } from './canvas/icons/sets';
+  import { loadSet, loadedSet, type IconEntry } from './canvas/icons/sets';
+  import { createIconLibrary } from './canvas/icons/library';
   import { setsWanted } from './canvas/icons/wanted';
   import { placedIcon } from './canvas/add-icon';
   import ContextMenu from './components/ContextMenu.svelte';
@@ -155,7 +156,7 @@
   import { followAction, followBeside, joinFile, outsideTarget, resolveLink, type Move } from './docs/links';
   import { relinkEdits } from './docs/page-links';
   import { addMedia, type MediaFile } from './docs/add-media';
-  import { ExportService, FileService, LogService, MenuService, SpaceService } from '../bindings/github.com/tharabyte/bava/internal/app';
+  import { ExportService, FileService, IconService, LogService, MenuService, SpaceService } from '../bindings/github.com/tharabyte/bava/internal/app';
   import { t } from './i18n/t';
   import { createSearch } from './files/search.svelte';
   import type { SearchHit } from './files/space.svelte';
@@ -321,8 +322,6 @@
     else for (const file of files) canvas.setPicture(file, null);
   }
 
-  /** Icon sets still loading, shown on the canvas as `data-icons`, for what waits on them. */
-  let iconsLoading = $state(0);
 
   /** Load the bundled sets the scene's icons name; each draws once its set arrives. */
   function loadIcons(scene: SceneData) {
@@ -524,11 +523,57 @@
 
   // The insert panel beside the rail.
   let insertOpen = $state(false);
+  /** Icon sets and the custom library still loading, shown on the canvas as `data-icons`, for what waits on them. */
+  let iconsLoading = $state(0);
   const insert = createInsert();
   /** The + panel's Icon category: the bundled sets as they load, and the custom library. */
-  const iconPicker = createIconPicker({ load: loadSet, custom: () => loadedSet('custom') ?? [] });
-  // The custom library starts empty, so a custom icon shows as missing rather than as nothing.
-  setCustomIcons([]);
+  const iconPicker = createIconPicker({ load: loadSet, custom: () => readIconLibrary() });
+
+  const customIcons = createIconLibrary({
+    list: () => IconService.List(),
+    load: loadPicture,
+    pictured: (svg, picture) => canvas.setIconPicture(svg, picture),
+    arrived: () => canvas.iconsArrived(),
+  });
+
+  /** The custom library read again (when Custom opens, after a change): `data-icons` waits on it. */
+  async function readIconLibrary(): Promise<IconEntry[]> {
+    iconsLoading += 1;
+    try {
+      return await customIcons.read();
+    } finally {
+      iconsLoading -= 1;
+    }
+  }
+
+  /** A library change's problem as the panel says it; a refused name keeps Go's reason, which names it. */
+  function iconProblem(problem: { error: string; code: string }): string {
+    if (!problem.error) return '';
+    if (problem.code === 'notFound') return t('insert.iconGone');
+    if (problem.code === 'refused') return problem.error;
+    return t('insert.iconFailed');
+  }
+
+  /** What the + panel's Custom tab does to the library. */
+  const iconLibrary = {
+    add() {
+      void IconService.Add().then((result) => {
+        if (result.error) notify(result.error);
+        else if ((result.problems ?? []).length > 0) notify((result.problems ?? []).join('; '));
+        // Read again by the Custom tab, which hands it to the canvas too.
+        iconPicker.refresh();
+      });
+    },
+    showFolder() {
+      void IconService.ShowFolder().then((problem) => problem.error && notify(iconProblem(problem)));
+    },
+    async rename(from: string, to: string) {
+      return iconProblem(await IconService.Rename(from, to));
+    },
+    async remove(name: string) {
+      return iconProblem(await IconService.Delete(name));
+    },
+  };
 
   function openInsertPanel() {
     insert.reset();
@@ -3356,6 +3401,8 @@
     invalidateAdvanceOnFontLoad();
     canvas.mount(diagramHost);
     canvas.render(history.current);
+    // Custom icons are drawn once the library has been read.
+    void readIconLibrary();
     // Text wrapped before Geist loaded was measured with a fallback; wrap it
     // again once fonts arrive. jsdom has no FontFaceSet.
     const onFontsLoaded = () => canvas.invalidate();
@@ -4289,6 +4336,8 @@
           <InsertPanel
             {insert}
             icons={iconPicker}
+            library={iconLibrary}
+            dark={theme.resolved === 'dark'}
             onOutcome={(outcome) => {
               if (outcome.type === 'icon') placeIcon(outcome.icon);
               if (outcome.type === 'choose') tools.activate(outcome.tool);

@@ -629,6 +629,12 @@ Every file pages show or link to, one folder per Space.
 - Folders and files the user allowed Bava to reach, inside a store's
   sandbox: `access.json` beside the settings, each a path and, on macOS, a
   security-scoped bookmark. Deleting it only means choosing them again.
+- Settings: `settings.json` in Bava's config folder, `bava/` in the
+  platform config directory (inside the sandbox's own home in a store build).
+- The custom icon library: `icons/` in the same folder, every Space's.
+  Plain SVG files, `<name>.svg` and its dark copy `<name>.dark.svg`, added
+  cleaned; `icons/.trash/` holds deleted ones. A page names a custom icon
+  (`custom/<name>`) and never carries it.
 
 `.d2` files are not opened as diagrams, are left out of a Space's list, and
 are never written.

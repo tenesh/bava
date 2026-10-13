@@ -23,8 +23,8 @@ const NONE: IconPickerOutcome = { type: 'none' };
 
 type Options = {
   load: (set: BundledSet) => Promise<IconEntry[]>;
-  /** The custom library as last read, or null while it is being read. */
-  custom: () => IconEntry[] | null;
+  /** The custom library, read again each time its tab opens. */
+  custom: () => Promise<IconEntry[]>;
 };
 
 export function createIconPicker({ load, custom }: Options) {
@@ -34,11 +34,16 @@ export function createIconPicker({ load, custom }: Options) {
   let limit = $state.raw(ICON_RESULTS);
   /** A tab's icons, once its sets have loaded; a failed load is remembered until the tab opens again. */
   let icons = $state.raw<Partial<Record<IconTab, IconEntry[] | 'failed'>>>({});
+  let customReads = 0;
 
   function open(next: IconTab) {
     if (next === 'custom') {
-      const library = custom();
-      icons = { ...icons, custom: library ?? undefined };
+      // What was read last stays shown while it is read again; an older read answering late is dropped.
+      const mine = (customReads += 1);
+      custom().then(
+        (library) => mine === customReads && (icons = { ...icons, custom: library }),
+        () => mine === customReads && (icons = { ...icons, custom: 'failed' }),
+      );
       return;
     }
     const known = icons[next];
@@ -101,6 +106,11 @@ export function createIconPicker({ load, custom }: Options) {
 
     highlight(index: number) {
       if (index >= 0 && index < results.length) highlighted = index;
+    },
+
+    /** Read the custom library again, after it changed; nothing for the bundled sets. */
+    refresh() {
+      if (tab === 'custom') open('custom');
     },
 
     /** The next page of results, when the grid is scrolled to its end. */

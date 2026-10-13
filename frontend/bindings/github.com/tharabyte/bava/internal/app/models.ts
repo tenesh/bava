@@ -6,10 +6,22 @@
 import * as format$0 from "../format/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as icons$0 from "../icons/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as space$0 from "../space/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as store$0 from "../store/models.js";
+
+/**
+ * AddResult is what was added, by name, and what could not be, a line each.
+ */
+export interface AddResult {
+    "added": string[] | null;
+    "problems": string[] | null;
+    "error": string;
+}
 
 /**
  * AttachmentList is the Space's attachments, by name.
@@ -54,6 +66,14 @@ export interface FileDetailsResult {
      * chosen it yet; opening it asks.
      */
     "outside": boolean;
+}
+
+/**
+ * IconsResult is the library's icons, cleaned, by name.
+ */
+export interface IconsResult {
+    "icons": icons$0.Icon[] | null;
+    "error": string;
 }
 
 /**

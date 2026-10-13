@@ -133,3 +133,107 @@ describe('the Icon category', () => {
     await vi.waitFor(() => expect(target.querySelector('.icon-grid')?.textContent).toContain("couldn't be loaded"));
   });
 });
+
+/** Choose an item in the open menu by keyboard, as Ark's menus are driven in jsdom. */
+async function choose(target: HTMLElement, label: string) {
+  const menu = await vi.waitFor(() => {
+    const content = target.querySelector('[data-scope="menu"][data-part="content"]') as HTMLElement | null;
+    expect(content).not.toBeNull();
+    return content!;
+  });
+  const press = (key: string) => flushSync(() => menu.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })));
+  for (let i = 0; i < 4; i += 1) {
+    press('ArrowDown');
+    if (menu.querySelector('[data-highlighted]')?.textContent?.includes(label)) break;
+  }
+  await vi.waitFor(() => expect(menu.querySelector('[data-highlighted]')?.textContent).toContain(label));
+  press('Enter');
+}
+
+describe("the Icon category's Custom tab", () => {
+  const acme = { set: 'custom' as const, name: 'acme', title: 'acme', keywords: [], svg: '<svg viewBox="0 0 10 10"><rect width="10" height="10"/></svg>' };
+
+  function openCustom() {
+    const library = { add: vi.fn(), showFolder: vi.fn(), rename: vi.fn(async () => ''), remove: vi.fn(async () => '') };
+    const { target } = render(InsertHarness, { onOutcome: vi.fn(), library, custom: [acme] });
+    flushSync(() => (target.querySelectorAll('[role="option"]')[4] as HTMLElement).click());
+    flushSync(() => ([...target.querySelectorAll('.bava-segment')][2] as HTMLElement).click());
+    const tile = () => target.querySelector('.icon-grid .tile') as HTMLElement;
+    return { target, library, tile };
+  }
+
+  it('shows the dark copy of an icon in a dark theme', async () => {
+    const library = { add: vi.fn(), showFolder: vi.fn(), rename: vi.fn(async () => ''), remove: vi.fn(async () => '') };
+    const darkSvg = '<svg viewBox="0 0 10 10"><rect width="10" height="10" fill="#5EEAD4"/></svg>';
+    const { target } = render(InsertHarness, { onOutcome: vi.fn(), library, custom: [{ ...acme, darkSvg }], dark: true });
+    flushSync(() => (target.querySelectorAll('[role="option"]')[4] as HTMLElement).click());
+    flushSync(() => ([...target.querySelectorAll('.bava-segment')][2] as HTMLElement).click());
+    await vi.waitFor(() => expect(decodeURIComponent(target.querySelector('.icon-grid img')?.getAttribute('src') ?? '')).toContain('#5EEAD4'));
+  });
+
+  it('offers Add icons and Show folder, and draws an icon in its own colours', async () => {
+    const { target, library, tile } = openCustom();
+    await vi.waitFor(() => expect(tile()?.querySelector('img')).not.toBeNull());
+    const button = (name: string) => [...target.querySelectorAll('button')].find((b) => b.textContent?.trim() === name) as HTMLElement;
+    flushSync(() => button('Add icons').click());
+    flushSync(() => button('Show folder').click());
+    expect(library.add).toHaveBeenCalledOnce();
+    expect(library.showFolder).toHaveBeenCalledOnce();
+  });
+
+  it('renames an icon from its right-click menu, typed in place', async () => {
+    const { target, library, tile } = openCustom();
+    await vi.waitFor(() => expect(tile()).not.toBeNull());
+    flushSync(() => tile().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 })));
+    await choose(target, 'Rename');
+    const field = await vi.waitFor(() => {
+      const input = target.querySelector('.icon-grid input') as HTMLInputElement | null;
+      expect(input?.value).toBe('acme');
+      return input!;
+    });
+    flushSync(() => {
+      field.value = 'billing';
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+    await vi.waitFor(() => expect(library.rename).toHaveBeenCalledWith('acme', 'billing'));
+  });
+
+  // Leaving the field after Enter or Escape is no second answer; Escape gives the keys back to the search.
+  it('cancels a rename with Escape, and renames once with Enter', async () => {
+    const { target, library, tile } = openCustom();
+    await vi.waitFor(() => expect(tile()).not.toBeNull());
+    const open = async () => {
+      flushSync(() => tile().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 })));
+      await choose(target, 'Rename');
+      return vi.waitFor(() => {
+        const input = target.querySelector('.icon-grid input') as HTMLInputElement | null;
+        expect(input).not.toBeNull();
+        return input!;
+      });
+    };
+    let field = await open();
+    flushSync(() => {
+      field.value = 'typed';
+      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      field.dispatchEvent(new FocusEvent('blur'));
+    });
+    expect(library.rename).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(document.activeElement).toBe(target.querySelector('.search input')));
+    field = await open();
+    flushSync(() => {
+      field.value = 'billing';
+      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      field.dispatchEvent(new FocusEvent('blur'));
+    });
+    await vi.waitFor(() => expect(library.rename).toHaveBeenCalledTimes(1));
+  });
+
+  it('deletes an icon from its right-click menu', async () => {
+    const { target, library, tile } = openCustom();
+    await vi.waitFor(() => expect(tile()).not.toBeNull());
+    flushSync(() => tile().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 })));
+    await choose(target, 'Delete');
+    await vi.waitFor(() => expect(library.remove).toHaveBeenCalledWith('acme'));
+  });
+});

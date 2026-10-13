@@ -121,6 +121,18 @@ func main() {
 			Failed: answers.pdfFailed,
 			Runs:   runs,
 		})),
+		application.NewService(app.NewIconService(app.IconServiceOptions{
+			Dir:         config.IconsDir,
+			ChooseFiles: answers.chooseFiles,
+			Reveal: func(path string) error {
+				a := current.Load()
+				if a == nil {
+					return errors.New("the application is not running yet")
+				}
+				return a.Env.OpenFileManager(path, false)
+			},
+			Access: grants,
+		})),
 		application.NewService(menus),
 		application.NewService(logService),
 	}

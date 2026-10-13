@@ -204,6 +204,29 @@ open file, its stamp or history.
   length shifts them). Numbering starts at the contents; bookmarks nest pages
   under folders.
 
+## IconService
+
+The custom icon library (`internal/icons`): SVG files in Bava's config folder
+(`<config>/bava/icons/`), shared by every Space, named by file; `<name>.dark.svg`
+is `<name>`'s dark copy. Every SVG is cleaned as it is added and again as it
+is read, so a file dropped in the folder by hand is held to the same rules:
+only drawing elements and drawing attributes are kept (an allow-list of each);
+a title or description keeps its words only; a stylesheet is never written,
+its plain class rules moved onto the elements they style; a value with an
+escape or `@`, or calling anything but colours, transforms and `url(#id)`,
+goes; a reference is to the file itself or a picture carried as data; the
+root keeps no way to draw past its box. It is sized by its viewBox, and a
+file whose class rules would make it more than four times its size, or
+nested more than 256 deep, is refused.
+
+| Method | Returns |
+|---|---|
+| `List()` | `IconsResult` (`icons`, `error`): each icon's `name`, cleaned `svg` and `darkSvg`, by name. A file that is not a whole SVG, and a dark copy with no icon, are left out. Text, not bytes: an icon is a small drawing. The whole library is sent each time it is read (opening Custom, after a change), so a library of icons carrying large embedded pictures costs that much each time; each file is at most 1 MB |
+| `Add()` | `AddResult` (`added`, `problems`, `error`): asks for SVG files and copies them in, cleaned; a name taken gets a number; a dark copy goes with its icon or to one already there without one. `problems` says, a line each, what could not be added (not an SVG, larger than 1 MB, a dark copy with nowhere to go). Cancelled: all empty |
+| `Rename(from, to)` | `Problem`: the icon and its dark copy renamed. Codes: `notFound`, `refused` (a name taken, empty, starting with a dot, ending in `.dark`, or holding a character a file name cannot) |
+| `Delete(name)` | `Problem`: the icon and its dark copy moved to the library's `.trash/`, under a free name. Code `notFound` |
+| `ShowFolder()` | `Problem`: the library's folder, made if new, in the file manager. Code `revealUnavailable` |
+
 ## MenuService
 
 The native menu is declared in `internal/app/menu/spec.json` and built in Go

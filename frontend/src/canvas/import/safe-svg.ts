@@ -9,16 +9,27 @@
  *
  * A reference inside the document (`#shape-1`) is what the diagram is made of
  * and stays, as does a PNG carried as data. What goes is anything else with a
- * scheme, and anything protocol-relative: the only references left point at
- * the document itself.
+ * scheme, and anything protocol-relative, and in a style any import, image set
+ * or url() not within the document or its data: the only references left
+ * point at the document itself.
  */
 
 /**
- * `href`, `xlink:href` or `src` whose value is not a fragment, nor a PNG
- * carried as base64 data: a canvas picture in an export's preview, whose
- * bytes are in the document already.
+ * `href`, `xlink:href`, `src` or `srcset` whose value is not a fragment, nor a
+ * PNG, JPEG, GIF or WebP picture carried as base64 data: a canvas picture or
+ * a custom icon's picture in an export's preview, whose bytes are in the
+ * document already.
  */
-const REMOTE_REF = /\s(?:xlink:)?(?:href|src)\s*=\s*(?:"(?!data:image\/png;base64,[A-Za-z0-9+/=]*")[^"#][^"]*"|'(?!data:image\/png;base64,[A-Za-z0-9+/=]*')[^'#][^']*')/gi;
+const REMOTE_REF = /\s(?:xlink:)?(?:href|srcset|src)\s*=\s*(?:"(?!data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]*")[^"#][^"]*"|'(?!data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]*')[^'#][^']*')/gi;
+
+/** A stylesheet import, in any case: it is a fetch. */
+const CSS_IMPORT = /@import\b[^;]*;?/gi;
+
+/** A url() in a style that points neither within the document nor at data it carries. */
+const CSS_REMOTE_URL = /url\(\s*(?!['"]?\s*(?:#|data:))[^)]*\)/gi;
+
+/** An image set takes addresses without url(). */
+const CSS_IMAGE_SET = /(?:-webkit-)?image-set\s*\([^)]*\)/gi;
 
 /** An anchor wrapping part of the drawing; its contents are kept. */
 const LINK_TAGS = /<a\b[^>]*>|<\/a>/gi;
@@ -31,5 +42,10 @@ const LINK_TAGS = /<a\b[^>]*>|<\/a>/gi;
  * the shape inside it is still drawn.
  */
 export function withoutRemoteRefs(svg: string): string {
-  return svg.replace(REMOTE_REF, '').replace(LINK_TAGS, '');
+  return svg
+    .replace(REMOTE_REF, '')
+    .replace(LINK_TAGS, '')
+    .replace(CSS_IMPORT, '')
+    .replace(CSS_IMAGE_SET, 'none')
+    .replace(CSS_REMOTE_URL, 'none');
 }

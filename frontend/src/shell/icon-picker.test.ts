@@ -12,8 +12,8 @@ const SETS: Record<BundledSet, IconEntry[]> = {
   logo: [entry('logo', 'postgresql', ['postgres'], 'PostgreSQL'), entry('logo', 'redis', [], 'Redis')],
 };
 
-function picker(over: { load?: (set: BundledSet) => Promise<IconEntry[]>; custom?: () => IconEntry[] | null } = {}) {
-  return createIconPicker({ load: over.load ?? (async (set) => SETS[set]), custom: over.custom ?? (() => [entry('custom', 'acme-billing')]) });
+function picker(over: { load?: (set: BundledSet) => Promise<IconEntry[]>; custom?: () => Promise<IconEntry[]> } = {}) {
+  return createIconPicker({ load: over.load ?? (async (set) => SETS[set]), custom: over.custom ?? (async () => [entry('custom', 'acme-billing')]) });
 }
 
 const names = (p: ReturnType<typeof picker>) => p.results.map((icon) => `${icon.set}/${icon.name}`);
@@ -39,7 +39,7 @@ describe('the icon picker', () => {
     await vi.waitFor(() => expect(names(p)).toEqual(['logo/postgresql']));
     p.setTab('custom');
     p.setQuery('');
-    expect(names(p)).toEqual(['custom/acme-billing']);
+    await vi.waitFor(() => expect(names(p)).toEqual(['custom/acme-billing']));
   });
 
   it('moves by a row with up and down, and along with left and right while nothing is typed', async () => {
@@ -81,6 +81,18 @@ describe('the icon picker', () => {
     expect([p.tab, p.query, p.highlighted]).toEqual(['general', '', 0]);
     await vi.waitFor(() => expect(p.status).toBe('ready'));
     expect(p.results.length).toBeLessThanOrEqual(ICON_RESULTS);
+  });
+
+  // The library is a folder anyone can drop files into: it is read again each time Custom opens.
+  it('reads the custom library each time its tab opens', async () => {
+    let library = [entry('custom', 'acme')];
+    const p = picker({ custom: async () => library });
+    p.setTab('custom');
+    await vi.waitFor(() => expect(names(p)).toEqual(['custom/acme']));
+    library = [entry('custom', 'acme'), entry('custom', 'billing')];
+    p.setTab('general');
+    p.setTab('custom');
+    await vi.waitFor(() => expect(names(p)).toEqual(['custom/acme', 'custom/billing']));
   });
 
   it('shows a page at a time, and more when asked', async () => {
