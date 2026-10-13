@@ -1627,5 +1627,17 @@ test.describe('tables and classes', () => {
     await page.keyboard.press('Escape');
     expect(ofType(await saved(page), 'class')).toHaveLength(1);
   });
+
+  test('dragging one out draws it as it goes, without an error, at the width dragged', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await startCanvas(page);
+    await menu(page, 'tool.table');
+    await dragScene(page, { x: 200, y: 200 }, { x: 500, y: 260 });
+    await page.keyboard.press('Escape');
+    const [table] = ofType(await saved(page), 'table') as unknown as { w: number }[];
+    expect(table.w).toBe(300);
+    expect(errors).toEqual([]);
+  });
 });
 

@@ -4110,6 +4110,15 @@ describe('placing a table or class', () => {
     expect(t.h).toBe(tableLayout(t).height);
   });
 
+  it('previews what a drag will place: its starting rows, the width dragged, its rows height', () => {
+    const { handler } = harness('table' as never);
+    handler.down(at(100, 100));
+    handler.move(at(400, 160));
+    const [shown] = handler.preview(at(400, 160))!.elements as unknown as { type: string; name: string; rows: string; w: number; h: number }[];
+    expect(shown).toMatchObject({ type: 'table', name: 'table', rows: 'id int pk', w: 300 });
+    expect(shown.h).toBe(tableLayout(shown).height);
+  });
+
   it('takes the width dragged out, and makes a class with its own start', () => {
     const { history, handler } = harness('class' as never);
     handler.down(at(100, 100));

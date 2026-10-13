@@ -65,7 +65,9 @@ export type TableLayout = {
   height: number;
 };
 
-export function tableLayout(element: TableLike, measure: MeasureWords = rough): TableLayout {
+export function tableLayout(given: TableLike, measure: MeasureWords = rough): TableLayout {
+  // A file edited by hand may leave either out: it draws as empty.
+  const element = { ...given, name: given.name ?? '', rows: given.rows ?? '' };
   const right = element.w - TABLE_PAD;
   // A name runs up to its type, the gap between, and is cut short there.
   const name = (text: string, x: number, typeText: string, typeRight: number): Cell => {

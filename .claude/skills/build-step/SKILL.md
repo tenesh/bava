@@ -24,7 +24,7 @@ of ours; never run git write operations (the user commits).
 8. **Sync artifacts** (checklist below) in the same change.
 9. **Gates:** `go vet ./internal/... .`, `go test ./internal/... .`, `npm run check`, `npm run lint`, `npm test`; `npm run browser` when anything drawn or page behavior changes.
 10. **Review:** dispatch `spec-reviewer` on the diff; verify each finding, push back on wrong ones.
-11. **Report** what shipped, files, test counts, every deviation from spec. Then stop.
+11. **Report** what shipped, files, test counts, every deviation from spec, and a one-line commit message prefixed by area or kind (`canvas:`, `ci:`, `docs:`). Then stop.
 
 ## Commands
 

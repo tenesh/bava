@@ -1768,6 +1768,14 @@ export function createPointerHandler(options: PointerHandlerOptions) {
     if (started.snap?.corners && !linear && snapping()) guides = guidesFor(started.snap.corners, box);
     // Text is typed, not dragged: its tool is handled with the label editor.
     if (type === 'text') return null;
+    // A table or class: shown as it will be placed, at the width dragged.
+    if (type === 'table' || type === 'class') {
+      const w = tidy(Math.max(TABLE_MIN_WIDTH, box.w));
+      const element = { id: started.newId, type, ...TABLE_START[type], x: box.x, y: tidy(started.origin.y), w, h: 0, ...newStyle(type) };
+      return (scene) => {
+        scene.elements.push({ ...element, h: tableLayout(element).height, z: topZ(scene.elements) + 1 } as SceneElement);
+      };
+    }
     const extra = linear
         ? {
             // From where the drag started to where it ended, relative to the box.

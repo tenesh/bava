@@ -67,8 +67,9 @@ export function commitText(
 }
 
 /** What the field shows for a table or class: its name, then its rows, a line each. */
-export function tableText(element: { name: string; rows: string }): string {
-  return element.rows ? `${element.name}\n${element.rows}` : element.name;
+export function tableText(element: { name?: string; rows?: string }): string {
+  const name = element.name ?? '';
+  return element.rows ? `${name}\n${element.rows}` : name;
 }
 
 /**

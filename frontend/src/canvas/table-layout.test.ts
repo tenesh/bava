@@ -73,3 +73,15 @@ describe('cells kept apart', () => {
     expect(row.name).toBe('a_very_long_column_name_indeed');
   });
 });
+
+// A file edited by hand may leave a key out: it draws as empty, as any
+// missing value draws as its default, rather than failing.
+describe('a table or class missing its name or rows', () => {
+  it('lays out as an empty one', () => {
+    const layout = tableLayout({ type: 'table', w: 200 } as never);
+    expect(layout.header.text).toBe('');
+    expect(layout.rows).toEqual([]);
+    expect(tableLayout({ type: 'class', w: 200 } as never).rows).toEqual([]);
+  });
+});
+
