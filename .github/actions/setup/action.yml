@@ -1,0 +1,95 @@
+# What every CI job sets up before its own work, in one order. The job
+# checks the repository out first: an action kept in the repository can only
+# run once it is there.
+name: setup
+description: Linux packages, Go, Node and npm ci, and the wails3 CLI, as a job asks.
+
+inputs:
+  webview:
+    description: On Linux, install the webview's development packages.
+    default: 'false'
+  packages:
+    description: On Linux, more packages to install, space-separated.
+    default: ''
+  userns:
+    description: On Linux, lift Ubuntu's limit on unprivileged user namespaces.
+    default: 'false'
+  go:
+    description: Set up Go from go.mod.
+    default: 'true'
+  node:
+    description: Set up Node from .nvmrc, npm's cache included.
+    default: 'true'
+  install:
+    description: Run npm ci in frontend (a wails3 build installs on its own).
+    default: 'true'
+  wails:
+    description: Install the wails3 CLI at the version go.mod pins.
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    # Wails v3 defaults to GTK4 + WebKitGTK 6.0 on Linux. The GTK3 variant
+    # exists but is opt-in behind a `gtk3` build tag; see the cgo tags in
+    # wails/v3/pkg/application/linux_cgo.go (`!gtk3`) versus
+    # linux_cgo_gtk3.go (`gtk3`). Installing the GTK3 packages produces a
+    # pkg-config failure for gtk4/webkitgtk-6.0 that reads like a missing
+    # system library rather than a wrong-variant mistake.
+    - name: Linux packages
+      if: runner.os == 'Linux' && (inputs.webview == 'true' || inputs.packages != '')
+      shell: bash
+      run: |
+        set -euo pipefail
+        wanted="${{ inputs.packages }}"
+        if [[ "${{ inputs.webview }}" == "true" ]]; then
+          wanted="build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev libglib2.0-dev $wanted"
+        fi
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends $wanted
+        # Fail here with a clear message rather than inside cgo.
+        if [[ "${{ inputs.webview }}" == "true" ]]; then
+          pkg-config --exists gtk4 webkitgtk-6.0 libsoup-3.0 gio-unix-2.0 \
+            || { echo "::error::required pkg-config packages missing after install"; exit 1; }
+        fi
+
+    # WebKit starts its web content in a sandbox, and Flatpak runs the app in
+    # one; both need unprivileged user namespaces, which Ubuntu 24.04
+    # restricts through AppArmor. Lifted on this throwaway runner only, which
+    # keeps those sandboxes on.
+    - name: Allow user namespaces
+      if: runner.os == 'Linux' && inputs.userns == 'true'
+      shell: bash
+      run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+    - name: Go
+      if: inputs.go == 'true'
+      uses: actions/setup-go@v7
+      with:
+        # Follows the go directive rather than pinning a second version that
+        # can drift away from it.
+        go-version-file: go.mod
+        cache: true
+
+    - name: Node
+      if: inputs.node == 'true'
+      uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: npm ci
+      if: inputs.node == 'true' && inputs.install == 'true'
+      shell: bash
+      working-directory: frontend
+      run: npm ci
+
+    # The version the app is written against, read from go.mod: Wails cuts
+    # near-nightly betas, so `@latest` would build with another one.
+    - name: wails3 CLI
+      if: inputs.wails == 'true'
+      shell: bash
+      run: |
+        command -v go >/dev/null || { echo "::error::the wails3 CLI needs Go: leave go on"; exit 1; }
+        go install "github.com/wailsapp/wails/v3/cmd/wails3@$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"

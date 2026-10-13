@@ -128,7 +128,7 @@ exit code (`npm test` can fail with every test passed).
 
 What is true now and affects the gates. Update it when a milestone closes.
 
-**Position:** R1 done (repository `tharabyte/bava`; adapted canvas code
+**Position:** 15.4 done (15.4d, run 38322558497). R1 done (repository `tharabyte/bava`; adapted canvas code
 attributed in `NOTICE` for good). R2 done (the stores' sandboxes: the same walks pass inside the Mac sandbox,
 the installed MSIX and Flatpak, run 38143080459). 15.3 done (import;
 its walk passes on all three systems and inside each store's package, run
@@ -148,8 +148,9 @@ to `3.0.0-beta.28`; Node 24 (`.nvmrc`); Ark UI `5.24.2`, Konva `10.5`, Vitest
 **How tests run:** Go, vitest, check, lint and build on the host. Browser
 tests only in Docker (`tests/scripts/browser.sh`; OrbStack must be running).
 The real app only on CI: `-tags e2e` walks `tests/e2e/` (`create`, `reopen`,
-`canvas`, `export-proof`, `import`) on all three platforms, and again inside each
-store's package. Never `wails3 dev` locally.
+`canvas`, `export-proof`, `import`) on all three platforms (`walks`), and again
+inside each store's package (`store walks`). Jobs share their setup through
+`.github/actions/setup`. Never `wails3 dev` locally.
 
 **Gates:** all green on the host (go vet, go test 15 packages, 2 golden
 fixtures, check, lint, `npm test` 3,135 passed); `npm run browser` 591 passed,
@@ -165,6 +166,7 @@ there, in the same change; a plan's As built points to it.
 - Browser tests see WebKit in a container, not the real webviews.
 - Media's Sort dropdown, picked by pointer, missed once under a full run (`dialogs.spec.ts`); 15 alone passed.
 - A canvas embed's first save can leave the page unsaved, about 1 in 20 in `document.spec.ts`; not investigated.
+- The `import` walk in `store walks (macos)` (then `sandboxed run (macos)`) once never showed the imported folder (step 8, run 38322558497) and passed on a re-run; not investigated.
 - A floating menu's picture timing out in `placed` (`frontend/tests/helpers.ts`) is fixed locally; watch CI.
 
 **Traps:**

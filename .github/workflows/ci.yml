@@ -26,49 +26,21 @@ permissions:
 jobs:
   test:
     name: test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     strategy:
-      # One platform failing must not hide the others; that is the whole point
+      # One system failing must not hide the others; that is the whole point
       # of a matrix here.
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - { os: linux, runner: ubuntu-latest }
+          - { os: macos, runner: macos-latest }
+          - { os: windows, runner: windows-latest }
     steps:
       - uses: actions/checkout@v7
-
-      # Wails v3 defaults to GTK4 + WebKitGTK 6.0 on Linux. The GTK3 variant
-      # exists but is opt-in behind a `gtk3` build tag; see the cgo tags in
-      # wails/v3/pkg/application/linux_cgo.go (`!gtk3`) versus
-      # linux_cgo_gtk3.go (`gtk3`). Installing the GTK3 packages produces a
-      # pkg-config failure for gtk4/webkitgtk-6.0 that reads like a missing
-      # system library rather than a wrong-variant mistake.
-      - name: Install Linux webview dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential pkg-config \
-            libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev libglib2.0-dev
-          # Fail here with a clear message rather than inside cgo.
-          pkg-config --exists gtk4 webkitgtk-6.0 libsoup-3.0 gio-unix-2.0 \
-            || { echo "::error::required pkg-config packages missing after install"; exit 1; }
-
-      - uses: actions/setup-go@v7
+      - uses: ./.github/actions/setup
         with:
-          # Follows the go directive rather than pinning a second version that
-          # can drift away from it.
-          go-version-file: go.mod
-          cache: true
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: npm ci
-        working-directory: frontend
-        run: npm ci
+          webview: 'true'
 
       - name: svelte-check
         working-directory: frontend
@@ -117,48 +89,24 @@ jobs:
 
   build:
     name: build (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     needs: test
     strategy:
+      # One system failing must not hide the others; that is the whole point
+      # of a matrix here.
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - { os: linux, runner: ubuntu-latest }
+          - { os: macos, runner: macos-latest }
+          - { os: windows, runner: windows-latest }
     steps:
       - uses: actions/checkout@v7
-
-      # Wails v3 defaults to GTK4 + WebKitGTK 6.0 on Linux. The GTK3 variant
-      # exists but is opt-in behind a `gtk3` build tag; see the cgo tags in
-      # wails/v3/pkg/application/linux_cgo.go (`!gtk3`) versus
-      # linux_cgo_gtk3.go (`gtk3`). Installing the GTK3 packages produces a
-      # pkg-config failure for gtk4/webkitgtk-6.0 that reads like a missing
-      # system library rather than a wrong-variant mistake.
-      - name: Install Linux webview dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential pkg-config \
-            libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev libglib2.0-dev
-          # Fail here with a clear message rather than inside cgo.
-          pkg-config --exists gtk4 webkitgtk-6.0 libsoup-3.0 gio-unix-2.0 \
-            || { echo "::error::required pkg-config packages missing after install"; exit 1; }
-
-      - uses: actions/setup-go@v7
+      - uses: ./.github/actions/setup
         with:
-          go-version-file: go.mod
-          cache: true
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      # Pinned to the same tag as the Go dependency. Wails cuts near-nightly
-      # betas, so `@latest` here would build with a different version than the
-      # one the app is written against.
-      - name: Install wails3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
+          webview: 'true'
+          install: 'false'
+          wails: 'true'
 
       - name: wails3 build
         run: wails3 build
@@ -197,7 +145,7 @@ jobs:
   # (behaviour in a real browser). On a failure the results are uploaded for
   # someone to look at.
   browser:
-    name: browser tests
+    name: browser
     runs-on: ubuntu-24.04-arm
     needs: test
     steps:
@@ -210,41 +158,38 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: browser-test-results
+          name: browser
           path: frontend/tests/.results/
           retention-days: 14
 
   # End-to-end: the real app, built with the e2e driver (-tags e2e), makes a
   # Space in a scratch folder, a page and a shape, saves, quits, reopens, and
   # checks it is all still there, taking screenshots on the way.
-  smoke:
-    name: smoke run (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+  walks:
+    name: walks (${{ matrix.os }})
+    runs-on: ${{ matrix.runner }}
     needs: test
     strategy:
+      # One system failing must not hide the others; that is the whole point
+      # of a matrix here.
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - { os: linux, runner: ubuntu-latest }
+          - { os: macos, runner: macos-latest }
+          - { os: windows, runner: windows-latest }
     env:
       VITE_BAVA_E2E: '1'
     steps:
       - uses: actions/checkout@v7
-
-      - name: Install Linux webview dependencies and a virtual screen
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential pkg-config \
-            libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev libglib2.0-dev \
-            xvfb imagemagick fonts-dejavu-core
-          pkg-config --exists gtk4 webkitgtk-6.0 libsoup-3.0 gio-unix-2.0 \
-            || { echo "::error::required pkg-config packages missing after install"; exit 1; }
-          # WebKit starts its web content in a sandbox that needs unprivileged
-          # user namespaces, which Ubuntu 24.04 restricts through AppArmor;
-          # without this the page never starts. Lifted on this throwaway runner
-          # only, which keeps WebKit's sandbox on.
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      # A virtual screen and fonts to draw on; WebKit's own sandbox kept on.
+      - uses: ./.github/actions/setup
+        with:
+          webview: 'true'
+          packages: xvfb imagemagick fonts-dejavu-core
+          userns: 'true'
+          install: 'false'
+          wails: 'true'
 
       # screencapture needs the screen-recording permission; the runner image
       # lets the job grant it to the process that asks.
@@ -255,24 +200,10 @@ jobs:
             sudo sqlite3 "$db" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier, flags) VALUES ('kTCCServiceScreenCapture', '/usr/sbin/screencapture', 1, 2, 4, 1, 'UNUSED', 0);" || true
           done
 
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install wails3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
-
       - name: build with the smoke driver
         run: wails3 build EXTRA_TAGS=e2e
 
-      - name: run the smoke scenarios
+      - name: run the walks
         shell: bash
         timeout-minutes: 10
         run: |
@@ -305,35 +236,25 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: smoke-${{ matrix.os }}
+          name: walks-${{ matrix.os }}
           path: ${{ runner.temp }}/smoke-out/
           retention-days: 14
 
   # The walks inside the Mac App Store's sandbox: the end-to-end build packed
   # as an .app, ad-hoc signed with the sandbox's entitlements (no account
   # needed), each walk laid out in the app's own container.
-  sandbox-macos:
-    name: sandboxed run (macos)
+  store-walks-macos:
+    name: store walks (macos)
     runs-on: macos-latest
     needs: test
     env:
       VITE_BAVA_E2E: '1'
     steps:
       - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v7
+      - uses: ./.github/actions/setup
         with:
-          go-version-file: go.mod
-          cache: true
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install wails3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
+          install: 'false'
+          wails: 'true'
 
       - name: package the end-to-end build, signed into the sandbox
         run: |
@@ -362,7 +283,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: sandbox-macos
+          name: store-walks-macos
           path: |
             ~/Library/Containers/com.tharabyte.bava/Data/smoke-out/
             ~/Library/Containers/com.tharabyte.bava/Data/Library/Caches/Bava/logs/
@@ -374,28 +295,18 @@ jobs:
   # here (no account needed), installed and started by Windows. A package
   # starts without the shell's environment, so each walk is named in
   # ~/.bava-e2e and lays itself out in the home.
-  sandbox-windows:
-    name: packaged run (windows)
+  store-walks-windows:
+    name: store walks (windows)
     runs-on: windows-latest
     needs: test
     env:
       VITE_BAVA_E2E: '1'
     steps:
       - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v7
+      - uses: ./.github/actions/setup
         with:
-          go-version-file: go.mod
-          cache: true
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install wails3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
+          install: 'false'
+          wails: 'true'
 
       - name: build with the smoke driver
         run: wails3 build EXTRA_TAGS=e2e
@@ -459,51 +370,33 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: sandbox-windows
+          name: store-walks-windows
           path: ~/smoke-out/
           if-no-files-found: warn
           retention-days: 14
 
-  # A normal build must not contain the smoke driver: its frontend bundle is
-  # checked here, its Go side by release_test.go.
   # The walks inside Flatpak's sandbox, as Flathub ships Bava: the
   # end-to-end build packed by a test-only manifest (tests/flatpak/, never
   # the submitted one), each walk laid out in the app's own folder.
-  sandbox-linux:
-    name: sandboxed run (linux)
+  store-walks-linux:
+    name: store walks (linux)
     runs-on: ubuntu-24.04
     needs: test
     env:
       VITE_BAVA_E2E: '1'
     steps:
       - uses: actions/checkout@v7
-
-      - name: Install Linux webview dependencies, Flatpak and a virtual screen
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential pkg-config \
-            libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev libglib2.0-dev \
-            flatpak flatpak-builder xvfb dbus-x11
-          # Flatpak's sandbox needs unprivileged user namespaces, which
-          # Ubuntu 24.04 restricts through AppArmor. Lifted on this throwaway
-          # runner only.
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-
-      - uses: actions/setup-go@v7
+      # Flatpak and a virtual screen; Flatpak's sandbox needs user namespaces.
+      - uses: ./.github/actions/setup
         with:
-          go-version-file: go.mod
-          cache: true
+          webview: 'true'
+          packages: flatpak flatpak-builder xvfb dbus-x11
+          userns: 'true'
+          install: 'false'
+          wails: 'true'
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install wails3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
+      - name: Flathub, for the runtime the manifest names
+        run: flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
       - name: build with the smoke driver
         run: wails3 build EXTRA_TAGS=e2e
@@ -539,27 +432,26 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: sandbox-linux
+          name: store-walks-linux
           path: |
             ~/.var/app/com.tharabyte.bava.Devel/smoke-out/
             ~/.var/app/com.tharabyte.bava.Devel/cache/Bava/logs/
           if-no-files-found: warn
           retention-days: 14
 
-  release-has-no-driver:
-    name: release bundle has no driver
+  # A normal build must not contain the smoke driver: its frontend bundle is
+  # checked here, its Go side by release_test.go.
+  release-check:
+    name: release check
     runs-on: ubuntu-latest
     needs: test
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: ./.github/actions/setup
         with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          go: 'false'
       - working-directory: frontend
         run: |
-          npm ci
           npm run build
           if grep -rl "internal/e2e.Service" dist; then
             echo "::error::the release bundle contains the smoke driver"; exit 1

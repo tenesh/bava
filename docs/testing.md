@@ -42,9 +42,11 @@ Areas: `canvas`, `components`, `dialogs`, `document`, `settings`, `shell`,
 
 A build with `-tags e2e` (the driver in `internal/e2e/` and `frontend/src/e2e/`)
 runs each scenario on a fresh launch, answering native pickers from the
-scenario's `folders`, `files` and `saves`. Screenshots are attached to the CI
-run; a failing step takes one and stops the chain. A test fails if a default
-build contains the driver.
+scenario's `folders`, `files` and `saves`. The `walks` job runs them on each
+system; its screenshots are kept as `walks-<os>`, and a failing step takes
+one and stops the chain. A default build must not contain the driver: the
+`release check` job checks the frontend bundle, `release_test.go` (in
+`test`) the Go side.
 
 | Scenario | Does |
 |---|---|
@@ -67,24 +69,30 @@ build contains the driver.
 | `pdffile` | `target`, `text`: `min=` sheets, `first=` / `last=` size in mm |
 | `pdf` | `target`, `name` as `paper/orientation/margins[/heavy]`, `text` as `pages=2 size=210x297` |
 
-Inside the Mac App Store's sandbox, the `sandboxed run (macos)` job packs
+Inside the Mac App Store's sandbox, the `store walks (macos)` job packs
 the end-to-end build as an `.app`, signs it ad hoc with
 `build/darwin/entitlements.sandbox.plist` and runs the same walks with
 `BAVA_E2E_SANDBOX=1`: the build lays each walk out in its own container
 (its scenarios and fixtures are built in) and leaves its result there.
 Screenshots the sandbox refuses are skipped, not failures.
 
-As the Microsoft Store ships Bava, the `packaged run (windows)` job packs
+As the Microsoft Store ships Bava, the `store walks (windows)` job packs
 the end-to-end build as an MSIX (`build/windows/msix/app_manifest.xml`),
 signs it with a certificate it makes, installs it and starts it through
 Windows. A package starts without the shell's environment, so each walk is
 named in `~/.bava-e2e` and lays itself out in the home.
 
-As Flathub ships Bava, the `sandboxed run (linux)` job packs the end-to-end
+As Flathub ships Bava, the `store walks (linux)` job packs the end-to-end
 build with a test-only manifest (`tests/flatpak/bava-ci.yml`, ID
 `com.tharabyte.bava.Devel`, never submitted), installs it and runs the walks
 with `flatpak run`; each lays itself out in the app's own folder,
 `~/.var/app/com.tharabyte.bava.Devel`.
+
+What each store walk leaves (results, screenshots, logs) is kept as
+`store-walks-<os>`; the browser tests' results, on a failure, as `browser`.
+Every job's setup but `browser`'s (which runs in its container) is
+`.github/actions/setup`: Linux packages, Go, Node, `npm ci`, the `wails3`
+CLI at the version `go.mod` pins, each job asking for what it needs.
 
 ## Rules for every test
 
