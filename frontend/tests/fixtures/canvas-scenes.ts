@@ -126,6 +126,7 @@ export function containers(): El[] {
     el({ id: 'code-go', type: 'code', x: 440, y: 170, w: 260, h: 90, code: 'func main() {\n\tfmt.Println("hi")\n}', language: 'go', measuredWidth: 220, measuredHeight: 80 }),
     el({ id: 'code-plain', type: 'code', x: 40, y: 300, w: 300, h: 70, code: 'plain text, no language\nand a second line', measuredWidth: 280, measuredHeight: 60 }),
     el({ id: 'code-long', type: 'code', x: 380, y: 300, w: 320, h: 80, code: 'const aVeryLongNameThatRunsOnAndOn = computeTheThingFromAnotherThing(argumentOne, argumentTwo);', language: 'typescript', fontSize: 11, measuredWidth: 300, measuredHeight: 70 }),
+    el({ id: 'code-d2', type: 'code', x: 380, y: 410, w: 320, h: 120, code: '# the write path\napi: Orders {\n  shape: cylinder\n}\napi -> db: writes', language: 'd2', measuredWidth: 220, measuredHeight: 110 }),
   ];
   return [frame, inA, inB, g1, g2, group, across, ...code];
 }

@@ -894,6 +894,20 @@ test.describe('defaults, text and dialogs', () => {
     expect(asked).toEqual([]);
   });
 
+  // Typed through the browser's own keys: the brace closes itself and Enter indents inside it.
+  test('D2 diagram types as D2: braces close and Enter indents', async ({ page }) => {
+    await startCanvas(page);
+    await menu(page, 'insert.d2Diagram');
+    const code = openDialog(page).locator('.cm-content');
+    await expect(code).toBeFocused();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type('db: {');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('shape: cylinder');
+    await expect.poll(() => code.evaluate((el) => [...el.querySelectorAll('.cm-line')].map((line) => line.textContent))).toEqual(['db: {', '  shape: cylinder', '}']);
+    await expect(openDialog(page).locator('.syntax-keyword').first()).toHaveText('shape');
+  });
+
   test('D2 diagram starts at the engine used last, and the status bar names it', async ({ page }) => {
     await startCanvas(page);
     await menu(page, 'insert.d2Diagram');

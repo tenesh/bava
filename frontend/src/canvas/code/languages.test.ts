@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { LANGUAGES, loadParser, resetLanguageCache } from './languages';
+import { toRuns } from './highlight';
 
 describe('the languages a code block offers', () => {
   it('lists the set that was agreed', () => {
@@ -17,7 +18,9 @@ describe('the languages a code block offers', () => {
       'html',
       'css',
       'markdown',
+      'd2',
     ]);
+    expect(LANGUAGES.find((language) => language.name === 'd2')?.label).toBe('D2');
   });
 
   it('gives every language a name to show', () => {
@@ -57,6 +60,22 @@ describe('loading a language', () => {
     expect(await loadParser(undefined)).toBeNull();
   });
 
+  it('colours D2 as the D2 diagram dialog does', async () => {
+    resetLanguageCache();
+    const parser = await loadParser('d2');
+    expect(parser).not.toBeNull();
+    const [line] = toRuns('api: { shape: cylinder }', parser);
+    expect(line.filter((run) => run.text.trim()).map((run) => [run.text.trim(), run.kind])).toEqual([
+      ['api', 'name'],
+      [':', 'punctuation'],
+      ['{', 'punctuation'],
+      ['shape', 'keyword'],
+      [':', 'punctuation'],
+      ['cylinder', 'string'],
+      ['}', 'punctuation'],
+    ]);
+  });
+
   it('really parses, for a language it does have', async () => {
     resetLanguageCache();
     const parser = await loadParser('json');
@@ -68,13 +87,13 @@ describe('loading a language', () => {
 // No network, ever (CLAUDE.md). Language support is bundled and loaded from
 // the app's own files; a URL here would be a fetch at runtime.
 describe('where language support comes from', () => {
-  it('imports bare package names, never a URL', () => {
+  it('imports bare package names or the app\u2019s own modules, never a URL', () => {
     const source = readFileSync(new URL('./languages.ts', import.meta.url), 'utf8');
     const specifiers = [...source.matchAll(/import\(\s*['"]([^'"]+)['"]\s*\)/g)].map((match) => match[1]);
     expect(specifiers.length).toBeGreaterThan(0);
     for (const specifier of specifiers) {
       expect(specifier).not.toMatch(/^[a-z]+:\/\//i);
-      expect(specifier.startsWith('@codemirror/')).toBe(true);
+      expect(specifier.startsWith('@codemirror/') || specifier.startsWith('../')).toBe(true);
     }
   });
 });

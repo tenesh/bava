@@ -2,6 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { EditorView } from '@codemirror/view';
 import { SourcePane } from './source-pane';
+import spec from '../../../internal/app/menu/spec.json';
+import { reservedByMenu, type MenuSpec } from '../shell/shortcuts';
 import { onTeardown } from '../test/render';
 
 /** A pane the shared teardown destroys when the test ends. */
@@ -99,4 +101,67 @@ describe('the pane an element is in', () => {
     pane.destroy();
     expect(SourcePane.containing(inside)).toBeNull();
   });
+});
+
+// The D2 diagram dialog's editor reads its D2 as D2.
+describe('SourcePane writing D2', () => {
+  function mounted(onSubmit?: () => void) {
+    const pane = newPane();
+    const host = document.createElement('div');
+    document.body.append(host);
+    pane.mount(host, { doc: 'api: { shape: cylinder }', onChange: () => {}, onSubmit });
+    const view = EditorView.findFromDOM(host.querySelector('.cm-editor') as HTMLElement)!;
+    return { pane, view, host };
+  }
+  const press = (view: EditorView, key: string, modifiers: KeyboardEventInit = {}) =>
+    view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...modifiers }));
+
+  it('colours a name and a reserved word as the canvas does', () => {
+    const { host } = mounted();
+    const coloured = (text: string) => [...host.querySelectorAll('.cm-line span')].find((span) => span.textContent === text)?.className;
+    expect(coloured('api')).toBe('syntax-name');
+    expect(coloured('shape')).toBe('syntax-keyword');
+  });
+
+  it('comments a line with Mod-/ and indents with Tab', () => {
+    const { pane, view } = mounted();
+    view.dispatch({ selection: { anchor: 0 } });
+    press(view, '/', { ctrlKey: true });
+    expect(pane.doc).toBe('# api: { shape: cylinder }');
+    press(view, 'Tab');
+    expect(pane.doc).toBe('  # api: { shape: cylinder }');
+  });
+
+  // Tab indents, so the dialog is finished from the editor: Mod-Enter inserts.
+  it('asks to insert with Mod-Enter', () => {
+    let submitted = 0;
+    const { view } = mounted(() => (submitted += 1));
+    press(view, 'Enter', { ctrlKey: true });
+    expect(submitted).toBe(1);
+  });
+});
+
+// Tab indents, so there must be a way to let it move focus again, on every
+// platform, past every key the menu claims there (Minimise takes Ctrl-M).
+describe('leaving the D2 editor by keyboard', () => {
+  for (const platform of ['darwin', 'windows', 'linux'] as const) {
+    it(`hands Tab back to focus with Shift-Alt-M on ${platform}`, () => {
+      const pane = newPane();
+      const host = document.createElement('div');
+      document.body.append(host);
+      pane.mount(host, { doc: 'a -> b', onChange: () => {}, isReserved: reservedByMenu(spec as MenuSpec, platform) });
+      const view = EditorView.findFromDOM(host.querySelector('.cm-editor') as HTMLElement)!;
+      const press = (init: KeyboardEventInit) => {
+        const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+        view.contentDOM.dispatchEvent(event);
+        return event.defaultPrevented;
+      };
+      expect(press({ key: 'Tab', keyCode: 9 })).toBe(true);
+      expect(press({ key: 'M', keyCode: 77, shiftKey: true, altKey: true })).toBe(true);
+      // Now Tab is the browser's: it moves focus, and the code is untouched.
+      const before = pane.doc;
+      expect(press({ key: 'Tab', keyCode: 9 })).toBe(false);
+      expect(pane.doc).toBe(before);
+    });
+  }
 });

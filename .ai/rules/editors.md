@@ -112,3 +112,11 @@ Ark's menu can refocus itself in the frame an item is chosen, stealing focus.
 ## Diagnostics come from Render
 `editor/diagnostics.ts` maps `Render`'s positions onto `@codemirror/lint`;
 never re-parse in the frontend.
+
+## D2 is read by one tokeniser
+`editor/d2-language.ts` colours D2 and gives its editing help everywhere it
+is written: the D2 diagram's editor, and `d2` among the code languages for
+canvas and page code blocks. Its reserved words come from
+`testdata/d2/keywords.json`, which a Go test holds to the pinned D2's own;
+after a D2 bump, rewrite the file from the test's message. Its kinds map
+onto the canvas's (`KIND_HIGHLIGHTER`), so D2 is one colour everywhere.

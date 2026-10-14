@@ -5,12 +5,16 @@
  * destroyed by the caller's cleanup. It is never handed reactive props: if a
  * `$derived` ever feeds this, the design has gone wrong.
  *
- * No D2 language mode yet: plain text with diagnostics.
+ * D2 as D2 (`d2-language.ts`): coloured as the canvas colours code, typed
+ * with D2's editing help, with the compiler's diagnostics.
  */
 import { editorTheme } from './theme';
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, lineNumbers, keymap, highlightActiveLine, type KeyBinding } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap, redo, selectAll, undo } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, indentWithTab, redo, selectAll, toggleTabFocusMode, undo } from '@codemirror/commands';
+import { syntaxHighlighting } from '@codemirror/language';
+import { d2Support } from './d2-language';
+import { KIND_HIGHLIGHTER } from '../canvas/code/highlight';
 import { lintGutter, setDiagnostics } from '@codemirror/lint';
 import type { Diagnostic as GoDiagnostic } from '../../bindings/github.com/tharabyte/bava/internal/render/models';
 import { toEditorDiagnostics } from './diagnostics';
@@ -23,6 +27,11 @@ export type SourcePaneOptions = {
    * binds has one meaning and cannot act twice.
    */
   isReserved?: (binding: KeyBinding) => boolean;
+  /**
+   * Mod-Enter: the source is done (the dialog inserts it). Tab indents here,
+   * so this is how the work is finished without leaving the editor.
+   */
+  onSubmit?: () => void;
 };
 
 /** Every mounted pane, by its editor's root element. */
@@ -50,8 +59,19 @@ export class SourcePane {
       highlightActiveLine(),
       history(),
       lintGutter(),
+      d2Support(),
+      syntaxHighlighting(KIND_HIGHLIGHTER),
+      // Tab indents, as in any code editor. Shift-Alt-M hands Tab back to
+      // moving focus, on every platform: CodeMirror's own Ctrl-M is the
+      // window's Minimise on Windows and Linux.
       keymap.of(
-        [...defaultKeymap, ...historyKeymap].filter((binding) => !options.isReserved?.(binding)),
+        [
+          ...(options.onSubmit ? [{ key: 'Mod-Enter', run: () => (options.onSubmit?.(), true) }] : []),
+          { key: 'Shift-Alt-m', run: toggleTabFocusMode },
+          ...defaultKeymap.filter((binding) => binding.run !== toggleTabFocusMode),
+          ...historyKeymap,
+          indentWithTab,
+        ].filter((binding) => !options.isReserved?.(binding)),
       ),
       EditorView.lineWrapping,
       EditorView.updateListener.of((update) => {

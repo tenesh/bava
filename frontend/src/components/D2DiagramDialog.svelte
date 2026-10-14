@@ -91,6 +91,10 @@
         typed = next;
         onSource(next);
       },
+      // Mod-Enter in the editor is the Insert button, when it is on.
+      onSubmit: () => {
+        if (canInsert) onInsert();
+      },
     });
     pane = editor;
     return () => {

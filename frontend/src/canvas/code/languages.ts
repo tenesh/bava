@@ -72,6 +72,13 @@ export const LANGUAGES: LanguageEntry[] = [
     load: async () => (await import('@codemirror/lang-markdown')).markdown().language.parser,
     support: async () => (await import('@codemirror/lang-markdown')).markdown(),
   },
+  // Bava's own: the D2 the D2 diagram dialog is typed in (`editor/d2-language.ts`).
+  {
+    name: 'd2',
+    label: 'D2',
+    load: async () => (await import('../../editor/d2-language')).d2Language.parser,
+    support: async () => (await import('../../editor/d2-language')).d2Support(),
+  },
 ];
 
 /** Loaded parsers, so picking a language twice loads it once. */

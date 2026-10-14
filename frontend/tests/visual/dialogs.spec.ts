@@ -487,7 +487,8 @@ for (const theme of THEMES) {
       const code = openDialog(page).locator('.cm-content');
       await expect(code).toBeFocused();
       await page.keyboard.press('ControlOrMeta+a');
-      await page.keyboard.type('api -> db\ndb: {\n  shape: cylinder\n');
+      // In one go, as a paste: typed, the editor would close the brace.
+      await page.keyboard.insertText('api -> db\ndb: {\n  shape: cylinder\n');
       await expect(openDialog(page).locator('.errors li')).toHaveText(['maps must be terminated with }'].map((text) => new RegExp(text)));
       await expect(openDialog(page).getByRole('button', { name: 'Insert' })).toBeDisabled();
       await restPointer(page);

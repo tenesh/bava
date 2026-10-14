@@ -22,4 +22,14 @@ export const editorTheme = EditorView.theme({
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
     backgroundColor: 'var(--color-selection)',
   },
+  // The kinds `canvas/code/highlight.ts` marks, in the colours the canvas draws code in.
+  '.syntax-keyword': { color: 'var(--syntax-keyword)' },
+  '.syntax-string': { color: 'var(--syntax-string)' },
+  '.syntax-number': { color: 'var(--syntax-number)' },
+  '.syntax-comment': { color: 'var(--syntax-comment)' },
+  '.syntax-name': { color: 'var(--syntax-name)' },
+  '.syntax-type': { color: 'var(--syntax-type)' },
+  '.syntax-operator': { color: 'var(--syntax-operator)' },
+  '.syntax-punctuation': { color: 'var(--syntax-punctuation)' },
+  '.cm-matchingBracket, &.cm-focused .cm-matchingBracket': { backgroundColor: 'var(--color-control-active)', outline: 'none' },
 });

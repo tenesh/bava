@@ -117,6 +117,21 @@ closes, `⌫` on an empty search goes up.
 | `Tab` / `⇧Tab` | Indent / outdent |
 | `Enter` | New line |
 | `Esc` | Finish editing, keep the code |
+| `⌘/` | Comment or uncomment the selected lines, in a language that has comments (`#` in D2) |
+
+## In the D2 diagram's editor
+
+| Key | Action |
+|---|---|
+| `Tab` / `⇧Tab` | Indent / outdent |
+| `Enter` | New line, indented inside `{ }` |
+| `⌘/` | Comment or uncomment the selected lines with `#` |
+| `⌘Enter` | Insert, when Insert is on |
+| `⇧⌥M` | Let `Tab` move focus out of the editor again, or back to indenting |
+| `Esc` | Close the dialog |
+
+In both, typing `{`, `[`, `(` or a quote adds its partner, and a typed `}`
+lines up with the line that opened it.
 
 ## In the Document
 

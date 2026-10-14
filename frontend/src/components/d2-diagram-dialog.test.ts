@@ -46,6 +46,23 @@ describe('D2DiagramDialog', () => {
     expect(onInsert).toHaveBeenCalled();
   });
 
+  // Tab indents in the editor, so the diagram is inserted from there too, when Insert would.
+  it('inserts with Mod-Enter in the editor, only when Insert is on', async () => {
+    const press = () =>
+      flushSync(() =>
+        (document.querySelector('.cm-content') as HTMLElement).dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }),
+        ),
+      );
+    const waiting = await setup({ pending: true });
+    press();
+    expect(waiting.onInsert).not.toHaveBeenCalled();
+    unmount(waiting.app);
+    const ready = await setup();
+    press();
+    expect(ready.onInsert).toHaveBeenCalledOnce();
+  });
+
   // Nothing to insert, and nothing that would arrive as an empty diagram.
   // The preview describes the previous source until the render lands, so
   // inserting during that window would insert the wrong diagram.

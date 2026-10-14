@@ -185,6 +185,14 @@ export const SUBJECTS = {
     edit: 'code-caption',
     empty: { markdown: page('```go\n```'), ready: '.code-block' },
   },
+  'code-d2': {
+    type: 'code_block',
+    markdown: page('```d2\n# the write path\napi: Orders {\n  shape: cylinder\n}\napi -> db: writes\n```'),
+    find: ':scope > .code-block',
+    ready: '.syntax-keyword',
+    word: 'api',
+    edit: 'code-caption',
+  },
   equation: {
     type: 'math_block',
     markdown: page('$$\n\\int_0^1 x^2\\,dx = \\tfrac{1}{3}\n$$'),
@@ -392,7 +400,7 @@ export type SubjectName = keyof typeof SUBJECTS;
 export const DOC_SHEETS = {
   blocks: [
     'paragraph', 'paragraph-coloured', 'heading', 'headings', 'quote', 'divider', 'bullets', 'numbers', 'item', 'todo',
-    'callout', 'toggle', 'toggle-summary', 'code', 'equation', 'contents', 'footnotes', 'footnote',
+    'callout', 'toggle', 'toggle-summary', 'code', 'code-d2', 'equation', 'contents', 'footnotes', 'footnote',
   ],
   media: ['table', 'row', 'cell', 'header-cell', 'image', 'embed', 'video', 'online-video', 'file-card', 'web-card', 'kept'],
   inline: [

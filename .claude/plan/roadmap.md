@@ -27,6 +27,7 @@ Standing rules:
 | 15.1 | Search across a Space; find on the Canvas |
 | 15.2 | Export: a page, a folder or the Space as PDF or Markdown zip; the Canvas as PNG or SVG |
 | R1 | The move to Tharabyte (`tharabyte/bava`, `com.tharabyte.bava`); no other products named; adapted canvas code attributed in `NOTICE`, for good |
+| 10 | D2 coloured and edited as D2 in the D2 diagram's editor and in canvas and page code blocks (`.claude/work/specs/d2-editing.md`) |
 | 9 | Icons: an icon element from bundled general icons and logos in Bava's palette, a custom SVG library every Space shares, cleaned before it is drawn; a D2 `icon:` found by name, never fetched (`.claude/work/specs/icons.md`) |
 
 ## Next
@@ -63,10 +64,6 @@ word in its id, its shown name and any artifact it keeps (`walks-<os>`,
 `store-walks-<os>`, `browser`; `release-check` keeps none; the build's
 download keeps `bava-<os>-<commit>`), with `docs/testing.md` and the build skill to match.
 Exit: green on all three systems.
-
-### 10: Source editor polish
-A D2 language mode and keymap for the D2 diagram editor. Exit:
-tokeniser tests.
 
 ### 11: AI foundation
 A chat pane against a local, OpenAI-compatible endpoint the user sets.

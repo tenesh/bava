@@ -85,6 +85,7 @@ Start Bava as if it had never run:
 - [ ] Icon ▸ Custom ▸ Add icons: the system's file dialog takes SVGs (in a store's sandbox too); an SVG with a script or a remote picture is added without them; Show folder opens the library; a file dropped there by hand shows next time Custom opens.
 - [ ] A custom icon with `name.dark.svg` beside it switches copies with the theme, on the canvas and in a dark export.
 - [ ] Rename and Delete from a custom icon's right-click menu; a deleted one is in the library's `.trash` folder.
+- [ ] Type D2 in the D2 diagram's editor and in a canvas code block set to D2: colours in both themes, Enter indents inside `{`, a typed `}` lines up, brackets and quotes close, ⌘/ comments; in the dialog ⌘Enter inserts and ⇧⌥M (Shift+Alt+M on Windows and Linux) lets Tab leave the editor.
 - [ ] A D2 diagram with `icon: server`, an icon address and one Bava lacks: the first two arrive as icons with their labels and arrows, the last stays a box and is named under the preview; no request leaves the machine (watch the network).
 
 ## Media

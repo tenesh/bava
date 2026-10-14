@@ -47,6 +47,12 @@ describe('a code block in the page', () => {
     await vi.waitFor(() => expect(host.querySelector('.syntax-keyword')?.textContent).toBe('const'));
   });
 
+  it('colours a d2 fence as D2', async () => {
+    const { host } = open('```d2\napi: { shape: cylinder }\n```');
+    await vi.waitFor(() => expect(host.querySelector('.syntax-keyword')?.textContent).toBe('shape'));
+    expect(host.querySelector('.syntax-name')?.textContent).toBe('api');
+  });
+
   it('knows a language by its short name, and leaves one it does not know plain', async () => {
     const { host } = open('```ts\nlet y: number;\n```\n\n```klingon\nqapla\n```\n');
     await vi.waitFor(() => expect(host.querySelector('.syntax-keyword')?.textContent).toBe('let'));
