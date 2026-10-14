@@ -128,7 +128,7 @@ exit code (`npm test` can fail with every test passed).
 
 What is true now and affects the gates. Update it when a milestone closes.
 
-**Position:** 9 done (icons: parts 1 and 2 green on CI, runs 38443180949 and 38482396914; part 3 to commit). Next 10 (source editor polish), then the AI milestones 11 to 14, then 16 and 17. 15.4 done; CI setup in one place done (run 38338032045). R1 done (repository `tharabyte/bava`; adapted canvas code
+**Position:** 9 done (icons; CI green, runs 38443180949, 38482396914 and 38489760745). Next 10 (source editor polish), then the AI milestones 11 to 14, then 16 and 17. 15.4 done; CI setup in one place done (run 38338032045). R1 done (repository `tharabyte/bava`; adapted canvas code
 attributed in `NOTICE` for good). R2 done (the stores' sandboxes: the same walks pass inside the Mac sandbox,
 the installed MSIX and Flatpak, run 38143080459). 15.3 done (import;
 its walk passes on all three systems and inside each store's package, run
