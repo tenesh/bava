@@ -27,6 +27,7 @@ Standing rules:
 | 15.1 | Search across a Space; find on the Canvas |
 | 15.2 | Export: a page, a folder or the Space as PDF or Markdown zip; the Canvas as PNG or SVG |
 | R1 | The move to Tharabyte (`tharabyte/bava`, `com.tharabyte.bava`); no other products named; adapted canvas code attributed in `NOTICE`, for good |
+| 9 | Icons: an icon element from bundled general icons and logos in Bava's palette, a custom SVG library every Space shares, cleaned before it is drawn; a D2 `icon:` found by name, never fetched (`.claude/work/specs/icons.md`) |
 
 ## Next
 
@@ -62,13 +63,6 @@ word in its id, its shown name and any artifact it keeps (`walks-<os>`,
 `store-walks-<os>`, `browser`; `release-check` keeps none; the build's
 download keeps `bava-<os>-<commit>`), with `docs/testing.md` and the build skill to match.
 Exit: green on all three systems.
-
-### 9: Icons and assets
-An icon element: a bundled line set and an open-licensed logo set in
-Bava's palette, a searchable picker, and a custom SVG library shared by
-every Space (`.claude/work/specs/icons.md`). A D2 `icon:` resolves locally
-by name; a remote icon is never fetched. Proprietary cloud icon sets are
-never bundled. Exit: a test that conversion never yields a remote icon.
 
 ### 10: Source editor polish
 A D2 language mode and keymap for the D2 diagram editor. Exit:

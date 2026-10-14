@@ -18,6 +18,8 @@ import type {
   LayoutShape as WireShape,
 } from '../../../bindings/github.com/tharabyte/bava/internal/render/models';
 import type { ElementId, SceneElement } from '../scene';
+import { d2IconName } from '../icons/d2-names';
+import { t } from '../../i18n/t';
 
 /**
  * The layout, as the converter needs it.
@@ -36,7 +38,66 @@ export type ConvertOptions = {
   at: { x: number; y: number };
   /** Called on each shape as it arrives, before its arrows: a shape grown to its label. */
   fit?: (element: SceneElement) => void;
+  /**
+   * The icon a D2 `icon:` names among Bava's own, as an element stores it, or
+   * null when there is none; never an address. Without it, icons are left out.
+   */
+  resolveIcon?: (value: string) => string | null;
 };
+
+/** A container's icon: in its top-left corner, this size, this far in. */
+export const ICON_IN_FRAME = 24;
+export const ICON_IN_FRAME_INSET = 8;
+
+/**
+ * The names of the D2 icons none of Bava's sets holds, once each, as the
+ * dialog lists them; a picture carried as data, briefly. A table or class
+ * takes no icon, so its icon is not looked for.
+ */
+export function iconsNotFound(layout: Layout, resolveIcon: (value: string) => string | null): string[] {
+  const missing = layout.shapes
+    .filter((shape) => shape.icon && !tableKind(shape.type) && !resolveIcon(shape.icon))
+    .map((shape) => d2IconName(shape.icon!) || t('d2Diagram.embeddedIcon'));
+  return [...new Set(missing)];
+}
+
+type Box = { x: number; y: number; w: number; h: number };
+type Point = { x: number; y: number };
+
+/**
+ * Where a route's end meets an icon's square: D2 ends it at the box it drew
+ * round the shape, which the icon sits inside. Along the end's last segment
+ * where that reaches the square, otherwise the nearest point of its edge.
+ */
+function meetSquare(end: Point, before: Point, box: Box): Point {
+  const dx = end.x - before.x;
+  const dy = end.y - before.y;
+  let enter = 0;
+  let leave = Number.POSITIVE_INFINITY;
+  for (const [origin, delta, low, high] of [
+    [before.x, dx, box.x, box.x + box.w],
+    [before.y, dy, box.y, box.y + box.h],
+  ] as const) {
+    if (delta === 0) {
+      if (origin < low || origin > high) leave = -1;
+      continue;
+    }
+    const a = (low - origin) / delta;
+    const b = (high - origin) / delta;
+    enter = Math.max(enter, Math.min(a, b));
+    leave = Math.min(leave, Math.max(a, b));
+  }
+  if (enter <= leave && leave >= 0) return { x: before.x + dx * enter, y: before.y + dy * enter };
+  const x = Math.min(Math.max(end.x, box.x), box.x + box.w);
+  const y = Math.min(Math.max(end.y, box.y), box.y + box.h);
+  // Inside the square: out to its nearest edge.
+  if (x > box.x && x < box.x + box.w && y > box.y && y < box.y + box.h) {
+    const sides = [x - box.x, box.x + box.w - x, y - box.y, box.y + box.h - y];
+    const nearest = sides.indexOf(Math.min(...sides));
+    return [{ x: box.x, y }, { x: box.x + box.w, y }, { x, y: box.y }, { x, y: box.y + box.h }][nearest];
+  }
+  return { x, y };
+}
 
 /**
  * Every arrowhead D2 v0.9.0 can produce, as Bava's file format spells it.
@@ -117,16 +178,36 @@ export function toElements(layout: Layout, options: ConvertOptions): SceneElemen
   // Containers first, so they paint behind what they hold.
   const ordered = [...layout.shapes].sort((a, b) => Number(isContainer(b, layout)) - Number(isContainer(a, layout)));
   let z = 0;
-  const elements: SceneElement[] = ordered.map((shape) => {
+  const elements: SceneElement[] = ordered.flatMap((shape): SceneElement[] => {
     z += 1;
     const container = isContainer(shape, layout);
     const kind = tableKind(shape.type);
+    const inFrame = shape.parent ? { frame: idFor(shape.parent) } : {};
     if (kind && !container) {
       // A table or class: its name and rows, as tall as its rows are drawn here.
       const element = { id: idFor(shape.id), type: kind, name: shape.label ?? '', rows: shape.rows ?? '', x: shape.x + offset.x, y: shape.y + offset.y, w: shape.w, z };
-      return { ...element, h: tableLayout(element).height, ...(shape.parent ? { frame: idFor(shape.parent) } : {}) } as SceneElement;
+      return [{ ...element, h: tableLayout(element).height, ...inFrame } as SceneElement];
     }
-    return {
+    const icon = shape.icon && options.resolveIcon ? options.resolveIcon(shape.icon) : null;
+    if (icon && !container) {
+      // A shape with an icon is that icon, its label under it, centred where D2 put the box.
+      const side = Math.min(shape.w, shape.h);
+      return [
+        {
+          id: idFor(shape.id),
+          type: 'icon',
+          icon,
+          x: shape.x + offset.x + (shape.w - side) / 2,
+          y: shape.y + offset.y + (shape.h - side) / 2,
+          w: side,
+          h: side,
+          z,
+          ...(shape.label ? { label: shape.label } : {}),
+          ...inFrame,
+        } as SceneElement,
+      ];
+    }
+    const element = {
       id: idFor(shape.id),
       type: container ? 'frame' : canvasShapeFor(shape.type),
       x: shape.x + offset.x,
@@ -135,10 +216,32 @@ export function toElements(layout: Layout, options: ConvertOptions): SceneElemen
       h: shape.h,
       z,
       ...(shape.label ? { label: shape.label } : {}),
-      ...(shape.parent ? { frame: idFor(shape.parent) } : {}),
+      ...inFrame,
     } as SceneElement;
+    if (!icon) return [element];
+    // A container keeps its box, for what it holds; its icon sits in the
+    // corner its label leaves free, unlabelled.
+    z += 1;
+    const corner = {
+      id: idFor(`${shape.id}\u0000icon`),
+      type: 'icon',
+      icon,
+      x: element.x + element.w - ICON_IN_FRAME_INSET - ICON_IN_FRAME,
+      y: element.y + ICON_IN_FRAME_INSET,
+      w: ICON_IN_FRAME,
+      h: ICON_IN_FRAME,
+      z,
+      frame: element.id,
+    } as SceneElement;
+    return [element, corner];
   });
   for (const element of elements) if (element.type !== 'frame' && element.type !== 'table' && element.type !== 'class') options.fit?.(element);
+  // The squares shapes became, by D2 id, for their arrows' ends.
+  const iconBoxes = new Map<string, Box>();
+  for (const shape of layout.shapes) {
+    const element = elements.find((e) => e.id === ids.get(shape.id));
+    if (element?.type === 'icon') iconBoxes.set(shape.id, { x: element.x, y: element.y, w: element.w, h: element.h });
+  }
   const byId = new Map(layout.shapes.map((shape) => [shape.id, shape]));
 
   const shapeIds = new Set(layout.shapes.map((shape) => shape.id));
@@ -152,6 +255,11 @@ export function toElements(layout: Layout, options: ConvertOptions): SceneElemen
     // this canvas can draw.
     const points = (connection.route ?? []).map((point) => ({ x: point.x + offset.x, y: point.y + offset.y }));
     if (points.length < 2) continue;
+    // An end at a shape that became its icon meets the icon, not the box D2 drew round it.
+    const startIcon = iconBoxes.get(connection.src);
+    const endIcon = iconBoxes.get(connection.dst);
+    if (startIcon) points[0] = meetSquare(points[0], points[1], startIcon);
+    if (endIcon) points[points.length - 1] = meetSquare(points[points.length - 1], points[points.length - 2], endIcon);
     const xs = points.map((p) => p.x);
     const ys = points.map((p) => p.y);
     const x = Math.min(...xs);

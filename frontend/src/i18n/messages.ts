@@ -687,6 +687,11 @@ export const messages = {
   'layout.talaHint': 'TALA chooses its own direction.',
   'd2Diagram.status': 'Laid out by {engine} · {shapes} shapes',
   'd2Diagram.status.one': 'Laid out by {engine} · 1 shape',
+  'd2Diagram.iconMissing': 'icon not found: {names}',
+  'd2Diagram.embeddedIcon': 'a picture carried in the D2',
+  'd2Diagram.iconSeparator': ', ',
+  'd2Diagram.statusWithIcons': '{status} · {icons}',
+  'd2Diagram.iconsMissing': 'icons not found: {names}',
   'export.title': 'Export canvas',
   'export.subtitle': 'The Canvas as a picture',
   // Exporting a page, a folder or the Space as a Markdown zip.

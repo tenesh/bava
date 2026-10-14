@@ -15,8 +15,8 @@ export interface Diagnostic {
  * Layout is the geometry the canvas builds shapes from.
  * 
  * It is what the diagram *is*, not how D2 painted it: position, size, label,
- * nesting and the route of each connection. Colours, opacity, dashes, icons,
- * tooltips and links are deliberately absent. A diagram inserted on the canvas
+ * nesting, a shape's icon by name, and the route of each connection.
+ * Colours, opacity, dashes, tooltips and links are deliberately absent. A diagram inserted on the canvas
  * arrives in Bava's own style, and leaving D2's palette out of this contract
  * is what keeps that true: nothing downstream can come to depend on it.
  * 
@@ -83,6 +83,12 @@ export interface LayoutShape {
      * other shape.
      */
     "rows"?: string;
+
+    /**
+     * Icon is the shape's `icon:` as written, a name or an address; the
+     * canvas looks it up by name among its own icons and never fetches it.
+     */
+    "icon"?: string;
 }
 
 /**

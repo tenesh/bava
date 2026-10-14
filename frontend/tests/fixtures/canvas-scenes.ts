@@ -230,7 +230,7 @@ export function tables(): El[] {
 /**
  * Icons: a line one in ink, a filled one in a swatch, a logo in its own
  * colour with a label, the same logo in ink, a custom one in its own colours,
- * and one the library lacks.
+ * one the library lacks, and a frame from a D2 container with its icon.
  */
 export function icons(): El[] {
   return [
@@ -239,6 +239,9 @@ export function icons(): El[] {
     el({ id: 'ico-brand', type: 'icon', icon: 'logo/postgresql', x: 360, y: 60, w: 64, h: 64, color: 'brand', label: 'Orders DB', measuredWidth: 72, measuredHeight: 19 }),
     el({ id: 'ico-ink', type: 'icon', icon: 'logo/redis', x: 520, y: 60, w: 64, h: 64 }),
     el({ id: 'ico-custom', type: 'icon', icon: 'custom/acme', x: 360, y: 240, w: 64, h: 64, label: 'Payments', measuredWidth: 80, measuredHeight: 19 }),
+    // A frame from a D2 container, its icon in the corner its label leaves free.
+    el({ id: 'ico-frame', type: 'frame', label: 'Workers', x: 520, y: 220, w: 220, h: 140 }),
+    el({ id: 'ico-frame-icon', type: 'icon', icon: 'line/cloud', frame: 'ico-frame', x: 520 + 220 - 8 - 24, y: 228, w: 24, h: 24 }),
     el({ id: 'ico-missing', type: 'icon', icon: 'custom/acme-billing', x: 200, y: 240, w: 64, h: 64, label: 'Billing', measuredWidth: 44, measuredHeight: 19 }),
   ];
 }

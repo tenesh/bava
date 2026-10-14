@@ -3,7 +3,10 @@ package render_test
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/tharabyte/bava/internal/render"
@@ -229,5 +232,75 @@ User: {
 	}
 	if want := "+ run()"; rows["User"] != want {
 		t.Errorf("User rows = %q, want %q", rows["User"], want)
+	}
+}
+
+// A shape's icon comes through as written, a name or an address, for the
+// canvas to look up by name; nothing reads the address.
+func TestLayoutCarriesEachShapesIcon(t *testing.T) {
+	source := "api: { icon: server }\ndb: Orders DB { icon: https://example.com/icons/postgresql.svg }\nplain\napi -> db"
+	result, err := render.Render(context.Background(), source, render.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Errors) > 0 {
+		t.Fatalf("did not compile: %+v", result.Errors)
+	}
+	icons := map[string]string{}
+	for _, shape := range result.Layout.Shapes {
+		icons[shape.ID] = shape.Icon
+		if shape.W <= 0 || shape.H <= 0 {
+			t.Errorf("%s has no size", shape.ID)
+		}
+	}
+	want := map[string]string{"api": "server", "db": "https://example.com/icons/postgresql.svg", "plain": ""}
+	for id, icon := range want {
+		if icons[id] != icon {
+			t.Errorf("%s icon = %q, want %q", id, icons[id], icon)
+		}
+	}
+	// D2 makes room for an icon inside its box: a shape with one is never
+	// smaller than without, so the square the canvas makes of it is not either.
+	without, err := render.Render(context.Background(), "api\ndb: Orders DB\nplain\napi -> db", render.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	boxes := map[string]render.LayoutShape{}
+	for _, shape := range without.Layout.Shapes {
+		boxes[shape.ID] = shape
+	}
+	for _, shape := range result.Layout.Shapes {
+		plain := boxes[shape.ID]
+		if shape.W < plain.W || shape.H < plain.H {
+			t.Errorf("%s is %vx%v with its icon, %vx%v without", shape.ID, shape.W, shape.H, plain.W, plain.H)
+		}
+	}
+}
+
+// Nothing is fetched for an icon, while the diagram is laid out or drawn:
+// an address in the D2 reaches no server.
+func TestRenderNeverFetchesAnIcon(t *testing.T) {
+	var asked atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		asked.Add(1)
+		w.Header().Set("Content-Type", "image/svg+xml")
+		_, _ = w.Write([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"/>`))
+	}))
+	defer server.Close()
+	for _, source := range []string{
+		"a: { icon: " + server.URL + "/a.svg }",
+		"a: { shape: image\n icon: " + server.URL + "/b.svg }",
+		"t: { shape: sql_table\n icon: " + server.URL + "/c.svg\n id: int }",
+	} {
+		result, err := render.Render(context.Background(), source, render.Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(result.Errors) > 0 {
+			t.Fatalf("%q did not compile: %+v", source, result.Errors)
+		}
+	}
+	if n := asked.Load(); n != 0 {
+		t.Errorf("the icon server was asked %d times", n)
 	}
 }

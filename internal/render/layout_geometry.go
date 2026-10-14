@@ -10,8 +10,8 @@ import (
 // Layout is the geometry the canvas builds shapes from.
 //
 // It is what the diagram *is*, not how D2 painted it: position, size, label,
-// nesting and the route of each connection. Colours, opacity, dashes, icons,
-// tooltips and links are deliberately absent. A diagram inserted on the canvas
+// nesting, a shape's icon by name, and the route of each connection.
+// Colours, opacity, dashes, tooltips and links are deliberately absent. A diagram inserted on the canvas
 // arrives in Bava's own style, and leaving D2's palette out of this contract
 // is what keeps that true: nothing downstream can come to depend on it.
 //
@@ -39,6 +39,9 @@ type LayoutShape struct {
 	// writes them, one a line ("id int pk", "+ save(): bool"); empty for any
 	// other shape.
 	Rows string `json:"rows,omitempty"`
+	// Icon is the shape's `icon:` as written, a name or an address; the
+	// canvas looks it up by name among its own icons and never fetches it.
+	Icon string `json:"icon,omitempty"`
 }
 
 // LayoutConnection is one edge, with the route the engine chose.
@@ -84,6 +87,7 @@ func layoutOf(diagram *d2target.Diagram, graph *d2graph.Graph) Layout {
 			H:      float64(shape.Height),
 			Label:  shape.Label,
 			Rows:   rowsOf(shape),
+			Icon:   iconOf(shape),
 		})
 	}
 
@@ -111,6 +115,14 @@ func layoutOf(diagram *d2target.Diagram, graph *d2graph.Graph) Layout {
 	}
 
 	return Layout{Shapes: shapes, Connections: connections}
+}
+
+// iconOf is a shape's icon as written, or "" when it has none.
+func iconOf(shape d2target.Shape) string {
+	if shape.Icon == nil {
+		return ""
+	}
+	return shape.Icon.String()
 }
 
 // parentOf is the container a shape sits in, from its dotted absolute id.

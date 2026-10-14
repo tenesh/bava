@@ -820,6 +820,20 @@ export function createFakes(first: FakeSpace = seedSpace()) {
         // The dialog's starting code lays out as nothing, so it opens with
         // Insert off as pictured; anything typed lays out as the one box.
         const typed = source.trim() !== 'a -> b';
+        // `name: { icon: value }` lines lay out as a row of boxes, each with its icon.
+        const withIcons = [...source.matchAll(/(\w+)\s*:\s*\{\s*icon:\s*([^\s}]+)\s*\}/g)].map(([, id, icon], n) => ({
+          id,
+          type: 'rectangle',
+          x: 10 + n * 140,
+          y: 10,
+          w: 100,
+          h: 66,
+          label: id,
+          icon,
+        }));
+        // As D2 draws an icon in its preview: a picture by its address.
+        const pictures = withIcons.map((shape) => `<image href="${shape.icon}" x="${shape.x}" y="${shape.y}" width="24" height="24"/>`).join('');
+        if (withIcons.length > 0) return { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="120">${pictures}</svg>`, errors: [], nodeMap: {}, layout: { shapes: withIcons, connections: [] } };
         return {
           svg: '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="120"><rect x="10" y="10" width="100" height="50" rx="4" fill="#fff" stroke="#8b8b83"/><text x="60" y="40" text-anchor="middle" font-size="13">api</text></svg>',
           errors: [],

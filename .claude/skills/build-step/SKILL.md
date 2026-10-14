@@ -128,13 +128,13 @@ exit code (`npm test` can fail with every test passed).
 
 What is true now and affects the gates. Update it when a milestone closes.
 
-**Position:** 15.4 done; CI setup in one place done (run 38338032045). R1 done (repository `tharabyte/bava`; adapted canvas code
+**Position:** 9 done (icons: parts 1 and 2 green on CI, runs 38443180949 and 38482396914; part 3 to commit). Next 10 (source editor polish), then the AI milestones 11 to 14, then 16 and 17. 15.4 done; CI setup in one place done (run 38338032045). R1 done (repository `tharabyte/bava`; adapted canvas code
 attributed in `NOTICE` for good). R2 done (the stores' sandboxes: the same walks pass inside the Mac sandbox,
 the installed MSIX and Flatpak, run 38143080459). 15.3 done (import;
 its walk passes on all three systems and inside each store's package, run
 38197233990). 15.4a done (zoom to fit, labels that fit, drags the system
 ends; run 38250684449). 15.4b done (the command palette; run 38266105334).
-Next 15.4c (paste), 15.4d (shapes), Milestone 16, Milestone 17. Help ▸ Report Issue
+Help ▸ Report Issue
 is hidden until release (`REPORT_ISSUE_ENABLED` in
 `frontend/src/shell/report-issue.ts`); the DMG icon and background stay
 Wails-branded until release.
@@ -152,9 +152,9 @@ The real app only on CI: `-tags e2e` walks `tests/e2e/` (`create`, `reopen`,
 inside each store's package (`store walks`). Jobs share their setup through
 `.github/actions/setup`. Never `wails3 dev` locally.
 
-**Gates:** all green on the host (go vet, go test 15 packages, 2 golden
-fixtures, check, lint, `npm test` 3,135 passed); `npm run browser` 591 passed,
-326 references in `testdata/visual/`; CI end-to-end green, inside each
+**Gates:** all green on the host (go vet, go test 16 packages, 2 golden
+fixtures, check, lint, `npm test` 3,252 passed); `npm run browser` 597 passed,
+330 references in `testdata/visual/`; CI end-to-end green, inside each
 store's package too. `npm run build`'s minifier rejects some CSS the browser
 tests accept (WebKit-only selectors).
 

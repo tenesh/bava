@@ -15,4 +15,10 @@ describe('d2DiagramStatus', () => {
   it('is empty while there are no shapes', () => {
     expect(d2DiagramStatus('tala', 0)).toBe('');
   });
+
+  // Nothing is fetched for an icon: one Bava does not have is named, so the user knows what to add.
+  it('names the icons not found, which leave their shapes plain', () => {
+    expect(d2DiagramStatus('tala', 3, ['acme-billing'])).toBe('Laid out by TALA · 3 shapes · icon not found: acme-billing');
+    expect(d2DiagramStatus('tala', 3, ['a', 'b'])).toBe('Laid out by TALA · 3 shapes · icons not found: a, b');
+  });
 });

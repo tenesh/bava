@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import layout from './__fixtures__/containers.json';
-import { toElements, unplaceable } from './convert';
+import { ICON_IN_FRAME, ICON_IN_FRAME_INSET, iconsNotFound, toElements, unplaceable } from './convert';
 import type { Layout } from './convert';
-import { isShapeType } from '../scene';
+import { isShapeType, type SceneElement } from '../scene';
+import { loadSet, setCustomIcons } from '../icons/sets';
+import { resolveD2Icon } from '../icons/d2-names';
 import { tableLayout } from '../table-layout';
 
 const fixture = layout as Layout;
@@ -161,5 +163,114 @@ describe('tables and classes from a D2 diagram', () => {
     expect(toColumns).toMatchObject({ startRow: 'team_id', endRow: 'id' });
     expect(toTable).not.toHaveProperty('startRow');
     expect(toTable).not.toHaveProperty('endRow');
+  });
+});
+
+describe('icons from a D2 diagram', () => {
+  const shape = (over: Record<string, unknown>) => ({ type: 'rectangle', x: 0, y: 0, w: 100, h: 66, ...over });
+  const withIcons: Layout = {
+    shapes: [
+      shape({ id: 'api', label: 'api', icon: 'server' }),
+      shape({ id: 'db', label: 'Orders DB', icon: 'https://example.com/icons/postgresql.svg', x: 200 }),
+      shape({ id: 'billing', label: 'billing', icon: 'acme-billing', x: 400 }),
+      shape({ id: 'group', label: 'Workers', icon: 'cloud', x: 0, y: 200, w: 300, h: 200 }),
+      shape({ id: 'group.worker', parent: 'group', label: 'worker', x: 50, y: 280 }),
+    ] as Layout['shapes'],
+    connections: [
+      { id: '(api -> db)[0]', src: 'api', dst: 'db', route: [{ x: 100, y: 33 }, { x: 200, y: 33 }] },
+      { id: '(api -> billing)[0]', src: 'api', dst: 'billing', route: [{ x: 100, y: 40 }, { x: 400, y: 40 }] },
+    ] as Layout['connections'],
+  };
+  const known: Record<string, string> = { server: 'line/server', 'https://example.com/icons/postgresql.svg': 'logo/postgresql', cloud: 'line/cloud' };
+  const resolve = (value: string) => known[value] ?? null;
+  const convert = () => toElements(withIcons, { at: { x: 250, y: 200 }, resolveIcon: resolve });
+  const icons = (elements: SceneElement[]) => elements.filter((e) => e.type === 'icon') as (SceneElement & { icon: string; label?: string; frame?: string })[];
+
+  it('makes a shape with a known icon that icon alone, its label under it, in the middle of its box', () => {
+    const elements = convert();
+    const api = icons(elements).find((e) => e.icon === 'line/server')!;
+    expect(api).toMatchObject({ label: 'api', w: 66, h: 66 });
+    // Centred where D2 put the box: the layout's centre moved to `at`.
+    expect(api.x - (convert().find((e) => e.type === 'frame')!.x - 0)).toBeCloseTo(17);
+    expect(icons(elements).find((e) => e.icon === 'logo/postgresql')).toMatchObject({ label: 'Orders DB' });
+  });
+
+  it("attaches the shape's arrows to its icon, ending at its square rather than D2's box", () => {
+    const elements = convert();
+    const api = icons(elements).find((e) => e.icon === 'line/server')!;
+    const db = icons(elements).find((e) => e.icon === 'logo/postgresql')!;
+    const arrow = elements.find((e) => e.type === 'arrow' && (e as { endBinding?: string }).endBinding === db.id) as SceneElement & { points: number[] };
+    expect(arrow).toMatchObject({ startBinding: api.id });
+    const ends = [
+      { x: arrow.x + arrow.points[0], y: arrow.y + arrow.points[1] },
+      { x: arrow.x + arrow.points[arrow.points.length - 2], y: arrow.y + arrow.points[arrow.points.length - 1] },
+    ];
+    expect(ends[0].x).toBeCloseTo(api.x + api.w);
+    expect(ends[1].x).toBeCloseTo(db.x);
+  });
+
+  it('leaves a shape whose icon is not found a plain shape, and names it', () => {
+    const elements = convert();
+    expect(elements.find((e) => (e as { label?: string }).label === 'billing')).toMatchObject({ type: 'rect' });
+    expect(iconsNotFound(withIcons, resolve)).toEqual(['acme-billing']);
+  });
+
+  it('names a missing picture carried as data briefly, and says nothing of a table, which takes no icon', () => {
+    const layout: Layout = {
+      shapes: [
+        { id: 'p', type: 'rectangle', x: 0, y: 0, w: 10, h: 10, icon: 'data:image/png;base64,AAAA' },
+        { id: 't', type: 'sql_table', x: 0, y: 0, w: 10, h: 10, icon: 'not-here', rows: 'id int' },
+      ] as Layout['shapes'],
+      connections: [],
+    };
+    expect(iconsNotFound(layout, () => null)).toEqual(['a picture carried in the D2']);
+  });
+
+  // Its top-left corner holds the frame's label.
+  it('keeps a container its frame, and puts its icon in the top-right corner, unlabelled', () => {
+    const elements = convert();
+    const frame = elements.find((e) => e.type === 'frame')!;
+    const icon = icons(elements).find((e) => e.icon === 'line/cloud')!;
+    expect(icon).toMatchObject({
+      frame: frame.id,
+      w: ICON_IN_FRAME,
+      h: ICON_IN_FRAME,
+      x: frame.x + frame.w - ICON_IN_FRAME_INSET - ICON_IN_FRAME,
+      y: frame.y + ICON_IN_FRAME_INSET,
+    });
+    expect(icon.label).toBeUndefined();
+    expect(icon.z).toBeGreaterThan(frame.z);
+  });
+});
+
+// Whatever a D2 diagram's icons say, what lands on the canvas names an icon
+// of Bava's own, never an address to fetch.
+describe('conversion never yields a remote icon', () => {
+  beforeAll(async () => {
+    await Promise.all([loadSet('line'), loadSet('logo')]);
+    setCustomIcons([]);
+  });
+
+  it('names only icons of its own sets, whatever the D2 says', () => {
+    const values = [
+      'server',
+      'https://icons.example.com/essentials/112-server.svg',
+      'http://example.com/database.svg',
+      '//cdn.example.com/x/cloud.svg',
+      'file:///Users/you/redis.svg',
+      'data:image/svg+xml;base64,PHN2Zz4=',
+      'https://example.com/not-an-icon.svg',
+      'ftp://example.com/postgresql.svg',
+    ];
+    const layout: Layout = {
+      shapes: values.map((icon, n) => ({ id: `s${n}`, type: 'rectangle', x: n * 120, y: 0, w: 100, h: 66, label: `s${n}`, icon })) as Layout['shapes'],
+      connections: [],
+    };
+    const elements = toElements(layout, { at: { x: 0, y: 0 }, resolveIcon: resolveD2Icon });
+    const icons = elements.filter((e) => e.type === 'icon').map((e) => (e as { icon: string }).icon);
+    expect(icons).toEqual(['line/server', 'line/server', 'line/database', 'line/cloud', 'logo/redis', 'logo/postgresql']);
+    for (const element of elements) {
+      expect(JSON.stringify(element)).not.toMatch(/https?:|\/\/|data:|file:|ftp:/);
+    }
   });
 });

@@ -95,6 +95,8 @@ offered for content.
     the icon's label, at the place and size D2's layout gives the shape, and
     its connections attach to the icon. A shape with children keeps its
     box, since its children sit inside it, and the icon is placed in the
-    box's top-left corner without a label. Keeping the box with the icon
+    box's top-right corner without a label (top-left at first; moved
+    2026-10-14, as a frame's label is drawn in its top-left corner). A SQL
+    table or class takes no icon; its `icon:` is ignored. Keeping the box with the icon
     inside it, grouped, was first chosen and then changed by the user the
     same day.

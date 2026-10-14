@@ -31,6 +31,8 @@
     pending: boolean;
     /** How many shapes the last good layout holds. Nothing to insert at zero. */
     shapes: number;
+    /** The D2 icons Bava has none of: named, and their shapes left plain. */
+    iconsMissing?: string[];
     /** The layout the preview is drawn with, and the insert will use. */
     engine: LayoutEngine;
     direction: Direction;
@@ -50,6 +52,7 @@
     errors,
     pending,
     shapes,
+    iconsMissing = [],
     engine,
     direction,
     onEngine,
@@ -72,7 +75,7 @@
   // a diagram that does not compile, one still being rendered, and one that
   // compiled to no shapes (a file of comments still renders an empty SVG).
   const canInsert = $derived(errors.length === 0 && !pending && typed.trim().length > 0 && shapes > 0);
-  const status = $derived(d2DiagramStatus(engine, shapes));
+  const status = $derived(d2DiagramStatus(engine, shapes, iconsMissing));
 
   // The dialog's content is portalled, so its host does not exist at mount:
   // the editor is created when the element appears and destroyed with it.

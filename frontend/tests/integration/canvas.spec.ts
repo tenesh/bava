@@ -867,6 +867,33 @@ test.describe('defaults, text and dialogs', () => {
     await expect(editPoints).toHaveCount(0);
   });
 
+  // Nothing is fetched for a D2 icon: one Bava has arrives as that icon, one it lacks is named and left a box.
+  test('D2 diagram brings its icons by name, and names those Bava does not have', async ({ page }) => {
+    const asked: string[] = [];
+    page.on('request', (request) => new URL(request.url()).hostname.endsWith('example.com') && asked.push(request.url()));
+    await startCanvas(page);
+    await menu(page, 'insert.d2Diagram');
+    const dialog = openDialog(page);
+    await dialog.locator('.cm-content').click();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type('api: { icon: https://example.com/icons/112-server.svg }\nbilling: { icon: not-an-icon }');
+    await expect(dialog.locator('.bava-d2-diagram-status')).toContainText('icon not found: not-an-icon');
+    // The preview draws without the address, and an icon not found stops nothing.
+    expect(await dialog.locator('.bava-d2-diagram-preview').innerHTML()).not.toContain('example.com');
+    const insert = dialog.getByRole('button', { name: 'Insert' });
+    await expect(insert).toBeEnabled();
+    await insert.click();
+    await expect(dialog).toHaveCount(0);
+    await expect.poll(async () => ofType(await saved(page), 'icon').length).toBe(1);
+    const [icon] = ofType(await saved(page), 'icon') as unknown as { icon: string; label?: string; measuredWidth?: number; measuredHeight?: number }[];
+    expect(icon).toMatchObject({ icon: 'line/server', label: 'api' });
+    expect(icon.measuredWidth).toBeGreaterThan(0);
+    expect(icon.measuredHeight).toBeGreaterThan(0);
+    const kept = (await saved(page)).find((e) => (e as { label?: string }).label === 'billing');
+    expect(kept?.type).toBe('rect');
+    expect(asked).toEqual([]);
+  });
+
   test('D2 diagram starts at the engine used last, and the status bar names it', async ({ page }) => {
     await startCanvas(page);
     await menu(page, 'insert.d2Diagram');

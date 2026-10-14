@@ -266,34 +266,35 @@ inventory (`IconGrid`).
 
 ### Task 17: Go carries the icon
 **Files:** `internal/render/layout_geometry.go`, `docs/ipc.md`, test.
-- [ ] Failing test: `TestLayoutCarriesIcon` (a name and a web address come
-  through as written; the shape's place and size unchanged). Expected
+- [x] Failing test: `TestLayoutCarriesIcon` (a name and a web address come
+  through as written; a shape with an icon is never smaller than without:
+  D2 makes room for it in the box, so "unchanged" was wrong). Expected
   failure: `LayoutShape` has no `Icon`.
-- [ ] `LayoutShape.Icon string` from `d2target.Shape.Icon`. Nothing reads
+- [x] `LayoutShape.Icon string` from `d2target.Shape.Icon`. Nothing reads
   the address; the header comment updated.
-- [ ] Green: `go test ./internal/render`; bindings regenerated.
+- [x] Green: `go test ./internal/render`; bindings regenerated.
 
 ### Task 18: Conversion
 **Files:** `frontend/src/canvas/import/icon-names.ts`,
 `frontend/src/canvas/import/convert.ts`, tests, a fixture.
-- [ ] Failing tests: `icon-names.test.ts` (`.../112-server.svg` is
+- [x] Failing tests: `icon-names.test.ts` (`.../112-server.svg` is
   `server`; `Postgres.SVG` is `postgres`; an alias of a logo resolves; the
   order is custom, line, logo); `convert.test.ts` "a shape with a known
   icon becomes an icon with its label and its connections";
   "a container keeps its frame and gets an unlabelled icon top-left";
   "an unknown icon leaves a plain shape and is reported".
-- [ ] **Exit test:** `convert.test.ts` "conversion never yields a remote
+- [x] **Exit test:** `convert.test.ts` "conversion never yields a remote
   icon": every icon in the output is `<set>/<name>`, never an address,
   over a fixture of names, `http`, `https`, `data:` and `file:` values.
-- [ ] Green: `npx vitest run src/canvas/import`
+- [x] Green: `npx vitest run src/canvas/import`
 
 ### Task 19: The dialog's note
 **Files:** `frontend/src/components/d2-diagram-status.ts`,
 `D2DiagramDialog.svelte`, `i18n/messages.ts`, tests, the visual reference.
-- [ ] Failing test: "the status names icons not found; Insert stays on".
-- [ ] The preview SVG keeps passing through `withoutRemoteRefs` (a test
+- [x] Failing test: "the status names icons not found; Insert stays on".
+- [x] The preview SVG keeps passing through `withoutRemoteRefs` (a test
   that an icon address in the D2 never reaches the preview).
-- [ ] Green: `npx vitest run src/components/d2-diagram-status`;
+- [x] Green: `npx vitest run src/components/d2-diagram-status`;
   `npm run browser`.
 
 ## Artifacts
@@ -404,3 +405,42 @@ folder while the picker is open; a keyboard shortcut for Icon.
   `docs/ipc.md` as the cost of icons carrying large embedded pictures.
 - Not built: an end-to-end walk through the native file dialog (the browser
   tests drive Add through the stand-in service).
+
+### Part 3
+
+- Go carries `LayoutShape.Icon`, the `icon:` as written; nothing reads it.
+  A test points icons (plain, `shape: image`, on a SQL table) at a local
+  server and finds it never asked: D2 v0.9.0 fetches only through a resolver
+  Bava never gives it.
+- `canvas/icons/d2-names.ts` turns a value into a name (an address's file
+  name, lower-cased, its picture extension and a leading number dropped;
+  nothing for data) and looks it up in the custom library, the general
+  icons, the logos, then the logos' titles and other names. Conversion
+  (`canvas/import/convert.ts`) stays pure and takes this as `resolveIcon`.
+- A shape with a found icon becomes that icon, its side the box's shorter
+  side, centred where D2 put the box, its label under it (measured as it
+  lands, through `fitArriving`); its arrows attach to it, their ends moved
+  from D2's box to the icon's square (D2 makes the box larger to hold the
+  icon, so the square is never smaller than the plain shape). A container
+  keeps its frame and gets the icon, 24 across, 8 in from its top-right
+  corner (the frame's label holds the top-left), unlabelled. A table or
+  class takes no icon and is not named as missing one. A shape whose icon is not found stays a plain shape; the
+  dialog's status line names the icons not found.
+- The sets load as the D2 dialog opens (and the library is read again), so
+  the status line knows what is missing as the diagram is typed; Insert
+  waits for them in the rare case they have not arrived.
+- Exit test: `convert.test.ts` "conversion never yields a remote icon",
+  over names, http, https, protocol-relative, file, data and ftp values,
+  with the real lookup; no element carries an address.
+- The stand-in renderer lays out `name: { icon: value }` lines, drawing
+  D2's icon pictures by address in its preview, for a browser test through
+  the dialog to the saved file: no request leaves for the address, the
+  preview holds none, Insert stays on, the label and its measured size are
+  saved.
+- From the spec review: Insert reads the layout as pressed, presses once
+  while it waits for the icons, and inserts nothing if the dialog closed
+  meanwhile; the missing-icon note is worked out again after each library
+  read; a picture carried as data is named briefly, a Windows path read, a
+  leading number dropped from an address's file name only; the status line's
+  joiners are messages. The page-embed insert shares the code but has no
+  browser test of its own.

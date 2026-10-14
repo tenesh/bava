@@ -72,7 +72,8 @@
   import { createRenderClient } from './ipc/render.svelte';
   import D2DiagramDialog from './components/D2DiagramDialog.svelte';
   import { createD2DiagramDialog } from './shell/d2-diagram-dialog.svelte';
-  import { toElements } from './canvas/import/convert';
+  import { iconsNotFound, toElements } from './canvas/import/convert';
+  import { resolveD2Icon } from './canvas/icons/d2-names';
   import { inNewFrame } from './canvas/import/in-frame';
   import { createTheme } from './styles/theme.svelte';
   import Shell from './shell/Shell.svelte';
@@ -198,6 +199,8 @@
   function fitArriving(element: SceneElement) {
     const before = element.h;
     if (growToLabel(element, shapeLabelHeight)) element.y -= (element.h - before) / 2;
+    // An icon's label measured as it is drawn.
+    refit(element);
   }
 
   /** After a style change: a code block refitted, a shape grown to its label. */
@@ -392,8 +395,27 @@
   // a frame of its own and embeds that frame at the caret.
   let d2DiagramForPage = false;
 
+  /**
+   * The icons a D2 diagram may name: loaded as its dialog opens, the library
+   * read again each time, so its icons resolve as it is typed. Each read
+   * counts, so the note of what is missing follows the library.
+   */
+  let d2IconReads = $state(0);
+  let d2Icons: Promise<unknown> | null = null;
+  async function loadD2Icons(): Promise<void> {
+    d2Icons ??= Promise.allSettled([loadSet('line'), loadSet('logo')]);
+    await Promise.all([d2Icons, readIconLibrary()]);
+    // A set that could not load is tried again the next time.
+    if (!loadedSet('line') || !loadedSet('logo')) d2Icons = null;
+    d2IconReads += 1;
+  }
+  const d2IconsMissing = $derived(d2IconReads > 0 ? iconsNotFound(d2DiagramClient.state.layout, resolveD2Icon) : []);
+  /** An insert waiting for the icons: a second press inserts nothing more. */
+  let d2Inserting = false;
+
   function openD2DiagramDialog() {
     if (!canvasShown()) return;
+    void loadD2Icons();
     d2DiagramForPage = false;
     d2DiagramOpen = true;
     d2DiagramDialog.open(DIAGRAM_STARTER);
@@ -402,6 +424,7 @@
   /** `/` D2 diagram, once the page is in a Space. */
   async function openD2DiagramForPage() {
     if (!embedIO.inSpace() && !(await embedIO.offerSpace())) return;
+    void loadD2Icons();
     d2DiagramForPage = true;
     d2DiagramOpen = true;
     d2DiagramDialog.open(DIAGRAM_STARTER);
@@ -410,11 +433,24 @@
   /** What the dialog opens with: enough to show that something happens. */
   const DIAGRAM_STARTER = 'a -> b';
 
-  function insertD2Diagram() {
+  async function insertD2Diagram() {
+    if (d2Inserting) return;
+    // What is inserted is what was showing when Insert was pressed.
     const layout = d2DiagramClient.state.layout;
+    // Icons resolve against sets that are loaded: almost always already, as the dialog opened.
+    if (d2IconReads === 0) {
+      d2Inserting = true;
+      try {
+        await loadD2Icons();
+      } finally {
+        d2Inserting = false;
+      }
+      // Closed while waiting: nothing is inserted.
+      if (!d2DiagramOpen) return;
+    }
     if (layout.shapes.length === 0 && layout.connections.length === 0) return;
     if (d2DiagramForPage) {
-      insertD2DiagramInPage();
+      insertD2DiagramInPage(layout);
       return;
     }
     // Centred on what the user is looking at, at the diagram's own size.
@@ -422,7 +458,7 @@
       x: (canvasHostEl?.clientWidth ?? 0) / 2,
       y: (canvasHostEl?.clientHeight ?? 0) / 2,
     });
-    canvasCommands.insertDiagram(toElements(layout, { at: centre, fit: fitArriving }));
+    canvasCommands.insertDiagram(toElements(layout, { at: centre, fit: fitArriving, resolveIcon: resolveD2Icon }));
     // The engine used becomes the default, so the next dialog opens with it.
     void d2DiagramDialog.inserted();
     d2DiagramOpen = false;
@@ -430,8 +466,10 @@
     syncSelection();
   }
   /** The diagram in a new frame below the canvas's content, embedded at the page's caret. */
-  function insertD2DiagramInPage() {
-    canvasCommands.insertDiagram(inNewFrame(history.current, toElements(d2DiagramClient.state.layout, { at: { x: 0, y: 0 }, fit: fitArriving }), t('frames.diagram')));
+  function insertD2DiagramInPage(layout: typeof d2DiagramClient.state.layout) {
+    canvasCommands.insertDiagram(
+      inNewFrame(history.current, toElements(layout, { at: { x: 0, y: 0 }, fit: fitArriving, resolveIcon: resolveD2Icon }), t('frames.diagram')),
+    );
     void d2DiagramDialog.inserted();
     d2DiagramOpen = false;
     d2DiagramForPage = false;
@@ -4368,6 +4406,7 @@
   errors={d2DiagramClient.state.errors}
   pending={d2DiagramClient.state.pending}
   shapes={d2DiagramClient.state.layout.shapes.length}
+  iconsMissing={d2IconsMissing}
   engine={d2DiagramDialog.engine}
   direction={d2DiagramDialog.direction}
   onEngine={(next) => d2DiagramDialog.setEngine(next)}

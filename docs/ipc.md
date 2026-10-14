@@ -53,12 +53,12 @@ type Span = { from: number; to: number; line: number }; // where in the source
   `line` is **1-indexed**.
 - **`nodeMap`** maps an SVG element id to the node's earliest reference in the
   source (its declaration). No geometry; no screen reads it yet.
-- **`layout`**: each shape's `id`, `type`, `parent`, position, size and label,
-  and a `sql_table`'s or `class`'s `rows` as Bava writes them ("id int pk",
-  "+ save(): bool");
-  each connection's `src`, `dst`, arrowheads, label and `route`. No colours,
-  opacity, dashes, icons, tooltips or links: inserted diagrams take Bava's
-  style. `parent` comes from the dotted absolute id resolved against existing
+- **`layout`**: each shape's `id`, `type`, `parent`, position, size and
+  label, a `sql_table`'s or `class`'s `rows` as Bava writes them ("id int
+  pk", "+ save(): bool"), and its `icon` as written (a name or an address,
+  never fetched: the canvas looks it up by name among its own icons); each
+  connection's `src`, `dst`, arrowheads, label and `route`. No colours,
+  opacity, dashes, tooltips or links: inserted diagrams take Bava's style. `parent` comes from the dotted absolute id resolved against existing
   ids, so a dot in a label cannot invent a container. SVG and layout come from
   one compile and never disagree.
 - **Fixed options:** `NoXMLTag` and `OmitVersion` (D2's stamped version is
